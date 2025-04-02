@@ -24,7 +24,7 @@ const DashboardLayout = () => {
     navigate('/login');
   };
   
-  // Main navigation items
+  // Main navigation items with conditional rendering based on user role
   const navItems = [
     { name: 'Dashboard', path: '/dashboard', icon: FiHome },
     {
@@ -33,13 +33,15 @@ const DashboardLayout = () => {
       dropdown: true,
       isOpen: usersDropdownOpen,
       toggle: () => setUsersDropdownOpen(!usersDropdownOpen),
-      items: [
+      items: user?.role === 'admin' ? [
         { name: 'Admin Users', path: '/users/admin' },
         { name: 'Managers', path: '/users/managers' },
         { name: 'Technicians', path: '/users/technicians' },
+      ] : [
+        { name: 'Technicians', path: '/users/technicians' },
       ]
     },
-    {
+    user?.role === 'admin' && {
       name: 'Branch Management',
       icon: FiBriefcase,
       dropdown: true,
@@ -78,6 +80,9 @@ const DashboardLayout = () => {
     { name: 'Settings', path: '/settings', icon: FiSettings },
   ];
   
+  // Filter out undefined items (from conditional rendering)
+  const filteredNavItems = navItems.filter(item => item);
+  
   return (
     <div className="flex h-screen bg-gray-100">
       {/* Sidebar overlay for mobile */}
@@ -100,7 +105,7 @@ const DashboardLayout = () => {
         
         <nav className="mt-5">
           <ul>
-            {navItems.map((item, index) => (
+            {filteredNavItems.map((item, index) => (
               <li key={index}>
                 {item.dropdown ? (
                   <div>

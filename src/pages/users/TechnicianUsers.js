@@ -1,123 +1,120 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
-import { FiPlus, FiEdit2, FiUserCheck, FiUserX, FiLoader, FiSearch } from 'react-icons/fi';
+import { Link, useNavigate } from 'react-router-dom';
+import { FiEdit, FiTrash2, FiPlus, FiSearch } from 'react-icons/fi';
 import SummaryApi from '../../common';
+import { useAuth } from '../../context/AuthContext';
+import AddTechnicianModal from '../../components/AddTechnicianModal';
 
 const TechnicianUsers = () => {
+  const { user } = useAuth();
+  const navigate = useNavigate();
   const [technicians, setTechnicians] = useState([]);
-  const [branches, setBranches] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
-  const [branchFilter, setBranchFilter] = useState('');
+  const [modalOpen, setModalOpen] = useState(false);
   
-  useEffect(() => {
-    fetchData();
-  }, []);
-  
-  const fetchData = async () => {
+  const fetchTechnicians = async () => {
     try {
       setLoading(true);
-      // Fetch branches first to populate dropdown
-      const branchResponse = await fetch(SummaryApi.getBranches.url, {
-        method: SummaryApi.getBranches.method,
+      
+      // We'll use different endpoints based on user role
+      const endpoint = user.role === 'admin' 
+        ? SummaryApi.getTechnicianUsers.url 
+        : SummaryApi.getManagerTechnician.url;
+      
+      const response = await fetch(endpoint, {
+        method: 'GET',
         credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
         },
-      });
-      
-      const branchData = await branchResponse.json();
-      
-      if (branchData.success) {
-        setBranches(branchData.data || []);
-      }
-      
-      // Fetch technicians
-      const technicianResponse = await fetch(SummaryApi.getTechnicianUsers.url, {
-        method: SummaryApi.getTechnicianUsers.method,
-        credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
-      
-      const technicianData = await technicianResponse.json();
-      
-      if (technicianData.success) {
-        setTechnicians(technicianData.data || []);
-      } else {
-        setError(technicianData.message || 'Failed to fetch technician users');
-      }
-    } catch (err) {
-      setError('Server error. Please try again later.');
-      console.error('Error fetching data:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
-  
-  const handleSearch = (e) => {
-    setSearchTerm(e.target.value);
-  };
-  
-  const handleBranchFilter = (e) => {
-    setBranchFilter(e.target.value);
-  };
-  
-  const filteredTechnicians = technicians.filter(technician => {
-    // Apply search term filter
-    const matchesSearch = 
-      technician.firstName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      technician.lastName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      technician.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      technician.username.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    // Apply branch filter
-    const matchesBranch = branchFilter === '' || technician.branch?._id === branchFilter;
-    
-    return matchesSearch && matchesBranch;
-  });
-  
-  const handleStatusToggle = async (userId, currentStatus) => {
-    try {
-      const newStatus = currentStatus === 'active' ? 'inactive' : 'active';
-      
-      const response = await fetch(SummaryApi.updateUserStatus.url, {
-        method: SummaryApi.updateUserStatus.method,
-        credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ userId, status: newStatus })
       });
       
       const data = await response.json();
       
       if (data.success) {
-        // Update the local state to reflect the change
-        setTechnicians(technicians.map(technician => 
-          technician._id === userId ? { ...technician, status: newStatus } : technician
-        ));
+        setTechnicians(data.data || []);
       } else {
-        setError(data.message || 'Failed to update user status');
+        setError('Failed to fetch technicians');
       }
     } catch (err) {
       setError('Server error. Please try again later.');
-      console.error('Error updating user status:', err);
+      console.error('Error fetching technicians:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  useEffect(() => {
+    fetchTechnicians();
+  }, [user.role]);
+  
+  const handleSearch = (e) => {
+    setSearchTerm(e.target.value);
+  };
+  
+  const filteredTechnicians = technicians.filter(tech => {
+    const fullName = `${tech.firstName} ${tech.lastName}`.toLowerCase();
+    const term = searchTerm.toLowerCase();
+    
+    return (
+      fullName.includes(term) ||
+      tech.username.toLowerCase().includes(term) ||
+      tech.email.toLowerCase().includes(term) ||
+      (tech.branch && typeof tech.branch === 'object' && tech.branch.name.toLowerCase().includes(term))
+    );
+  });
+  
+  const handleDeleteUser = async (userId) => {
+    if (!window.confirm('Are you sure you want to delete this technician?')) {
+      return;
+    }
+    
+    try {
+      const response = await fetch(`${SummaryApi.deleteUser.url}/${userId}`, {
+        method: SummaryApi.deleteUser.method,
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        // Update technicians list
+        fetchTechnicians();
+      } else {
+        setError(data.message || 'Failed to delete technician');
+      }
+    } catch (err) {
+      setError('Server error. Please try again later.');
+      console.error('Error deleting technician:', err);
     }
   };
   
   return (
     <div>
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-semibold text-gray-800">Technician Users</h1>
-        <Link
-          to="/users/technicians/add"
-          className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-md flex items-center"
-        >
-          <FiPlus className="mr-2" /> Add Technician
-        </Link>
+        <h1 className="text-2xl font-semibold text-gray-800">Technician Management</h1>
+        
+        {/* Conditional rendering based on user role */}
+        {user.role === 'admin' ? (
+          <Link
+            to="/users/technicians/add"
+            className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 flex items-center"
+          >
+            <FiPlus className="mr-2" /> Add Technician
+          </Link>
+        ) : (
+          <button
+            onClick={() => setModalOpen(true)}
+            className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 flex items-center"
+          >
+            <FiPlus className="mr-2" /> Add Technician
+          </button>
+        )}
       </div>
       
       {error && (
@@ -126,116 +123,123 @@ const TechnicianUsers = () => {
         </div>
       )}
       
-      <div className="bg-white rounded-lg shadow-md p-6">
-        <div className="flex flex-col md:flex-row gap-4 mb-4">
-          <div className="relative flex-1">
-            <input
-              type="text"
-              placeholder="Search technicians..."
-              value={searchTerm}
-              onChange={handleSearch}
-              className="w-full pl-10 pr-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-            />
-            <FiSearch className="absolute left-3 top-3 text-gray-400" />
-          </div>
-          
-          <div className="md:w-64">
-            <select
-              value={branchFilter}
-              onChange={handleBranchFilter}
-              className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-            >
-              <option value="">All Branches</option>
-              {branches.map(branch => (
-                <option key={branch._id} value={branch._id}>
-                  {branch.name}
-                </option>
-              ))}
-            </select>
+      {/* Search bar */}
+      <div className="mb-6">
+        <div className="relative">
+          <input
+            type="text"
+            placeholder="Search technicians..."
+            value={searchTerm}
+            onChange={handleSearch}
+            className="w-full px-3 py-2 pl-10 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+          />
+          <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+            <FiSearch className="text-gray-400" />
           </div>
         </div>
-        
+      </div>
+      
+      {/* Technicians table */}
+      <div className="bg-white rounded-lg shadow-md overflow-hidden">
         {loading ? (
-          <div className="flex justify-center items-center py-8">
-            <FiLoader className="w-8 h-8 animate-spin text-indigo-600" />
-          </div>
-        ) : filteredTechnicians.length > 0 ? (
+          <div className="p-4 text-center">Loading technicians...</div>
+        ) : technicians.length === 0 ? (
+          <div className="p-4 text-center">No technicians found</div>
+        ) : (
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
-              <thead>
+              <thead className="bg-gray-50">
                 <tr>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Username</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Phone</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Branch</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Name
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Username/Email
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Branch
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Status
+                  </th>
+                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Actions
+                  </th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {filteredTechnicians.map((technician) => (
+                {filteredTechnicians.map(technician => (
                   <tr key={technician._id}>
-                    <td className="px-4 py-3 whitespace-nowrap">
-                      <div className="font-medium text-gray-900">{technician.firstName} {technician.lastName}</div>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex items-center">
+                        <div className="h-10 w-10 flex-shrink-0 bg-indigo-100 rounded-full flex items-center justify-center text-indigo-500 font-semibold">
+                          {technician.firstName.charAt(0)}{technician.lastName.charAt(0)}
+                        </div>
+                        <div className="ml-4">
+                          <div className="text-sm font-medium text-gray-900">
+                            {technician.firstName} {technician.lastName}
+                          </div>
+                          <div className="text-sm text-gray-500">
+                            {technician.phone || 'No phone'}
+                          </div>
+                        </div>
+                      </div>
                     </td>
-                    <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
-                      {technician.username}
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm text-gray-900">{technician.username}</div>
+                      <div className="text-sm text-gray-500">{technician.email}</div>
                     </td>
-                    <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
-                      {technician.email}
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm text-gray-900">
+                        {technician.branch && typeof technician.branch === 'object' 
+                          ? technician.branch.name 
+                          : 'N/A'}
+                      </div>
+                      <div className="text-sm text-gray-500">
+                        {technician.branch && typeof technician.branch === 'object' 
+                          ? technician.branch.location 
+                          : ''}
+                      </div>
                     </td>
-                    <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
-                      {technician.phone || 'N/A'}
-                    </td>
-                    <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
-                      {technician.branch ? technician.branch.name : 'N/A'}
-                    </td>
-                    <td className="px-4 py-3 whitespace-nowrap">
-                      <span className={`px-2 py-1 text-xs rounded-full ${
-                        technician.status === 'active' 
-                          ? 'bg-green-100 text-green-800' 
-                          : 'bg-red-100 text-red-800'
-                      }`}>
-                        {technician.status === 'active' ? 'Active' : 'Inactive'}
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span 
+                        className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                          technician.status === 'active' 
+                            ? 'bg-green-100 text-green-800' 
+                            : 'bg-red-100 text-red-800'
+                        }`}
+                      >
+                        {technician.status}
                       </span>
                     </td>
-                    <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
-                      <div className="flex space-x-2">
-                        <button 
-                          className="text-indigo-600 hover:text-indigo-900"
-                          title="Edit User"
-                        >
-                          <FiEdit2 />
-                        </button>
-                        <button 
-                          className={`${
-                            technician.status === 'active' ? 'text-red-600 hover:text-red-900' : 'text-green-600 hover:text-green-900'
-                          }`}
-                          title={technician.status === 'active' ? 'Deactivate User' : 'Activate User'}
-                          onClick={() => handleStatusToggle(technician._id, technician.status)}
-                        >
-                          {technician.status === 'active' ? <FiUserX /> : <FiUserCheck />}
-                        </button>
-                      </div>
+                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                      <button
+                        onClick={() => navigate(`/users/technicians/edit/${technician._id}`)}
+                        className="text-indigo-600 hover:text-indigo-900 mr-3"
+                      >
+                        <FiEdit className="w-5 h-5" />
+                      </button>
+                      <button
+                        onClick={() => handleDeleteUser(technician._id)}
+                        className="text-red-600 hover:text-red-900"
+                      >
+                        <FiTrash2 className="w-5 h-5" />
+                      </button>
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
-        ) : (
-          <div className="text-center py-8">
-            <p className="text-gray-500">No technician users found.</p>
-            <Link
-              to="/users/technicians/add"
-              className="mt-4 inline-block bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-md"
-            >
-              Add Your First Technician
-            </Link>
-          </div>
         )}
       </div>
+      
+      {/* Add Technician Modal for managers */}
+      <AddTechnicianModal 
+        isOpen={modalOpen} 
+        onClose={() => setModalOpen(false)} 
+        onSuccess={fetchTechnicians}
+      />
     </div>
   );
 };

@@ -30,6 +30,7 @@ import AddLead from './pages/leads/AddLead'
 import CustomerList from './pages/customers/CustomerList'
 import LeadDetailRedirect from './pages/leads/LeadDetailRedirect';
 import InventoryPage from './pages/inventory/InventoryPage';
+import EditTechnician from './pages/users/EditTechnician';
 
 // Inventory Management - Will be implemented later
 // import Inventory from './pages/inventory/Inventory';
@@ -116,21 +117,31 @@ function App() {
             
             {/* Technician Users */}
             <Route 
-              path="users/technicians" 
-              element={
-                <ProtectedRoute allowedRoles={['admin', 'manager']}>
-                  <TechnicianUsers />
-                </ProtectedRoute>
-              } 
-            />
-            <Route 
-              path="users/technicians/add" 
-              element={
-                <ProtectedRoute allowedRoles={['admin', 'manager']}>
-                  <AddTechnician />
-                </ProtectedRoute>
-              } 
-            />
+  path="users/technicians" 
+  element={
+    <ProtectedRoute allowedRoles={['admin', 'manager']}>
+      <TechnicianUsers />
+    </ProtectedRoute>
+  } 
+/>
+{/* Only admin can access the dedicated add technician page */}
+<Route 
+  path="users/technicians/add" 
+  element={
+    <ProtectedRoute allowedRoles={['admin']}>
+      <AddTechnician />
+    </ProtectedRoute>
+  } 
+/>
+{/* Edit technician route accessible to both */}
+<Route 
+  path="users/technicians/edit/:id" 
+  element={
+    <ProtectedRoute allowedRoles={['admin', 'manager']}>
+      <EditTechnician />
+    </ProtectedRoute>
+  } 
+/>
             
             {/* Branch Management Routes */}
             <Route 

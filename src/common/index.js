@@ -112,7 +112,27 @@ const SummaryApi = {
     checkSerialNumber: {
         url: `${backendDomain}/api/check-serial`,
         method: "get"
-    }
+    },
+    getManagerTechnician: {
+        url : `${backendDomain}/api/manager-get-technician`,
+        method: "get"
+    },
+    addManagerTechnician: {
+        url: `${backendDomain}/api/manager-add-technician`,
+        method: "post"
+    },
+    getUser: {
+        url: `${backendDomain}/api/get-user`,
+        method: "get"
+      },
+      updateUser: {
+        url: `${backendDomain}/api/update-user`,
+        method: "post"
+      },
+      deleteUser: {
+        url: `${backendDomain}/api/delete-user`,
+        method: "delete"
+      },
 }
 
 export default SummaryApi;
