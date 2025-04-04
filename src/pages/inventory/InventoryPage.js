@@ -4,23 +4,26 @@ import Modal from '../../components/Modal';
 import SummaryApi from '../../common';
 import ConfirmationDialog from '../../components/ConfirmationDialog';
 import { useNotification } from '../../context/NotificationContext';
+import { useAuth } from '../../context/AuthContext';
 
 // Sample product units for selection
 const productUnits = [
   'Piece', 'Kg', 'Meter', 'Liter', 'Box', 'Carton', 'Dozen', 'Pair'
 ];
 
-// Warranty options
+// Updated warranty options with "No Warranty"
 const warrantyOptions = [
-  '6 months', '1 year', '1.5 years', '2 years', '3 years', '5 years'
+  'No Warranty', '6 months', '1 year', '1.5 years', '2 years', '3 years', '5 years'
 ];
 
 const InventoryPage = () => {
   const [items, setItems] = useState([]);
+  const [branches, setBranches] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const { showNotification } = useNotification();
+  const { user } = useAuth();
   
   // Modal states
   const [isAddItemModalOpen, setIsAddItemModalOpen] = useState(false);
@@ -34,17 +37,18 @@ const InventoryPage = () => {
   const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
   const [confirmAction, setConfirmAction] = useState(null);
   const [confirmData, setConfirmData] = useState({
-  title: '',
-  message: '',
-  type: 'warning',
-  confirmText: 'Confirm',
-  onConfirm: () => {}
-});
+    title: '',
+    message: '',
+    type: 'warning',
+    confirmText: 'Confirm',
+    onConfirm: () => {}
+  });
   
   // New item form state
   const [newItem, setNewItem] = useState({
-    type: 'product',
+    type: 'serialized-product',
     name: '',
+    branch: '',
     unit: 'Piece',
     warranty: '1 year',
     mrp: '',
@@ -65,14 +69,16 @@ const InventoryPage = () => {
   // Fetch inventory items
   useEffect(() => {
     fetchItems();
-  }, []);
+    
+    // If user is admin, fetch branches
+    if (user.role === 'admin') {
+      fetchBranches();
+    }
+  }, [user.role]);
   
   // Focus on barcode input when stock modal opens
   useEffect(() => {
-    // जब मॉडल बंद होता है
     if (!isAddStockModalOpen) {
-      // थोड़ा डिले के साथ फॉर्म रीसेट करें
-      // ताकि फॉर्म अनिमेशन पूरा हो जाए
       const timer = setTimeout(() => {
         resetStockEntriesForm();
         setSerialNumberStatus({});
@@ -105,6 +111,26 @@ const InventoryPage = () => {
       setLoading(false);
     }
   };
+  
+  const fetchBranches = async () => {
+    try {
+      const response = await fetch(SummaryApi.getBranches.url, {
+        method: SummaryApi.getBranches.method,
+        credentials: 'include'
+      });
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        setBranches(data.data || []);
+      } else {
+        console.error('Failed to fetch branches:', data.message);
+      }
+    } catch (err) {
+      console.error('Error fetching branches:', err);
+      setBranches([]);
+    }
+  };
 
   const openViewStockModal = (item) => {
     setSelectedStockItem(item);
@@ -123,8 +149,9 @@ const InventoryPage = () => {
   // Reset new item form
   const resetNewItemForm = () => {
     setNewItem({
-      type: 'product',
+      type: 'serialized-product',
       name: '',
+      branch: user.role === 'admin' ? (branches.length > 0 ? branches[0]._id : '') : '',
       unit: 'Piece',
       warranty: '1 year',
       mrp: '',
@@ -144,48 +171,44 @@ const InventoryPage = () => {
     ]);
     setError(null);
     
-    // अन्य स्टेट्स भी रीसेट करें
     setSerialNumberStatus({});
     setStockEntriesToSave([]);
   };
 
-  // कन्फर्मेशन डायलॉग दिखाने के लिए हेल्पर फंक्शन
-const showConfirmation = (title, message, type, confirmText, onConfirm) => {
-  setConfirmData({
-    title,
-    message,
-    type,
-    confirmText,
-    onConfirm
-  });
-  setConfirmDialogOpen(true);
-};
+  // Show confirmation dialog helper function
+  const showConfirmation = (title, message, type, confirmText, onConfirm) => {
+    setConfirmData({
+      title,
+      message,
+      type,
+      confirmText,
+      onConfirm
+    });
+    setConfirmDialogOpen(true);
+  };
 
-// डिस्कार्ड एंड क्लोज़ बटन हैंडलर
-const handleDiscardAndClose = () => {
-  // यदि कोई अनसेव्ड चेंजेस हैं, तो कन्फर्मेशन दिखाएं
-  if (stockEntries.some(entry => entry.serialNumber.trim() !== '')) {
-    showConfirmation(
-      'Discard Changes?',
-      'All unsaved changes will be lost. Are you sure you want to discard them?',
-      'warning',
-      'Discard',
-      () => {
-        // कन्फर्मेशन के बाद, सब कुछ रीसेट करके ही मॉडल बंद करें
-        resetStockEntriesForm(); 
-        setSerialNumberStatus({});
-        setStockEntriesToSave([]);
-        setIsAddStockModalOpen(false);
-      }
-    );
-  } else {
-    // अगर कोई चेंजेस नहीं हैं, तो सीधे बंद करें और रीसेट भी करें
-    resetStockEntriesForm();
-    setSerialNumberStatus({});
-    setStockEntriesToSave([]);
-    setIsAddStockModalOpen(false);
-  }
-};
+  // Discard and close button handler
+  const handleDiscardAndClose = () => {
+    if (stockEntries.some(entry => entry.serialNumber.trim() !== '' || entry.quantity > 1)) {
+      showConfirmation(
+        'Discard Changes?',
+        'All unsaved changes will be lost. Are you sure you want to discard them?',
+        'warning',
+        'Discard',
+        () => {
+          resetStockEntriesForm(); 
+          setSerialNumberStatus({});
+          setStockEntriesToSave([]);
+          setIsAddStockModalOpen(false);
+        }
+      );
+    } else {
+      resetStockEntriesForm();
+      setSerialNumberStatus({});
+      setStockEntriesToSave([]);
+      setIsAddStockModalOpen(false);
+    }
+  };
   
   // Validate new item form
   const validateNewItemForm = () => {
@@ -196,7 +219,12 @@ const handleDiscardAndClose = () => {
       return false;
     }
     
-    if (newItem.type === 'product') {
+    if (user.role === 'admin' && !newItem.branch && (newItem.type === 'serialized-product' || newItem.type === 'generic-product')) {
+      setError('Branch is required for products');
+      return false;
+    }
+    
+    if (newItem.type === 'serialized-product' || newItem.type === 'generic-product') {
       if (!newItem.mrp) {
         setError('MRP is required for products');
         return false;
@@ -243,15 +271,11 @@ const handleDiscardAndClose = () => {
       const data = await response.json();
       
       if (data.success) {
-        // Show success notification
         showNotification('success', 'Item added successfully');
-        
-        // Close the modal and refresh the list
         setIsAddItemModalOpen(false);
         resetNewItemForm();
         fetchItems();
       } else {
-        // Show error notification
         showNotification('error', data.message || 'Failed to add inventory item');
         setError(data.message || 'Failed to add inventory item');
       }
@@ -267,7 +291,7 @@ const handleDiscardAndClose = () => {
   const checkSerialNumber = async (serialNumber, index) => {
     if (!serialNumber.trim()) return;
     
-    // चेक करें कि यह सीरियल नंबर पहले से ही मौजूदा एंट्रियों में तो नहीं है
+    // Check if this serial number already exists in current entries
     const isDuplicateInCurrentEntries = stockEntries.some(
       (entry, i) => i !== index && entry.serialNumber === serialNumber
     );
@@ -341,7 +365,6 @@ const handleDiscardAndClose = () => {
           const data = await response.json();
           
           if (data.success) {
-            // Remove the item from state
             setItems(items.filter(item => item.id !== id));
             showNotification('success', 'Item deleted successfully');
           } else {
@@ -359,16 +382,13 @@ const handleDiscardAndClose = () => {
   
   // Open add stock modal for an item
   const openAddStockModal = (item) => {
-    // पहले सब कुछ रीसेट करें
     resetStockEntriesForm();
     setSerialNumberStatus({});
     setStockEntriesToSave([]);
     
-    // फिर नया आइटम सेट करें और मॉडल खोलें
     setSelectedItem(item);
     setIsAddStockModalOpen(true);
     
-    // मॉडल खुलने के बाद पहले इनपुट पर फोकस करें
     setTimeout(() => {
       const firstInput = document.getElementById('barcode-input-0');
       if (firstInput) {
@@ -379,49 +399,38 @@ const handleDiscardAndClose = () => {
   
   // Handle barcode input
   const handleBarcodeInput = (e, index) => {
-    // जब Enter key दबाई जाए
     if (e.key === 'Enter') {
       e.preventDefault();
       
-      // स्कैन की गई वैल्यू प्राप्त करें
       const scannedValue = e.target.value.trim();
       
-      // अगर वैल्यू खाली है तो रिटर्न
       if (!scannedValue) {
         return;
       }
       
-      // सीरियल नंबर फील्ड अपडेट करें
       const updatedEntries = [...stockEntries];
       updatedEntries[index].serialNumber = scannedValue;
       setStockEntries(updatedEntries);
       
-      // सीरियल नंबर की वैलिडिटी चेक करें
       checkSerialNumber(scannedValue, index);
       
-      // चेकिंग के बाद थोड़ा डिले करें और फिर अगले इनपुट पर फोकस करें
       setTimeout(() => {
-        // अगर यह आखिरी एंट्री है और (वैलिड है या वैलिडिटी अभी चेक नहीं हुई है)
         if (index === stockEntries.length - 1) {
-          // नई एंट्री जोड़ें
           handleAddStockEntry();
         } else {
-          // अगले इनपुट पर फोकस करें
           const nextInput = document.getElementById(`barcode-input-${index + 1}`);
           if (nextInput) {
             nextInput.focus();
           }
         }
-      }, 100); // थोड़ा डिले ताकि UI अपडेट हो सके
+      }, 100);
     }
   };
   
   // Add a new stock entry
   const handleAddStockEntry = () => {
-    // मौजूदा एंट्रीज़ का इंडेक्स स्टोर करें (नई एंट्री का इंडेक्स होगा)
     const newEntryIndex = stockEntries.length;
     
-    // नई स्टॉक एंट्री जोड़ें
     setStockEntries([
       ...stockEntries,
       {
@@ -431,13 +440,12 @@ const handleDiscardAndClose = () => {
       }
     ]);
     
-    // रेंडरिंग के बाद नए इनपुट पर फोकस करें
     setTimeout(() => {
       const newInput = document.getElementById(`barcode-input-${newEntryIndex}`);
       if (newInput) {
         newInput.focus();
       }
-    }, 100); // छोटा डिले जरूरी है क्योंकि DOM अपडेट हो जाए
+    }, 100);
   };
   
   // Remove a stock entry
@@ -448,18 +456,12 @@ const handleDiscardAndClose = () => {
   
   // Handle input change for stock entries
   const handleStockEntryChange = (index, field, value) => {
-    // अगर क्वांटिटी फील्ड है तो अपडेट न करें
-    if (field === 'quantity') {
-      return;
-    }
-    
     const updatedEntries = [...stockEntries];
     updatedEntries[index][field] = value;
     setStockEntries(updatedEntries);
     
-    // यदि सीरियल नंबर फील्ड है तो चेक करें
+    // Check serial number if changed
     if (field === 'serialNumber' && value.trim()) {
-      // डी-बाउंस के लिए टाइमआउट
       if (window.serialCheckTimeout) {
         clearTimeout(window.serialCheckTimeout);
       }
@@ -471,108 +473,60 @@ const handleDiscardAndClose = () => {
   };
 
   const prepareForSaving = () => {
-    // फ़िल्टर केवल वैध एंट्रियां और सुनिश्चित करें कि क्वांटिटी हमेशा 1 है
-    const validEntries = stockEntries
-      .filter(entry => 
-        entry.serialNumber.trim() !== '' && 
-        !stockEntries.some((e, i) => 
-          e.serialNumber === entry.serialNumber && 
-          stockEntries.indexOf(entry) > i
-        ) &&
-        serialNumberStatus[stockEntries.indexOf(entry)]?.valid === true
-      )
-      .map(entry => ({
-        ...entry,
-        quantity: 1 // हमेशा क्वांटिटी 1 सेट करें
-      }));
-    
-    // यदि कोई वैलिड एंट्री नहीं है तो एरर
-    if (validEntries.length === 0) {
-      setError('No valid serial numbers to save');
-      showNotification('error', 'No valid serial numbers to save');
-      return;
-    }
-    
-    // सेट वैलिड एंट्रीज़ फॉर सेविंग
-    setStockEntriesToSave(validEntries);
-    
-    // शो सक्सेस नोटिफिकेशन
-    showNotification('success', `${validEntries.length} serial numbers ready to save`);
-  };
-
-  // सेव स्टॉक एंट्रीज़
-const handleSaveStock = async () => {
-  setError(null);
-  
-  try {
-    setLoading(true);
-    
-    // सबमिट प्रत्येक स्टॉक एंट्री
-    for (const entry of stockEntriesToSave) {
-      const response = await fetch(SummaryApi.addInventoryStock.url, {
-        method: SummaryApi.addInventoryStock.method,
-        credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          itemId: selectedItem.id,
-          ...entry
-        })
-      });
+    if (selectedItem.type === 'serialized-product') {
+      // For serial products, filter valid entries with serial numbers
+      const validEntries = stockEntries
+        .filter(entry => 
+          entry.serialNumber.trim() !== '' && 
+          !stockEntries.some((e, i) => 
+            e.serialNumber === entry.serialNumber && 
+            stockEntries.indexOf(entry) > i
+          ) &&
+          serialNumberStatus[stockEntries.indexOf(entry)]?.valid === true
+        )
+        .map(entry => ({
+          ...entry,
+          quantity: 1 // Always 1 for serial products
+        }));
       
-      const data = await response.json();
-      
-      if (!data.success) {
-        showNotification('error', data.message || 'Failed to add stock');
-        setError(data.message || 'Failed to add stock');
-        setLoading(false);
+      if (validEntries.length === 0) {
+        setError('No valid serial numbers to save');
+        showNotification('error', 'No valid serial numbers to save');
         return;
       }
+      
+      setStockEntriesToSave(validEntries);
+      showNotification('success', `${validEntries.length} serial numbers ready to save`);
+    } else if (selectedItem.type === 'generic-product') {
+      // For non-serial products, validate quantities
+      const validEntries = stockEntries
+        .filter(entry => entry.quantity > 0)
+        .map(entry => ({
+          ...entry,
+          serialNumber: '' // No serial number for non-serial products
+        }));
+      
+      if (validEntries.length === 0) {
+        setError('No valid quantities to save');
+        showNotification('error', 'No valid quantities to save');
+        return;
+      }
+      
+      setStockEntriesToSave(validEntries);
+      const totalQuantity = validEntries.reduce((sum, entry) => sum + Number(entry.quantity), 0);
+      showNotification('success', `${totalQuantity} items ready to save`);
     }
-    
-    // Show success notification
-    showNotification('success', 'Stock added successfully');
-    
-    // Close the modal and refresh the list
-    setIsAddStockModalOpen(false);
-    resetStockEntriesForm();
-    fetchItems();
-  } catch (err) {
-    showNotification('error', 'Server error. Please try again later.');
-    setError('Server error. Please try again later.');
-    console.error('Error adding stock:', err);
-  } finally {
-    setLoading(false);
-  }
-};
-  
-  // Submit stock entries
-  const handleAddStock = async () => {
+  };
+
+  // Save stock entries
+  const handleSaveStock = async () => {
     setError(null);
-    
-    // Validate entries
-    const emptySerialNumbers = stockEntries.some(entry => !entry.serialNumber.trim());
-    if (emptySerialNumbers) {
-      setError('All serial numbers are required');
-      showNotification('error', 'All serial numbers are required');
-      return;
-    }
-    
-    // Check for duplicate serial numbers in current batch
-    const serialNumbers = stockEntries.map(entry => entry.serialNumber);
-    const uniqueSerialNumbers = new Set(serialNumbers);
-    if (serialNumbers.length !== uniqueSerialNumbers.size) {
-      setError('Duplicate serial numbers found in your entries');
-      showNotification('error', 'Duplicate serial numbers found in your entries');
-      return;
-    }
     
     try {
       setLoading(true);
       
       // Submit each stock entry
-      for (const entry of stockEntries) {
+      for (const entry of stockEntriesToSave) {
         const response = await fetch(SummaryApi.addInventoryStock.url, {
           method: SummaryApi.addInventoryStock.method,
           credentials: 'include',
@@ -588,7 +542,6 @@ const handleSaveStock = async () => {
         const data = await response.json();
         
         if (!data.success) {
-          // Show error notification instead of just setting error state
           showNotification('error', data.message || 'Failed to add stock');
           setError(data.message || 'Failed to add stock');
           setLoading(false);
@@ -596,10 +549,8 @@ const handleSaveStock = async () => {
         }
       }
       
-      // Show success notification
       showNotification('success', 'Stock added successfully');
       
-      // Close the modal and refresh the list
       setIsAddStockModalOpen(false);
       resetStockEntriesForm();
       fetchItems();
@@ -616,6 +567,9 @@ const handleSaveStock = async () => {
   const filteredItems = items.filter(
     item => item.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
+  
+  // Check if user has permission to add inventory
+  const hasAddPermission = user && (user.role === 'admin' || user.role === 'manager');
   
   if (loading && items.length === 0) {
     return (
@@ -640,13 +594,15 @@ const handleSaveStock = async () => {
       
       {/* Actions */}
       <div className="flex justify-between mb-6">
-        <button 
-          onClick={() => setIsAddItemModalOpen(true)}
-          className="bg-indigo-600 text-white px-4 py-2 rounded-lg flex items-center hover:bg-indigo-700 transition-colors"
-        >
-          <FiPlus className="mr-2" />
-          Add New Item
-        </button>
+        {hasAddPermission && (
+          <button 
+            onClick={() => setIsAddItemModalOpen(true)}
+            className="bg-indigo-600 text-white px-4 py-2 rounded-lg flex items-center hover:bg-indigo-700 transition-colors"
+          >
+            <FiPlus className="mr-2" />
+            Add New Item
+          </button>
+        )}
         
         <div className="relative">
           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -680,6 +636,7 @@ const handleSaveStock = async () => {
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">S.No</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Branch</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Unit</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Warranty</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">MRP</th>
@@ -693,32 +650,43 @@ const handleSaveStock = async () => {
                 {filteredItems.map((item, index) => (
                   <tr key={item.id} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{index + 1}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 capitalize">{item.type}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 capitalize">
+                      {item.type === 'serialized-product' ? 'Serialized Product' : 
+                       item.type === 'generic-product' ? 'Generic Product' : 'Service'}
+                    </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{item.name}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{item.type === 'product' ? item.unit : '-'}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{item.type === 'product' ? item.warranty : '-'}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {item.type === 'product' ? `₹${item.mrp}` : '-'}
+                      {item.branchName || '-'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {item.type === 'product' ? `₹${item.purchasePrice}` : '-'}
+                      {(item.type === 'serialized-product' || item.type === 'generic-product') ? item.unit : '-'}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {(item.type === 'serialized-product' || item.type === 'generic-product') ? item.warranty : '-'}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {(item.type === 'serialized-product' || item.type === 'generic-product') ? `₹${item.mrp}` : '-'}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {(item.type === 'serialized-product' || item.type === 'generic-product') ? `₹${item.purchasePrice}` : '-'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">₹{item.salePrice}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {item.type === 'product' ? (
-                      <button
-                        onClick={() => openViewStockModal(item)}
-                        className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 hover:bg-blue-200"
-                      >
-                        {item.stock ? item.stock.reduce((total, stock) => total + parseInt(stock.quantity, 10), 0) : 0} {item.unit}
-                      </button>
-                    ) : (
-                      '-'
-                    )}
-                  </td>
+                      {item.type === 'service' ? '-' : (
+                        <button
+                          onClick={() => openViewStockModal(item)}
+                          className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 hover:bg-blue-200"
+                        >
+                          {item.type === 'serialized-product' 
+                            ? (item.stock ? item.stock.length : 0)
+                            : (item.stock ? item.stock.reduce((total, stock) => total + parseInt(stock.quantity, 10), 0) : 0)
+                          } {item.unit}
+                        </button>
+                      )}
+                    </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       <div className="flex space-x-2">
-                        {item.type === 'product' && (
+                        {(item.type === 'serialized-product' || item.type === 'generic-product') && hasAddPermission && (
                           <button 
                             onClick={() => openAddStockModal(item)}
                             className="text-blue-600 hover:text-blue-900"
@@ -727,13 +695,15 @@ const handleSaveStock = async () => {
                             <FiPlus size={18} />
                           </button>
                         )}
-                        <button 
-                          onClick={() => handleDeleteItem(item.id)}
-                          className="text-red-600 hover:text-red-900"
-                          title="Delete Item"
-                        >
-                          <FiTrash size={18} />
-                        </button>
+                        {hasAddPermission && (
+                          <button 
+                            onClick={() => handleDeleteItem(item.id)}
+                            className="text-red-600 hover:text-red-900"
+                            title="Delete Item"
+                          >
+                            <FiTrash size={18} />
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -762,17 +732,28 @@ const handleSaveStock = async () => {
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Item Type *
             </label>
-            <div className="flex space-x-4">
+            <div className="grid grid-cols-3 gap-4">
               <label className="inline-flex items-center">
                 <input
                   type="radio"
                   name="type"
-                  value="product"
-                  checked={newItem.type === 'product'}
+                  value="serialized-product"
+                  checked={newItem.type === 'serialized-product'}
                   onChange={handleItemInputChange}
                   className="h-4 w-4 text-indigo-600 border-gray-300 focus:ring-indigo-500"
                 />
-                <span className="ml-2">Product</span>
+                <span className="ml-2">Serialized Product</span>
+              </label>
+              <label className="inline-flex items-center">
+                <input
+                  type="radio"
+                  name="type"
+                  value="generic-product"
+                  checked={newItem.type === 'generic-product'}
+                  onChange={handleItemInputChange}
+                  className="h-4 w-4 text-indigo-600 border-gray-300 focus:ring-indigo-500"
+                />
+                <span className="ml-2">Generic Product</span>
               </label>
               <label className="inline-flex items-center">
                 <input
@@ -803,7 +784,32 @@ const handleSaveStock = async () => {
             />
           </div>
           
-          {newItem.type === 'product' && (
+          {/* Branch selection for admin only */}
+          {user.role === 'admin' && (newItem.type === 'serialized-product' || newItem.type === 'generic-product') && (
+  <div>
+    <label className="block text-sm font-medium text-gray-700 mb-2">
+      Branch *
+    </label>
+    <select
+      name="branch"
+      value={newItem.branch}
+      onChange={handleItemInputChange}
+      className="w-full p-2 border rounded-md"
+      required
+    >
+      <option value="">Select Branch</option>
+      {branches && branches.length > 0 ? branches.map(branch => (
+        <option key={branch._id} value={branch._id}>
+          {branch.name}
+        </option>
+      )) : (
+        <option value="" disabled>No branches available</option>
+      )}
+    </select>
+  </div>
+)}
+          
+          {(newItem.type === 'serialized-product' || newItem.type === 'generic-product') && (
             <>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -919,300 +925,356 @@ const handleSaveStock = async () => {
         </div>
       </Modal>
       
-      {/* Add Stock Modal */}
-      {/* Add Stock Modal - Updated UI with readonly quantity */}
-<Modal
-  isOpen={isAddStockModalOpen}
-  onClose={() => handleDiscardAndClose()}
-  title={`Add Stock for ${selectedItem?.name || ''}`}
-  size="lg"
->
-  {selectedItem && (
-    <div>
-      {error && (
-        <div className="mb-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
-          {error}
-        </div>
-      )}
-      
-      <div className="mb-4">
-  <div className="flex justify-between items-center">
-    <h3 className="text-lg font-medium text-gray-900">Stock Entry</h3>
-    <div className="flex items-center">
-      <span className="text-sm text-gray-500 mr-2">Scan barcode or type manually</span>
-      <FiCamera className="text-gray-400" />
-    </div>
-  </div>
-  <p className="text-sm text-gray-500">
-    Connect your barcode scanner and scan directly into the Serial Number field.
-    Serial numbers are checked in real-time as you enter them.
-  </p>
-  <p className="text-sm text-gray-600 mt-1">
-    <span className="font-semibold">Pro Tip:</span> Press <kbd className="px-2 py-1 text-xs bg-gray-100 border border-gray-300 rounded">Enter</kbd> after each serial number to automatically move to the next field.
-  </p>
-  <p className="text-sm text-gray-600 mt-1 font-semibold">
-    Note: Quantity is fixed at 1 for each serial number entry.
-  </p>
-</div>
-      
-      <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2">
-        {stockEntries.map((entry, index) => (
-          <div 
-            key={index} 
-            className={`p-4 border rounded-md ${
-              serialNumberStatus[index]?.valid === false 
-                ? 'border-red-300 bg-red-50' 
-                : serialNumberStatus[index]?.valid === true 
-                  ? 'border-green-300 bg-green-50' 
-                  : 'bg-gray-50'
-            }`}
-          >
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="font-medium">Item #{index + 1}</h3>
-              {stockEntries.length > 1 && (
-                <button
-                  type="button"
-                  onClick={() => handleRemoveStockEntry(index)}
-                  className="text-red-600 hover:text-red-800"
-                >
-                  <FiTrash size={18} />
-                </button>
-              )}
-            </div>
+      {/* Add Stock Modal - Updated for both serial and non-serial products */}
+      <Modal
+        isOpen={isAddStockModalOpen}
+        onClose={() => handleDiscardAndClose()}
+        title={`Add Stock for ${selectedItem?.name || ''}`}
+        size="lg"
+      >
+        {selectedItem && (
+          <div>
+            {error && (
+              <div className="mb-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
+                {error}
+              </div>
+            )}
             
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="md:col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Serial Number *
-                </label>
-                <div className="relative">
-                                <input
-                  id={`barcode-input-${index}`}
-                  type="text"
-                  value={entry.serialNumber}
-                  onChange={(e) => handleStockEntryChange(index, 'serialNumber', e.target.value)}
-                  onKeyDown={(e) => handleBarcodeInput(e, index)}
-                  className={`w-full p-2 border rounded-md ${
-                    serialNumberStatus[index]?.valid === false 
-                      ? 'border-red-300 bg-red-50 pr-10' 
-                      : serialNumberStatus[index]?.valid === true 
-                        ? 'border-green-300 bg-green-50 pr-10' 
-                        : 'bg-white'
-                  }`}
-                  placeholder="Scan or type serial number"
-                  ref={index === 0 ? barcodeInputRef : null}
-                  // इस एंट्री का इंडेक्स पीछे वाली से अधिक है तो autoFocus सेट करें
-                  autoFocus={index > 0 && index === stockEntries.length - 1}
-                  required
-                />
-                  {checkingSerial && entry.serialNumber.trim() && (
-                    <div className="absolute right-2 top-1/2 transform -translate-y-1/2">
-                      <svg className="animate-spin h-5 w-5 text-gray-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                      </svg>
-                    </div>
-                  )}
-                  {serialNumberStatus[index]?.valid === true && !checkingSerial && (
-                    <div className="absolute right-2 top-1/2 transform -translate-y-1/2">
-                      <svg className="h-5 w-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
-                      </svg>
-                    </div>
-                  )}
-                  {serialNumberStatus[index]?.valid === false && !checkingSerial && (
-                    <div className="absolute right-2 top-1/2 transform -translate-y-1/2">
-                      <svg className="h-5 w-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path>
-                      </svg>
-                    </div>
-                  )}
-                </div>
-                {serialNumberStatus[index]?.message && (
-                  <p className={`mt-1 text-xs ${
-                    serialNumberStatus[index]?.valid ? 'text-green-600' : 'text-red-600'
-                  }`}>
-                    {serialNumberStatus[index].message}
-                  </p>
+            <div className="mb-4">
+              <div className="flex justify-between items-center">
+                <h3 className="text-lg font-medium text-gray-900">Stock Entry</h3>
+                {selectedItem.type === 'serialized-product' && (
+                  <div className="flex items-center">
+                    <span className="text-sm text-gray-500 mr-2">Scan barcode or type manually</span>
+                    <FiCamera className="text-gray-400" />
+                  </div>
                 )}
               </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Quantity (Fixed)
-                </label>
-                <div className="relative">
-                  <input
-                    type="number"
-                    value="1"
-                    readOnly
-                    className="w-full p-2 border rounded-md bg-gray-100 cursor-not-allowed text-gray-500"
-                  />
-                  <div className="absolute inset-y-0 right-0 flex items-center pr-3">
-                    <svg className="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
-                    </svg>
+              <p className="text-sm text-gray-500">
+                {selectedItem.type === 'serialized-product' 
+                  ? 'Connect your barcode scanner and scan directly into the Serial Number field.'
+                  : 'Enter the quantity of items you want to add to inventory.'}
+              </p>
+              {selectedItem.type === 'serialized-product' && (
+                <p className="text-sm text-gray-600 mt-1">
+                  <span className="font-semibold">Pro Tip:</span> Press <kbd className="px-2 py-1 text-xs bg-gray-100 border border-gray-300 rounded">Enter</kbd> after each serial number to automatically move to the next field.
+                </p>
+              )}
+              <p className="text-sm text-gray-600 mt-1 font-semibold">
+                {selectedItem.type === 'serialized-product' 
+                  ? 'Note: Quantity is fixed at 1 for each serial number entry.'
+                  : 'Note: Each entry will be added as a separate stock record.'}
+              </p>
+            </div>
+            
+            <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2">
+              {stockEntries.map((entry, index) => (
+                <div 
+                  key={index} 
+                  className={`p-4 border rounded-md ${
+                    selectedItem.type === 'serialized-product' && serialNumberStatus[index]?.valid === false 
+                      ? 'border-red-300 bg-red-50' 
+                      : selectedItem.type === 'serialized-product' && serialNumberStatus[index]?.valid === true 
+                        ? 'border-green-300 bg-green-50' 
+                        : 'bg-gray-50'
+                  }`}
+                >
+                  <div className="flex justify-between items-center mb-4">
+                    <h3 className="font-medium">Item #{index + 1}</h3>
+                    {stockEntries.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveStockEntry(index)}
+                        className="text-red-600 hover:text-red-800"
+                      >
+                        <FiTrash size={18} />
+                      </button>
+                    )}
+                  </div>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {selectedItem.type === 'serialized-product' ? (
+                      <>
+                        {/* Serial Product Fields */}
+                        <div className="md:col-span-2">
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Serial Number *
+                          </label>
+                          <div className="relative">
+                            <input
+                              id={`barcode-input-${index}`}
+                              type="text"
+                              value={entry.serialNumber}
+                              onChange={(e) => handleStockEntryChange(index, 'serialNumber', e.target.value)}
+                              onKeyDown={(e) => handleBarcodeInput(e, index)}
+                              className={`w-full p-2 border rounded-md ${
+                                serialNumberStatus[index]?.valid === false 
+                                  ? 'border-red-300 bg-red-50 pr-10' 
+                                  : serialNumberStatus[index]?.valid === true 
+                                    ? 'border-green-300 bg-green-50 pr-10' 
+                                    : 'bg-white'
+                              }`}
+                              placeholder="Scan or type serial number"
+                              ref={index === 0 ? barcodeInputRef : null}
+                              autoFocus={index > 0 && index === stockEntries.length - 1}
+                              required
+                            />
+                            {checkingSerial && entry.serialNumber.trim() && (
+                              <div className="absolute right-2 top-1/2 transform -translate-y-1/2">
+                                <svg className="animate-spin h-5 w-5 text-gray-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                </svg>
+                              </div>
+                            )}
+                            {serialNumberStatus[index]?.valid === true && !checkingSerial && (
+                              <div className="absolute right-2 top-1/2 transform -translate-y-1/2">
+                                <svg className="h-5 w-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
+                                </svg>
+                              </div>
+                            )}
+                            {serialNumberStatus[index]?.valid === false && !checkingSerial && (
+                              <div className="absolute right-2 top-1/2 transform -translate-y-1/2">
+                                <svg className="h-5 w-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path>
+                                </svg>
+                              </div>
+                            )}
+                          </div>
+                          {serialNumberStatus[index]?.message && (
+                            <p className={`mt-1 text-xs ${
+                              serialNumberStatus[index]?.valid ? 'text-green-600' : 'text-red-600'
+                            }`}>
+                              {serialNumberStatus[index].message}
+                            </p>
+                          )}
+                        </div>
+                        
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Quantity (Fixed)
+                          </label>
+                          <div className="relative">
+                            <input
+                              type="number"
+                              value="1"
+                              readOnly
+                              className="w-full p-2 border rounded-md bg-gray-100 cursor-not-allowed text-gray-500"
+                            />
+                            <div className="absolute inset-y-0 right-0 flex items-center pr-3">
+                              <svg className="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
+                              </svg>
+                            </div>
+                          </div>
+                          <p className="mt-1 text-xs text-gray-500">
+                            Each serial number equals one unit
+                          </p>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        {/* Non-serial Product Fields */}
+                        <div className="md:col-span-2">
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Quantity *
+                          </label>
+                          <input
+                            type="number"
+                            value={entry.quantity}
+                            onChange={(e) => handleStockEntryChange(index, 'quantity', e.target.value)}
+                            className="w-full p-2 border rounded-md"
+                            placeholder="Enter quantity"
+                            min="1"
+                            required
+                          />
+                          <p className="mt-1 text-xs text-gray-500">
+                            Enter the number of {selectedItem.unit.toLowerCase()} to add
+                          </p>
+                        </div>
+                      </>
+                    )}
+                    
+                    <div className={selectedItem.type === 'serialized-product' ? "md:col-span-3" : "md:col-span-1"}>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Date
+                      </label>
+                      <input
+                        type="date"
+                        value={entry.date}
+                        onChange={(e) => handleStockEntryChange(index, 'date', e.target.value)}
+                        className="w-full p-2 border rounded-md bg-white"
+                        required
+                      />
+                    </div>
                   </div>
                 </div>
-                <p className="mt-1 text-xs text-gray-500">
-                  Each serial number equals one unit
-                </p>
+              ))}
+            </div>
+            
+            <div className="mt-4 mb-6">
+              <button
+                type="button"
+                onClick={handleAddStockEntry}
+                className="flex items-center text-indigo-600 hover:text-indigo-800"
+              >
+                <FiPlus className="mr-1" />
+                Add Another {selectedItem.type === 'serialized-product' ? 'Serial Number' : 'Quantity Entry'}
+              </button>
+            </div>
+            
+            <div className="mt-6 pt-4 border-t flex justify-between">
+              <div>
+                {selectedItem.type === 'serialized-product' ? (
+                  <span className="text-sm text-gray-500">
+                    {stockEntries.filter(e => serialNumberStatus[stockEntries.indexOf(e)]?.valid).length} valid serial numbers
+                  </span>
+                ) : (
+                  <span className="text-sm text-gray-500">
+                    Total: {stockEntries.reduce((sum, entry) => sum + Number(entry.quantity || 0), 0)} {selectedItem.unit}
+                  </span>
+                )}
               </div>
-              
-              <div className="md:col-span-3">
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Date
-                </label>
-                <input
-                  type="date"
-                  value={entry.date}
-                  onChange={(e) => handleStockEntryChange(index, 'date', e.target.value)}
-                  className="w-full p-2 border rounded-md bg-white"
-                  required
-                />
+              <div className="flex">
+                <button
+                  type="button"
+                  onClick={handleDiscardAndClose}
+                  className="mr-4 px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none"
+                >
+                  Discard & Close
+                </button>
+                
+                {stockEntriesToSave.length > 0 ? (
+                  <button
+                    type="button"
+                    onClick={handleSaveStock}
+                    disabled={loading}
+                    className="inline-flex justify-center items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none disabled:opacity-50"
+                  >
+                    {loading ? (
+                      <span className="flex items-center">
+                        <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        Saving...
+                      </span>
+                    ) : (
+                      <span className="flex items-center">
+                        <FiSave className="mr-2" />
+                        Save & Close
+                      </span>
+                    )}
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={prepareForSaving}
+                    disabled={loading || (
+                      selectedItem.type === 'serialized-product' && 
+                      stockEntries.every(e => 
+                        !e.serialNumber.trim() || 
+                        serialNumberStatus[stockEntries.indexOf(e)]?.valid === false
+                      )
+                    ) || (
+                      selectedItem.type === 'generic-product' && 
+                      stockEntries.every(e => !e.quantity || e.quantity <= 0)
+                    )}
+                    className="inline-flex justify-center items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none disabled:opacity-50"
+                  >
+                    <span className="flex items-center">
+                      <FiSave className="mr-2" />
+                      Prepare to Save
+                    </span>
+                  </button>
+                )}
               </div>
             </div>
           </div>
-        ))}
-      </div>
-      
-      <div className="mt-4 mb-6">
-        <button
-          type="button"
-          onClick={handleAddStockEntry}
-          className="flex items-center text-indigo-600 hover:text-indigo-800"
-        >
-          <FiPlus className="mr-1" />
-          Add Another Serial Number
-        </button>
-      </div>
-      
-      <div className="mt-6 pt-4 border-t flex justify-between">
-        <div>
-          <span className="text-sm text-gray-500">
-            {stockEntries.filter(e => serialNumberStatus[stockEntries.indexOf(e)]?.valid).length} valid serial numbers
-          </span>
-        </div>
-        <div className="flex">
-          <button
-            type="button"
-            onClick={handleDiscardAndClose}
-            className="mr-4 px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none"
-          >
-            Discard & Close
-          </button>
-          
-          {stockEntriesToSave.length > 0 ? (
-            <button
-              type="button"
-              onClick={handleSaveStock}
-              disabled={loading}
-              className="inline-flex justify-center items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none disabled:opacity-50"
-            >
-              {loading ? (
-                <span className="flex items-center">
-                  <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
-                  Saving...
-                </span>
-              ) : (
-                <span className="flex items-center">
-                  <FiSave className="mr-2" />
-                  Save & Close
-                </span>
-              )}
-            </button>
-          ) : (
-            <button
-              type="button"
-              onClick={prepareForSaving}
-              disabled={loading || stockEntries.every(e => !e.serialNumber.trim() || serialNumberStatus[stockEntries.indexOf(e)]?.valid === false)}
-              className="inline-flex justify-center items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none disabled:opacity-50"
-            >
-              <span className="flex items-center">
-                <FiSave className="mr-2" />
-                Prepare to Save
-              </span>
-            </button>
-          )}
-        </div>
-      </div>
-    </div>
-  )}
-</Modal>
+        )}
+      </Modal>
 
-{/* Confirmation Dialog - Add this at the end of the component return */}
-<ConfirmationDialog
-  isOpen={confirmDialogOpen}
-  onClose={() => setConfirmDialogOpen(false)}
-  title={confirmData.title}
-  message={confirmData.message}
-  confirmText={confirmData.confirmText}
-  type={confirmData.type}
-  onConfirm={confirmData.onConfirm}
-/>
+      {/* Confirmation Dialog */}
+      <ConfirmationDialog
+        isOpen={confirmDialogOpen}
+        onClose={() => setConfirmDialogOpen(false)}
+        title={confirmData.title}
+        message={confirmData.message}
+        confirmText={confirmData.confirmText}
+        type={confirmData.type}
+        onConfirm={confirmData.onConfirm}
+      />
 
-      {/* View Stock Modal */}
-<Modal
-  isOpen={isViewStockModalOpen}
-  onClose={() => setIsViewStockModalOpen(false)}
-  title={`Stock Details - ${selectedStockItem?.name || ''}`}
-  size="lg"
->
-  {selectedStockItem && (
-    <div>
-      <div className="mb-4">
-        <h3 className="text-lg font-medium text-gray-900">Serial Numbers</h3>
-        <p className="text-sm text-gray-500">
-          Total Stock: {selectedStockItem.stock ? selectedStockItem.stock.reduce((total, stock) => total + parseInt(stock.quantity, 10), 0) : 0} {selectedStockItem.unit}
-        </p>
-      </div>
-      
-      {selectedStockItem.stock && selectedStockItem.stock.length > 0 ? (
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Sr No.</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Serial Number</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Quantity</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date Added</th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {selectedStockItem.stock.map((stockItem, index) => (
-                <tr key={stockItem.serialNumber}>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{index + 1}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{stockItem.serialNumber}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{stockItem.quantity}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {new Date(stockItem.date).toLocaleDateString()}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      ) : (
-        <div className="text-center py-8 text-gray-500">
-          No stock entries found for this product.
-        </div>
-      )}
-      
-      <div className="mt-6 flex justify-end">
-        <button
-          type="button"
-          onClick={() => setIsViewStockModalOpen(false)}
-          className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none"
-        >
-          Close
-        </button>
-      </div>
-    </div>
-  )}
-</Modal>
+      {/* View Stock Modal - Updated for both serial and non-serial products */}
+      <Modal
+        isOpen={isViewStockModalOpen}
+        onClose={() => setIsViewStockModalOpen(false)}
+        title={`Stock Details - ${selectedStockItem?.name || ''}`}
+        size="lg"
+      >
+        {selectedStockItem && (
+          <div>
+            <div className="mb-4">
+              <h3 className="text-lg font-medium text-gray-900">
+                {selectedStockItem.type === 'serialized-product' ? 'Serial Numbers' : 'Stock Entries'}
+              </h3>
+              <p className="text-sm text-gray-500">
+                Total Stock: {
+                  selectedStockItem.type === 'serialized-product'
+                    ? (selectedStockItem.stock ? selectedStockItem.stock.length : 0)
+                    : (selectedStockItem.stock ? selectedStockItem.stock.reduce((total, stock) => total + parseInt(stock.quantity, 10), 0) : 0)
+                } {selectedStockItem.unit}
+              </p>
+            </div>
+            
+            {selectedStockItem.stock && selectedStockItem.stock.length > 0 ? (
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Sr No.</th>
+                      {selectedStockItem.type === 'serialized-product' && (
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Serial Number</th>
+                      )}
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Quantity</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date Added</th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {selectedStockItem.stock.map((stockItem, index) => (
+                      <tr key={index}>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{index + 1}</td>
+                        {selectedStockItem.type === 'serialized-product' && (
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{stockItem.serialNumber}</td>
+                        )}
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{stockItem.quantity}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {new Date(stockItem.date).toLocaleDateString()}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <div className="text-center py-8 text-gray-500">
+                No stock entries found for this product.
+              </div>
+            )}
+            
+            <div className="mt-6 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setIsViewStockModalOpen(false)}
+                className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        )}
+      </Modal>
     </div>
   );
 };

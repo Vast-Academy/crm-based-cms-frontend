@@ -1,12 +1,13 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { 
   FiHome, FiUsers, FiSettings, 
   FiPackage, FiClipboard, FiMenu, 
   FiBell, FiLogOut, FiChevronDown,
-  FiBriefcase, FiFileText, FiTool
+  FiBriefcase, FiFileText, FiTool, FiRefreshCw
 } from 'react-icons/fi';
+import ManagerStatusChecker from './ManagerStatusChecker';
 // import GlobalSearch from './GlobalSearch';
 
 const DashboardLayout = () => {
@@ -18,7 +19,17 @@ const DashboardLayout = () => {
   const [branchesDropdownOpen, setBranchesDropdownOpen] = useState(false);
   const [inventoryDropdownOpen, setInventoryDropdownOpen] = useState(false);
   const [leadsDropdownOpen, setLeadsDropdownOpen] = useState(false);
+  const [showTransferOption, setShowTransferOption] = useState(false);
   
+  useEffect(() => {
+    // Check if user is a manager and has activeManagerStatus='active'
+    if (user && user.role === 'manager' && user.activeManagerStatus === 'active') {
+      setShowTransferOption(true);
+    } else {
+      setShowTransferOption(false);
+    }
+  }, [user]);
+
   const handleLogout = () => {
     logout();
     navigate('/login');
@@ -27,6 +38,12 @@ const DashboardLayout = () => {
   // Main navigation items with conditional rendering based on user role
   const navItems = [
     { name: 'Dashboard', path: '/dashboard', icon: FiHome },
+    // Add Ownership Transfer for active managers
+    showTransferOption && {
+      name: 'Ownership Transfer',
+      path: '/ownership-transfer',
+      icon: FiRefreshCw
+    },
     {
       name: 'User Management',
       icon: FiUsers,
@@ -58,10 +75,15 @@ const DashboardLayout = () => {
       dropdown: true,
       isOpen: inventoryDropdownOpen,
       toggle: () => setInventoryDropdownOpen(!inventoryDropdownOpen),
-      items: [
-        { name: 'View Inventory', path: '/inventory' },
-        { name: 'Add Items', path: '/inventory/add' },
-        { name: 'Assign to Technician', path: '/inventory/assign' },
+      items: user.role === 'admin' ? [
+        { name: 'Add Inventory', path: '/inventory/add' },
+        { name: 'Serialized Products', path: '/inventory/serialized' },
+        { name: 'Generic Products', path: '/inventory/generic' },
+        { name: 'Services', path: '/inventory/services' }
+      ] : [
+        { name: 'Serialized Products', path: '/inventory/serialized' },
+        { name: 'Generic Products', path: '/inventory/generic' },
+        { name: 'Services', path: '/inventory/services' }
       ]
     },
     { 
@@ -85,6 +107,7 @@ const DashboardLayout = () => {
   
   return (
     <div className="flex h-screen bg-gray-100">
+      <ManagerStatusChecker/>
       {/* Sidebar overlay for mobile */}
       <div 
         className={`md:hidden fixed inset-0 z-20 bg-gray-900 bg-opacity-50 transition-opacity duration-200 ${

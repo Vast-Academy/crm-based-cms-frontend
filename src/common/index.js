@@ -109,6 +109,10 @@ const SummaryApi = {
         url : `${backendDomain}/api/delete-inventory`,
         method: "post"
     },
+    getInventoryByType: {
+        url : `${backendDomain}/api/inventory-by-type`,
+        method: "get"
+    },
     checkSerialNumber: {
         url: `${backendDomain}/api/check-serial`,
         method: "get"
@@ -133,6 +137,30 @@ const SummaryApi = {
         url: `${backendDomain}/api/delete-user`,
         method: "delete"
       },
+      checkManagerStatus: {
+        url : `${backendDomain}/api/manager-status`,
+        method: "get"
+      },
+      getNewBranchManagers: {
+        url : `${backendDomain}/api/new-managers`,
+        method: "get"
+      },
+      initiateTransfer: {
+        url : `${backendDomain}/api/initiate-transfer`,
+        method: "post"
+      },
+      acceptTransfer: {
+        url : `${backendDomain}/api/accept-transfer`,
+        method: "post"
+      },
+      rejectTransfer: {
+        url : `${backendDomain}/api/reject-transfer`,
+        method: "post"
+      },
+      getRejectedTransfers: {
+        url: `${backendDomain}/api/get-rejected-transfers`,
+        method: "get"
+      }
 }
 
 export default SummaryApi;

@@ -1,14 +1,12 @@
 import React, { createContext, useState, useContext } from 'react';
 import SummaryApi from '../common';
-
 // Create context
 const AuthContext = createContext();
-
 // Provider component
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(JSON.parse(localStorage.getItem('user')) || null);
   const [loading, setLoading] = useState(false);
-
+  
   // Login function
   const login = async (username, password) => {
     setLoading(true);
@@ -21,9 +19,9 @@ export const AuthProvider = ({ children }) => {
         },
         body: JSON.stringify({ username, password }),
       });
-      
+     
       const data = await response.json();
-      
+     
       if (data.success) {
         // Store user data in localStorage and state
         localStorage.setItem('user', JSON.stringify(data.data));
@@ -39,7 +37,6 @@ export const AuthProvider = ({ children }) => {
       setLoading(false);
     }
   };
-
   // Logout function
   const logout = async () => {
     try {
@@ -50,7 +47,6 @@ export const AuthProvider = ({ children }) => {
       console.error('Logout error:', error);
     }
   };
-
   // Context values to be provided
   const value = {
     user,
@@ -59,10 +55,8 @@ export const AuthProvider = ({ children }) => {
     logout,
     isAuthenticated: !!user
   };
-
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
-
 // Custom hook to use auth context
 export const useAuth = () => {
   const context = useContext(AuthContext);
@@ -71,4 +65,3 @@ export const useAuth = () => {
   }
   return context;
 };
-

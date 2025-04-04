@@ -31,6 +31,11 @@ import CustomerList from './pages/customers/CustomerList'
 import LeadDetailRedirect from './pages/leads/LeadDetailRedirect';
 import InventoryPage from './pages/inventory/InventoryPage';
 import EditTechnician from './pages/users/EditTechnician';
+import AddInventoryItem from './pages/inventory/AddInventoryItem';
+import SerializedProductsList from './pages/inventory/SerializedProductsList';
+import GenericProductsList from './pages/inventory/GenericProductsList';
+import ServicesList from './pages/inventory/ServicesList';
+import OwnershipTransferPage from './pages/users/OwnershipTransferPage';
 
 // Inventory Management - Will be implemented later
 // import Inventory from './pages/inventory/Inventory';
@@ -77,6 +82,15 @@ function App() {
           >
             <Route index element={<Navigate to="/dashboard" />} />
             <Route path="dashboard" element={<Dashboard />} />
+
+            <Route 
+          path="ownership-transfer" 
+          element={
+            <ProtectedRoute allowedRoles={['manager']}>
+              <OwnershipTransferPage />
+            </ProtectedRoute>
+          } 
+        />
             
             {/* User Management Routes */}
             {/* Admin Users */}
@@ -197,7 +211,7 @@ function App() {
             />
             
             {/* Placeholder routes for future implementation */}
-              <Route 
+              {/* <Route 
               path="inventory" 
               element={
                 <ProtectedRoute>
@@ -206,7 +220,41 @@ function App() {
               } 
             />
             <Route path="inventory/add" element={<div>Add Inventory Item (Coming Soon)</div>} />
-            <Route path="inventory/assign" element={<div>Assign Inventory (Coming Soon)</div>} />
+            <Route path="inventory/assign" element={<div>Assign Inventory (Coming Soon)</div>} /> */}
+
+            <Route
+              path="inventory/add"
+              element={
+                <ProtectedRoute allowedRoles={['admin']}>
+                  <AddInventoryItem />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="inventory/serialized"
+              element={
+                <ProtectedRoute>
+                  <SerializedProductsList />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="inventory/generic"
+              element={
+                <ProtectedRoute>
+                  <GenericProductsList />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="inventory/services"
+              element={
+                <ProtectedRoute>
+                  <ServicesList />
+                </ProtectedRoute>
+              }
+            />
+
             <Route path="customers" element={<div>Customer Management (Coming Soon)</div>} />
             <Route path="work-orders" element={<div>Work Orders (Coming Soon)</div>} />
             <Route path="reports" element={<div>Reports (Coming Soon)</div>} />
