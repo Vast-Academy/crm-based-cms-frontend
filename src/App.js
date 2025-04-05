@@ -36,6 +36,7 @@ import SerializedProductsList from './pages/inventory/SerializedProductsList';
 import GenericProductsList from './pages/inventory/GenericProductsList';
 import ServicesList from './pages/inventory/ServicesList';
 import OwnershipTransferPage from './pages/users/OwnershipTransferPage';
+import ContactsPage from './pages/leads/ContactsPage';
 
 // Inventory Management - Will be implemented later
 // import Inventory from './pages/inventory/Inventory';
@@ -174,6 +175,15 @@ function App() {
                 </ProtectedRoute>
               } 
             />
+
+              <Route 
+                path="contacts" 
+                element={
+                  <ProtectedRoute>
+                    <ContactsPage />
+                  </ProtectedRoute>
+                } 
+              />
 
             <Route 
               path="leads" 

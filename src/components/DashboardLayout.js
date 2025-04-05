@@ -87,14 +87,9 @@ const DashboardLayout = () => {
       ]
     },
     { 
-      name: 'Lead Management', 
+      name: 'Lead & Customer Management', 
       icon: FiUsers, 
-      dropdown: true,
-      isOpen: leadsDropdownOpen,
-      toggle: () => setLeadsDropdownOpen(!leadsDropdownOpen),
-      items: [
-        { name: 'All Leads', path: '/leads' },
-      ]
+      path: '/contacts'
     },
     { name: 'Customer Management', path: '/customers', icon: FiFileText },
     { name: 'Work Orders', path: '/work-orders', icon: FiTool },

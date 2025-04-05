@@ -11,6 +11,17 @@ const statusColors = {
   neutral: 'bg-gray-100 border-gray-400 text-gray-800'
 };
 
+// Project types for when converting to customer
+const projectTypes = [
+  'CCTV Camera',
+  'Attendance System',
+  'Safe and Locks',
+  'Home/Office Automation',
+  'IT & Networking Services',
+  'Software & Website Development',
+  'Custom'
+];
+
 const LeadDetailModal = ({ isOpen, onClose, leadId, onLeadUpdated, onConvertSuccess }) => {
   const { user } = useAuth();
   const [lead, setLead] = useState(null);
@@ -21,6 +32,11 @@ const LeadDetailModal = ({ isOpen, onClose, leadId, onLeadUpdated, onConvertSucc
   const [addingRemark, setAddingRemark] = useState(false);
   const [converting, setConverting] = useState(false);
   const [remarkSuccess, setRemarkSuccess] = useState(false);
+  
+  // New state for the conversion form
+  const [showConvertForm, setShowConvertForm] = useState(false);
+  const [projectType, setProjectType] = useState('');
+  const [conversionRemark, setConversionRemark] = useState('');
   
   const fetchLead = async () => {
     if (!leadId) return;
@@ -58,6 +74,9 @@ const LeadDetailModal = ({ isOpen, onClose, leadId, onLeadUpdated, onConvertSucc
       setError(null);
       setRemarkText('');
       setRemarkSuccess(false);
+      setShowConvertForm(false);
+      setProjectType('');
+      setConversionRemark('');
     }
   }, [isOpen, leadId]);
   
@@ -110,17 +129,41 @@ const LeadDetailModal = ({ isOpen, onClose, leadId, onLeadUpdated, onConvertSucc
     }
   };
   
-  const handleConvertToCustomer = async () => {
-    if (!window.confirm('Are you sure you want to convert this lead to a customer?')) {
+  // Start the conversion process
+  const handleStartConversion = () => {
+    setShowConvertForm(true);
+  };
+  
+  // Cancel the conversion process
+  const handleCancelConversion = () => {
+    setShowConvertForm(false);
+    setProjectType('');
+    setConversionRemark('');
+  };
+  
+  // Complete the conversion process
+  const handleConvertToCustomer = async (e) => {
+    e.preventDefault();
+    
+    if (!projectType) {
+      setError("Please select a project type");
       return;
     }
     
     try {
       setConverting(true);
       
+      // Enhanced API to include project type and remark
       const response = await fetch(`${SummaryApi.convertToCustomer.url}/${leadId}`, {
         method: SummaryApi.convertToCustomer.method,
-        credentials: 'include'
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          projectType,
+          initialRemark: conversionRemark
+        })
       });
       
       const data = await response.json();
@@ -266,125 +309,202 @@ const LeadDetailModal = ({ isOpen, onClose, leadId, onLeadUpdated, onConvertSucc
                   Edit Lead
                 </button>
                 
-                <button
-                  onClick={handleConvertToCustomer}
-                  disabled={converting}
-                  className="w-full py-2 px-4 bg-green-500 text-white rounded-md flex items-center justify-center hover:bg-green-600 disabled:opacity-50"
-                >
-                  <FiUserPlus className="mr-2" />
-                  {converting ? 'Converting...' : 'Convert to Customer'}
-                </button>
+                {!showConvertForm && (
+                  <button
+                    onClick={handleStartConversion}
+                    className="w-full py-2 px-4 bg-green-500 text-white rounded-md flex items-center justify-center hover:bg-green-600"
+                  >
+                    <FiUserPlus className="mr-2" />
+                    Convert to Customer
+                  </button>
+                )}
               </div>
             </div>
           </div>
           
-          {/* Remarks panel */}
+          {/* Right panel - either remarks or conversion form */}
           <div className="lg:col-span-2 bg-white rounded-lg overflow-hidden border border-gray-200">
             <div className="p-6">
-              <h2 className="text-xl font-semibold mb-6">Remarks & Follow-ups</h2>
-              
-              {/* Add remark form */}
-              <form onSubmit={handleAddRemark} className="mb-8">
-                <div className="mb-4">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Add New Remark</label>
-                  <textarea
-                    value={remarkText}
-                    onChange={(e) => setRemarkText(e.target.value)}
-                    className="w-full p-3 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    rows="3"
-                    placeholder="Enter your remark or follow-up notes..."
-                    required
-                  ></textarea>
-                </div>
-                
-                <div className="flex flex-wrap items-center justify-between">
-                  <div className="mb-4 sm:mb-0">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Status:</label>
-                    <div className="flex space-x-2">
+              {!showConvertForm ? (
+                /* Remarks & Follow-ups */
+                <>
+                  <h2 className="text-xl font-semibold mb-6">Remarks & Follow-ups</h2>
+                  
+                  {/* Add remark form */}
+                  <form onSubmit={handleAddRemark} className="mb-8">
+                    <div className="mb-4">
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Add New Remark</label>
+                      <textarea
+                        value={remarkText}
+                        onChange={(e) => setRemarkText(e.target.value)}
+                        className="w-full p-3 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        rows="3"
+                        placeholder="Enter your remark or follow-up notes..."
+                        required
+                      ></textarea>
+                    </div>
+                    
+                    <div className="flex flex-wrap items-center justify-between">
+                      <div className="mb-4 sm:mb-0">
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Status:</label>
+                        <div className="flex space-x-2">
+                          <button
+                            type="button"
+                            className={`px-3 py-1 rounded-md text-sm ${
+                              remarkStatus === 'positive' ? 'bg-green-500 text-white' : 'bg-green-100 text-green-800 hover:bg-green-200'
+                            }`}
+                            onClick={() => setRemarkStatus('positive')}
+                          >
+                            Positive
+                          </button>
+                          <button
+                            type="button"
+                            className={`px-3 py-1 rounded-md text-sm ${
+                              remarkStatus === 'neutral' ? 'bg-gray-500 text-white' : 'bg-gray-100 text-gray-800 hover:bg-gray-200'
+                            }`}
+                            onClick={() => setRemarkStatus('neutral')}
+                          >
+                            Neutral
+                          </button>
+                          <button
+                            type="button"
+                            className={`px-3 py-1 rounded-md text-sm ${
+                              remarkStatus === 'negative' ? 'bg-red-500 text-white' : 'bg-red-100 text-red-800 hover:bg-red-200'
+                            }`}
+                            onClick={() => setRemarkStatus('negative')}
+                          >
+                            Negative
+                          </button>
+                        </div>
+                      </div>
+                      
                       <button
-                        type="button"
-                        className={`px-3 py-1 rounded-md text-sm ${
-                          remarkStatus === 'positive' ? 'bg-green-500 text-white' : 'bg-green-100 text-green-800 hover:bg-green-200'
-                        }`}
-                        onClick={() => setRemarkStatus('positive')}
+                        type="submit"
+                        disabled={addingRemark || !remarkText.trim()}
+                        className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 disabled:opacity-50"
                       >
-                        Positive
-                      </button>
-                      <button
-                        type="button"
-                        className={`px-3 py-1 rounded-md text-sm ${
-                          remarkStatus === 'neutral' ? 'bg-gray-500 text-white' : 'bg-gray-100 text-gray-800 hover:bg-gray-200'
-                        }`}
-                        onClick={() => setRemarkStatus('neutral')}
-                      >
-                        Neutral
-                      </button>
-                      <button
-                        type="button"
-                        className={`px-3 py-1 rounded-md text-sm ${
-                          remarkStatus === 'negative' ? 'bg-red-500 text-white' : 'bg-red-100 text-red-800 hover:bg-red-200'
-                        }`}
-                        onClick={() => setRemarkStatus('negative')}
-                      >
-                        Negative
+                        {addingRemark ? 'Adding...' : 'Add Remark'}
                       </button>
                     </div>
+                    
+                    {remarkSuccess && (
+                      <div className="mt-3 p-3 bg-green-100 text-green-800 rounded-md">
+                        Remark added successfully!
+                      </div>
+                    )}
+                  </form>
+                  
+                  {/* Remarks history */}
+                  <div>
+                    <h3 className="font-medium text-gray-700 mb-4">Remark History</h3>
+                    
+                    {lead.remarks && lead.remarks.length > 0 ? (
+                      <div className="space-y-4 max-h-96 overflow-y-auto">
+                        {lead.remarks.slice().reverse().map((remark, index) => (
+                          <div 
+                            key={remark._id || index} 
+                            className={`p-4 rounded-lg border-l-4 ${
+                              remark.status === 'positive' ? 'bg-green-50 border-green-500' : 
+                              remark.status === 'negative' ? 'bg-red-50 border-red-500' : 
+                              'bg-gray-50 border-gray-400'
+                            }`}
+                          >
+                            <div className="flex justify-between mb-1">
+                              <span className="font-medium capitalize text-sm">
+                                {remark.status}
+                              </span>
+                              <span className="text-sm text-gray-500">
+                                {formatDate(remark.createdAt)}
+                              </span>
+                            </div>
+                            <p className="text-gray-800">{remark.text}</p>
+                            {remark.createdBy && (
+                              <div className="mt-2 text-xs text-gray-500">
+                                Added by: {remark.createdBy.firstName} {remark.createdBy.lastName}
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-center p-8 text-gray-500">
+                        No remarks yet. Add your first remark above.
+                      </div>
+                    )}
+                  </div>
+                </>
+              ) : (
+                /* Convert to Customer Form */
+                <>
+                  <div className="flex justify-between items-center mb-6">
+                    <h2 className="text-xl font-semibold">Convert to Customer</h2>
+                    <button
+                      onClick={handleCancelConversion}
+                      className="text-gray-500 hover:text-gray-700"
+                    >
+                      ← Back to Lead Details
+                    </button>
                   </div>
                   
-                  <button
-                    type="submit"
-                    disabled={addingRemark || !remarkText.trim()}
-                    className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 disabled:opacity-50"
-                  >
-                    {addingRemark ? 'Adding...' : 'Add Remark'}
-                  </button>
-                </div>
-                
-                {remarkSuccess && (
-                  <div className="mt-3 p-3 bg-green-100 text-green-800 rounded-md">
-                    Remark added successfully!
-                  </div>
-                )}
-              </form>
-              
-              {/* Remarks history */}
-              <div>
-                <h3 className="font-medium text-gray-700 mb-4">Remark History</h3>
-                
-                {lead.remarks && lead.remarks.length > 0 ? (
-                  <div className="space-y-4 max-h-96 overflow-y-auto">
-                    {lead.remarks.slice().reverse().map((remark, index) => (
-                      <div 
-                        key={remark._id || index} 
-                        className={`p-4 rounded-lg border-l-4 ${
-                          remark.status === 'positive' ? 'bg-green-50 border-green-500' : 
-                          remark.status === 'negative' ? 'bg-red-50 border-red-500' : 
-                          'bg-gray-50 border-gray-400'
-                        }`}
-                      >
-                        <div className="flex justify-between mb-1">
-                          <span className="font-medium capitalize text-sm">
-                            {remark.status}
-                          </span>
-                          <span className="text-sm text-gray-500">
-                            {formatDate(remark.createdAt)}
-                          </span>
-                        </div>
-                        <p className="text-gray-800">{remark.text}</p>
-                        {remark.createdBy && (
-                          <div className="mt-2 text-xs text-gray-500">
-                            Added by: {remark.createdBy.firstName} {remark.createdBy.lastName}
-                          </div>
-                        )}
+                  <form onSubmit={handleConvertToCustomer}>
+                    <div className="space-y-6 mb-8">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Select Project Type*</label>
+                        <select
+                          value={projectType}
+                          onChange={(e) => setProjectType(e.target.value)}
+                          className="w-full p-3 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          required
+                        >
+                          <option value="">Choose a project type</option>
+                          {projectTypes.map((type, index) => (
+                            <option key={index} value={type}>{type}</option>
+                          ))}
+                        </select>
                       </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="text-center p-8 text-gray-500">
-                    No remarks yet. Add your first remark above.
-                  </div>
-                )}
-              </div>
+                      
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Initial Project Remark</label>
+                        <textarea
+                          value={conversionRemark}
+                          onChange={(e) => setConversionRemark(e.target.value)}
+                          className="w-full p-3 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          rows="4"
+                          placeholder="Enter initial project requirements or details..."
+                        ></textarea>
+                      </div>
+                    </div>
+                    
+                    <div className="border-t border-gray-200 pt-6">
+                      <div className="bg-blue-50 p-4 rounded-md mb-6">
+                        <h3 className="font-medium text-blue-800 mb-2">Lead Information Summary</h3>
+                        <p className="text-sm text-blue-700">
+                          Converting <strong>{lead.name}</strong> to a customer with phone number <strong>{lead.phoneNumber}</strong>. 
+                          All lead information will be transferred to the new customer record.
+                        </p>
+                      </div>
+                      
+                      <div className="flex justify-end">
+                        <button
+                          type="button"
+                          onClick={handleCancelConversion}
+                          className="mr-4 px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
+                        >
+                          Cancel
+                        </button>
+                        
+                        <button
+                          type="submit"
+                          disabled={converting || !projectType}
+                          className="px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600 disabled:opacity-50"
+                        >
+                          {converting ? 'Converting...' : 'Complete Conversion'}
+                        </button>
+                      </div>
+                    </div>
+                  </form>
+                </>
+              )}
             </div>
           </div>
         </div>
