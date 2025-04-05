@@ -35,6 +35,12 @@ const LeadList = () => {
   const [showEditModal, setShowEditModal] = useState(false);
   const [selectedLeadId, setSelectedLeadId] = useState(null);
   const [newLeadPhone, setNewLeadPhone] = useState('');
+  const [expandedRow, setExpandedRow] = useState(null);
+
+  const handleRowClick = (leadId) => {
+    // अगर वही रो क्लिक की गई है जो पहले से एक्सपैंडेड है, तो उसे कोलैप्स करें, अन्यथा एक्सपैंड करें
+    setExpandedRow(expandedRow === leadId ? null : leadId);
+  };
   
   const fetchLeads = async () => {
     try {
@@ -357,12 +363,16 @@ const LeadList = () => {
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date Added</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Last Remark</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                  {/* <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th> */}
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {filteredLeads.map(lead => (
-                  <tr key={lead._id} className={`border-l-4 ${statusColors[lead.status]}`}>
+                   <React.Fragment key={lead._id}>
+                 <tr 
+        className={`border-l-4 ${statusColors[lead.status]} cursor-pointer hover:bg-gray-50`}
+        onClick={() => handleRowClick(lead._id)}
+      >
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="font-medium text-gray-900">{lead.name}</div>
                       {lead.email && <div className="text-sm text-gray-500">{lead.email}</div>}
@@ -389,17 +399,47 @@ const LeadList = () => {
                         <span className="text-gray-400">No remarks yet</span>
                       )}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm">
+                    {/* <td className="px-6 py-4 whitespace-nowrap text-sm">
                       <button 
                         onClick={() => handleViewLead(lead._id)}
                         className="text-blue-600 hover:text-blue-900 mr-3"
                       >
                         View
                       </button>
-                    </td>
+                    </td> */}
                   </tr>
-                ))}
-              </tbody>
+                {/* Expanded row with buttons */}
+      {expandedRow === lead._id && (
+        <tr>
+          <td colSpan="5" className="px-6 py-4 bg-gray-50">
+            <div className="flex gap-2">
+              <button 
+                onClick={(e) => {
+                  e.stopPropagation(); // Prevent row toggle
+                  handleViewLead(lead._id);
+                }}
+                className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
+              >
+                View Details
+              </button>
+              <button 
+                onClick={(e) => {
+                  e.stopPropagation(); // Prevent row toggle
+                  // First view the lead detail with convert dialog open
+                  setSelectedLeadId(lead._id);
+                  setShowDetailModal(true);
+                }}
+                className="px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600"
+              >
+                Convert to Customer
+              </button>
+            </div>
+          </td>
+        </tr>
+      )}
+    </React.Fragment>
+  ))}
+</tbody>
             </table>
           </div>
         ) : (

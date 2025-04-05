@@ -8,7 +8,7 @@ import Modal from '../../components/Modal';
 import AddContactForm from '../leads/AddContactForm';
 
 // Customer styling
-const customerColor = 'border-purple-500 bg-purple-200';
+const customerColor = 'border-blue-500 bg-blue-50';
 
 const CustomerList = () => {
   const navigate = useNavigate();
@@ -26,6 +26,11 @@ const CustomerList = () => {
   // State for modals
   const [showAddCustomerModal, setShowAddCustomerModal] = useState(false);
   const [newCustomerPhone, setNewCustomerPhone] = useState('');
+  const [expandedRow, setExpandedRow] = useState(null);
+
+  const handleRowClick = (customerId) => {
+    setExpandedRow(expandedRow === customerId ? null : customerId);
+  };
   
   const fetchCustomers = async () => {
     try {
@@ -229,12 +234,16 @@ const CustomerList = () => {
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date Added</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Source</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                  {/* <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th> */}
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {filteredCustomers.map(customer => (
-                  <tr key={customer._id} className={`border-l-4 ${customerColor}`}>
+                  <React.Fragment key={customer._id}>
+                  <tr 
+                    className={`border-l-4 ${customerColor} cursor-pointer hover:bg-gray-50`}
+                    onClick={() => handleRowClick(customer._id)}
+                  >
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="font-medium text-gray-900">{customer.name}</div>
                     </td>
@@ -252,17 +261,56 @@ const CustomerList = () => {
                         {customer.convertedFromLead ? 'Converted Lead' : 'Direct Entry'}
                       </span>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm">
+                    {/* <td className="px-6 py-4 whitespace-nowrap text-sm">
                       <button 
                         onClick={() => handleViewCustomer(customer._id)}
                         className="text-blue-600 hover:text-blue-900 mr-3"
                       >
                         View
                       </button>
-                    </td>
+                    </td> */}
                   </tr>
-                ))}
-              </tbody>
+                {/* Expanded row with buttons */}
+      {expandedRow === customer._id && (
+        <tr>
+          <td colSpan="5" className="px-6 py-4 bg-gray-50">
+            <div className="flex gap-2">
+              <button 
+                onClick={(e) => {
+                  e.stopPropagation(); // Prevent row toggle
+                  handleViewCustomer(customer._id);
+                }}
+                className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
+              >
+                View Details
+              </button>
+              <button 
+                onClick={(e) => {
+                  e.stopPropagation(); // Prevent row toggle
+                  // New Complaint functionality
+                  alert('New Complaint functionality will be implemented');
+                }}
+                className="px-4 py-2 bg-orange-500 text-white rounded-md hover:bg-orange-600"
+              >
+                New Complaint
+              </button>
+              <button 
+                onClick={(e) => {
+                  e.stopPropagation(); // Prevent row toggle
+                  // New Project functionality
+                  alert('New Project functionality will be implemented');
+                }}
+                className="px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600"
+              >
+                New Project
+              </button>
+            </div>
+          </td>
+        </tr>
+      )}
+    </React.Fragment>
+  ))}
+</tbody>
             </table>
           </div>
         ) : (

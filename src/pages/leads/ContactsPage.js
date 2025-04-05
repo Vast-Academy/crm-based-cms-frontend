@@ -14,7 +14,7 @@ const statusColors = {
   neutral: 'bg-gray-100 border-gray-400 text-gray-800',
 };
 
-const customerColor = 'border-purple-500 bg-purple-200';
+const customerColor = 'border-blue-500 bg-blue-50';
 
 const ContactsPage = () => {
   const { user } = useAuth();
@@ -37,6 +37,12 @@ const ContactsPage = () => {
   const [selectedCustomerId, setSelectedCustomerId] = useState(null);
   const [initialPhone, setInitialPhone] = useState('');
   const [initialType, setInitialType] = useState('lead');
+  const [expandedRow, setExpandedRow] = useState(null);
+
+  const handleRowClick = (contactId) => {
+    // अगर पहले से ही expanded है तो collapse करें, अन्यथा expand करें
+    setExpandedRow(expandedRow === contactId ? null : contactId);
+  };
   
   const fetchContacts = async () => {
     try {
@@ -442,18 +448,19 @@ const handleLeadUpdated = (updatedLead) => {
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date Added</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Last Remark/Project</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                  {/* <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th> */}
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {filteredContacts.map(contact => (
+                  <React.Fragment key={`${contact.contactType}-${contact._id}`}>
                   <tr 
-                    key={`${contact.contactType}-${contact._id}`} 
                     className={`border-l-4 ${
                       contact.contactType === 'customer' 
                         ? customerColor 
                         : statusColors[contact.status]
-                    }`}
+                    } cursor-pointer hover:bg-gray-50`}
+                    onClick={() => handleRowClick(`${contact.contactType}-${contact._id}`)}
                   >
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="font-medium text-gray-900">{contact.name}</div>
@@ -501,16 +508,81 @@ const handleLeadUpdated = (updatedLead) => {
                         <span className="text-gray-400">No information</span>
                       )}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm">
+                    {/* <td className="px-6 py-4 whitespace-nowrap text-sm">
                       <button 
                         onClick={() => handleViewContact(contact)}
                         className="text-blue-600 hover:text-blue-900 mr-3"
                       >
                         View
                       </button>
-                    </td>
+                    </td> */}
                   </tr>
-                ))}
+                   {/* Expanded row */}
+    {expandedRow === `${contact.contactType}-${contact._id}` && (
+      <tr>
+        <td colSpan="6" className="px-6 py-4 bg-gray-50">
+          <div className="flex gap-2">
+            {contact.contactType === 'lead' ? (
+              <>
+                <button 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleViewLead(contact._id);
+                  }}
+                  className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
+                >
+                  View Details
+                </button>
+                <button 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    // Convert to customer function
+                    handleViewLead(contact._id); // यहां आप सीधे कन्वर्ट मोड में जा सकते हैं
+                  }}
+                  className="px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600"
+                >
+                  Convert to Customer
+                </button>
+              </>
+            ) : (
+              <>
+                <button 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleViewCustomer(contact._id);
+                  }}
+                  className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
+                >
+                  View Details
+                </button>
+                <button 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    // New Complaint function
+                    alert('New Complaint functionality will be implemented');
+                  }}
+                  className="px-4 py-2 bg-orange-500 text-white rounded-md hover:bg-orange-600"
+                >
+                  New Complaint
+                </button>
+                <button 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    // New Project function
+                    alert('New Project functionality will be implemented');
+                  }}
+                  className="px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600"
+                >
+                  New Project
+                </button>
+              </>
+            )}
+          </div>
+        </td>
+      </tr>
+    )}
+  </React.Fragment>
+))}
               </tbody>
             </table>
           </div>
