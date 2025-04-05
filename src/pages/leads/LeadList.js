@@ -5,9 +5,9 @@ import SummaryApi from '../../common';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import { useAuth } from '../../context/AuthContext';
 import Modal from '../../components/Modal';
-import AddLeadForm from './AddLeadForm';
 import LeadDetailModal from './LeadDetail';
 import EditLeadForm from './EditLeadForm';
+import AddContactForm from './AddContactForm';
 
 const statusColors = {
   positive: 'bg-green-100 border-green-500 text-green-800',
@@ -55,8 +55,15 @@ const LeadList = () => {
       const data = await response.json();
       
       if (data.success) {
-        setLeads(data.data);
-        setFilteredLeads(data.data);
+        // Sort by updatedAt or createdAt (newest first)
+        const sortedData = data.data.sort((a, b) => {
+          const aDate = a.updatedAt || a.createdAt;
+          const bDate = b.updatedAt || b.createdAt;
+          return new Date(bDate) - new Date(aDate);
+        });
+        
+        setLeads(sortedData);
+        setFilteredLeads(sortedData);
       } else {
         setError(data.message || 'Failed to fetch leads');
       }
@@ -124,18 +131,35 @@ const LeadList = () => {
   
   // Handle lead update
   const handleLeadUpdated = (updatedLead) => {
-    // Update the lead in the lists
-    const updateLeadInList = (leadList) => {
-      return leadList.map(lead => {
-        if (lead._id === updatedLead._id) {
-          return updatedLead;
-        }
-        return lead;
-      });
-    };
+    // Update the lead in the lists by removing it and adding it to the top
+    setLeads(prevLeads => {
+      const otherLeads = prevLeads.filter(lead => lead._id !== updatedLead._id);
+      return [updatedLead, ...otherLeads];
+    });
     
-    setLeads(updateLeadInList(leads));
-    setFilteredLeads(updateLeadInList(filteredLeads));
+    // Update filtered leads similarly
+    setFilteredLeads(prevFilteredLeads => {
+      // Only update if the current filters would include this lead
+      if (filters.status === 'all' || updatedLead.status === filters.status) {
+        const otherLeads = prevFilteredLeads.filter(lead => lead._id !== updatedLead._id);
+        return [updatedLead, ...otherLeads];
+      } else {
+        return prevFilteredLeads.filter(lead => lead._id !== updatedLead._id);
+      }
+    });
+  };
+  
+  // Handle lead added
+  const handleLeadAdded = (newLead) => {
+    setShowAddLeadModal(false);
+    
+    // Add new lead to the top of the list
+    setLeads(prevLeads => [newLead, ...prevLeads]);
+    
+    // Update filtered leads if it matches current filters
+    if (filters.status === 'all' || newLead.status === filters.status) {
+      setFilteredLeads(prevFilteredLeads => [newLead, ...prevFilteredLeads]);
+    }
   };
   
   // Handle search
@@ -198,19 +222,17 @@ const LeadList = () => {
         </button>
       </div>
       
-      {/* Add Lead Modal */}
+      {/* Add Contact Modal */}
       <Modal 
         isOpen={showAddLeadModal} 
         onClose={() => setShowAddLeadModal(false)}
-        title="Add New Lead"
+        title="Add New Lead/Customer"
         size="lg"
       >
-        <AddLeadForm 
+        <AddContactForm 
           initialPhone={newLeadPhone} 
-          onSuccess={() => {
-            setShowAddLeadModal(false);
-            fetchLeads();
-          }}
+          initialType="lead"
+          onSuccess={handleLeadAdded}
           onCancel={() => setShowAddLeadModal(false)}
         />
       </Modal>

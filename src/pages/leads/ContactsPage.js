@@ -11,8 +11,10 @@ import CustomerDetailModal from './CustomerDetailModal';
 const statusColors = {
   positive: 'bg-green-100 border-green-500 text-green-800',
   negative: 'bg-red-100 border-red-500 text-red-800',
-  neutral: 'bg-gray-100 border-gray-400 text-gray-800'
+  neutral: 'bg-gray-100 border-gray-400 text-gray-800',
 };
+
+const customerColor = 'border-purple-500 bg-purple-200';
 
 const ContactsPage = () => {
   const { user } = useAuth();
@@ -449,7 +451,7 @@ const handleLeadUpdated = (updatedLead) => {
                     key={`${contact.contactType}-${contact._id}`} 
                     className={`border-l-4 ${
                       contact.contactType === 'customer' 
-                        ? 'border-purple-500' 
+                        ? customerColor 
                         : statusColors[contact.status]
                     }`}
                   >
