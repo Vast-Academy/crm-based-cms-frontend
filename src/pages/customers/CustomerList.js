@@ -6,6 +6,7 @@ import LoadingSpinner from '../../components/LoadingSpinner';
 import { useAuth } from '../../context/AuthContext';
 import Modal from '../../components/Modal'; 
 import AddContactForm from '../leads/AddContactForm';
+import CustomerDetailModal from '../leads/CustomerDetailModal';
 
 // Customer styling
 const customerColor = 'border-blue-500 bg-blue-50';
@@ -13,6 +14,7 @@ const customerColor = 'border-blue-500 bg-blue-50';
 const CustomerList = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
+   const [contacts, setContacts] = useState([]);
   const [customers, setCustomers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -27,6 +29,8 @@ const CustomerList = () => {
   const [showAddCustomerModal, setShowAddCustomerModal] = useState(false);
   const [newCustomerPhone, setNewCustomerPhone] = useState('');
   const [expandedRow, setExpandedRow] = useState(null);
+  const [showCustomerDetailModal, setShowCustomerDetailModal] = useState(false);
+  const [selectedCustomerId, setSelectedCustomerId] = useState(null);
 
   const handleRowClick = (customerId) => {
     setExpandedRow(expandedRow === customerId ? null : customerId);
@@ -80,7 +84,12 @@ const CustomerList = () => {
     setNewCustomerPhone(phoneNumber);
     setShowAddCustomerModal(true);
   };
-  
+
+  const handleViewCustomer = (customerId) => {
+    setSelectedCustomerId(customerId);
+    setShowCustomerDetailModal(true);
+  };
+
   // Handle customer added
   const handleCustomerAdded = (newCustomer) => {
     setShowAddCustomerModal(false);
@@ -95,10 +104,30 @@ const CustomerList = () => {
     }
   };
   
-  // Handle viewing customer details
-  const handleViewCustomer = (customerId) => {
-    navigate(`/customers/${customerId}`);
-  };
+  // Customer update handler
+const handleCustomerUpdated = (updatedCustomer) => {
+  setContacts(prevContacts => {
+    const contactIndex = prevContacts.findIndex(
+      contact => contact.contactType === 'customer' && contact._id === updatedCustomer._id
+    );
+    
+    if (contactIndex === -1) {
+      return prevContacts;
+    }
+    
+    const newContacts = [...prevContacts];
+    
+    const updatedContact = {
+      ...updatedCustomer,
+      contactType: 'customer'
+    };
+    
+    newContacts.splice(contactIndex, 1);
+    
+    return [updatedContact, ...newContacts];
+  });
+};
+
   
   // Handle search and filtering
   useEffect(() => {
@@ -168,6 +197,14 @@ const CustomerList = () => {
           onCancel={() => setShowAddCustomerModal(false)}
         />
       </Modal>
+
+      {/* Customer Detail Modal */}
+      <CustomerDetailModal
+        isOpen={showCustomerDetailModal}
+        onClose={() => setShowCustomerDetailModal(false)}
+        customerId={selectedCustomerId}
+        onCustomerUpdated={handleCustomerUpdated}
+      />
       
       {error && (
         <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
