@@ -160,6 +160,18 @@ const SummaryApi = {
       getRejectedTransfers: {
         url: `${backendDomain}/api/get-rejected-transfers`,
         method: "get"
+      },
+      createWorkOrder: {
+        url : `${backendDomain}/api/create-work-orders`,
+        method: "post"
+      },
+      getWorkOrders: {
+        url: `${backendDomain}/api/get-work-orders`,
+        method: "get"
+      },
+      assignTechnician: {
+        url : `${backendDomain}/api/assign-technician`,
+        method: "post"
       }
 }
 

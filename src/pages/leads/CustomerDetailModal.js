@@ -4,12 +4,14 @@ import SummaryApi from '../../common';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import { useAuth } from '../../context/AuthContext';
 import Modal from '../../components/Modal';
+import WorkOrderModal from '../customers/WorkOrderModal'
 
 const CustomerDetailModal = ({ isOpen, onClose, customerId, onCustomerUpdated }) => {
   const { user } = useAuth();
   const [customer, setCustomer] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [showWorkOrderModal, setShowWorkOrderModal] = useState(false);
   
   const fetchCustomer = async () => {
     if (!customerId) return;
@@ -201,30 +203,50 @@ const CustomerDetailModal = ({ isOpen, onClose, customerId, onCustomerUpdated })
                   <button
                     className="px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600"
                     onClick={() => {
-                      // New project logic to be implemented
-                      alert('New Project functionality will be implemented in the future');
+                      // New project and work order creation
+                      setShowWorkOrderModal(true);
                     }}
                   >
                     New Project
                   </button>
                 </div>
               </div>
+
+              <WorkOrderModal
+              isOpen={showWorkOrderModal}
+              onClose={() => setShowWorkOrderModal(false)}
+              customerId={customerId}
+              onSuccess={(data) => {
+                // Refresh customer data after adding new project/work order
+                fetchCustomer();
+                setShowWorkOrderModal(false);
+              }}
+            />
               
               {/* Project Information */}
-              {customer.projectType && (
-                <div className="mb-6 p-4 border rounded-lg">
-                  <h3 className="font-semibold text-lg mb-2">Current Project</h3>
-                  <div className="flex items-center bg-blue-50 p-3 rounded-md">
-                    <div className="text-blue-500 mr-3 text-xl">🛠️</div>
-                    <div>
-                      <div className="font-medium">{customer.projectType}</div>
-                      {customer.initialRemark && (
-                        <div className="text-sm text-gray-600 mt-1">{customer.initialRemark}</div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              )}
+              {customer.projects && customer.projects.length > 0 ? (
+  <div className="mb-6 p-4 border rounded-lg">
+    <h3 className="font-semibold text-lg mb-2">Current Projects</h3>
+    {customer.projects.map((project, index) => (
+      <div key={index} className="flex items-center bg-blue-50 p-3 rounded-md mb-2">
+        <div className="text-blue-500 mr-3 text-xl">🛠️</div>
+        <div>
+          <div className="font-medium">
+            {project.projectType} 
+            <span className="text-xs ml-2 text-gray-500">(ID: {project.projectId})</span>
+          </div>
+          {project.initialRemark && (
+            <div className="text-sm text-gray-600 mt-1">{project.initialRemark}</div>
+          )}
+        </div>
+      </div>
+    ))}
+  </div>
+) : (
+  <div className="mb-6 p-4 border rounded-lg bg-gray-50">
+    <p className="text-center text-gray-500">No projects found for this customer.</p>
+  </div>
+)}
               
               {/* Lead History */}
               {customer.convertedFromLead && customer.leadId && (

@@ -496,18 +496,20 @@ const handleLeadUpdated = (updatedLead) => {
                       )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {contact.contactType === 'lead' && contact.remarks && contact.remarks.length > 0 ? (
-                        <div className="max-w-xs truncate">
-                          {contact.remarks[contact.remarks.length - 1].text}
-                        </div>
-                      ) : contact.contactType === 'customer' && contact.projectType ? (
-                        <div className="max-w-xs truncate">
-                          {contact.projectType}
-                        </div>
-                      ) : (
-                        <span className="text-gray-400">No information</span>
-                      )}
-                    </td>
+  {contact.contactType === 'lead' && contact.remarks && contact.remarks.length > 0 ? (
+    <div className="max-w-xs truncate">
+      {contact.remarks[contact.remarks.length - 1].text}
+    </div>
+  ) : contact.contactType === 'customer' ? (
+    <div className="max-w-xs truncate">
+      {contact.projects && contact.projects.length > 0 
+        ? contact.projects[0].projectType 
+        : contact.projectType || 'No information'}
+    </div>
+  ) : (
+    <span className="text-gray-400">No information</span>
+  )}
+</td>
                     {/* <td className="px-6 py-4 whitespace-nowrap text-sm">
                       <button 
                         onClick={() => handleViewContact(contact)}
