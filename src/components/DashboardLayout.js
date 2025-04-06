@@ -35,6 +35,56 @@ const DashboardLayout = () => {
     navigate('/login');
   };
   
+  // Function to toggle dropdowns and close others
+  const toggleDropdown = (dropdownName) => {
+    // Check if the clicked dropdown is already open
+    let isCurrentlyOpen = false;
+    
+    switch(dropdownName) {
+      case 'users':
+        isCurrentlyOpen = usersDropdownOpen;
+        break;
+      case 'branches':
+        isCurrentlyOpen = branchesDropdownOpen;
+        break;
+      case 'inventory':
+        isCurrentlyOpen = inventoryDropdownOpen;
+        break;
+      case 'leads':
+        isCurrentlyOpen = leadsDropdownOpen;
+        break;
+      default:
+        break;
+    }
+    
+    // Close all dropdowns first
+    setUsersDropdownOpen(false);
+    setBranchesDropdownOpen(false);
+    setInventoryDropdownOpen(false);
+    setLeadsDropdownOpen(false);
+    
+    // If the clicked dropdown wasn't already open, then open it
+    // If it was open, leave it closed
+    if (!isCurrentlyOpen) {
+      switch(dropdownName) {
+        case 'users':
+          setUsersDropdownOpen(true);
+          break;
+        case 'branches':
+          setBranchesDropdownOpen(true);
+          break;
+        case 'inventory':
+          setInventoryDropdownOpen(true);
+          break;
+        case 'leads':
+          setLeadsDropdownOpen(true);
+          break;
+        default:
+          break;
+      }
+    }
+  };
+  
   // Main navigation items with conditional rendering based on user role
   const navItems = [
     { name: 'Dashboard', path: '/dashboard', icon: FiHome },
@@ -49,7 +99,7 @@ const DashboardLayout = () => {
       icon: FiUsers,
       dropdown: true,
       isOpen: usersDropdownOpen,
-      toggle: () => setUsersDropdownOpen(!usersDropdownOpen),
+      toggle: () => toggleDropdown('users'),
       items: user?.role === 'admin' ? [
         { name: 'Admin Users', path: '/users/admin' },
         { name: 'Managers', path: '/users/managers' },
@@ -63,7 +113,7 @@ const DashboardLayout = () => {
       icon: FiBriefcase,
       dropdown: true,
       isOpen: branchesDropdownOpen,
-      toggle: () => setBranchesDropdownOpen(!branchesDropdownOpen),
+      toggle: () => toggleDropdown('branches'),
       items: [
         { name: 'All Branches', path: '/branches' },
         { name: 'Add Branch', path: '/branches/add' },
@@ -74,7 +124,7 @@ const DashboardLayout = () => {
       icon: FiPackage,
       dropdown: true,
       isOpen: inventoryDropdownOpen,
-      toggle: () => setInventoryDropdownOpen(!inventoryDropdownOpen),
+      toggle: () => toggleDropdown('inventory'),
       items: user.role === 'admin' ? [
         { name: 'Add Inventory', path: '/inventory/add' },
         { name: 'Serialized Products', path: '/inventory/serialized' },
@@ -91,7 +141,7 @@ const DashboardLayout = () => {
       icon: FiUsers, 
       dropdown: true,
       isOpen: leadsDropdownOpen,
-      toggle: () => setLeadsDropdownOpen(!leadsDropdownOpen),
+      toggle: () => toggleDropdown('leads'),
       items: [
         { name: 'Customer & Leads', path: '/contacts' },
         { name: 'All Leads', path: '/leads' },
