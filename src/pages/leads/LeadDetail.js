@@ -22,7 +22,7 @@ const projectTypes = [
   'Custom'
 ];
 
-const LeadDetailModal = ({ isOpen, onClose, leadId, onLeadUpdated, onConvertSuccess }) => {
+const LeadDetailModal = ({ isOpen, onClose, leadId, onLeadUpdated, onConvertSuccess, initialConvertMode = false }) => {
   const { user } = useAuth();
   const [lead, setLead] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -34,7 +34,7 @@ const LeadDetailModal = ({ isOpen, onClose, leadId, onLeadUpdated, onConvertSucc
   const [remarkSuccess, setRemarkSuccess] = useState(false);
   
   // New state for the conversion form
-  const [showConvertForm, setShowConvertForm] = useState(false);
+  const [showConvertForm, setShowConvertForm] = useState(initialConvertMode);
   const [projectType, setProjectType] = useState('');
   const [conversionRemark, setConversionRemark] = useState('');
   
@@ -68,6 +68,8 @@ const LeadDetailModal = ({ isOpen, onClose, leadId, onLeadUpdated, onConvertSucc
   useEffect(() => {
     if (isOpen && leadId) {
       fetchLead();
+      // Set the convert form state based on the prop
+    setShowConvertForm(initialConvertMode);
     } else {
       // Reset state when modal closes
       setLead(null);
@@ -78,7 +80,7 @@ const LeadDetailModal = ({ isOpen, onClose, leadId, onLeadUpdated, onConvertSucc
       setProjectType('');
       setConversionRemark('');
     }
-  }, [isOpen, leadId]);
+  }, [isOpen, leadId, initialConvertMode]);
   
   const handleAddRemark = async (e) => {
     e.preventDefault();

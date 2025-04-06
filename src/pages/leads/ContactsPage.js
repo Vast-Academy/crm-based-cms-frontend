@@ -38,6 +38,7 @@ const ContactsPage = () => {
   const [initialPhone, setInitialPhone] = useState('');
   const [initialType, setInitialType] = useState('lead');
   const [expandedRow, setExpandedRow] = useState(null);
+  const [openInConvertMode, setOpenInConvertMode] = useState(false);
 
   const handleRowClick = (contactId) => {
     // अगर पहले से ही expanded है तो collapse करें, अन्यथा expand करें
@@ -107,8 +108,9 @@ const ContactsPage = () => {
   }, [user.selectedBranch]);
   
   // Handle opening lead detail modal
-  const handleViewLead = (leadId) => {
+  const handleViewLead = (leadId, convertMode = false) => {
     setSelectedLeadId(leadId);
+    setOpenInConvertMode(convertMode);
     setShowLeadDetailModal(true);
   };
   
@@ -311,10 +313,14 @@ const handleLeadUpdated = (updatedLead) => {
       {/* Lead Detail Modal */}
       <LeadDetailModal
         isOpen={showLeadDetailModal}
-        onClose={() => setShowLeadDetailModal(false)}
+        onClose={() => {
+          setShowLeadDetailModal(false);
+          setOpenInConvertMode(false); // Reset the conversion mode state
+        }}
         leadId={selectedLeadId}
         onLeadUpdated={handleLeadUpdated}
         onConvertSuccess={handleLeadConverted}
+        initialConvertMode={openInConvertMode} // Pass the new prop
       />
       
       {/* Customer Detail Modal */}
@@ -538,8 +544,8 @@ const handleLeadUpdated = (updatedLead) => {
                 <button 
                   onClick={(e) => {
                     e.stopPropagation();
-                    // Convert to customer function
-                    handleViewLead(contact._id); // यहां आप सीधे कन्वर्ट मोड में जा सकते हैं
+                    // Pass true to open directly in convert mode
+                    handleViewLead(contact._id, true); 
                   }}
                   className="px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600"
                 >
