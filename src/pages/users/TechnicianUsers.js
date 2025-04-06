@@ -5,6 +5,7 @@ import SummaryApi from '../../common';
 import { useAuth } from '../../context/AuthContext';
 import AddTechnicianModal from '../../components/AddTechnicianModal';
 import AssignInventoryModal from '../inventory/AssignInventoryModal';
+import UnifiedInventoryAssignmentModal from '../inventory/UnifiedInventoryAssignmentModal';
 
 const TechnicianUsers = () => {
   const { user } = useAuth();
@@ -283,16 +284,16 @@ const TechnicianUsers = () => {
       
       {/* Assign Inventory Modal */}
       {selectedTechnician && (
-        <AssignInventoryModal
-          isOpen={showAssignInventoryModal}
-          onClose={() => setShowAssignInventoryModal(false)}
-          technician={selectedTechnician}
-          onSuccess={() => {
-            // Refresh the technicians list after successful assignment
-            fetchTechnicians();
-          }}
-        />
-      )}
+  <UnifiedInventoryAssignmentModal
+    isOpen={showAssignInventoryModal}
+    onClose={() => setShowAssignInventoryModal(false)}
+    technician={selectedTechnician}
+    onSuccess={() => {
+      // Refresh the technicians list after successful assignment
+      fetchTechnicians();
+    }}
+  />
+)}
     </div>
   );
 };
