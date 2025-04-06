@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { FiEdit, FiTrash2, FiPlus, FiSearch } from 'react-icons/fi';
+import { FiEdit, FiTrash2, FiPlus, FiSearch, FiUser, FiPackage } from 'react-icons/fi';
 import SummaryApi from '../../common';
 import { useAuth } from '../../context/AuthContext';
 import AddTechnicianModal from '../../components/AddTechnicianModal';
+import AssignInventoryModal from '../inventory/AssignInventoryModal';
 
 const TechnicianUsers = () => {
   const { user } = useAuth();
@@ -13,6 +14,15 @@ const TechnicianUsers = () => {
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [modalOpen, setModalOpen] = useState(false);
+  
+  // States for expanded rows and inventory assignment
+  const [expandedTechnician, setExpandedTechnician] = useState(null);
+  const [showAssignInventoryModal, setShowAssignInventoryModal] = useState(false);
+  const [selectedTechnician, setSelectedTechnician] = useState(null);
+
+  const handleRowClick = (technicianId) => {
+    setExpandedTechnician(expandedTechnician === technicianId ? null : technicianId);
+  };
   
   const fetchTechnicians = async () => {
     try {
@@ -94,6 +104,15 @@ const TechnicianUsers = () => {
     }
   };
   
+  const handleViewDetails = (technicianId) => {
+    navigate(`/users/technicians/edit/${technicianId}`);
+  };
+  
+  const handleAssignInventory = (technician) => {
+    setSelectedTechnician(technician);
+    setShowAssignInventoryModal(true);
+  };
+  
   return (
     <div>
       <div className="flex justify-between items-center mb-6">
@@ -162,71 +181,92 @@ const TechnicianUsers = () => {
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Status
                   </th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Actions
-                  </th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {filteredTechnicians.map(technician => (
-                  <tr key={technician._id}>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center">
-                        <div className="h-10 w-10 flex-shrink-0 bg-indigo-100 rounded-full flex items-center justify-center text-indigo-500 font-semibold">
-                          {technician.firstName.charAt(0)}{technician.lastName.charAt(0)}
-                        </div>
-                        <div className="ml-4">
-                          <div className="text-sm font-medium text-gray-900">
-                            {technician.firstName} {technician.lastName}
+                  <React.Fragment key={technician._id}>
+                    <tr 
+                      className="hover:bg-gray-50 cursor-pointer"
+                      onClick={() => handleRowClick(technician._id)}
+                    >
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="flex items-center">
+                          <div className="h-10 w-10 flex-shrink-0 bg-indigo-100 rounded-full flex items-center justify-center text-indigo-500 font-semibold">
+                            {technician.firstName.charAt(0)}{technician.lastName.charAt(0)}
                           </div>
-                          <div className="text-sm text-gray-500">
-                            {technician.phone || 'No phone'}
+                          <div className="ml-4">
+                            <div className="text-sm font-medium text-gray-900">
+                              {technician.firstName} {technician.lastName}
+                            </div>
+                            <div className="text-sm text-gray-500">
+                              {technician.phone || 'No phone'}
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">{technician.username}</div>
-                      <div className="text-sm text-gray-500">{technician.email}</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">
-                        {technician.branch && typeof technician.branch === 'object' 
-                          ? technician.branch.name 
-                          : 'N/A'}
-                      </div>
-                      <div className="text-sm text-gray-500">
-                        {technician.branch && typeof technician.branch === 'object' 
-                          ? technician.branch.location 
-                          : ''}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span 
-                        className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                          technician.status === 'active' 
-                            ? 'bg-green-100 text-green-800' 
-                            : 'bg-red-100 text-red-800'
-                        }`}
-                      >
-                        {technician.status}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                      <button
-                        onClick={() => navigate(`/users/technicians/edit/${technician._id}`)}
-                        className="text-indigo-600 hover:text-indigo-900 mr-3"
-                      >
-                        <FiEdit className="w-5 h-5" />
-                      </button>
-                      <button
-                        onClick={() => handleDeleteUser(technician._id)}
-                        className="text-red-600 hover:text-red-900"
-                      >
-                        <FiTrash2 className="w-5 h-5" />
-                      </button>
-                    </td>
-                  </tr>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm text-gray-900">{technician.username}</div>
+                        <div className="text-sm text-gray-500">{technician.email}</div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm text-gray-900">
+                          {technician.branch && typeof technician.branch === 'object' 
+                            ? technician.branch.name 
+                            : 'N/A'}
+                        </div>
+                        <div className="text-sm text-gray-500">
+                          {technician.branch && typeof technician.branch === 'object' 
+                            ? technician.branch.location 
+                            : ''}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span 
+                          className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                            technician.status === 'active' 
+                              ? 'bg-green-100 text-green-800' 
+                              : 'bg-red-100 text-red-800'
+                          }`}
+                        >
+                          {technician.status}
+                        </span>
+                      </td>
+                    </tr>
+                    
+                    {/* Expanded row with action buttons */}
+                    {expandedTechnician === technician._id && (
+                      <tr>
+                        <td colSpan="4" className="px-6 py-4 bg-gray-50">
+                          <div className="flex space-x-4">
+                            <button 
+                              className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 flex items-center"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleViewDetails(technician._id);
+                              }}
+                            >
+                              <FiUser className="mr-2" />
+                              View Details
+                            </button>
+                            
+                            {user.role === 'manager' && (
+                              <button 
+                                className="px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600 flex items-center"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleAssignInventory(technician);
+                                }}
+                              >
+                                <FiPackage className="mr-2" />
+                                Assign Inventory
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </React.Fragment>
                 ))}
               </tbody>
             </table>
@@ -240,6 +280,19 @@ const TechnicianUsers = () => {
         onClose={() => setModalOpen(false)} 
         onSuccess={fetchTechnicians}
       />
+      
+      {/* Assign Inventory Modal */}
+      {selectedTechnician && (
+        <AssignInventoryModal
+          isOpen={showAssignInventoryModal}
+          onClose={() => setShowAssignInventoryModal(false)}
+          technician={selectedTechnician}
+          onSuccess={() => {
+            // Refresh the technicians list after successful assignment
+            fetchTechnicians();
+          }}
+        />
+      )}
     </div>
   );
 };

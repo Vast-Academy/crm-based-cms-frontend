@@ -101,6 +101,17 @@ const DashboardLayout = () => {
     { name: 'Work Orders', path: '/work-orders', icon: FiTool },
     { name: 'Reports', path: '/reports', icon: FiClipboard },
     { name: 'Settings', path: '/settings', icon: FiSettings },
+    // Only show these items for technician role
+    user?.role === 'technician' && { 
+      name: 'Work Assignments', 
+      path: '/work-assignments', 
+      icon: FiClipboard 
+    },
+    user?.role === 'technician' && { 
+      name: 'Assigned Inventory', 
+      path: '/assigned-inventory', 
+      icon: FiPackage 
+    },
   ];
   
   // Filter out undefined items (from conditional rendering)

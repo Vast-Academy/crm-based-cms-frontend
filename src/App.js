@@ -38,6 +38,8 @@ import ServicesList from './pages/inventory/ServicesList';
 import OwnershipTransferPage from './pages/users/OwnershipTransferPage';
 import ContactsPage from './pages/leads/ContactsPage';
 import WorkOrdersPage from './pages/workOrders/WorkOrdersPage';
+import TechnicianWorkAssignments from './pages/technician/TechnicianWorkAssignments';
+import AssignedInventory from './pages/inventory/AssignedInventory';
 
 // Inventory Management - Will be implemented later
 // import Inventory from './pages/inventory/Inventory';
@@ -273,6 +275,24 @@ function App() {
                   <WorkOrdersPage />
                 </ProtectedRoute>
               } 
+            />
+
+            <Route 
+              path="work-assignments" 
+              element={
+                <ProtectedRoute allowedRoles={['technician']}>
+                  <TechnicianWorkAssignments />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route 
+              path="assigned-inventory" 
+              element={
+                <ProtectedRoute allowedRoles={['technician']}>
+                  <AssignedInventory />
+                </ProtectedRoute>
+              }
             />
             <Route path="reports" element={<div>Reports (Coming Soon)</div>} />
             <Route path="settings" element={<div>Settings (Coming Soon)</div>} />

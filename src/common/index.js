@@ -172,6 +172,22 @@ const SummaryApi = {
       assignTechnician: {
         url : `${backendDomain}/api/assign-technician`,
         method: "post"
+      },
+      assignInventoryToTechnician: {
+        url: `${backendDomain}/api/assign-inventory-technician`,
+        method: "post"
+      },
+      getTechnicianInventory:{
+        url : `${backendDomain}/api/get-technician-inventory`,
+        method: "get"
+      },
+      getTechnicianWorkOrders: {
+        url : `${backendDomain}/api/technician-work-orders`,
+        method: "get"
+      },
+      updateWorkOrderStatus: {
+        url : `${backendDomain}/api/update-work-status`,
+        method: "post"
       }
 }
 
