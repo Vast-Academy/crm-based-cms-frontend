@@ -200,6 +200,10 @@ const SummaryApi = {
       completeProject: {
         url: `${backendDomain}/api/complete-project`,
         method: "post"
+      },
+      getTechnicianActiveProject: {
+        url : `${backendDomain}/api/technician-active-projects`,
+        method: "get"
       }
 }
 

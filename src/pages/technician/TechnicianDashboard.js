@@ -98,6 +98,19 @@ const TechnicianDashboard = () => {
     setShowWorkOrderModal(true);
   };
 
+  // Handle work order status update
+  const handleWorkOrderStatusUpdate = (updatedWorkOrder) => {
+    // Update the work order in our state
+    setWorkOrders(prevOrders => {
+      return prevOrders.map(order => {
+        if (order.orderId === updatedWorkOrder.orderId) {
+          return { ...order, ...updatedWorkOrder };
+        }
+        return order;
+      });
+    });
+  };
+
   if (loading) return <LoadingSpinner />;
 
   return (
@@ -149,8 +162,8 @@ const TechnicianDashboard = () => {
                   <div className="text-right">
                     <p className="font-medium">
                       {item.type === 'serialized-product' 
-                        ? `${item.serializedItems.length} units` 
-                        : `${item.genericQuantity} ${item.unit || 'units'}`}
+                        ? `${item.serializedItems.length} ${item.unit || 'Piece'}` 
+                        : `${item.genericQuantity} ${item.unit || 'Piece'}`}
                     </p>
                   </div>
                 </div>
@@ -185,13 +198,19 @@ const TechnicianDashboard = () => {
             workOrders.map((order) => (
               <div 
                 key={order.orderId} 
-                className="bg-white rounded-lg shadow-md p-4"
+                className={`bg-white rounded-lg shadow-md p-4 border-l-4 ${
+                  order.status === 'assigned' ? 'border-blue-500' :
+                  order.status === 'in-progress' ? 'border-purple-500' :
+                  order.status === 'paused' ? 'border-orange-500' :
+                  'border-green-500'
+                }`}
               >
                 <div className="flex justify-between items-center mb-3">
                   <h3 className="font-medium">{order.projectType}</h3>
                   <span className={`px-2 py-1 rounded-full text-xs capitalize ${
                     order.status === 'assigned' ? 'bg-blue-100 text-blue-800' :
                     order.status === 'in-progress' ? 'bg-purple-100 text-purple-800' :
+                    order.status === 'paused' ? 'bg-orange-100 text-orange-800' :
                     'bg-green-100 text-green-800'
                   }`}>
                     {order.status}
@@ -238,6 +257,7 @@ const TechnicianDashboard = () => {
             setSelectedWorkOrder(null);
           }}
           workOrder={selectedWorkOrder}
+          onStatusUpdate={handleWorkOrderStatusUpdate}
         />
       )}
     </div>
