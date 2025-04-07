@@ -188,6 +188,18 @@ const SummaryApi = {
       updateWorkOrderStatus: {
         url : `${backendDomain}/api/update-work-status`,
         method: "post"
+      },
+      startProject: {
+        url: `${backendDomain}/api/start-project`,
+        method: "post"
+      },
+      updateProjectStatus: {
+        url : `${backendDomain}/api/update-project-status`,
+        method: "post"
+      },
+      completeProject: {
+        url: `${backendDomain}/api/complete-project`,
+        method: "post"
       }
 }
 

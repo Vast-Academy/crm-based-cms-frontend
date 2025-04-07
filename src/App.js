@@ -40,6 +40,7 @@ import ContactsPage from './pages/leads/ContactsPage';
 import WorkOrdersPage from './pages/workOrders/WorkOrdersPage';
 import TechnicianWorkAssignments from './pages/technician/TechnicianWorkAssignments';
 import AssignedInventory from './pages/inventory/AssignedInventory';
+import TechnicianDashboard from './pages/technician/TechnicianDashboard';
 
 // Inventory Management - Will be implemented later
 // import Inventory from './pages/inventory/Inventory';
@@ -277,7 +278,16 @@ function App() {
               } 
             />
 
-            <Route 
+        <Route 
+          path="technician-dashboard" 
+          element={
+            <ProtectedRoute allowedRoles={['technician']}>
+              <TechnicianDashboard />
+            </ProtectedRoute>
+          }
+        />
+
+            {/* <Route 
               path="work-assignments" 
               element={
                 <ProtectedRoute allowedRoles={['technician']}>
@@ -293,7 +303,7 @@ function App() {
                   <AssignedInventory />
                 </ProtectedRoute>
               }
-            />
+            /> */}
             <Route path="reports" element={<div>Reports (Coming Soon)</div>} />
             <Route path="settings" element={<div>Settings (Coming Soon)</div>} />
             

@@ -152,15 +152,20 @@ const DashboardLayout = () => {
     { name: 'Reports', path: '/reports', icon: FiClipboard },
     { name: 'Settings', path: '/settings', icon: FiSettings },
     // Only show these items for technician role
+    // user?.role === 'technician' && { 
+    //   name: 'Work Assignments', 
+    //   path: '/work-assignments', 
+    //   icon: FiClipboard 
+    // },
+    // user?.role === 'technician' && { 
+    //   name: 'Assigned Inventory', 
+    //   path: '/assigned-inventory', 
+    //   icon: FiPackage 
+    // },
     user?.role === 'technician' && { 
-      name: 'Work Assignments', 
-      path: '/work-assignments', 
-      icon: FiClipboard 
-    },
-    user?.role === 'technician' && { 
-      name: 'Assigned Inventory', 
-      path: '/assigned-inventory', 
-      icon: FiPackage 
+      name: 'Technician Dashboard', 
+      path: '/technician-dashboard', 
+      icon: FiTool 
     },
   ];
   
