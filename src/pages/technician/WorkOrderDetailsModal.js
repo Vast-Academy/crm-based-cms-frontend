@@ -1,7 +1,16 @@
-import React from 'react';
+import React, { useRef, useEffect } from 'react';
 import { FiX, FiUser, FiMapPin, FiPhone, FiMail, FiCalendar, FiInfo } from 'react-icons/fi';
 
 const WorkOrderDetailsModal = ({ isOpen, onClose, workOrder }) => {
+  const modalContentRef = useRef(null);
+  
+  // Set up a scrollable container to ensure visibility of all content
+  useEffect(() => {
+    if (isOpen && modalContentRef.current) {
+      modalContentRef.current.scrollTop = 0;
+    }
+  }, [isOpen, workOrder]);
+  
   if (!isOpen || !workOrder) return null;
   
   const formatDate = (dateString) => {
@@ -16,9 +25,9 @@ const WorkOrderDetailsModal = ({ isOpen, onClose, workOrder }) => {
   };
   
   return (
-    <div className="fixed inset-0 bg-gray-600 bg-opacity-75 flex justify-center items-center z-50">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-md max-h-[90vh] overflow-hidden">
-        <div className="p-4 border-b flex justify-between items-center">
+    <div className="fixed inset-0 bg-gray-600 bg-opacity-75 flex justify-center items-start z-50 p-2 overflow-auto">
+      <div className="bg-white rounded-lg shadow-xl w-full max-w-md max-h-[90vh] overflow-hidden my-4">
+        <div className="sticky top-0 bg-white p-4 border-b flex justify-between items-center">
           <h2 className="text-lg font-semibold">Work Order Details</h2>
           <button 
             onClick={onClose}
@@ -28,7 +37,11 @@ const WorkOrderDetailsModal = ({ isOpen, onClose, workOrder }) => {
           </button>
         </div>
         
-        <div className="overflow-y-auto max-h-[calc(90vh-60px)] p-4">
+        <div 
+          ref={modalContentRef}
+          className="overflow-y-auto p-4"
+          style={{ maxHeight: 'calc(90vh - 60px)' }}
+        >
           {/* Status Badge */}
           <div className="mb-4 flex justify-between items-center">
             <span className={`px-3 py-1 rounded-full text-sm capitalize ${

@@ -65,6 +65,17 @@ const TechnicianDashboard = () => {
     }
   };
 
+  // Calculate total units across all inventory items
+  const calculateTotalUnits = () => {
+    return inventoryItems.reduce((total, item) => {
+      if (item.type === 'serialized-product') {
+        return total + item.serializedItems.length;
+      } else {
+        return total + item.genericQuantity;
+      }
+    }, 0);
+  };
+
   // Load data on component mount
   useEffect(() => {
     const loadData = async () => {
@@ -112,8 +123,8 @@ const TechnicianDashboard = () => {
         <div className="bg-white rounded-lg shadow-md p-4">
           <div className="flex justify-between items-center mb-4">
             <div>
-              <p className="text-gray-600">Total Items</p>
-              <p className="text-2xl font-bold text-blue-600">{inventoryItems.length}</p>
+              <p className="text-gray-600">Total Units</p>
+              <p className="text-2xl font-bold text-blue-600">{calculateTotalUnits()}</p>
             </div>
             <button 
               onClick={() => setShowInventoryModal(true)}
@@ -176,7 +187,7 @@ const TechnicianDashboard = () => {
                 key={order.orderId} 
                 className="bg-white rounded-lg shadow-md p-4"
               >
-                <div className="flex justify-between items-start mb-2">
+                <div className="flex justify-between items-center mb-3">
                   <h3 className="font-medium">{order.projectType}</h3>
                   <span className={`px-2 py-1 rounded-full text-xs capitalize ${
                     order.status === 'assigned' ? 'bg-blue-100 text-blue-800' :
@@ -187,8 +198,7 @@ const TechnicianDashboard = () => {
                   </span>
                 </div>
                 
-                <p className="text-sm text-gray-600 mb-2">Order ID: {order.orderId}</p>
-                <p className="text-sm mb-3"><span className="text-gray-500">Customer:</span> {order.customerName}</p>
+                <p className="text-sm text-gray-600 mb-3">Order ID: {order.orderId}</p>
                 
                 <button 
                   onClick={() => handleWorkOrderClick(order)}
@@ -210,7 +220,10 @@ const TechnicianDashboard = () => {
       {showInventoryModal && (
         <InventoryDetailsModal 
           isOpen={showInventoryModal}
-          onClose={() => setShowInventoryModal(false)}
+          onClose={() => {
+            setShowInventoryModal(false);
+            setSelectedInventory(null);
+          }}
           inventory={inventoryItems}
           selectedItem={selectedInventory}
         />
@@ -220,7 +233,10 @@ const TechnicianDashboard = () => {
       {showWorkOrderModal && (
         <WorkOrderDetailsModal 
           isOpen={showWorkOrderModal}
-          onClose={() => setShowWorkOrderModal(false)}
+          onClose={() => {
+            setShowWorkOrderModal(false);
+            setSelectedWorkOrder(null);
+          }}
           workOrder={selectedWorkOrder}
         />
       )}
