@@ -204,6 +204,10 @@ const SummaryApi = {
       getTechnicianActiveProject: {
         url : `${backendDomain}/api/technician-active-projects`,
         method: "get"
+      },
+      createWorkOrderBill: {
+        url : `${backendDomain}/api/create-bill`,
+        method: "post"
       }
 }
 
