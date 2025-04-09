@@ -94,7 +94,7 @@ const DashboardLayout = () => {
       path: '/ownership-transfer',
       icon: FiRefreshCw
     },
-    {
+    user?.role === 'admin' &&  { 
       name: 'User Management',
       icon: FiUsers,
       dropdown: true,
@@ -149,8 +149,6 @@ const DashboardLayout = () => {
       ]
     },
     { name: 'Work Orders', path: '/work-orders', icon: FiTool },
-    { name: 'Reports', path: '/reports', icon: FiClipboard },
-    { name: 'Settings', path: '/settings', icon: FiSettings },
     // Only show these items for technician role
     // user?.role === 'technician' && { 
     //   name: 'Work Assignments', 
@@ -166,6 +164,11 @@ const DashboardLayout = () => {
       name: 'Technician Dashboard', 
       path: '/technician-dashboard', 
       icon: FiTool 
+    },
+    user?.role === 'manager' && { 
+      name: 'Inventory Transfer History', 
+      path: '/inventory-transfer-history', 
+      icon: FiRefreshCw 
     },
   ];
   

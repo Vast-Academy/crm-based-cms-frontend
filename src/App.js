@@ -24,12 +24,10 @@ import AddTechnician from './pages/users/AddTechnician';
 import BranchList from './pages/branches/BranchList';
 import AddBranch from './pages/branches/AddBranch';
 import LeadList from './pages/leads/LeadList';
-import LeadDetail from './pages/leads/LeadDetail';
-import AddLead from './pages/leads/AddLead'
+
 
 import CustomerList from './pages/customers/CustomerList'
 import LeadDetailRedirect from './pages/leads/LeadDetailRedirect';
-import InventoryPage from './pages/inventory/InventoryPage';
 import EditTechnician from './pages/users/EditTechnician';
 import AddInventoryItem from './pages/inventory/AddInventoryItem';
 import SerializedProductsList from './pages/inventory/SerializedProductsList';
@@ -38,14 +36,8 @@ import ServicesList from './pages/inventory/ServicesList';
 import OwnershipTransferPage from './pages/users/OwnershipTransferPage';
 import ContactsPage from './pages/leads/ContactsPage';
 import WorkOrdersPage from './pages/workOrders/WorkOrdersPage';
-import TechnicianWorkAssignments from './pages/technician/TechnicianWorkAssignments';
-import AssignedInventory from './pages/inventory/AssignedInventory';
 import TechnicianDashboard from './pages/technician/TechnicianDashboard';
-
-// Inventory Management - Will be implemented later
-// import Inventory from './pages/inventory/Inventory';
-// import AddInventoryItem from './pages/inventory/AddInventoryItem';
-// import AssignInventory from './pages/inventory/AssignInventory';
+import TransferHistoryTable from './pages/manager/TransferHistoryTable';
 
 // Protected route component
 const ProtectedRoute = ({ children, allowedRoles = [] }) => {
@@ -224,17 +216,6 @@ function App() {
               } 
             />
             
-            {/* Placeholder routes for future implementation */}
-              {/* <Route 
-              path="inventory" 
-              element={
-                <ProtectedRoute>
-                  <InventoryPage />
-                </ProtectedRoute>
-              } 
-            />
-            <Route path="inventory/add" element={<div>Add Inventory Item (Coming Soon)</div>} />
-            <Route path="inventory/assign" element={<div>Assign Inventory (Coming Soon)</div>} /> */}
 
             <Route
               path="inventory/add"
@@ -279,6 +260,15 @@ function App() {
             />
 
         <Route 
+          path="inventory-transfer-history" 
+          element={
+            <ProtectedRoute allowedRoles={['manager']}>
+              <TransferHistoryTable />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route 
           path="technician-dashboard" 
           element={
             <ProtectedRoute allowedRoles={['technician']}>
@@ -287,26 +277,6 @@ function App() {
           }
         />
 
-            {/* <Route 
-              path="work-assignments" 
-              element={
-                <ProtectedRoute allowedRoles={['technician']}>
-                  <TechnicianWorkAssignments />
-                </ProtectedRoute>
-              }
-            />
-
-            <Route 
-              path="assigned-inventory" 
-              element={
-                <ProtectedRoute allowedRoles={['technician']}>
-                  <AssignedInventory />
-                </ProtectedRoute>
-              }
-            /> */}
-            <Route path="reports" element={<div>Reports (Coming Soon)</div>} />
-            <Route path="settings" element={<div>Settings (Coming Soon)</div>} />
-            
             {/* 404 Not Found */}
             <Route path="*" element={<div>Page Not Found</div>} />
           </Route>

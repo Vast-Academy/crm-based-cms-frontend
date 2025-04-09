@@ -189,18 +189,6 @@ const SummaryApi = {
         url : `${backendDomain}/api/update-work-status`,
         method: "post"
       },
-      startProject: {
-        url: `${backendDomain}/api/start-project`,
-        method: "post"
-      },
-      updateProjectStatus: {
-        url : `${backendDomain}/api/update-project-status`,
-        method: "post"
-      },
-      completeProject: {
-        url: `${backendDomain}/api/complete-project`,
-        method: "post"
-      },
       getTechnicianActiveProject: {
         url : `${backendDomain}/api/technician-active-projects`,
         method: "get"
@@ -208,6 +196,26 @@ const SummaryApi = {
       createWorkOrderBill: {
         url : `${backendDomain}/api/create-bill`,
         method: "post"
+      },
+      confirmWorkOrderBill: {
+        url : `${backendDomain}/api/confirm-order-bill`,
+        method: "post"
+      },
+      completeWorkOrder : {
+        url : `${backendDomain}/api/complete-work-order`,
+        method: "post"
+      },
+      getWorkOrderDetails: {
+        url: `${backendDomain}/api/get-work-order-details`,
+        method: "get"
+      },
+      returnInventoryToManager: {
+        url : `${backendDomain}/api/return-inventory`,
+        method: "post"
+      },
+      getTransferHistory: {
+        url : `${backendDomain}/api/get-transfer-history`,
+        method: "get"
       }
 }
 

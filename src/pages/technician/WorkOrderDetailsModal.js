@@ -1,7 +1,8 @@
 import React, { useRef, useEffect, useState } from 'react';
-import { FiX, FiUser, FiMapPin, FiCalendar, FiInfo, FiPlay, FiPause, FiSearch, FiCamera, FiFileText } from 'react-icons/fi';
+import { FiX, FiUser, FiMapPin, FiCalendar, FiInfo, FiPlay, FiPause, FiSearch, FiCamera, FiFileText, FiCheckCircle, FiArrowRight } from 'react-icons/fi';
 import SummaryApi from '../../common';
 import { useAuth } from '../../context/AuthContext';
+import { QRCodeCanvas } from 'qrcode.react';
 
 // For more basic projects, a simpler scan simulation approach might be better
 const SimpleScanner = ({ onScan, onClose }) => {
@@ -58,6 +59,16 @@ const WorkOrderDetailsModal = ({ isOpen, onClose, workOrder, onStatusUpdate }) =
   const [showCameraScanner, setShowCameraScanner] = useState(false);
   const [showBillSummary, setShowBillSummary] = useState(false);
   
+  // Payment related states
+  const [showPaymentOptions, setShowPaymentOptions] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState('');
+  const [transactionId, setTransactionId] = useState('');
+  const [cashAmount, setCashAmount] = useState(0);
+  const [showQRCode, setShowQRCode] = useState(false);
+  const [showPaymentSuccess, setShowPaymentSuccess] = useState(false);
+  const [billId, setBillId] = useState(null);
+  const [paymentCompleted, setPaymentCompleted] = useState(false);
+  
   // Reset states when modal opens with a different work order
   useEffect(() => {
     setRemark('');
@@ -67,10 +78,23 @@ const WorkOrderDetailsModal = ({ isOpen, onClose, workOrder, onStatusUpdate }) =
     setSearchResults([]);
     setShowCameraScanner(false);
     setShowBillSummary(false);
+    setShowPaymentOptions(false);
+    setPaymentMethod('');
+    setTransactionId('');
+    setCashAmount(0);
+    setShowQRCode(false);
+    setShowPaymentSuccess(false);
+    setBillId(null);
+    setPaymentCompleted(false);
     
     // Load technician inventory if work order is in-progress
     if (workOrder?.status === 'in-progress') {
       fetchTechnicianInventory();
+      
+      // Check if work order has payment info - यह महत्वपूर्ण है
+      if (workOrder.billingInfo && workOrder.billingInfo.length > 0) {
+        setPaymentCompleted(true);
+      }
     }
   }, [workOrder?.orderId]);
   
@@ -201,8 +225,12 @@ const WorkOrderDetailsModal = ({ isOpen, onClose, workOrder, onStatusUpdate }) =
           onStatusUpdate(data.data);
         }
         
-        // Close the modal for pause action
+        // Close the modal for pause action or show success for complete action
         if (newStatus === 'paused') {
+          onClose();
+        } else if (newStatus === 'completed') {
+          setShowPaymentSuccess(false);
+          alert('Project has been marked as completed successfully!');
           onClose();
         }
         
@@ -233,20 +261,25 @@ const WorkOrderDetailsModal = ({ isOpen, onClose, workOrder, onStatusUpdate }) =
     
     const results = [];
     const query = searchQuery.toLowerCase();
+    const addedSerialNumbers = new Set(); // Track added serial numbers
     
-    // Search in serialized items
+    // Search in inventory items
     technicianInventory.forEach(item => {
-      // Match by item name first
       const nameMatch = item.itemName.toLowerCase().includes(query);
       
       if (item.type === 'serialized-product') {
-        // For serialized items, also check serial numbers
-        const matchingSerials = item.serializedItems.filter(
-          serial => serial.serialNumber.toLowerCase().includes(query) || nameMatch
+        // For serialized items, only show active ones
+        const activeSerials = item.serializedItems.filter(
+          serial => (
+            serial.status === 'active' && 
+            (serial.serialNumber.toLowerCase().includes(query) || nameMatch) &&
+            !addedSerialNumbers.has(serial.serialNumber) // Prevent duplicates
+          )
         );
         
-        if (matchingSerials.length > 0) {
-          matchingSerials.forEach(serialItem => {
+        if (activeSerials.length > 0) {
+          activeSerials.forEach(serialItem => {
+            addedSerialNumbers.add(serialItem.serialNumber);
             results.push({
               ...item,
               selectedSerialNumber: serialItem.serialNumber,
@@ -255,8 +288,8 @@ const WorkOrderDetailsModal = ({ isOpen, onClose, workOrder, onStatusUpdate }) =
             });
           });
         }
-      } else if (nameMatch) {
-        // For generic items, match by name
+      } else if (nameMatch && item.genericQuantity > 0) {
+        // For generic items, only show if quantity > 0
         results.push({
           ...item,
           quantity: 1,
@@ -376,14 +409,155 @@ const WorkOrderDetailsModal = ({ isOpen, onClose, workOrder, onStatusUpdate }) =
     return Object.values(grouped);
   };
   
-  // Handle confirming the bill (this will be implemented later)
-  const handleConfirmBill = () => {
-    // This will be implemented later - for now just close the summary
-    setShowBillSummary(false);
+  // Handle confirming the bill and show payment options
+  const handleConfirmBill = async () => {
+    try {
+      setLoading(true);
+      
+      // Create bill items array for API
+      const billItems = selectedItems.map(item => {
+        return {
+          itemId: item.itemId,
+          quantity: item.quantity,
+          serialNumber: item.selectedSerialNumber || null
+        };
+      });
+      
+      // Create the bill in the database
+      const response = await fetch(SummaryApi.createWorkOrderBill.url, {
+        method: SummaryApi.createWorkOrderBill.method,
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          customerId: workOrder.customerId,
+          orderId: workOrder.orderId,
+          items: billItems
+        })
+      });
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        // Set the bill ID for later use
+        setBillId(data.data.billId || data.data._id);
+        
+        // Hide bill summary and show payment options
+        setShowBillSummary(false);
+        setShowPaymentOptions(true);
+        
+        // Set cash amount to the total
+        setCashAmount(calculateTotal());
+      } else {
+        setError(data.message || 'Failed to create bill');
+      }
+    } catch (err) {
+      setError('Server error. Please try again.');
+      console.error('Error creating bill:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  // Handle selecting payment method
+  const handlePaymentMethodSelect = (method) => {
+    setPaymentMethod(method);
     
-    // You will add actual bill confirmation logic here later
-    // For now, just show a message
-    alert('Bill confirmation feature will be implemented in the next phase');
+    if (method === 'online') {
+      setShowQRCode(true);
+    } else {
+      setShowQRCode(false);
+    }
+  };
+  
+  // Handle processing payment
+  const handleProcessPayment = async () => {
+    try {
+      setLoading(true);
+      
+      // Validate transaction ID for online payments
+      if (paymentMethod === 'online' && (!transactionId || transactionId.length < 12)) {
+        setError('Please enter a valid UPI transaction ID (min 12 characters)');
+        setLoading(false);
+        return;
+      }
+      
+      // API call to confirm payment
+      const response = await fetch(SummaryApi.confirmWorkOrderBill.url, {
+        method: SummaryApi.confirmWorkOrderBill.method,
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          billId,
+          paymentMethod,
+          transactionId: paymentMethod === 'online' ? transactionId : null
+        })
+      });
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        // Hide payment options and show success
+        setShowPaymentOptions(false);
+        setShowQRCode(false);
+        setShowPaymentSuccess(true);
+        
+        // यहां महत्वपूर्ण अपडेट: कस्टमर को फिर से लोड करें ताकि अपडेटेड वर्क ऑर्डर जानकारी प्राप्त हो
+        if (onStatusUpdate && data.data && data.data.workOrder) {
+          onStatusUpdate(data.data.workOrder);
+        } else {
+          // या वर्क ऑर्डर को फिर से फेच करें
+          fetchWorkOrderDetails();
+        }
+      } else {
+        setError(data.message || 'Failed to process payment');
+      }
+    } catch (err) {
+      setError('Server error. Please try again.');
+      console.error('Error processing payment:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchWorkOrderDetails = async () => {
+    try {
+      setLoading(true);
+      // URL को dynamically generate करें customer ID और order ID के साथ
+      const url = `${SummaryApi.getWorkOrderDetails.url}/${workOrder.customerId}/${workOrder.orderId}`;
+      
+      const response = await fetch(url, {
+        method: SummaryApi.getWorkOrderDetails.method,
+        credentials: 'include'
+      });
+      
+      const data = await response.json();
+      
+      if (data.success && data.data) {
+        if (onStatusUpdate) {
+          onStatusUpdate(data.data);
+        }
+      } else {
+        console.error('Failed to fetch updated work order details');
+      }
+    } catch (err) {
+      console.error('Error fetching work order details:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  // Generate UPI payment string for QR code
+  const generateUpiString = () => {
+    // This is a simplified example - in production, you'd use your company's UPI ID
+    const upiId = 'yourcompany@ybl';
+    const amount = calculateTotal();
+    const purpose = `Bill-${workOrder.orderId}`;
+    
+    return `upi://pay?pa=${upiId}&pn=Your%20Company&am=${amount}&tn=${purpose}`;
   };
   
   return (
@@ -464,6 +638,12 @@ const WorkOrderDetailsModal = ({ isOpen, onClose, workOrder, onStatusUpdate }) =
                 </tfoot>
               </table>
               
+              {error && (
+                <div className="mb-4 bg-red-50 text-red-600 p-3 rounded-md text-sm">
+                  {error}
+                </div>
+              )}
+              
               <div className="mt-4 flex justify-between">
                 <button 
                   className="px-4 py-2 bg-gray-300 text-gray-800 rounded-md"
@@ -474,8 +654,128 @@ const WorkOrderDetailsModal = ({ isOpen, onClose, workOrder, onStatusUpdate }) =
                 <button 
                   className="px-4 py-2 bg-green-500 text-white rounded-md"
                   onClick={handleConfirmBill}
+                  disabled={loading}
                 >
-                  Confirm Bill
+                  {loading ? 'Processing...' : 'Confirm Bill'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+        
+        {/* Payment Options Modal */}
+        {showPaymentOptions && (
+          <div className="fixed inset-0 bg-gray-600 bg-opacity-75 flex justify-center items-center z-50">
+            <div className="bg-white rounded-lg shadow-xl w-full max-w-md overflow-hidden p-4">
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-lg font-semibold">Select Payment Method</h2>
+                <button 
+                  onClick={() => setShowPaymentOptions(false)}
+                  className="p-1 rounded-full hover:bg-gray-100"
+                >
+                  <FiX size={20} />
+                </button>
+              </div>
+              
+              <div className="mb-4">
+                <p className="text-sm text-gray-600 mb-2">Amount: ₹{calculateTotal().toFixed(2)}</p>
+                <div className="space-y-2">
+                  <button 
+                    className={`w-full p-3 rounded-md flex items-center justify-between ${
+                      paymentMethod === 'online' ? 'bg-blue-50 border-blue-500 border' : 'bg-gray-50 border'
+                    }`}
+                    onClick={() => handlePaymentMethodSelect('online')}
+                  >
+                    <span>Payment via Online</span>
+                    {paymentMethod === 'online' && (
+                      <FiCheckCircle className="text-blue-500" />
+                    )}
+                  </button>
+                  
+                  <button 
+                    className={`w-full p-3 rounded-md flex items-center justify-between ${
+                      paymentMethod === 'cash' ? 'bg-blue-50 border-blue-500 border' : 'bg-gray-50 border'
+                    }`}
+                    onClick={() => handlePaymentMethodSelect('cash')}
+                  >
+                    <span>Payment via Cash</span>
+                    {paymentMethod === 'cash' && (
+                      <FiCheckCircle className="text-blue-500" />
+                    )}
+                  </button>
+                </div>
+              </div>
+              
+              {/* Online Payment with QR Code */}
+              {showQRCode && (
+                <div className="text-center mb-4">
+                  <p className="font-medium mb-3">Scan this QR code to pay</p>
+                  <div className="bg-white p-3 rounded-md inline-block mb-3">
+                    <QRCodeCanvas 
+                      value={generateUpiString()} 
+                      size={200} 
+                      level="H"
+                      includeMargin={true}
+                    />
+                  </div>
+                  <p className="text-sm text-gray-600 mb-2">Once payment is complete, enter the UPI transaction ID below:</p>
+                  <input
+                    type="text"
+                    className="w-full px-3 py-2 border rounded-md mb-3"
+                    placeholder="Enter UPI Transaction ID (min 12 characters)"
+                    value={transactionId}
+                    onChange={(e) => setTransactionId(e.target.value)}
+                    minLength={12}
+                  />
+                  <p className="text-xs text-gray-500">Enter a valid transaction ID with minimum 12 digits</p>
+                </div>
+              )}
+              
+              {/* Cash Payment */}
+              {paymentMethod === 'cash' && (
+                <div className="mb-4">
+                  <p className="font-medium mb-3">Cash Payment</p>
+                  <div className="flex items-center bg-gray-50 p-3 rounded-md mb-3">
+                    <span className="text-gray-700">Amount:</span>
+                    <input
+                      type="number"
+                      className="w-full ml-2 px-3 py-2 border rounded-md"
+                      value={cashAmount}
+                      onChange={(e) => setCashAmount(parseFloat(e.target.value))}
+                      min={0}
+                      readOnly
+                    />
+                  </div>
+                </div>
+              )}
+              
+              {error && (
+                <div className="mb-4 bg-red-50 text-red-600 p-3 rounded-md text-sm">
+                  {error}
+                </div>
+              )}
+              
+              <div className="mt-4 flex justify-between">
+                <button 
+                  className="px-4 py-2 bg-gray-300 text-gray-800 rounded-md"
+                  onClick={() => {
+                    setShowPaymentOptions(false);
+                    setShowBillSummary(true);
+                  }}
+                  disabled={loading}
+                >
+                  Back
+                </button>
+                <button 
+                  className="px-4 py-2 bg-green-500 text-white rounded-md flex items-center"
+                  onClick={handleProcessPayment}
+                  disabled={loading || (paymentMethod === 'online' && transactionId.length < 12) || !paymentMethod}
+                >
+                  {loading ? 'Processing...' : (
+                    <>
+                      Confirm and Submit <FiArrowRight className="ml-1" />
+                    </>
+                  )}
                 </button>
               </div>
             </div>
@@ -500,6 +800,38 @@ const WorkOrderDetailsModal = ({ isOpen, onClose, workOrder, onStatusUpdate }) =
                 onScan={handleScanResult}
                 onClose={() => setShowCameraScanner(false)}
               />
+            </div>
+          </div>
+        )}
+        
+        {/* Payment Success Modal */}
+        {showPaymentSuccess && (
+          <div className="fixed inset-0 bg-gray-600 bg-opacity-75 flex justify-center items-center z-50">
+            <div className="bg-white rounded-lg shadow-xl w-full max-w-md overflow-hidden p-4">
+              <div className="text-center py-6">
+                <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <FiCheckCircle className="text-green-500" size={32} />
+                </div>
+                <h2 className="text-xl font-semibold mb-2">Payment Successful!</h2>
+                <p className="text-gray-600 mb-4">
+                  Payment of ₹{calculateTotal().toFixed(2)} has been successfully processed.
+                </p>
+                
+                <button 
+  className="px-6 py-2 bg-green-500 text-white rounded-md mx-auto"
+  onClick={() => {
+    setShowPaymentSuccess(false);
+    
+    // Clear previous selections
+    setSelectedItems([]);
+    
+    // महत्वपूर्ण: यहां एक स्टेट वैरिएबल जोड़ें जो भुगतान सफलता को ट्रैक करे
+    setPaymentCompleted(true);
+  }}
+>
+  Done
+</button>
+              </div>
             </div>
           </div>
         )}
@@ -581,24 +913,51 @@ const WorkOrderDetailsModal = ({ isOpen, onClose, workOrder, onStatusUpdate }) =
           
           {/* Status History (if any) */}
           {workOrder.statusHistory && workOrder.statusHistory.length > 0 && (
-            <div className="mb-4">
-              <h3 className="text-md font-medium mb-3">Status History</h3>
-              
-              <div className="bg-white border rounded-lg p-3">
-                <div className="space-y-3">
-                  {workOrder.statusHistory.map((history, index) => (
-                    <div key={index} className="text-sm border-b pb-2 last:border-b-0 last:pb-0">
-                      <div className="flex justify-between">
-                        <span className="font-medium capitalize">{history.status}</span>
-                        <span className="text-gray-500">{formatDate(history.updatedAt)}</span>
-                      </div>
-                      {history.remark && <p className="mt-1 text-gray-600">{history.remark}</p>}
-                    </div>
-                  ))}
-                </div>
-              </div>
+  <div className="mb-4">
+    <h3 className="text-md font-medium mb-3">Status History</h3>
+    
+    <div className="bg-white border rounded-lg p-3">
+      <div className="space-y-3">
+        {workOrder.statusHistory.map((history, index) => (
+          <div key={index} className="text-sm border-b pb-2 last:border-b-0 last:pb-0">
+            <div className="flex justify-between">
+              <span className="font-medium capitalize">{history.status}</span>
+              <span className="text-gray-500">{formatDate(history.updatedAt)}</span>
             </div>
-          )}
+            {history.remark && <p className="mt-1 text-gray-600">{history.remark}</p>}
+          </div>
+        ))}
+      </div>
+    </div>
+  </div>
+)}
+
+{/* Payment History - Add this new section */}
+{workOrder.billingInfo && workOrder.billingInfo.length > 0 && (
+  <div className="mb-4">
+    <h3 className="text-md font-medium mb-3">Payment History</h3>
+    
+    <div className="bg-white border rounded-lg p-3">
+      <div className="space-y-3">
+        {workOrder.billingInfo.map((payment, index) => (
+          <div key={index} className="text-sm border-b pb-2 last:border-b-0 last:pb-0">
+            <div className="flex justify-between">
+              <span className="font-medium">Bill #{payment.billNumber}</span>
+              <span className="text-gray-500">{formatDate(payment.paidAt)}</span>
+            </div>
+            <div className="mt-1">
+              <p><span className="text-gray-600">Amount:</span> ₹{payment.amount.toFixed(2)}</p>
+              <p><span className="text-gray-600">Method:</span> {payment.paymentMethod === 'online' ? 'Online Payment' : 'Cash Payment'}</p>
+              {payment.transactionId && (
+                <p><span className="text-gray-600">Transaction ID:</span> {payment.transactionId}</p>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  </div>
+)}
           
           {/* Inventory Management Section - Only show if work order is in-progress */}
           {workOrder.status === 'in-progress' && (
@@ -707,31 +1066,60 @@ const WorkOrderDetailsModal = ({ isOpen, onClose, workOrder, onStatusUpdate }) =
               </button>
             )}
             
-            {/* For in-progress work orders - show Pause Project with remark input */}
+            {/* For in-progress work orders - show Pause Project OR Complete Project buttons */}
             {workOrder.status === 'in-progress' && (
-              <>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Reason for pausing
-                  </label>
-                  <textarea
-                    value={remark}
-                    onChange={(e) => setRemark(e.target.value)}
-                    className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    rows="3"
-                    placeholder="Enter reason for pausing this project..."
-                  ></textarea>
-                </div>
-                
-                <button 
-                  className="w-full bg-orange-500 hover:bg-orange-600 text-white py-2 rounded-md flex items-center justify-center"
-                  onClick={() => updateStatus('paused')}
-                  disabled={loading || !remark.trim()}
-                >
-                  <FiPause className="mr-2" /> Pause Project
-                </button>
-              </>
-            )}
+  <>
+    {paymentCompleted || (workOrder.billingInfo && workOrder.billingInfo.length > 0) ? (
+      // Show Complete Project button
+      <>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Completion Notes (optional)
+          </label>
+          <textarea
+            value={remark}
+            onChange={(e) => setRemark(e.target.value)}
+            className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            rows="3"
+            placeholder="Enter any notes about the completed project..."
+          ></textarea>
+        </div>
+        
+        <button 
+          className="w-full bg-green-500 hover:bg-green-600 text-white py-2 rounded-md flex items-center justify-center"
+          onClick={() => updateStatus('completed')}
+          disabled={loading}
+        >
+          <FiCheckCircle className="mr-2" /> Complete Project
+        </button>
+      </>
+    ) : (
+      // Show Pause Project when not in payment flow
+      <>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Reason for pausing
+          </label>
+          <textarea
+            value={remark}
+            onChange={(e) => setRemark(e.target.value)}
+            className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            rows="3"
+            placeholder="Enter reason for pausing this project..."
+          ></textarea>
+        </div>
+        
+        <button 
+          className="w-full bg-orange-500 hover:bg-orange-600 text-white py-2 rounded-md flex items-center justify-center"
+          onClick={() => updateStatus('paused')}
+          disabled={loading || !remark.trim()}
+        >
+          <FiPause className="mr-2" /> Pause Project
+        </button>
+      </>
+    )}
+  </>
+)}
             
             {/* For paused work orders - show Resume Project with remark input */}
             {workOrder.status === 'paused' && (

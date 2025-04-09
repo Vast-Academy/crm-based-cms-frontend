@@ -1,15 +1,17 @@
 import React, { useState, useEffect } from 'react';
-import { FiPackage, FiClipboard, FiEye } from 'react-icons/fi';
+import { FiPackage, FiClipboard, FiEye, FiCheckCircle, FiActivity, FiArrowLeft } from 'react-icons/fi';
 import { useAuth } from '../../context/AuthContext';
 import SummaryApi from '../../common';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import InventoryDetailsModal from './InventoryDetailsModal';
 import WorkOrderDetailsModal from './WorkOrderDetailsModal';
+import ReturnInventoryModal from './ReturnInventoryModal';
 
 const TechnicianDashboard = () => {
   const { user } = useAuth();
   const [inventoryItems, setInventoryItems] = useState([]);
   const [workOrders, setWorkOrders] = useState([]);
+  const [completedOrders, setCompletedOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   
@@ -18,6 +20,8 @@ const TechnicianDashboard = () => {
   const [selectedInventory, setSelectedInventory] = useState(null);
   const [showWorkOrderModal, setShowWorkOrderModal] = useState(false);
   const [selectedWorkOrder, setSelectedWorkOrder] = useState(null);
+  const [showReturnModal, setShowReturnModal] = useState(false);
+  
 
   // Fetch technician inventory
   const fetchInventory = async () => {
@@ -41,6 +45,12 @@ const TechnicianDashboard = () => {
     }
   };
 
+  // Add this handler
+  const handleInventoryReturned = () => {
+    // Reload inventory data
+    fetchInventory();
+  };
+
   // Fetch technician work orders
   const fetchWorkOrders = async () => {
     try {
@@ -52,7 +62,20 @@ const TechnicianDashboard = () => {
       const data = await response.json();
       
       if (data.success) {
-        setWorkOrders(data.data);
+        // Separate active and completed work orders
+        const active = [];
+        const completed = [];
+        
+        data.data.forEach(order => {
+          if (order.status === 'completed') {
+            completed.push(order);
+          } else {
+            active.push(order);
+          }
+        });
+        
+        setWorkOrders(active);
+        setCompletedOrders(completed);
       } else {
         setError('Failed to load work orders: ' + data.message);
       }
@@ -101,14 +124,22 @@ const TechnicianDashboard = () => {
   // Handle work order status update
   const handleWorkOrderStatusUpdate = (updatedWorkOrder) => {
     // Update the work order in our state
-    setWorkOrders(prevOrders => {
-      return prevOrders.map(order => {
-        if (order.orderId === updatedWorkOrder.orderId) {
-          return { ...order, ...updatedWorkOrder };
-        }
-        return order;
+    if (updatedWorkOrder.status === 'completed') {
+      // Move to completed orders
+      setWorkOrders(prevOrders => 
+        prevOrders.filter(order => order.orderId !== updatedWorkOrder.orderId)
+      );
+      setCompletedOrders(prevOrders => [updatedWorkOrder, ...prevOrders]);
+    } else {
+      setWorkOrders(prevOrders => {
+        return prevOrders.map(order => {
+          if (order.orderId === updatedWorkOrder.orderId) {
+            return { ...order, ...updatedWorkOrder };
+          }
+          return order;
+        });
       });
-    });
+    }
   };
 
   if (loading) return <LoadingSpinner />;
@@ -134,50 +165,72 @@ const TechnicianDashboard = () => {
         </div>
         
         <div className="bg-white rounded-lg shadow-md p-4">
-          <div className="flex justify-between items-center mb-4">
-            <div>
-              <p className="text-gray-600">Total Units</p>
-              <p className="text-2xl font-bold text-blue-600">{calculateTotalUnits()}</p>
-            </div>
-            <button 
-              onClick={() => setShowInventoryModal(true)}
-              className="bg-blue-50 text-blue-600 px-4 py-2 rounded-md flex items-center"
-            >
-              <FiEye className="mr-2" /> View All
-            </button>
-          </div>
+         <div className="flex justify-between items-center mb-4">
+    <div>
+      <p className="text-gray-600">Total Units</p>
+      <p className="text-2xl font-bold text-blue-600">{calculateTotalUnits()}</p>
+    </div>
+    <div className="flex space-x-2">
+      <button 
+        onClick={() => setShowReturnModal(true)}
+        className="bg-orange-50 text-orange-600 px-4 py-2 rounded-md flex items-center"
+      >
+        <FiArrowLeft className="mr-2" /> Return
+      </button>
+      <button 
+        onClick={() => setShowInventoryModal(true)}
+        className="bg-blue-50 text-blue-600 px-4 py-2 rounded-md flex items-center"
+      >
+        <FiEye className="mr-2" /> View All
+      </button>
+    </div>
+  </div>
           
           <div className="space-y-3 mt-4">
-            {inventoryItems.slice(0, 3).map((item) => (
-              <div 
-                key={item.id} 
-                className="p-3 border rounded-md cursor-pointer hover:bg-gray-50"
-                onClick={() => handleInventoryClick(item)}
-              >
+          {inventoryItems.filter(item => {
+  if (item.type === 'serialized-product') {
+    return item.serializedItems.some(si => si.status === 'active');
+  } else {
+    return item.genericQuantity > 0;
+  }
+}).slice(0, 3).map((item) => (
+  <div 
+    key={item.id} 
+    className="p-3 border rounded-md cursor-pointer hover:bg-gray-50"
+    onClick={() => handleInventoryClick(item)}
+  >
                 <div className="flex justify-between">
                   <div>
                     <p className="font-medium">{item.itemName}</p>
                     <p className="text-sm text-gray-500 capitalize">{item.type.replace('-product', '')}</p>
                   </div>
                   <div className="text-right">
-                    <p className="font-medium">
-                      {item.type === 'serialized-product' 
-                        ? `${item.serializedItems.length} ${item.unit || 'Piece'}` 
-                        : `${item.genericQuantity} ${item.unit || 'Piece'}`}
-                    </p>
+                  <p className="font-medium">
+          {item.type === 'serialized-product' 
+            ? `${item.serializedItems.filter(serial => serial.status === 'active').length} ${item.unit || 'Piece'}` 
+            : `${item.genericQuantity} ${item.unit || 'Piece'}`}
+        </p>
                   </div>
                 </div>
               </div>
             ))}
             
-            {inventoryItems.length > 3 && (
-              <button 
-                onClick={() => setShowInventoryModal(true)}
-                className="w-full text-blue-600 py-2 hover:underline"
-              >
-                Show all {inventoryItems.length} items
-              </button>
-            )}
+            {inventoryItems.filter(item => 
+  (item.type === 'serialized-product' && 
+   item.serializedItems.some(si => si.status === 'active')) ||
+  (item.type === 'generic-product' && item.genericQuantity > 0)
+).length > 3 && (
+  <button
+    onClick={() => setShowInventoryModal(true)}
+    className="w-full text-blue-600 py-2 hover:underline"
+  >
+    Show all {inventoryItems.filter(item => 
+      (item.type === 'serialized-product' && 
+       item.serializedItems.some(si => si.status === 'active')) ||
+      (item.type === 'generic-product' && item.genericQuantity > 0)
+    ).length} items
+  </button>
+)}
             
             {inventoryItems.length === 0 && (
               <p className="text-center text-gray-500 py-2">No inventory items assigned yet</p>
@@ -186,11 +239,11 @@ const TechnicianDashboard = () => {
         </div>
       </div>
       
-      {/* Work Orders Section */}
-      <div>
+      {/* Active Work Orders Section */}
+      <div className="mb-8">
         <div className="flex items-center mb-4">
-          <FiClipboard className="mr-2 text-green-600" size={20} />
-          <h2 className="text-xl font-semibold text-gray-800">My Work Assignments</h2>
+          <FiActivity className="mr-2 text-green-600" size={20} />
+          <h2 className="text-xl font-semibold text-gray-800">My Active Assignments</h2>
         </div>
         
         <div className="space-y-4">
@@ -229,7 +282,46 @@ const TechnicianDashboard = () => {
             ))
           ) : (
             <div className="bg-white rounded-lg shadow-md p-8 text-center">
-              <p className="text-gray-500">No work assignments yet</p>
+              <p className="text-gray-500">No active work assignments</p>
+            </div>
+          )}
+        </div>
+      </div>
+      
+      {/* Completed Work Orders Section */}
+      <div>
+        <div className="flex items-center mb-4">
+          <FiCheckCircle className="mr-2 text-blue-600" size={20} />
+          <h2 className="text-xl font-semibold text-gray-800">Completed Projects</h2>
+        </div>
+        
+        <div className="space-y-4">
+          {completedOrders.length > 0 ? (
+            completedOrders.map((order) => (
+              <div 
+                key={order.orderId} 
+                className="bg-white rounded-lg shadow-md p-4 border-l-4 border-green-500"
+              >
+                <div className="flex justify-between items-center mb-3">
+                  <h3 className="font-medium">{order.projectType}</h3>
+                  <span className="px-2 py-1 rounded-full text-xs capitalize bg-green-100 text-green-800">
+                    {order.status}
+                  </span>
+                </div>
+                
+                <p className="text-sm text-gray-600 mb-3">Order ID: {order.orderId}</p>
+                
+                <button 
+                  onClick={() => handleWorkOrderClick(order)}
+                  className="w-full bg-green-50 text-green-600 py-2 rounded-md flex items-center justify-center"
+                >
+                  <FiEye className="mr-2" /> View Details
+                </button>
+              </div>
+            ))
+          ) : (
+            <div className="bg-white rounded-lg shadow-md p-8 text-center">
+              <p className="text-gray-500">No completed projects yet</p>
             </div>
           )}
         </div>
@@ -260,6 +352,14 @@ const TechnicianDashboard = () => {
           onStatusUpdate={handleWorkOrderStatusUpdate}
         />
       )}
+
+    {showReturnModal && (
+    <ReturnInventoryModal 
+      isOpen={showReturnModal}
+      onClose={() => setShowReturnModal(false)}
+      onInventoryReturned={handleInventoryReturned}
+    />
+  )}
     </div>
   );
 };
