@@ -265,14 +265,12 @@ const WorkOrderDetailsModal = ({ isOpen, onClose, workOrder, onStatusUpdate }) =
     
     // Search in inventory items
     technicianInventory.forEach(item => {
-      const nameMatch = item.itemName.toLowerCase().includes(query);
-      
       if (item.type === 'serialized-product') {
-        // For serialized items, only show active ones
+        // For serialized items, ONLY search by serial number (not by name)
         const activeSerials = item.serializedItems.filter(
           serial => (
             serial.status === 'active' && 
-            (serial.serialNumber.toLowerCase().includes(query) || nameMatch) &&
+            serial.serialNumber.toLowerCase().includes(query) &&
             !addedSerialNumbers.has(serial.serialNumber) // Prevent duplicates
           )
         );
@@ -288,13 +286,16 @@ const WorkOrderDetailsModal = ({ isOpen, onClose, workOrder, onStatusUpdate }) =
             });
           });
         }
-      } else if (nameMatch && item.genericQuantity > 0) {
-        // For generic items, only show if quantity > 0
-        results.push({
-          ...item,
-          quantity: 1,
-          unit: item.unit || 'Piece'
-        });
+      } else if (item.type === 'generic-product') {
+        // For generic items, search by name and only show if quantity > 0
+        const nameMatch = item.itemName.toLowerCase().includes(query);
+        if (nameMatch && item.genericQuantity > 0) {
+          results.push({
+            ...item,
+            quantity: 1,
+            unit: item.unit || 'Piece'
+          });
+        }
       }
     });
     
@@ -306,7 +307,9 @@ const WorkOrderDetailsModal = ({ isOpen, onClose, workOrder, onStatusUpdate }) =
     // Ensure the item has a price
     const itemWithPrice = {
       ...item,
-      salePrice: item.salePrice || 0  // Default to 0 if not present
+      salePrice: item.salePrice || 0,  // Default to 0 if not present
+      // Add available quantity for generic products
+      availableQuantity: item.type === 'generic-product' ? item.genericQuantity : 1
     };
     
     // Check if this item is already in the list (for serialized items)
@@ -330,9 +333,17 @@ const WorkOrderDetailsModal = ({ isOpen, onClose, workOrder, onStatusUpdate }) =
       );
       
       if (existingIndex >= 0) {
-        const updatedItems = [...selectedItems];
-        updatedItems[existingIndex].quantity += 1;
-        setSelectedItems(updatedItems);
+        // Check if we can increment the quantity
+        const currentQuantity = selectedItems[existingIndex].quantity;
+        const availableQuantity = selectedItems[existingIndex].availableQuantity;
+        
+        if (currentQuantity < availableQuantity) {
+          const updatedItems = [...selectedItems];
+          updatedItems[existingIndex].quantity += 1;
+          setSelectedItems(updatedItems);
+        } else {
+          setError(`Maximum available quantity (${availableQuantity}) reached for this item`);
+        }
       } else {
         setSelectedItems([...selectedItems, itemWithPrice]);
       }
@@ -342,6 +353,27 @@ const WorkOrderDetailsModal = ({ isOpen, onClose, workOrder, onStatusUpdate }) =
     setSearchResults([]);
     setSearchQuery('');
   };
+
+  // Now, let's create a function to update quantity
+const updateItemQuantity = (index, newQuantity) => {
+  const item = selectedItems[index];
+  
+  // Validate that the new quantity is valid
+  if (newQuantity < 1) {
+    setError('Quantity cannot be less than 1');
+    return;
+  }
+  
+  if (item.type === 'generic-product' && newQuantity > item.availableQuantity) {
+    setError(`Maximum available quantity (${item.availableQuantity}) reached for this item`);
+    return;
+  }
+  
+  // Update the quantity
+  const updatedItems = [...selectedItems];
+  updatedItems[index].quantity = newQuantity;
+  setSelectedItems(updatedItems);
+};
 
   // Remove item from selection
   const removeItem = (index) => {
@@ -1011,34 +1043,67 @@ const WorkOrderDetailsModal = ({ isOpen, onClose, workOrder, onStatusUpdate }) =
                 
                 {/* Selected Items List */}
                 <div className="mb-3">
-                  <p className="text-sm font-medium mb-2">Selected Items:</p>
-                  {selectedItems.length > 0 ? (
-                    <div className="border rounded-md divide-y">
-                      {selectedItems.map((item, index) => (
-                        <div key={index} className="flex justify-between items-center p-2">
-                          <div>
-                            <p className="font-medium">{item.itemName}</p>
-                            <p className="text-xs text-gray-500">
-                              {item.type === 'serialized-product'
-                                ? `S/N: ${item.selectedSerialNumber} - ₹${item.salePrice?.toFixed(2) || '0.00'}`
-                                : `${item.quantity} ${item.unit || 'Piece'} - ₹${item.salePrice?.toFixed(2) || '0.00'}`}
-                            </p>
-                          </div>
-                          <button 
-                            onClick={() => removeItem(index)}
-                            className="text-red-500 text-sm"
-                          >
-                            Remove
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="text-center p-4 bg-gray-50 rounded-md text-gray-500">
-                      No items selected
-                    </div>
-                  )}
-                </div>
+  <p className="text-sm font-medium mb-2">Selected Items:</p>
+  {selectedItems.length > 0 ? (
+    <div className="border rounded-md divide-y">
+      {selectedItems.map((item, index) => (
+        <div key={index} className="flex justify-between items-center p-2">
+          <div className="flex-1">
+            <p className="font-medium">{item.itemName}</p>
+            {item.type === 'serialized-product' ? (
+              <p className="text-xs text-gray-500">
+                S/N: {item.selectedSerialNumber} - ₹{item.salePrice?.toFixed(2) || '0.00'}
+              </p>
+            ) : (
+              <div>
+                <p className="text-xs text-gray-500">
+                  ₹{item.salePrice?.toFixed(2) || '0.00'} per {item.unit || 'Piece'}
+                </p>
+                <p className="text-xs text-gray-500">
+                  Available: {item.availableQuantity} {item.unit || 'Piece'}
+                </p>
+              </div>
+            )}
+          </div>
+          
+          {/* Quantity controls for generic products */}
+          {item.type === 'generic-product' && (
+            <div className="flex items-center mr-2">
+              <button 
+                onClick={() => updateItemQuantity(index, item.quantity - 1)}
+                className="w-8 h-8 flex items-center justify-center border rounded-l-md"
+                disabled={item.quantity <= 1}
+              >
+                -
+              </button>
+              <span className="w-10 h-8 flex items-center justify-center border-t border-b">
+                {item.quantity}
+              </span>
+              <button 
+                onClick={() => updateItemQuantity(index, item.quantity + 1)}
+                className="w-8 h-8 flex items-center justify-center border rounded-r-md"
+                disabled={item.quantity >= item.availableQuantity}
+              >
+                +
+              </button>
+            </div>
+          )}
+          
+          <button 
+            onClick={() => removeItem(index)}
+            className="text-red-500 text-sm"
+          >
+            Remove
+          </button>
+        </div>
+      ))}
+    </div>
+  ) : (
+    <div className="text-center p-4 bg-gray-50 rounded-md text-gray-500">
+      No items selected
+    </div>
+  )}
+</div>
                 
                 {/* Generate Bill Button */}
                 {selectedItems.length > 0 && (
