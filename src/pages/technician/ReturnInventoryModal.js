@@ -209,7 +209,7 @@ const ReturnInventoryModal = ({ isOpen, onClose, onInventoryReturned }) => {
   
   return (
     <div className="fixed inset-0 bg-gray-600 bg-opacity-75 flex justify-center items-center z-50">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-lg max-h-[90vh] overflow-hidden">
+      <div className="bg-white rounded-lg shadow-xl w-full max-w-lg max-h-[90vh] overflow-scroll overflow-y-auto overflow-x-hidden">
         <div className="sticky top-0 bg-white p-4 border-b flex justify-between items-center">
           <h2 className="text-lg font-semibold">Return Inventory to Manager</h2>
           <button 
@@ -258,7 +258,7 @@ const ReturnInventoryModal = ({ isOpen, onClose, onInventoryReturned }) => {
           </div>
         )}
         
-        <div className="overflow-y-auto" style={{ maxHeight: 'calc(90vh - 200px)' }}>
+        <div className="overflow-y-auto overflow-scroll" style={{ maxHeight: 'calc(90vh - 190px)' }}>
           {loading ? (
             <div className="p-4 text-center">
               <p>Loading inventory...</p>
