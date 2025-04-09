@@ -78,7 +78,7 @@ const ReturnInventoryModal = ({ isOpen, onClose, onInventoryReturned }) => {
     
     // Make sure you're using the correct ID field from your item object
     // It could be item.id, item.itemId, or item._id depending on your data structure
-    const itemId = item.id || item.itemId; 
+    const itemId = item.id || item.itemId || item._id; 
     
     console.log("Using itemId:", itemId, "serial:", serialNumber);
     
@@ -269,58 +269,66 @@ const ReturnInventoryModal = ({ isOpen, onClose, onInventoryReturned }) => {
             </div>
           ) : (
             <div className="divide-y">
-              {filteredInventory.map((item) => (
-                <div key={item.id} className="p-4">
-                  <div className="flex justify-between items-start mb-3">
-                    <div>
-                      <h3 className="font-medium">{item.itemName}</h3>
-                      <p className="text-sm text-gray-500">{item.type.replace('-product', '')}</p>
+              {filteredInventory.map((item) => {
+                // Make sure we have a solid ID for the item
+                const itemId = item.id || item.itemId || item._id;
+                
+                return (
+                  <div key={itemId} className="p-4">
+                    <div className="flex justify-between items-start mb-3">
+                      <div>
+                        <h3 className="font-medium">{item.itemName}</h3>
+                        <p className="text-sm text-gray-500">{item.type.replace('-product', '')}</p>
+                      </div>
                     </div>
-                  </div>
-                  
-                  {item.type === 'serialized-product' ? (
-                    <div>
-                      <p className="text-sm mb-2">Select items to return:</p>
-                      <div className="space-y-2 ml-2">
-                        {item.serializedItems.filter(s => s.status === 'active').map((serialItem, idx) => (
-                          <div 
-                          key={`${item.id}-${serialItem.serialNumber}`}
-                          className={`flex items-center p-2 rounded cursor-pointer ${
-                            isSerialItemSelected(item.id, serialItem.serialNumber) 
-                              ? 'bg-blue-100 border-2 border-blue-500' // Make selection more obvious
-                              : 'hover:bg-gray-50 border'
-                          }`}
-                          onClick={() => toggleSerialItemSelection(item, serialItem.serialNumber)}
-                        >
-                          <input 
-                            type="checkbox"
-                            className="mr-2"
-                            checked={isSerialItemSelected(item.id, serialItem.serialNumber)}
-                            onChange={() => {}} // React requires onChange with checked
-                          />
-                          <span>{serialItem.serialNumber}</span>
+                    
+                    {item.type === 'serialized-product' ? (
+                      <div>
+                        <p className="text-sm mb-2">Select items to return:</p>
+                        <div className="space-y-2 ml-2">
+                          {item.serializedItems
+                            .filter(s => s.status === 'active')
+                            .map((serialItem) => (
+                              <div 
+                                key={serialItem.serialNumber} // Using serialNumber as key
+                                className={`flex items-center p-2 rounded cursor-pointer ${
+                                  isSerialItemSelected(itemId, serialItem.serialNumber) 
+                                    ? 'bg-blue-100 border-2 border-blue-500' // Make selection more obvious
+                                    : 'hover:bg-gray-50 border'
+                                }`}
+                                onClick={() => toggleSerialItemSelection(item, serialItem.serialNumber)}
+                              >
+                                <input 
+                                  type="checkbox"
+                                  className="mr-2"
+                                  checked={isSerialItemSelected(itemId, serialItem.serialNumber)}
+                                  onChange={() => {}} // React requires onChange with checked
+                                />
+                                <span>{serialItem.serialNumber}</span>
+                              </div>
+                            ))
+                          }
                         </div>
-                        ))}
                       </div>
-                    </div>
-                  ) : (
-                    <div>
-                      <div className="flex items-center mt-2">
-                        <label className="text-sm mr-3">Quantity to return:</label>
-                        <input 
-                          type="number"
-                          min="0"
-                          max={item.genericQuantity}
-                          className="w-20 px-2 py-1 border rounded-md"
-                          value={getSelectedQuantity(item.itemId) || ''}
-                          onChange={(e) => handleQuantityChange(item.itemId, e.target.value, item.genericQuantity)}
-                        />
-                        <span className="ml-2 text-sm text-gray-500">/ {item.genericQuantity} {item.unit || 'Piece'}</span>
+                    ) : (
+                      <div>
+                        <div className="flex items-center mt-2">
+                          <label className="text-sm mr-3">Quantity to return:</label>
+                          <input 
+                            type="number"
+                            min="0"
+                            max={item.genericQuantity}
+                            className="w-20 px-2 py-1 border rounded-md"
+                            value={getSelectedQuantity(itemId) || ''}
+                            onChange={(e) => handleQuantityChange(itemId, e.target.value, item.genericQuantity)}
+                          />
+                          <span className="ml-2 text-sm text-gray-500">/ {item.genericQuantity} {item.unit || 'Piece'}</span>
+                        </div>
                       </div>
-                    </div>
-                  )}
-                </div>
-              ))}
+                    )}
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>

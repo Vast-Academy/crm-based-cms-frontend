@@ -85,18 +85,26 @@ const WorkOrderDetailsModal = ({ isOpen, onClose, workOrder, onStatusUpdate }) =
     setShowQRCode(false);
     setShowPaymentSuccess(false);
     setBillId(null);
-    setPaymentCompleted(false);
     
-    // Load technician inventory if work order is in-progress
-    if (workOrder?.status === 'in-progress') {
+    // Check if work order has payment info
+    const hasPayment = 
+      (workOrder?.billingInfo && workOrder.billingInfo.length > 0) || 
+      (workOrder?.statusHistory && workOrder.statusHistory.some(history => history.status === 'payment'));
+    
+    setPaymentCompleted(hasPayment);
+    
+    // Load technician inventory if work order is in-progress AND payment is not completed
+    if (workOrder?.status === 'in-progress' && !hasPayment) {
       fetchTechnicianInventory();
-      
-      // Check if work order has payment info - यह महत्वपूर्ण है
-      if (workOrder.billingInfo && workOrder.billingInfo.length > 0) {
-        setPaymentCompleted(true);
-      }
     }
   }, [workOrder?.orderId]);
+
+useEffect(() => {
+  if (isOpen && workOrder) {
+    // मॉडल खुलने पर वर्क ऑर्डर डिटेल्स फेच करें
+    fetchWorkOrderDetails();
+  }
+}, [isOpen, workOrder?.orderId]);
   
   // Fetch technician's inventory
   const fetchTechnicianInventory = async () => {
@@ -449,7 +457,8 @@ const updateItemQuantity = (index, newQuantity) => {
       // Create bill items array for API
       const billItems = selectedItems.map(item => {
         return {
-          itemId: item.itemId,
+          itemId: item.itemId || item.id || item._id,
+          name: item.itemName || item.name, // Send name for fallback matching
           quantity: item.quantity,
           serialNumber: item.selectedSerialNumber || null
         };
@@ -537,12 +546,25 @@ const updateItemQuantity = (index, newQuantity) => {
         setShowQRCode(false);
         setShowPaymentSuccess(true);
         
-        // यहां महत्वपूर्ण अपडेट: कस्टमर को फिर से लोड करें ताकि अपडेटेड वर्क ऑर्डर जानकारी प्राप्त हो
-        if (onStatusUpdate && data.data && data.data.workOrder) {
-          onStatusUpdate(data.data.workOrder);
+        console.log('Payment data received:', data); // डीबग के लिए लॉग करें
+        
+        // महत्वपूर्ण: पेमेंट के बाद वर्क ऑर्डर स्थिति अपडेट करें और पेमेंट स्टेटस सेट करें
+        if (data.data && data.data.workOrder) {
+          setPaymentCompleted(true);
+          
+          // अपडेटेड वर्क ऑर्डर को पेरेंट कंपोनेंट को भेजें
+          if (onStatusUpdate) {
+            // यहां पूरा workOrder अपडेट करें
+            onStatusUpdate({
+              ...workOrder, // मूल वर्क ऑर्डर के सभी फील्ड्स रखें
+              ...data.data.workOrder, // API से मिले अपडेट्स जोड़ें
+              billingInfo: data.data.workOrder.billingInfo || [] // सुनिश्चित करें कि billingInfo मौजूद है
+            });
+          }
         } else {
-          // या वर्क ऑर्डर को फिर से फेच करें
-          fetchWorkOrderDetails();
+          // यदि API से workOrder नहीं मिला तो मैन्युअल अपडेट करें
+          setPaymentCompleted(true);
+          fetchWorkOrderDetails(); // फिर से वर्क ऑर्डर फेच करें
         }
       } else {
         setError(data.message || 'Failed to process payment');
@@ -556,10 +578,14 @@ const updateItemQuantity = (index, newQuantity) => {
   };
 
   const fetchWorkOrderDetails = async () => {
+    if (!workOrder) return;
+    
     try {
       setLoading(true);
       // URL को dynamically generate करें customer ID और order ID के साथ
       const url = `${SummaryApi.getWorkOrderDetails.url}/${workOrder.customerId}/${workOrder.orderId}`;
+      
+      console.log('Fetching work order details from:', url);
       
       const response = await fetch(url, {
         method: SummaryApi.getWorkOrderDetails.method,
@@ -569,6 +595,17 @@ const updateItemQuantity = (index, newQuantity) => {
       const data = await response.json();
       
       if (data.success && data.data) {
+        console.log('Updated work order data:', data.data);
+        
+        // पेमेंट की स्थिति चेक करें
+        const hasPayment = 
+          (data.data.billingInfo && data.data.billingInfo.length > 0) || 
+          (data.data.statusHistory && data.data.statusHistory.some(history => history.status === 'payment'));
+        
+        console.log('Payment completed (from fetch):', hasPayment);
+        setPaymentCompleted(hasPayment);
+        
+        // अपडेटेड डेटा को पेरेंट कंपोनेंट को भेजें
         if (onStatusUpdate) {
           onStatusUpdate(data.data);
         }
@@ -859,6 +896,9 @@ const updateItemQuantity = (index, newQuantity) => {
     
     // महत्वपूर्ण: यहां एक स्टेट वैरिएबल जोड़ें जो भुगतान सफलता को ट्रैक करे
     setPaymentCompleted(true);
+    
+    // एक बार और फिर से फेच करें ताकि सभी अपडेट्स मिलें
+    fetchWorkOrderDetails();
   }}
 >
   Done
@@ -992,131 +1032,162 @@ const updateItemQuantity = (index, newQuantity) => {
 )}
           
           {/* Inventory Management Section - Only show if work order is in-progress */}
-          {workOrder.status === 'in-progress' && (
-            <div className="mb-4">
-              <h3 className="text-md font-medium mb-3">Inventory Management</h3>
-              
-              <div className="bg-white border rounded-lg p-3">
-                {/* Search and Scan */}
-                <div className="flex mb-3">
-                  <div className="relative flex-1 mr-2">
-                    <input
-                      type="text"
-                      placeholder="Search by name or serial number"
-                      className="w-full pl-10 pr-2 py-2 border rounded-md"
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                    />
-                    <FiSearch className="absolute left-3 top-2.5 text-gray-400" />
-                  </div>
-                  <button
-                    onClick={handleScan}
-                    className="px-3 py-2 bg-green-500 text-white rounded-md"
-                  >
-                    Scan
-                  </button>
-                </div>
-                
-                {/* Search Results */}
-                {searchResults.length > 0 && (
-                  <div className="mb-3 border rounded-md p-2 bg-gray-50">
-                    <p className="text-sm font-medium mb-2">Search Results:</p>
-                    {searchResults.map((item, index) => (
-                      <div 
-                        key={index}
-                        className="flex justify-between items-center p-2 hover:bg-gray-100 cursor-pointer rounded"
-                        onClick={() => addItemToSelection(item)}
-                      >
-                        <div>
-                          <p className="font-medium">{item.itemName}</p>
-                          <p className="text-xs text-gray-500">
-                            {item.type === 'serialized-product' 
-                              ? `S/N: ${item.selectedSerialNumber} - ₹${item.salePrice?.toFixed(2) || '0.00'}` 
-                              : `Generic Item - ₹${item.salePrice?.toFixed(2) || '0.00'}`}
-                          </p>
-                        </div>
-                        <button className="text-blue-500 text-sm">Add</button>
-                      </div>
-                    ))}
-                  </div>
-                )}
+          {workOrder.status === 'in-progress' && !paymentCompleted && (
+  <div className="mb-4">
+    <h3 className="text-md font-medium mb-3">Inventory Management</h3>
+    
+    <div className="bg-white border rounded-lg p-3">
+      {/* Search and Scan */}
+      <div className="flex mb-3">
+        <div className="relative flex-1 mr-2">
+          <input
+            type="text"
+            placeholder="Search by name or serial number"
+            className="w-full pl-10 pr-2 py-2 border rounded-md"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+          <FiSearch className="absolute left-3 top-2.5 text-gray-400" />
+        </div>
+        <button
+          onClick={handleScan}
+          className="px-3 py-2 bg-green-500 text-white rounded-md"
+        >
+          Scan
+        </button>
+      </div>
+      
+      {/* Search Results */}
+      {searchResults.length > 0 && (
+        <div className="mb-3 border rounded-md p-2 bg-gray-50">
+          <p className="text-sm font-medium mb-2">Search Results:</p>
+          {searchResults.map((item, index) => (
+            <div 
+              key={index}
+              className="flex justify-between items-center p-2 hover:bg-gray-100 cursor-pointer rounded"
+              onClick={() => addItemToSelection(item)}
+            >
+              <div>
+                <p className="font-medium">{item.itemName}</p>
+                <p className="text-xs text-gray-500">
+                  {item.type === 'serialized-product' 
+                    ? `S/N: ${item.selectedSerialNumber} - ₹${item.salePrice?.toFixed(2) || '0.00'}` 
+                    : `Generic Item - ₹${item.salePrice?.toFixed(2) || '0.00'}`}
+                </p>
+              </div>
+              <button className="text-blue-500 text-sm">Add</button>
+            </div>
+          ))}
+        </div>
+      )}
                 
                 {/* Selected Items List */}
                 <div className="mb-3">
-  <p className="text-sm font-medium mb-2">Selected Items:</p>
-  {selectedItems.length > 0 ? (
-    <div className="border rounded-md divide-y">
-      {selectedItems.map((item, index) => (
-        <div key={index} className="flex justify-between items-center p-2">
-          <div className="flex-1">
-            <p className="font-medium">{item.itemName}</p>
-            {item.type === 'serialized-product' ? (
-              <p className="text-xs text-gray-500">
-                S/N: {item.selectedSerialNumber} - ₹{item.salePrice?.toFixed(2) || '0.00'}
-              </p>
-            ) : (
-              <div>
-                <p className="text-xs text-gray-500">
-                  ₹{item.salePrice?.toFixed(2) || '0.00'} per {item.unit || 'Piece'}
-                </p>
-                <p className="text-xs text-gray-500">
-                  Available: {item.availableQuantity} {item.unit || 'Piece'}
-                </p>
+        <p className="text-sm font-medium mb-2">Selected Items:</p>
+        {selectedItems.length > 0 ? (
+          <div className="border rounded-md divide-y">
+            {selectedItems.map((item, index) => (
+              <div key={index} className="flex justify-between items-center p-2">
+                <div className="flex-1">
+                  <p className="font-medium">{item.itemName}</p>
+                  {item.type === 'serialized-product' ? (
+                    <p className="text-xs text-gray-500">
+                      S/N: {item.selectedSerialNumber} - ₹{item.salePrice?.toFixed(2) || '0.00'}
+                    </p>
+                  ) : (
+                    <div>
+                      <p className="text-xs text-gray-500">
+                        ₹{item.salePrice?.toFixed(2) || '0.00'} per {item.unit || 'Piece'}
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        Available: {item.availableQuantity} {item.unit || 'Piece'}
+                      </p>
+                    </div>
+                  )}
+                </div>
+                
+                {/* Quantity controls for generic products */}
+                {item.type === 'generic-product' && (
+                  <div className="flex items-center mr-2">
+                    <button 
+                      onClick={() => updateItemQuantity(index, item.quantity - 1)}
+                      className="w-8 h-8 flex items-center justify-center border rounded-l-md"
+                      disabled={item.quantity <= 1}
+                    >
+                      -
+                    </button>
+                    <span className="w-10 h-8 flex items-center justify-center border-t border-b">
+                      {item.quantity}
+                    </span>
+                    <button 
+                      onClick={() => updateItemQuantity(index, item.quantity + 1)}
+                      className="w-8 h-8 flex items-center justify-center border rounded-r-md"
+                      disabled={item.quantity >= item.availableQuantity}
+                    >
+                      +
+                    </button>
+                  </div>
+                )}
+                
+                <button 
+                  onClick={() => removeItem(index)}
+                  className="text-red-500 text-sm"
+                >
+                  Remove
+                </button>
               </div>
-            )}
+            ))}
           </div>
-          
-          {/* Quantity controls for generic products */}
-          {item.type === 'generic-product' && (
-            <div className="flex items-center mr-2">
-              <button 
-                onClick={() => updateItemQuantity(index, item.quantity - 1)}
-                className="w-8 h-8 flex items-center justify-center border rounded-l-md"
-                disabled={item.quantity <= 1}
-              >
-                -
-              </button>
-              <span className="w-10 h-8 flex items-center justify-center border-t border-b">
-                {item.quantity}
-              </span>
-              <button 
-                onClick={() => updateItemQuantity(index, item.quantity + 1)}
-                className="w-8 h-8 flex items-center justify-center border rounded-r-md"
-                disabled={item.quantity >= item.availableQuantity}
-              >
-                +
-              </button>
-            </div>
-          )}
-          
-          <button 
-            onClick={() => removeItem(index)}
-            className="text-red-500 text-sm"
-          >
-            Remove
-          </button>
-        </div>
-      ))}
-    </div>
-  ) : (
-    <div className="text-center p-4 bg-gray-50 rounded-md text-gray-500">
-      No items selected
-    </div>
-  )}
-</div>
+        ) : (
+          <div className="text-center p-4 bg-gray-50 rounded-md text-gray-500">
+            No items selected
+          </div>
+        )}
+      </div>
                 
                 {/* Generate Bill Button */}
                 {selectedItems.length > 0 && (
-                  <button
-                    onClick={generateBill}
-                    className="w-full py-2 bg-blue-500 text-white rounded-md flex items-center justify-center"
-                  >
-                    <FiFileText className="mr-2" /> Generate Bill
-                  </button>
-                )}
-              </div>
+        <button
+          onClick={generateBill}
+          className="w-full py-2 bg-blue-500 text-white rounded-md flex items-center justify-center"
+        >
+          <FiFileText className="mr-2" /> Generate Bill
+        </button>
+      )}
+    </div>
+  </div>
+)}
+
+          {/* Payment Details Section - Only show if payment is completed */}
+{paymentCompleted && workOrder.billingInfo && workOrder.billingInfo.length > 0 && (
+  <div className="mb-4">
+    <h3 className="text-md font-medium mb-3">Payment Details</h3>
+    
+    <div className="bg-white border rounded-lg p-3">
+      <div className="space-y-3">
+        {workOrder.billingInfo.map((payment, index) => (
+          <div key={index} className="flex justify-between p-2 border-b last:border-b-0">
+            <div>
+              <p className="font-medium">Bill #{payment.billNumber}</p>
+              <p className="text-sm text-gray-600">
+                {payment.paymentMethod === 'online' ? 'Online Payment' : 'Cash Payment'}
+              </p>
+              {payment.transactionId && (
+                <p className="text-sm text-gray-600">Tx ID: {payment.transactionId}</p>
+              )}
             </div>
-          )}
+            <div className="text-right">
+              <p className="font-bold">₹{payment.amount.toFixed(2)}</p>
+              <p className="text-xs text-gray-500">
+                {new Date(payment.paidAt).toLocaleString()}
+              </p>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  </div>
+)}
           
           {/* Action Buttons */}
           <div className="mt-6 space-y-2">

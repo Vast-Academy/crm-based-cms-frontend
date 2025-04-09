@@ -90,13 +90,23 @@ const TechnicianDashboard = () => {
 
   // Calculate total units across all inventory items
   const calculateTotalUnits = () => {
-    return inventoryItems.reduce((total, item) => {
+    console.log("Inventory items:", inventoryItems); // पूरी inventoryItems लॉग करें
+    
+    const total = inventoryItems.reduce((total, item) => {
+      console.log("Processing item:", item.itemName, item.type); // हर आइटम लॉग करें
+      
       if (item.type === 'serialized-product') {
-        return total + item.serializedItems.length;
+        const activeCount = item.serializedItems?.filter(si => si.status === 'active').length || 0;
+        console.log("Active serialized items:", activeCount);
+        return total + activeCount;
       } else {
-        return total + item.genericQuantity;
+        console.log("Generic quantity:", item.genericQuantity || 0);
+        return total + (item.genericQuantity || 0);
       }
     }, 0);
+    
+    console.log("Calculated total:", total);
+    return total;
   };
 
   // Load data on component mount
@@ -116,13 +126,45 @@ const TechnicianDashboard = () => {
   };
 
   // Handle work order click
-  const handleWorkOrderClick = (workOrder) => {
-    setSelectedWorkOrder(workOrder);
+  const handleWorkOrderClick = async (workOrder) => {
+    // अगर workOrder में पहले से billingInfo है, तो नवीनतम डेटा फेच करें
+    if (workOrder.billingInfo && workOrder.billingInfo.length > 0) {
+      try {
+        const response = await fetch(`${SummaryApi.getWorkOrderDetails.url}/${workOrder.customerId}/${workOrder.orderId}`, {
+          method: SummaryApi.getWorkOrderDetails.method,
+          credentials: 'include'
+        });
+        
+        const data = await response.json();
+        
+        if (data.success && data.data) {
+          // अपडेटेड वर्क ऑर्डर को सेट करें
+          setSelectedWorkOrder(data.data);
+        } else {
+          // अगर फेच फेल होता है तो मूल वर्क ऑर्डर को सेट करें
+          setSelectedWorkOrder(workOrder);
+        }
+      } catch (err) {
+        console.error('Error fetching detailed work order:', err);
+        setSelectedWorkOrder(workOrder);
+      }
+    } else {
+      // अगर कोई पेमेंट नहीं है तो सीधे सेट करें
+      setSelectedWorkOrder(workOrder);
+    }
+    
     setShowWorkOrderModal(true);
   };
 
   // Handle work order status update
   const handleWorkOrderStatusUpdate = (updatedWorkOrder) => {
+    console.log("Work order updated:", updatedWorkOrder);
+    
+    // महत्वपूर्ण: selectedWorkOrder को भी अपडेट करें
+    if (selectedWorkOrder && selectedWorkOrder.orderId === updatedWorkOrder.orderId) {
+      setSelectedWorkOrder(updatedWorkOrder);
+    }
+    
     // Update the work order in our state
     if (updatedWorkOrder.status === 'completed') {
       // Move to completed orders
@@ -134,7 +176,9 @@ const TechnicianDashboard = () => {
       setWorkOrders(prevOrders => {
         return prevOrders.map(order => {
           if (order.orderId === updatedWorkOrder.orderId) {
-            return { ...order, ...updatedWorkOrder };
+            // महत्वपूर्ण: पूरा अपडेटेड ऑब्जेक्ट रिटर्न करें, न कि केवल स्प्रेड करके मर्ज करें
+            // यह सुनिश्चित करेगा कि billingInfo जैसे नेस्टेड ऑब्जेक्ट भी सही से अपडेट हों
+            return updatedWorkOrder;
           }
           return order;
         });
@@ -143,6 +187,15 @@ const TechnicianDashboard = () => {
   };
 
   if (loading) return <LoadingSpinner />;
+
+  // Filter active inventory items (with quantity > 0 or active serial numbers)
+  const activeInventoryItems = inventoryItems.filter(item => {
+    if (item.type === 'serialized-product') {
+      return item.serializedItems && item.serializedItems.some(si => si.status === 'active');
+    } else {
+      return item.genericQuantity > 0;
+    }
+  });
 
   return (
     <div className="p-4 max-w-lg mx-auto">
@@ -165,74 +218,65 @@ const TechnicianDashboard = () => {
         </div>
         
         <div className="bg-white rounded-lg shadow-md p-4">
-         <div className="flex justify-between items-center mb-4">
-    <div>
-      <p className="text-gray-600">Total Units</p>
-      <p className="text-2xl font-bold text-blue-600">{calculateTotalUnits()}</p>
-    </div>
-    <div className="flex space-x-2">
-      <button 
-        onClick={() => setShowReturnModal(true)}
-        className="bg-orange-50 text-orange-600 px-4 py-2 rounded-md flex items-center"
-      >
-        <FiArrowLeft className="mr-2" /> Return
-      </button>
-      <button 
-        onClick={() => setShowInventoryModal(true)}
-        className="bg-blue-50 text-blue-600 px-4 py-2 rounded-md flex items-center"
-      >
-        <FiEye className="mr-2" /> View All
-      </button>
-    </div>
-  </div>
+          <div className="flex justify-between items-center mb-4">
+            <div>
+              <p className="text-gray-600">Total Units</p>
+              <p className="text-2xl font-bold text-blue-600">{calculateTotalUnits()}</p>
+            </div>
+            <div className="flex space-x-2">
+              <button 
+                onClick={() => setShowReturnModal(true)}
+                className="bg-orange-50 text-orange-600 px-4 py-2 rounded-md flex items-center"
+              >
+                <FiArrowLeft className="mr-2" /> Return
+              </button>
+              <button 
+                onClick={() => setShowInventoryModal(true)}
+                className="bg-blue-50 text-blue-600 px-4 py-2 rounded-md flex items-center"
+              >
+                <FiEye className="mr-2" /> View All
+              </button>
+            </div>
+          </div>
           
           <div className="space-y-3 mt-4">
-          {inventoryItems.filter(item => {
-  if (item.type === 'serialized-product') {
-    return item.serializedItems.some(si => si.status === 'active');
-  } else {
-    return item.genericQuantity > 0;
-  }
-}).slice(0, 3).map((item) => (
-  <div 
-    key={item.id} 
-    className="p-3 border rounded-md cursor-pointer hover:bg-gray-50"
-    onClick={() => handleInventoryClick(item)}
-  >
-                <div className="flex justify-between">
-                  <div>
-                    <p className="font-medium">{item.itemName}</p>
-                    <p className="text-sm text-gray-500 capitalize">{item.type.replace('-product', '')}</p>
-                  </div>
-                  <div className="text-right">
-                  <p className="font-medium">
-          {item.type === 'serialized-product' 
-            ? `${item.serializedItems.filter(serial => serial.status === 'active').length} ${item.unit || 'Piece'}` 
-            : `${item.genericQuantity} ${item.unit || 'Piece'}`}
-        </p>
+            {activeInventoryItems.slice(0, 3).map((item) => {
+              // Make sure we have a valid key for the item
+              const itemKey = item._id || item.id || item.itemId || `item-${item.itemName}-${Date.now()}`;
+              
+              return (
+                <div 
+                  key={itemKey} 
+                  className="p-3 border rounded-md cursor-pointer hover:bg-gray-50"
+                  onClick={() => handleInventoryClick(item)}
+                >
+                  <div className="flex justify-between">
+                    <div>
+                      <p className="font-medium">{item.itemName}</p>
+                      <p className="text-sm text-gray-500 capitalize">{item.type.replace('-product', '')}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-medium">
+                        {item.type === 'serialized-product' 
+                          ? `${item.serializedItems.filter(serial => serial.status === 'active').length} ${item.unit || 'Piece'}` 
+                          : `${item.genericQuantity} ${item.unit || 'Piece'}`}
+                      </p>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
             
-            {inventoryItems.filter(item => 
-  (item.type === 'serialized-product' && 
-   item.serializedItems.some(si => si.status === 'active')) ||
-  (item.type === 'generic-product' && item.genericQuantity > 0)
-).length > 3 && (
-  <button
-    onClick={() => setShowInventoryModal(true)}
-    className="w-full text-blue-600 py-2 hover:underline"
-  >
-    Show all {inventoryItems.filter(item => 
-      (item.type === 'serialized-product' && 
-       item.serializedItems.some(si => si.status === 'active')) ||
-      (item.type === 'generic-product' && item.genericQuantity > 0)
-    ).length} items
-  </button>
-)}
+            {activeInventoryItems.length > 3 && (
+              <button
+                onClick={() => setShowInventoryModal(true)}
+                className="w-full text-blue-600 py-2 hover:underline"
+              >
+                Show all {activeInventoryItems.length} items
+              </button>
+            )}
             
-            {inventoryItems.length === 0 && (
+            {activeInventoryItems.length === 0 && (
               <p className="text-center text-gray-500 py-2">No inventory items assigned yet</p>
             )}
           </div>
@@ -250,7 +294,7 @@ const TechnicianDashboard = () => {
           {workOrders.length > 0 ? (
             workOrders.map((order) => (
               <div 
-                key={order.orderId} 
+                key={order.orderId || `order-${Math.random().toString(36).substr(2, 9)}`} 
                 className={`bg-white rounded-lg shadow-md p-4 border-l-4 ${
                   order.status === 'assigned' ? 'border-blue-500' :
                   order.status === 'in-progress' ? 'border-purple-500' :
@@ -299,7 +343,7 @@ const TechnicianDashboard = () => {
           {completedOrders.length > 0 ? (
             completedOrders.map((order) => (
               <div 
-                key={order.orderId} 
+                key={order.orderId || `completed-${Math.random().toString(36).substr(2, 9)}`} 
                 className="bg-white rounded-lg shadow-md p-4 border-l-4 border-green-500"
               >
                 <div className="flex justify-between items-center mb-3">
@@ -343,23 +387,28 @@ const TechnicianDashboard = () => {
       {/* Work Order Details Modal */}
       {showWorkOrderModal && (
         <WorkOrderDetailsModal 
-          isOpen={showWorkOrderModal}
-          onClose={() => {
-            setShowWorkOrderModal(false);
-            setSelectedWorkOrder(null);
-          }}
-          workOrder={selectedWorkOrder}
-          onStatusUpdate={handleWorkOrderStatusUpdate}
-        />
+        isOpen={showWorkOrderModal}
+        onClose={() => {
+          setShowWorkOrderModal(false);
+          // यहां selectedWorkOrder को null सेट करने से पहले, अगर इसके पास payment स्टेटस था, तो वर्क ऑर्डर्स को रीफ्रेश करें
+          if (selectedWorkOrder && selectedWorkOrder.billingInfo && selectedWorkOrder.billingInfo.length > 0) {
+            // पेमेंट वाले ऑर्डर के लिए लिस्ट को रिफ्रेश करें
+            fetchWorkOrders();
+          }
+          setSelectedWorkOrder(null);
+        }}
+        workOrder={selectedWorkOrder}
+        onStatusUpdate={handleWorkOrderStatusUpdate}
+      />
       )}
 
-    {showReturnModal && (
-    <ReturnInventoryModal 
-      isOpen={showReturnModal}
-      onClose={() => setShowReturnModal(false)}
-      onInventoryReturned={handleInventoryReturned}
-    />
-  )}
+      {showReturnModal && (
+        <ReturnInventoryModal 
+          isOpen={showReturnModal}
+          onClose={() => setShowReturnModal(false)}
+          onInventoryReturned={handleInventoryReturned}
+        />
+      )}
     </div>
   );
 };
