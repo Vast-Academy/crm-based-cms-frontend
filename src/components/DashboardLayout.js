@@ -94,7 +94,7 @@ const DashboardLayout = () => {
       path: '/ownership-transfer',
       icon: FiRefreshCw
     },
-    user?.role === 'admin' &&  { 
+    {
       name: 'User Management',
       icon: FiUsers,
       dropdown: true,
