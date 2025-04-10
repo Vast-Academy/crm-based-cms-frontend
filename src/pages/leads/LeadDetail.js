@@ -69,7 +69,7 @@ const LeadDetailModal = ({ isOpen, onClose, leadId, onLeadUpdated, onConvertSucc
     if (isOpen && leadId) {
       fetchLead();
       // Set the convert form state based on the prop
-    setShowConvertForm(initialConvertMode);
+      setShowConvertForm(initialConvertMode);
     } else {
       // Reset state when modal closes
       setLead(null);
@@ -171,11 +171,27 @@ const LeadDetailModal = ({ isOpen, onClose, leadId, onLeadUpdated, onConvertSucc
       const data = await response.json();
       
       if (data.success) {
-        // Close modal and notify parent
-        if (onConvertSuccess) {
-          onConvertSuccess(leadId);
+        // If conversion was successful, create a work order for the new customer
+        try {
+          // Note: assuming the conversion API returns the new customer data
+          const newCustomerId = data.data._id;
+          
+          // Create work order using the same project type and remark
+          await createWorkOrder(newCustomerId, projectType, conversionRemark);
+          
+          // Close modal and notify parent
+          if (onConvertSuccess) {
+            onConvertSuccess(leadId, data.data);
+          }
+          onClose();
+        } catch (workOrderErr) {
+          console.error('Error creating work order after conversion:', workOrderErr);
+          // Still consider the conversion successful even if work order failed
+          if (onConvertSuccess) {
+            onConvertSuccess(leadId, data.data);
+          }
+          onClose();
         }
-        onClose();
       } else {
         setError(data.message || 'Failed to convert lead to customer');
       }
@@ -185,6 +201,31 @@ const LeadDetailModal = ({ isOpen, onClose, leadId, onLeadUpdated, onConvertSucc
     } finally {
       setConverting(false);
     }
+  };
+  
+  // Helper function to create a work order
+  const createWorkOrder = async (customerId, projectType, initialRemark) => {
+    const response = await fetch(SummaryApi.createWorkOrder.url, {
+      method: SummaryApi.createWorkOrder.method,
+      credentials: 'include',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        customerId,
+        projectType,
+        initialRemark
+      })
+    });
+    
+    const data = await response.json();
+    
+    if (!data.success) {
+      console.error('Work order creation failed:', data.message);
+      throw new Error(data.message);
+    }
+    
+    return data.data;
   };
   
   const handleEdit = () => {
@@ -483,6 +524,9 @@ const LeadDetailModal = ({ isOpen, onClose, leadId, onLeadUpdated, onConvertSucc
                         <p className="text-sm text-blue-700">
                           Converting <strong>{lead.name}</strong> to a customer with phone number <strong>{lead.phoneNumber}</strong>. 
                           All lead information will be transferred to the new customer record.
+                        </p>
+                        <p className="text-sm text-blue-700 mt-2">
+                          <strong>Note:</strong> A new work order will be automatically created for this customer with the selected project type.
                         </p>
                       </div>
                       
