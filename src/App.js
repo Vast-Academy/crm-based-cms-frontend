@@ -176,7 +176,7 @@ function App() {
               <Route 
                 path="contacts" 
                 element={
-                  <ProtectedRoute>
+                  <ProtectedRoute allowedRoles={['admin', 'manager']}>
                     <ContactsPage />
                   </ProtectedRoute>
                 } 
