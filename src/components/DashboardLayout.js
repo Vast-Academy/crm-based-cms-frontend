@@ -5,7 +5,8 @@ import {
   FiHome, FiUsers, FiSettings, 
   FiPackage, FiClipboard, FiMenu, 
   FiBell, FiLogOut, FiChevronDown,
-  FiBriefcase, FiFileText, FiTool, FiRefreshCw
+  FiBriefcase, FiFileText, FiTool, FiRefreshCw,
+  FiActivity
 } from 'react-icons/fi';
 import ManagerStatusChecker from './ManagerStatusChecker';
 // import GlobalSearch from './GlobalSearch';
@@ -149,17 +150,6 @@ const DashboardLayout = () => {
       ]
     },
     { name: 'Work Orders', path: '/work-orders', icon: FiTool },
-    // Only show these items for technician role
-    // user?.role === 'technician' && { 
-    //   name: 'Work Assignments', 
-    //   path: '/work-assignments', 
-    //   icon: FiClipboard 
-    // },
-    // user?.role === 'technician' && { 
-    //   name: 'Assigned Inventory', 
-    //   path: '/assigned-inventory', 
-    //   icon: FiPackage 
-    // },
     user?.role === 'technician' && { 
       name: 'Technician Dashboard', 
       path: '/technician-dashboard', 
@@ -169,6 +159,11 @@ const DashboardLayout = () => {
       name: 'Inventory Transfer History', 
       path: '/inventory-transfer-history', 
       icon: FiRefreshCw 
+    },
+    user?.role === 'manager' && { 
+      name: 'Project Dashboard', 
+      path: '/manager-dashboard', 
+      icon: FiActivity 
     },
   ];
   

@@ -216,6 +216,14 @@ const SummaryApi = {
       getTransferHistory: {
         url : `${backendDomain}/api/get-transfer-history`,
         method: "get"
+      },
+      getManagerProjects: {
+        url : `${backendDomain}/api/get-manager-projects`,
+        method: "get"
+      },
+      approveWorkOrder: {
+        url : `${backendDomain}/api/approve-order`,
+        method: "post"
       }
 }
 

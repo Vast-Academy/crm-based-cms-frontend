@@ -38,6 +38,7 @@ import ContactsPage from './pages/leads/ContactsPage';
 import WorkOrdersPage from './pages/workOrders/WorkOrdersPage';
 import TechnicianDashboard from './pages/technician/TechnicianDashboard';
 import TransferHistoryTable from './pages/manager/TransferHistoryTable';
+import ManagerProjectDashboard from './pages/manager/ManagerProjectDashboard';
 
 // Protected route component
 const ProtectedRoute = ({ children, allowedRoles = [] }) => {
@@ -264,6 +265,15 @@ function App() {
           element={
             <ProtectedRoute allowedRoles={['manager']}>
               <TransferHistoryTable />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route 
+          path="manager-dashboard" 
+          element={
+            <ProtectedRoute allowedRoles={['manager']}>
+              <ManagerProjectDashboard/>
             </ProtectedRoute>
           }
         />

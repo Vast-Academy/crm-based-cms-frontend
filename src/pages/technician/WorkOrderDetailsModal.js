@@ -99,12 +99,6 @@ const WorkOrderDetailsModal = ({ isOpen, onClose, workOrder, onStatusUpdate }) =
     }
   }, [workOrder?.orderId]);
 
-useEffect(() => {
-  if (isOpen && workOrder) {
-    // मॉडल खुलने पर वर्क ऑर्डर डिटेल्स फेच करें
-    fetchWorkOrderDetails();
-  }
-}, [isOpen, workOrder?.orderId]);
   
   // Fetch technician's inventory
   const fetchTechnicianInventory = async () => {
@@ -211,6 +205,9 @@ useEffect(() => {
     try {
       setLoading(true);
       
+      // If completing the project, change status to pending-approval instead of completed
+      const statusToSend = newStatus === 'completed' ? 'pending-approval' : newStatus;
+      
       const response = await fetch(SummaryApi.updateWorkOrderStatus.url, {
         method: SummaryApi.updateWorkOrderStatus.method,
         headers: {
@@ -220,7 +217,7 @@ useEffect(() => {
         body: JSON.stringify({
           customerId: workOrder.customerId,
           orderId: workOrder.orderId,
-          status: newStatus,
+          status: statusToSend,
           remark: remark
         })
       });
@@ -238,7 +235,7 @@ useEffect(() => {
           onClose();
         } else if (newStatus === 'completed') {
           setShowPaymentSuccess(false);
-          alert('Project has been marked as completed successfully!');
+          alert('Project has been marked as completed and sent for manager approval!');
           onClose();
         }
         
@@ -1222,12 +1219,12 @@ const updateItemQuantity = (index, newQuantity) => {
         </div>
         
         <button 
-          className="w-full bg-green-500 hover:bg-green-600 text-white py-2 rounded-md flex items-center justify-center"
-          onClick={() => updateStatus('completed')}
-          disabled={loading}
-        >
-          <FiCheckCircle className="mr-2" /> Complete Project
-        </button>
+  className="w-full bg-green-500 hover:bg-green-600 text-white py-2 rounded-md flex items-center justify-center"
+  onClick={() => updateStatus('completed')}
+  disabled={loading}
+>
+  <FiCheckCircle className="mr-2" /> Complete Project & Send for Approval
+</button>
       </>
     ) : (
       // Show Pause Project when not in payment flow
