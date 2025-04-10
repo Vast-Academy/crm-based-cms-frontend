@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { FiX, FiUser, FiCalendar, FiMapPin, FiInfo, FiFileText, FiCheckCircle, FiClock } from 'react-icons/fi';
+import { FiX, FiUser, FiCalendar, FiMapPin, FiInfo, FiFileText, FiCheckCircle, FiClock, FiEye } from 'react-icons/fi';
 import SummaryApi from '../../common';
 import { useAuth } from '../../context/AuthContext';
 import LoadingSpinner from '../../components/LoadingSpinner';
@@ -9,6 +9,8 @@ const ProjectDetailsModal = ({ isOpen, onClose, project, onProjectApproved }) =>
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [approvalRemark, setApprovalRemark] = useState('');
+  const [showBillSummary, setShowBillSummary] = useState(false);
+const [selectedBill, setSelectedBill] = useState(null);
   
   const modalContentRef = useRef(null);
   
@@ -18,6 +20,13 @@ const ProjectDetailsModal = ({ isOpen, onClose, project, onProjectApproved }) =>
       modalContentRef.current.scrollTop = 0;
     }
   }, [isOpen, project]);
+
+  useEffect(() => {
+    if (project) {
+      console.log("Project in modal:", project);
+      console.log("Billing info:", project.billingInfo);
+    }
+  }, [project]);
   
   if (!isOpen || !project) return null;
   
@@ -70,6 +79,40 @@ const ProjectDetailsModal = ({ isOpen, onClose, project, onProjectApproved }) =>
     }
   };
   
+  // बिल आईडी से बिल प्राप्त करें
+const handleViewBillSummary = async (billId) => {
+  // यदि bills पहले से पॉपुलेट किए गए हैं और उनमें items हैं
+  if (project.bills && project.bills.length > 0) {
+    const bill = project.bills.find(b => b._id === billId || b.id === billId);
+    if (bill) {
+      setSelectedBill(bill);
+      setShowBillSummary(true);
+      return;
+    }
+  }
+  
+  // अगर bills में से नहीं मिलता, तो API से fetch करें
+  try {
+    const response = await fetch(`${SummaryApi.getBillDetails.url}/${billId}`, {
+      method: 'GET',
+      credentials: 'include'
+    });
+    
+    const data = await response.json();
+    
+    if (data.success) {
+      setSelectedBill(data.data);
+      setShowBillSummary(true);
+    } else {
+      setError(data.message || 'Failed to load bill details');
+    }
+  } catch (err) {
+    setError('Server error. Please try again.');
+    console.error('Error fetching bill details:', err);
+  }
+};
+
+
   // Get latest remark from status history
   const getLatestRemark = () => {
     if (project.statusHistory && project.statusHistory.length > 0) {
@@ -256,79 +299,128 @@ const ProjectDetailsModal = ({ isOpen, onClose, project, onProjectApproved }) =>
           
           {/* Payment & Billing Information */}
           {project.billingInfo && project.billingInfo.length > 0 && (
-            <div className="mb-6">
-              <h3 className="text-md font-medium flex items-center mb-3">
-                <FiFileText className="mr-2" />
-                Payment Information
-              </h3>
-              
-              <div className="bg-white border rounded-lg p-4">
-                {project.billingInfo.map((bill, billIndex) => (
-                  <div key={billIndex} className="mb-4 last:mb-0">
-                    <div className="flex justify-between items-center mb-2">
-                      <h4 className="font-medium">Bill #{bill.billNumber}</h4>
-                      <span className="bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs">
-                        {bill.paymentStatus || 'Paid'}
-                      </span>
-                    </div>
-                    
-                    <div className="bg-gray-50 p-3 rounded-md mb-2">
-                      <div className="flex justify-between text-sm mb-1">
-                        <span>Payment Method:</span>
-                        <span className="font-medium capitalize">{bill.paymentMethod}</span>
-                      </div>
-                      <div className="flex justify-between text-sm mb-1">
-                        <span>Amount:</span>
-                        <span className="font-medium">₹{bill.amount?.toFixed(2) || '0.00'}</span>
-                      </div>
-                      <div className="flex justify-between text-sm">
-                        <span>Payment Date:</span>
-                        <span>{formatDate(bill.paidAt)}</span>
-                      </div>
-                      {bill.transactionId && (
-                        <div className="flex justify-between text-sm mt-1">
-                          <span>Transaction ID:</span>
-                          <span className="font-medium">{bill.transactionId}</span>
-                        </div>
-                      )}
-                    </div>
-                    
-                    {/* Bill Items */}
-                    {bill.items && bill.items.length > 0 && (
-                      <div className="mt-3">
-                        <h5 className="text-sm font-medium mb-2">Items</h5>
-                        <table className="min-w-full text-sm">
-                          <thead>
-                            <tr className="bg-gray-50">
-                              <th className="py-2 px-3 text-left">Item</th>
-                              <th className="py-2 px-3 text-center">Qty</th>
-                              <th className="py-2 px-3 text-right">Price</th>
-                              <th className="py-2 px-3 text-right">Amount</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {bill.items.map((item, itemIndex) => (
-                              <tr key={itemIndex} className="border-b">
-                                <td className="py-2 px-3">
-                                  <div>{item.name}</div>
-                                  {item.serialNumber && (
-                                    <div className="text-xs text-gray-500">S/N: {item.serialNumber}</div>
-                                  )}
-                                </td>
-                                <td className="py-2 px-3 text-center">{item.quantity}</td>
-                                <td className="py-2 px-3 text-right">₹{item.price?.toFixed(2) || '0.00'}</td>
-                                <td className="py-2 px-3 text-right">₹{item.amount?.toFixed(2) || '0.00'}</td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
+  <div className="mb-6">
+    <h3 className="text-md font-medium flex items-center mb-3">
+      <FiFileText className="mr-2" />
+      Payment Information
+    </h3>
+    
+    <div className="bg-white border rounded-lg p-4">
+      {project.billingInfo.map((bill, billIndex) => (
+        <div key={billIndex} className="mb-4 last:mb-0">
+          <div className="flex justify-between items-center mb-2">
+            <h4 className="font-medium">Bill #{bill.billNumber}</h4>
+            <span className="bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs">
+              {bill.paymentStatus || 'Paid'}
+            </span>
+          </div>
+          
+          <div className="bg-gray-50 p-3 rounded-md mb-2">
+            <div className="flex justify-between text-sm mb-1">
+              <span>Payment Method:</span>
+              <span className="font-medium capitalize">{bill.paymentMethod}</span>
             </div>
-          )}
+            <div className="flex justify-between text-sm mb-1">
+              <span>Amount:</span>
+              <span className="font-medium">₹{bill.amount?.toFixed(2) || '0.00'}</span>
+            </div>
+            <div className="flex justify-between text-sm">
+              <span>Payment Date:</span>
+              <span>{formatDate(bill.paidAt)}</span>
+            </div>
+            {bill.transactionId && (
+              <div className="flex justify-between text-sm mt-1">
+                <span>Transaction ID:</span>
+                <span className="font-medium">{bill.transactionId}</span>
+              </div>
+            )}
+          </div>
+          
+          {/* यहां View Summary बटन जोड़ें */}
+          <button 
+            onClick={() => handleViewBillSummary(bill.billId)}
+            className="mt-2 px-3 py-1 bg-blue-50 text-blue-600 rounded border border-blue-200 text-sm flex items-center"
+          >
+            <FiEye className="mr-1" /> View Bill Summary
+          </button>
+        </div>
+      ))}
+    </div>
+  </div>
+)}
+
+{/* बिल समरी मोडल */}
+{showBillSummary && selectedBill && (
+  <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    <div className="bg-white rounded-lg shadow-lg w-full max-w-2xl p-6">
+      <div className="flex justify-between items-center mb-4">
+        <h3 className="text-lg font-medium">Bill Summary</h3>
+        <button onClick={() => setShowBillSummary(false)} className="text-gray-400 hover:text-gray-600">
+          <FiX size={24} />
+        </button>
+      </div>
+      
+      <div className="mb-4">
+        <p className="text-gray-600">Bill #{selectedBill.billNumber}</p>
+        <p className="text-gray-600">Date: {formatDate(selectedBill.createdAt)}</p>
+      </div>
+      
+      {/* बिल आइटम्स टेबल */}
+      <div className="overflow-x-auto">
+        <table className="min-w-full divide-y divide-gray-200">
+          <thead className="bg-gray-50">
+            <tr>
+              <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Item</th>
+              <th className="px-4 py-2 text-center text-xs font-medium text-gray-500 uppercase">Quantity</th>
+              <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">Price</th>
+              <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">Amount</th>
+            </tr>
+          </thead>
+          <tbody className="bg-white divide-y divide-gray-200">
+            {selectedBill.items && selectedBill.items.map((item, index) => (
+              <tr key={index} className="hover:bg-gray-50">
+                <td className="px-4 py-2 whitespace-nowrap">
+                  <div>{item.name}</div>
+                  {item.serialNumber && (
+                    <div className="text-xs text-gray-500">Serial: {item.serialNumber}</div>
+                  )}
+                </td>
+                <td className="px-4 py-2 text-center whitespace-nowrap">
+                  {item.quantity}
+                </td>
+                <td className="px-4 py-2 text-right whitespace-nowrap">
+                  ₹{item.price?.toFixed(2) || '0.00'}
+                </td>
+                <td className="px-4 py-2 text-right whitespace-nowrap">
+                  ₹{item.amount?.toFixed(2) || '0.00'}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+          <tfoot className="bg-gray-50">
+            <tr>
+              <td colSpan="3" className="px-4 py-2 text-right font-medium">
+                Total:
+              </td>
+              <td className="px-4 py-2 text-right font-medium">
+                ₹{selectedBill.totalAmount?.toFixed(2) || '0.00'}
+              </td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+      
+      <div className="mt-4 flex justify-end">
+        <button 
+          onClick={() => setShowBillSummary(false)}
+          className="px-4 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300"
+        >
+          Close
+        </button>
+      </div>
+    </div>
+  </div>
+)}
           
           {/* Approval Section - For Pending Approval Projects */}
           {project.status === 'pending-approval' && (

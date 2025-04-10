@@ -476,6 +476,7 @@ const updateItemQuantity = (index, newQuantity) => {
       });
       
       const data = await response.json();
+      console.log("Bill generated:", data);
       
       if (data.success) {
         // Set the bill ID for later use
@@ -536,6 +537,7 @@ const updateItemQuantity = (index, newQuantity) => {
       });
       
       const data = await response.json();
+      console.log("Bill generated:", data);
       
       if (data.success) {
         // Hide payment options and show success

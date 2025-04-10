@@ -224,6 +224,10 @@ const SummaryApi = {
       approveWorkOrder: {
         url : `${backendDomain}/api/approve-order`,
         method: "post"
+      },
+      getBillDetails:{
+        url : `${backendDomain}/api/get-bill-details`,
+        method: "get"
       }
 }
 
