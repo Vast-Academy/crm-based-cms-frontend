@@ -31,6 +31,13 @@ const DashboardLayout = () => {
     }
   }, [user]);
 
+  useEffect(() => {
+    // If the user is technician, immediately redirect to technician dashboard
+    if (user && user.role === 'technician') {
+      navigate('/technician-dashboard');
+    }
+  }, [user, navigate]);
+
   const handleLogout = () => {
     logout();
     navigate('/login');
@@ -86,89 +93,123 @@ const DashboardLayout = () => {
     }
   };
   
-  // Main navigation items with conditional rendering based on user role
-  const navItems = [
-    { name: 'Dashboard', path: '/dashboard', icon: FiHome },
-    // Add Ownership Transfer for active managers
-    showTransferOption && {
-      name: 'Ownership Transfer',
-      path: '/ownership-transfer',
-      icon: FiRefreshCw
-    },
-    {
-      name: 'User Management',
-      icon: FiUsers,
-      dropdown: true,
-      isOpen: usersDropdownOpen,
-      toggle: () => toggleDropdown('users'),
-      items: user?.role === 'admin' ? [
-        { name: 'Admin Users', path: '/users/admin' },
-        { name: 'Managers', path: '/users/managers' },
-        { name: 'Technicians', path: '/users/technicians' },
-      ] : [
-        { name: 'Technicians', path: '/users/technicians' },
-      ]
-    },
-    user?.role === 'admin' && {
-      name: 'Branch Management',
-      icon: FiBriefcase,
-      dropdown: true,
-      isOpen: branchesDropdownOpen,
-      toggle: () => toggleDropdown('branches'),
-      items: [
-        { name: 'All Branches', path: '/branches' },
-        { name: 'Add Branch', path: '/branches/add' },
-      ]
-    },
-    {
-      name: 'Inventory',
-      icon: FiPackage,
-      dropdown: true,
-      isOpen: inventoryDropdownOpen,
-      toggle: () => toggleDropdown('inventory'),
-      items: user.role === 'admin' ? [
-        { name: 'Add Inventory', path: '/inventory/add' },
-        { name: 'Serialized Products', path: '/inventory/serialized' },
-        { name: 'Generic Products', path: '/inventory/generic' },
-        { name: 'Services', path: '/inventory/services' }
-      ] : [
-        { name: 'Serialized Products', path: '/inventory/serialized' },
-        { name: 'Generic Products', path: '/inventory/generic' },
-        { name: 'Services', path: '/inventory/services' }
-      ]
-    },
-    { 
-      name: 'Customer', 
-      icon: FiUsers, 
-      dropdown: true,
-      isOpen: leadsDropdownOpen,
-      toggle: () => toggleDropdown('leads'),
-      items: [
-        { name: 'Customer & Leads', path: '/contacts' },
-        { name: 'All Leads', path: '/leads' },
-        { name: 'All Customers', path: '/customers' },
-      ]
-    },
-    { name: 'Work Orders', path: '/work-orders', icon: FiTool },
-    user?.role === 'technician' && { 
-      name: 'Technician Dashboard', 
-      path: '/technician-dashboard', 
-      icon: FiTool 
-    },
-    user?.role === 'manager' && { 
-      name: 'Inventory Transfer History', 
-      path: '/inventory-transfer-history', 
-      icon: FiRefreshCw 
-    },
-    user?.role === 'manager' && { 
-      name: 'Project Dashboard', 
-      path: '/manager-dashboard', 
-      icon: FiActivity 
-    },
-  ];
+  // Define navigation items by role
+  const getNavItemsByRole = () => {
+    // Default items that show for everyone - empty for now
+    let navItems = [];
+    
+    if (user) {
+      // Common item for Admin and Manager
+      if (user.role === 'admin' || user.role === 'manager') {
+        navItems.push({ name: 'Dashboard', path: '/dashboard', icon: FiHome });
+      }
+      
+      // Admin specific items
+      if (user.role === 'admin') {
+        navItems = [
+          ...navItems,
+          {
+            name: 'User Management',
+            icon: FiUsers,
+            dropdown: true,
+            isOpen: usersDropdownOpen,
+            toggle: () => toggleDropdown('users'),
+            items: [
+              { name: 'Admin Users', path: '/users/admin' },
+              { name: 'Managers', path: '/users/managers' },
+              { name: 'Technicians', path: '/users/technicians' },
+            ]
+          },
+          {
+            name: 'Branch Management',
+            icon: FiBriefcase,
+            dropdown: true,
+            isOpen: branchesDropdownOpen,
+            toggle: () => toggleDropdown('branches'),
+            items: [
+              { name: 'All Branches', path: '/branches' },
+              { name: 'Add Branch', path: '/branches/add' },
+            ]
+          },
+          {
+            name: 'Inventory',
+            icon: FiPackage,
+            dropdown: true,
+            isOpen: inventoryDropdownOpen,
+            toggle: () => toggleDropdown('inventory'),
+            items: [
+              { name: 'Add Inventory', path: '/inventory/add' },
+              { name: 'Serialized Products', path: '/inventory/serialized' },
+              { name: 'Generic Products', path: '/inventory/generic' },
+              { name: 'Services', path: '/inventory/services' }
+            ]
+          }
+        ];
+      }
+      
+      // Manager specific items
+      if (user.role === 'manager') {
+        navItems = [
+          ...navItems,
+          // Only show ownership transfer for active managers
+          showTransferOption && {
+            name: 'Ownership Transfer',
+            path: '/ownership-transfer',
+            icon: FiRefreshCw
+          },
+          {
+            name: 'User Management',
+            icon: FiUsers,
+            dropdown: true,
+            isOpen: usersDropdownOpen,
+            toggle: () => toggleDropdown('users'),
+            items: [
+              { name: 'Technicians', path: '/users/technicians' },
+            ]
+          },
+          {
+            name: 'Inventory',
+            icon: FiPackage,
+            dropdown: true,
+            isOpen: inventoryDropdownOpen,
+            toggle: () => toggleDropdown('inventory'),
+            items: [
+              { name: 'Serialized Products', path: '/inventory/serialized' },
+              { name: 'Generic Products', path: '/inventory/generic' },
+              { name: 'Services', path: '/inventory/services' }
+            ]
+          },
+          { 
+            name: 'Customer', 
+            icon: FiUsers, 
+            dropdown: true,
+            isOpen: leadsDropdownOpen,
+            toggle: () => toggleDropdown('leads'),
+            items: [
+              { name: 'Customer & Leads', path: '/contacts' },
+              { name: 'All Leads', path: '/leads' },
+              { name: 'All Customers', path: '/customers' },
+            ]
+          },
+          { name: 'Work Orders', path: '/work-orders', icon: FiTool },
+          { name: 'Logs', path: '/inventory-transfer-history', icon: FiRefreshCw },
+          { name: 'Project Dashboard', path: '/manager-dashboard', icon: FiActivity }
+        ];
+      }
+      
+      // Technician specific items
+      if (user.role === 'technician') {
+        navItems = [
+          { name: 'Technician Dashboard', path: '/technician-dashboard', icon: FiTool }
+        ];
+      }
+    }
+    
+    // Filter out undefined items (from conditional rendering)
+    return navItems.filter(item => item);
+  };
   
-  // Filter out undefined items (from conditional rendering)
-  const filteredNavItems = navItems.filter(item => item);
+  const filteredNavItems = getNavItemsByRole();
   
   return (
     <div className="flex h-screen bg-gray-100">
@@ -251,8 +292,6 @@ const DashboardLayout = () => {
           </button>
           
           <div className="flex-1 px-4 flex items-center">
-          {/* <GlobalSearch /> */}
-
             {user && user.role === 'admin' && (
               <select className="px-4 py-2 border rounded-md">
                 <option value="">All Branches</option>
