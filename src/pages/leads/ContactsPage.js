@@ -7,6 +7,7 @@ import Modal from '../../components/Modal';
 import AddContactForm from './AddContactForm';
 import LeadDetailModal from '../leads/LeadDetail';
 import CustomerDetailModal from './CustomerDetailModal';
+import WorkOrderModal from '../customers/WorkOrderModal';
 
 const statusColors = {
   positive: 'bg-green-100 border-green-500 text-green-800',
@@ -33,6 +34,7 @@ const ContactsPage = () => {
   const [showAddModal, setShowAddModal] = useState(false);
   const [showLeadDetailModal, setShowLeadDetailModal] = useState(false);
   const [showCustomerDetailModal, setShowCustomerDetailModal] = useState(false);
+  const [showWorkOrderModal, setShowWorkOrderModal] = useState(false);
   const [selectedLeadId, setSelectedLeadId] = useState(null);
   const [selectedCustomerId, setSelectedCustomerId] = useState(null);
   const [initialPhone, setInitialPhone] = useState('');
@@ -118,6 +120,19 @@ const ContactsPage = () => {
   const handleViewCustomer = (customerId) => {
     setSelectedCustomerId(customerId);
     setShowCustomerDetailModal(true);
+  };
+  
+  // Handle creating new project for a customer
+  const handleCreateProject = (customerId) => {
+    setSelectedCustomerId(customerId);
+    setShowWorkOrderModal(true);
+  };
+
+  // Handle work order success
+  const handleWorkOrderSuccess = (data) => {
+    // Refresh contacts data to get updated customer info
+    fetchContacts();
+    setShowWorkOrderModal(false);
   };
   
   // Handle view of a contact (either lead or customer)
@@ -330,6 +345,14 @@ const handleLeadUpdated = (updatedLead) => {
         customerId={selectedCustomerId}
         onCustomerUpdated={handleCustomerUpdated}
       />
+
+      {/* Work Order Modal for New Project */}
+      <WorkOrderModal
+        isOpen={showWorkOrderModal}
+        onClose={() => setShowWorkOrderModal(false)}
+        customerId={selectedCustomerId}
+        onSuccess={handleWorkOrderSuccess}
+      />
       
       {error && (
         <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
@@ -502,95 +525,87 @@ const handleLeadUpdated = (updatedLead) => {
                       )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-  {contact.contactType === 'lead' && contact.remarks && contact.remarks.length > 0 ? (
-    <div className="max-w-xs truncate">
-      {contact.remarks[contact.remarks.length - 1].text}
-    </div>
-  ) : contact.contactType === 'customer' ? (
-    <div className="max-w-xs truncate">
-      {contact.projects && contact.projects.length > 0 
-        ? contact.projects[0].projectType 
-        : contact.projectType || 'No information'}
-    </div>
-  ) : (
-    <span className="text-gray-400">No information</span>
-  )}
-</td>
-                    {/* <td className="px-6 py-4 whitespace-nowrap text-sm">
-                      <button 
-                        onClick={() => handleViewContact(contact)}
-                        className="text-blue-600 hover:text-blue-900 mr-3"
-                      >
-                        View
-                      </button>
-                    </td> */}
+                      {contact.contactType === 'lead' && contact.remarks && contact.remarks.length > 0 ? (
+                        <div className="max-w-xs truncate">
+                          {contact.remarks[contact.remarks.length - 1].text}
+                        </div>
+                      ) : contact.contactType === 'customer' ? (
+                        <div className="max-w-xs truncate">
+                          {contact.projects && contact.projects.length > 0 
+                            ? contact.projects[0].projectType 
+                            : contact.projectType || 'No information'}
+                        </div>
+                      ) : (
+                        <span className="text-gray-400">No information</span>
+                      )}
+                    </td>
                   </tr>
-                   {/* Expanded row */}
-    {expandedRow === `${contact.contactType}-${contact._id}` && (
-      <tr>
-        <td colSpan="6" className="px-6 py-4 bg-gray-50">
-          <div className="flex gap-2">
-            {contact.contactType === 'lead' ? (
-              <>
-                <button 
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleViewLead(contact._id);
-                  }}
-                  className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
-                >
-                  View Details
-                </button>
-                <button 
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    // Pass true to open directly in convert mode
-                    handleViewLead(contact._id, true); 
-                  }}
-                  className="px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600"
-                >
-                  Convert to Customer
-                </button>
-              </>
-            ) : (
-              <>
-                <button 
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleViewCustomer(contact._id);
-                  }}
-                  className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
-                >
-                  View Details
-                </button>
-                <button 
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    // New Complaint function
-                    alert('New Complaint functionality will be implemented');
-                  }}
-                  className="px-4 py-2 bg-orange-500 text-white rounded-md hover:bg-orange-600"
-                >
-                  New Complaint
-                </button>
-                <button 
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    // New Project function
-                    alert('New Project functionality will be implemented');
-                  }}
-                  className="px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600"
-                >
-                  New Project
-                </button>
-              </>
-            )}
-          </div>
-        </td>
-      </tr>
-    )}
-  </React.Fragment>
-))}
+                  {/* Expanded row */}
+                  {expandedRow === `${contact.contactType}-${contact._id}` && (
+                    <tr>
+                      <td colSpan="6" className="px-6 py-4 bg-gray-50">
+                        <div className="flex gap-2">
+                          {contact.contactType === 'lead' ? (
+                            <>
+                              <button 
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleViewLead(contact._id);
+                                }}
+                                className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
+                              >
+                                View Details
+                              </button>
+                              <button 
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  // Pass true to open directly in convert mode
+                                  handleViewLead(contact._id, true); 
+                                }}
+                                className="px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600"
+                              >
+                                Convert to Customer
+                              </button>
+                            </>
+                          ) : (
+                            <>
+                              <button 
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleViewCustomer(contact._id);
+                                }}
+                                className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
+                              >
+                                View Details
+                              </button>
+                              <button 
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  // New Complaint function
+                                  alert('New Complaint functionality will be implemented');
+                                }}
+                                className="px-4 py-2 bg-orange-500 text-white rounded-md hover:bg-orange-600"
+                              >
+                                New Complaint
+                              </button>
+                              <button 
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  // New Project function - now actually opens the WorkOrderModal
+                                  handleCreateProject(contact._id);
+                                }}
+                                className="px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600"
+                              >
+                                New Project
+                              </button>
+                            </>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                </React.Fragment>
+              ))}
               </tbody>
             </table>
           </div>

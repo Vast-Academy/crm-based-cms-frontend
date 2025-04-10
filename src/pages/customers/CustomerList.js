@@ -7,6 +7,7 @@ import { useAuth } from '../../context/AuthContext';
 import Modal from '../../components/Modal'; 
 import AddContactForm from '../leads/AddContactForm';
 import CustomerDetailModal from '../leads/CustomerDetailModal';
+import WorkOrderModal from '../customers/WorkOrderModal';
 
 // Customer styling
 const customerColor = 'border-blue-500 bg-blue-50';
@@ -14,7 +15,7 @@ const customerColor = 'border-blue-500 bg-blue-50';
 const CustomerList = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
-   const [contacts, setContacts] = useState([]);
+  const [contacts, setContacts] = useState([]);
   const [customers, setCustomers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -27,6 +28,7 @@ const CustomerList = () => {
   
   // State for modals
   const [showAddCustomerModal, setShowAddCustomerModal] = useState(false);
+  const [showWorkOrderModal, setShowWorkOrderModal] = useState(false);
   const [newCustomerPhone, setNewCustomerPhone] = useState('');
   const [expandedRow, setExpandedRow] = useState(null);
   const [showCustomerDetailModal, setShowCustomerDetailModal] = useState(false);
@@ -90,6 +92,19 @@ const CustomerList = () => {
     setShowCustomerDetailModal(true);
   };
 
+  // Handle creating new project for a customer
+  const handleCreateProject = (customerId) => {
+    setSelectedCustomerId(customerId);
+    setShowWorkOrderModal(true);
+  };
+
+  // Handle work order success
+  const handleWorkOrderSuccess = (data) => {
+    // Refresh contacts data to get updated customer info
+    fetchCustomers();
+    setShowWorkOrderModal(false);
+  };
+
   // Handle customer added
   const handleCustomerAdded = (newCustomer) => {
     setShowAddCustomerModal(false);
@@ -105,29 +120,39 @@ const CustomerList = () => {
   };
   
   // Customer update handler
-const handleCustomerUpdated = (updatedCustomer) => {
-  setContacts(prevContacts => {
-    const contactIndex = prevContacts.findIndex(
-      contact => contact.contactType === 'customer' && contact._id === updatedCustomer._id
-    );
+  const handleCustomerUpdated = (updatedCustomer) => {
+    // Update the customers list with the updated customer
+    setCustomers(prevCustomers => {
+      const customerIndex = prevCustomers.findIndex(
+        customer => customer._id === updatedCustomer._id
+      );
+      
+      if (customerIndex === -1) {
+        return prevCustomers;
+      }
+      
+      const newCustomers = [...prevCustomers];
+      newCustomers[customerIndex] = updatedCustomer;
+      
+      return newCustomers;
+    });
     
-    if (contactIndex === -1) {
-      return prevContacts;
-    }
-    
-    const newContacts = [...prevContacts];
-    
-    const updatedContact = {
-      ...updatedCustomer,
-      contactType: 'customer'
-    };
-    
-    newContacts.splice(contactIndex, 1);
-    
-    return [updatedContact, ...newContacts];
-  });
-};
-
+    // Also update filtered customers if needed
+    setFilteredCustomers(prevFilteredCustomers => {
+      const customerIndex = prevFilteredCustomers.findIndex(
+        customer => customer._id === updatedCustomer._id
+      );
+      
+      if (customerIndex === -1) {
+        return prevFilteredCustomers;
+      }
+      
+      const newFilteredCustomers = [...prevFilteredCustomers];
+      newFilteredCustomers[customerIndex] = updatedCustomer;
+      
+      return newFilteredCustomers;
+    });
+  };
   
   // Handle search and filtering
   useEffect(() => {
@@ -204,6 +229,14 @@ const handleCustomerUpdated = (updatedCustomer) => {
         onClose={() => setShowCustomerDetailModal(false)}
         customerId={selectedCustomerId}
         onCustomerUpdated={handleCustomerUpdated}
+      />
+
+      {/* Work Order Modal for New Project */}
+      <WorkOrderModal
+        isOpen={showWorkOrderModal}
+        onClose={() => setShowWorkOrderModal(false)}
+        customerId={selectedCustomerId}
+        onSuccess={handleWorkOrderSuccess}
       />
       
       {error && (
@@ -308,79 +341,79 @@ const handleCustomerUpdated = (updatedCustomer) => {
                     </td> */}
                   </tr>
                 {/* Expanded row with buttons */}
-      {expandedRow === customer._id && (
-        <tr>
-          <td colSpan="5" className="px-6 py-4 bg-gray-50">
-            <div className="flex gap-2">
-              <button 
-                onClick={(e) => {
-                  e.stopPropagation(); // Prevent row toggle
-                  handleViewCustomer(customer._id);
-                }}
-                className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
-              >
-                View Details
-              </button>
-              <button 
-                onClick={(e) => {
-                  e.stopPropagation(); // Prevent row toggle
-                  // New Complaint functionality
-                  alert('New Complaint functionality will be implemented');
-                }}
-                className="px-4 py-2 bg-orange-500 text-white rounded-md hover:bg-orange-600"
-              >
-                New Complaint
-              </button>
-              <button 
-                onClick={(e) => {
-                  e.stopPropagation(); // Prevent row toggle
-                  // New Project functionality
-                  alert('New Project functionality will be implemented');
-                }}
-                className="px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600"
-              >
-                New Project
-              </button>
-            </div>
-          </td>
-        </tr>
-      )}
-    </React.Fragment>
-  ))}
-</tbody>
-            </table>
-          </div>
-        ) : (
-          <div className="p-8 text-center">
-            {searchQuery && (
-              <div>
-                <p className="text-gray-500 mb-4">
-                  No customers found matching "{searchQuery}"
-                </p>
-                {/* Show Add as New Customer button for valid phone numbers */}
-                {isValidPhoneSearch(searchQuery) && (
-                  <button
-                    onClick={() => handleAddNew(searchQuery)}
-                    className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-md inline-flex items-center"
-                  >
-                    <FiUserPlus className="mr-2" />
-                    Add as New Customer
-                  </button>
+                {expandedRow === customer._id && (
+                  <tr>
+                    <td colSpan="5" className="px-6 py-4 bg-gray-50">
+                      <div className="flex gap-2">
+                        <button 
+                          onClick={(e) => {
+                            e.stopPropagation(); // Prevent row toggle
+                            handleViewCustomer(customer._id);
+                          }}
+                          className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
+                        >
+                          View Details
+                        </button>
+                        <button 
+                          onClick={(e) => {
+                            e.stopPropagation(); // Prevent row toggle
+                            // New Complaint functionality
+                            alert('New Complaint functionality will be implemented');
+                          }}
+                          className="px-4 py-2 bg-orange-500 text-white rounded-md hover:bg-orange-600"
+                        >
+                          New Complaint
+                        </button>
+                        <button 
+                          onClick={(e) => {
+                            e.stopPropagation(); // Prevent row toggle
+                            // New Project functionality - now opens WorkOrderModal
+                            handleCreateProject(customer._id);
+                          }}
+                          className="px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600"
+                        >
+                          New Project
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
                 )}
-              </div>
-            )}
-            {!searchQuery && (
-              <p className="text-gray-500">
-                {customers.length > 0 
-                  ? 'Use the search bar to find customers.' 
-                  : 'No customers found. Add a new customer or convert leads to get started.'}
+              </React.Fragment>
+            ))}
+            </tbody>
+          </table>
+        </div>
+      ) : (
+        <div className="p-8 text-center">
+          {searchQuery && (
+            <div>
+              <p className="text-gray-500 mb-4">
+                No customers found matching "{searchQuery}"
               </p>
-            )}
-          </div>
-        )}
-      </div>
+              {/* Show Add as New Customer button for valid phone numbers */}
+              {isValidPhoneSearch(searchQuery) && (
+                <button
+                  onClick={() => handleAddNew(searchQuery)}
+                  className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-md inline-flex items-center"
+                >
+                  <FiUserPlus className="mr-2" />
+                  Add as New Customer
+                </button>
+              )}
+            </div>
+          )}
+          {!searchQuery && (
+            <p className="text-gray-500">
+              {customers.length > 0 
+                ? 'Use the search bar to find customers.' 
+                : 'No customers found. Add a new customer or convert leads to get started.'}
+            </p>
+          )}
+        </div>
+      )}
     </div>
-  );
+  </div>
+);
 };
 
 export default CustomerList;
