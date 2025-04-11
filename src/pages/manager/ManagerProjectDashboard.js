@@ -155,9 +155,18 @@ const ManagerProjectDashboard = () => {
       const data = await response.json();
       
       if (data.success) {
+        // Console log to debug the project details
+        console.log('Project details received:', data.data);
+        
+        // Check whether assignedBy is properly populated
+        if (data.data.assignedBy) {
+          console.log('AssignedBy details:', data.data.assignedBy);
+        }
+        
         setSelectedProject(data.data);
         setShowDetailsModal(true);
       } else {
+        console.error('API returned error:', data.message);
         // If API fails, use the basic project data we have
         setSelectedProject(project);
         setShowDetailsModal(true);

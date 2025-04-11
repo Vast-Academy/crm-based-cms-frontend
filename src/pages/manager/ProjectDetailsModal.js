@@ -235,32 +235,32 @@ const handleViewBillSummary = async (billId) => {
           
           {/* Technician Information */}
           {project.technician && (
-            <div className="mb-6">
-              <h3 className="text-md font-medium mb-3">Technician Information</h3>
-              
-              <div className="bg-white border rounded-lg p-4">
-                <p className="font-medium">
-                  {project.technician.firstName} {project.technician.lastName}
-                </p>
-                {project.assignedAt && (
-                  <p className="text-sm text-gray-600 mt-1">
-                    Assigned on: {formatDate(project.assignedAt)}
-                  </p>
-                )}
-                {project.assignedBy && (
-                  <p className="text-sm text-gray-600 mt-1">
-                    Assigned by: {
-    typeof project.assignedBy === 'object' && project.assignedBy?.firstName 
-      ? `${project.assignedBy.firstName} ${project.assignedBy.lastName || ''}`
-      : project.assignedBy 
-        ? `User (ID: ${typeof project.assignedBy === 'string' ? project.assignedBy : project.assignedBy._id})`
-        : 'System'
-  }
-                  </p>
-                )}
-              </div>
-            </div>
-          )}
+  <div className="mb-6">
+    <h3 className="text-md font-medium mb-3">Technician Information</h3>
+    
+    <div className="bg-white border rounded-lg p-4">
+      <p className="font-medium">
+        {project.technician.firstName} {project.technician.lastName}
+      </p>
+      {project.assignedAt && (
+        <p className="text-sm text-gray-600 mt-1">
+          Assigned on: {formatDate(project.assignedAt)}
+        </p>
+      )}
+      {project.assignedBy && (
+        <p className="text-sm text-gray-600 mt-1">
+          Assigned by: {
+            project.assignedBy.firstName 
+              ? `${project.assignedBy.firstName} ${project.assignedBy.lastName || ''}`
+              : project.assignedBy._id 
+                ? `User (ID: ${project.assignedBy._id})` 
+                : 'System'
+          }
+        </p>
+      )}
+    </div>
+  </div>
+)}
           
           {/* Initial Requirements */}
           {project.initialRemark && (
@@ -295,16 +295,16 @@ const handleViewBillSummary = async (billId) => {
                         <p className="mt-2 text-sm">{history.remark}</p>
                       )}
                       {history.updatedBy && (
-  <p className="mt-1 text-xs text-gray-500">
-    By: {
-      typeof history.updatedBy === 'object' && history.updatedBy?.firstName
-        ? `${history.updatedBy.firstName} ${history.updatedBy.lastName || ''}`
-        : typeof history.updatedBy === 'string' 
-          ? `User (ID: ${history.updatedBy})`
-          : 'System'
-    }
-  </p>
-)}
+                        <p className="mt-1 text-xs text-gray-500">
+                          By: {
+                            history.updatedBy.firstName
+                              ? `${history.updatedBy.firstName} ${history.updatedBy.lastName || ''}`
+                              : history.updatedBy._id
+                                ? `User (ID: ${history.updatedBy._id})`
+                                : 'System'
+                          }
+                        </p>
+                      )}
                     </div>
                   ))}
                 </div>
