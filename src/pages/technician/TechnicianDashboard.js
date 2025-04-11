@@ -24,7 +24,7 @@ import WorkOrderDetailsModal from './WorkOrderDetailsModal';
 import ReturnInventoryModal from './ReturnInventoryModal';
 
 const TechnicianDashboard = () => {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const [inventoryItems, setInventoryItems] = useState([]);
   const [workOrders, setWorkOrders] = useState([]);
   const [completedOrders, setCompletedOrders] = useState([]);
@@ -32,6 +32,7 @@ const TechnicianDashboard = () => {
   const [error, setError] = useState(null);
   const [darkMode, setDarkMode] = useState(false); // Default light mode
   const [activeTab, setActiveTab] = useState('home');
+  const [showLogoutPopup, setShowLogoutPopup] = useState(false);
   
   // States for modals
   const [showInventoryModal, setShowInventoryModal] = useState(false);
@@ -39,6 +40,23 @@ const TechnicianDashboard = () => {
   const [showWorkOrderModal, setShowWorkOrderModal] = useState(false);
   const [selectedWorkOrder, setSelectedWorkOrder] = useState(null);
   const [showReturnModal, setShowReturnModal] = useState(false);
+  
+  // Handle logout
+  const handleLogout = () => {
+    setShowLogoutPopup(false); // Close popup first
+    logout(); // Call the logout function from AuthContext
+    // Redirect to login page will be handled by AuthContext/Router
+  };
+  
+  // Toggle profile popup
+  const toggleLogoutPopup = () => {
+    setShowLogoutPopup(!showLogoutPopup);
+  };
+
+   // Function to handle tab changes
+   const handleTabChange = (tab) => {
+    setActiveTab(tab);
+  };
   
   // Load theme preference from localStorage on component mount
   useEffect(() => {
@@ -48,16 +66,11 @@ const TechnicianDashboard = () => {
     }
   }, []);
 
-  // Function to toggle theme and save to localStorage
+  // Toggle theme and save to localStorage
   const toggleTheme = () => {
     const newThemeValue = !darkMode;
     setDarkMode(newThemeValue);
     localStorage.setItem('technicianDashboardTheme', newThemeValue ? 'dark' : 'light');
-  };
-
-  // Function to handle tab changes
-  const handleTabChange = (tab) => {
-    setActiveTab(tab);
   };
   
   // Filter work orders to show only those from the last 2 days
@@ -276,9 +289,12 @@ const TechnicianDashboard = () => {
       <header className={`p-4 ${darkMode ? 'bg-gradient-to-r from-blue-600 to-purple-600' : 'bg-gradient-to-r from-blue-500 to-purple-500'} rounded-b-xl mx-2 shadow-xl text-white`}>
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-3">
-            <div className="w-12 h-12 rounded-full bg-white p-1 overflow-hidden border-2 border-white shadow-lg">
+            <div 
+              className="w-12 h-12 rounded-full bg-white p-1 overflow-hidden border-2 border-white shadow-lg cursor-pointer"
+              onClick={handleLogout}
+            >
               <div className="w-full h-full rounded-full bg-blue-600 flex items-center justify-center text-white text-xl font-bold">
-                {user?.firstName?.charAt(0) || 'T'}
+                👨
               </div>
             </div>
             <div>
@@ -885,6 +901,9 @@ const TechnicianDashboard = () => {
           </button>
         </div>
       </footer>
+      
+      {/* Add bottom padding to prevent content from being hidden behind fixed footer */}
+      <div className="pb-16"></div>
       
       {/* Modals */}
       {showInventoryModal && (
