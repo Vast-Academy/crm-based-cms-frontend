@@ -30,7 +30,7 @@ const TechnicianDashboard = () => {
   const [completedOrders, setCompletedOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [darkMode, setDarkMode] = useState(true);
+  const [darkMode, setDarkMode] = useState(false); // Default light mode
   const [activeTab, setActiveTab] = useState('home');
   
   // States for modals
@@ -40,14 +40,45 @@ const TechnicianDashboard = () => {
   const [selectedWorkOrder, setSelectedWorkOrder] = useState(null);
   const [showReturnModal, setShowReturnModal] = useState(false);
   
-  // Function to toggle theme
+  // Load theme preference from localStorage on component mount
+  useEffect(() => {
+    const savedTheme = localStorage.getItem('technicianDashboardTheme');
+    if (savedTheme !== null) {
+      setDarkMode(savedTheme === 'dark');
+    }
+  }, []);
+
+  // Function to toggle theme and save to localStorage
   const toggleTheme = () => {
-    setDarkMode(!darkMode);
+    const newThemeValue = !darkMode;
+    setDarkMode(newThemeValue);
+    localStorage.setItem('technicianDashboardTheme', newThemeValue ? 'dark' : 'light');
   };
 
   // Function to handle tab changes
   const handleTabChange = (tab) => {
     setActiveTab(tab);
+  };
+  
+  // Filter work orders to show only those from the last 2 days
+  const getRecentWorkOrders = () => {
+    const twoDaysAgo = new Date();
+    twoDaysAgo.setDate(twoDaysAgo.getDate() - 2);
+    
+    // Combine active and completed work orders
+    return [...workOrders, ...completedOrders]
+      .filter(order => {
+        // If updatedAt exists, use it, otherwise fallback to current date
+        const orderDate = order.updatedAt ? new Date(order.updatedAt) : new Date();
+        return orderDate >= twoDaysAgo;
+      })
+      .sort((a, b) => {
+        // Sort by most recently updated
+        if (a.updatedAt && b.updatedAt) {
+          return new Date(b.updatedAt) - new Date(a.updatedAt);
+        }
+        return 0;
+      });
   };
 
   // Fetch technician inventory
@@ -236,14 +267,8 @@ const TechnicianDashboard = () => {
     }
   });
 
-  // Combine active and completed work orders for tasks display
-  const allWorkOrders = [...workOrders, ...completedOrders].sort((a, b) => {
-    // Sort by most recently updated work orders
-    if (a.updatedAt && b.updatedAt) {
-      return new Date(b.updatedAt) - new Date(a.updatedAt);
-    }
-    return 0;
-  });
+  // Get work orders from the last 2 days for tasks display
+  const recentWorkOrders = getRecentWorkOrders();
 
   return (
     <div className={`flex flex-col h-screen ${darkMode ? 'bg-gradient-to-b from-gray-900 to-gray-800 text-white' : 'bg-gradient-to-b from-gray-100 to-white text-gray-800'}`}>
@@ -292,7 +317,10 @@ const TechnicianDashboard = () => {
 
             {/* Dashboard Stats */}
             <div className="grid grid-cols-2 gap-4 mb-6">
-              <div className={`${darkMode ? 'bg-gradient-to-br from-blue-500 to-blue-600' : 'bg-gradient-to-br from-blue-400 to-blue-500'} rounded-2xl shadow-lg p-4 relative overflow-hidden text-white`}>
+              <div 
+                className={`${darkMode ? 'bg-gradient-to-br from-blue-500 to-blue-600' : 'bg-gradient-to-br from-blue-400 to-blue-500'} rounded-2xl shadow-lg p-4 relative overflow-hidden text-white cursor-pointer`}
+                onClick={() => handleTabChange('current-project')}
+              >
                 <div className="absolute right-0 top-0 w-20 h-20 bg-blue-400 rounded-full opacity-20 -mt-10 -mr-10"></div>
                 <div className="relative z-10">
                   <div className="bg-white/20 w-10 h-10 rounded-full flex items-center justify-center mb-2">
@@ -305,7 +333,10 @@ const TechnicianDashboard = () => {
                   </div>
                 </div>
               </div>
-              <div className={`${darkMode ? 'bg-gradient-to-br from-green-500 to-green-600' : 'bg-gradient-to-br from-green-400 to-green-500'} rounded-2xl shadow-lg p-4 relative overflow-hidden text-white`}>
+              <div 
+                className={`${darkMode ? 'bg-gradient-to-br from-green-500 to-green-600' : 'bg-gradient-to-br from-green-400 to-green-500'} rounded-2xl shadow-lg p-4 relative overflow-hidden text-white cursor-pointer`}
+                onClick={() => handleTabChange('completed')}
+              >
                 <div className="absolute right-0 top-0 w-20 h-20 bg-green-400 rounded-full opacity-20 -mt-10 -mr-10"></div>
                 <div className="relative z-10">
                   <div className="bg-white/20 w-10 h-10 rounded-full flex items-center justify-center mb-2">
@@ -318,7 +349,10 @@ const TechnicianDashboard = () => {
                   </div>
                 </div>
               </div>
-              <div className={`${darkMode ? 'bg-gradient-to-br from-purple-500 to-purple-600' : 'bg-gradient-to-br from-purple-400 to-purple-500'} rounded-2xl shadow-lg p-4 relative overflow-hidden text-white`}>
+              <div 
+                className={`${darkMode ? 'bg-gradient-to-br from-purple-500 to-purple-600' : 'bg-gradient-to-br from-purple-400 to-purple-500'} rounded-2xl shadow-lg p-4 relative overflow-hidden text-white cursor-pointer`}
+                onClick={() => handleTabChange('inventory')}
+              >
                 <div className="absolute right-0 top-0 w-20 h-20 bg-purple-400 rounded-full opacity-20 -mt-10 -mr-10"></div>
                 <div className="relative z-10">
                   <div className="bg-white/20 w-10 h-10 rounded-full flex items-center justify-center mb-2">
@@ -331,7 +365,10 @@ const TechnicianDashboard = () => {
                   </div>
                 </div>
               </div>
-              <div className={`${darkMode ? 'bg-gradient-to-br from-amber-500 to-amber-600' : 'bg-gradient-to-br from-amber-400 to-amber-500'} rounded-2xl shadow-lg p-4 relative overflow-hidden text-white`}>
+              <div 
+                className={`${darkMode ? 'bg-gradient-to-br from-amber-500 to-amber-600' : 'bg-gradient-to-br from-amber-400 to-amber-500'} rounded-2xl shadow-lg p-4 relative overflow-hidden text-white cursor-pointer`}
+                onClick={() => handleTabChange('current-project')}
+              >
                 <div className="absolute right-0 top-0 w-20 h-20 bg-amber-400 rounded-full opacity-20 -mt-10 -mr-10"></div>
                 <div className="relative z-10">
                   <div className="bg-white/20 w-10 h-10 rounded-full flex items-center justify-center mb-2">
@@ -368,8 +405,8 @@ const TechnicianDashboard = () => {
                 </div>
               </div>
               <div>
-                {allWorkOrders.length > 0 ? (
-                  allWorkOrders.map((order, index) => (
+                {recentWorkOrders.length > 0 ? (
+                  recentWorkOrders.map((order, index) => (
                     <div
                       key={order.orderId || `order-${Math.random().toString(36).substr(2, 9)}`}
                       className={`p-4 ${darkMode ? 'border-b border-gray-700 last:border-b-0 hover:bg-gray-700/50' : 'border-b border-gray-200 last:border-b-0 hover:bg-gray-100/50'} transition-colors cursor-pointer`}
