@@ -14,7 +14,9 @@ import {
   ArrowLeft,
   Activity,
   Eye,
-  Home
+  Home,
+  LogOut,
+  X
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import SummaryApi from '../../common';
@@ -291,7 +293,7 @@ const TechnicianDashboard = () => {
           <div className="flex items-center space-x-3">
             <div 
               className="w-12 h-12 rounded-full bg-white p-1 overflow-hidden border-2 border-white shadow-lg cursor-pointer"
-              onClick={handleLogout}
+              onClick={toggleLogoutPopup}
             >
               <div className="w-full h-full rounded-full bg-blue-600 flex items-center justify-center text-white text-xl font-bold">
                 👨
@@ -904,6 +906,41 @@ const TechnicianDashboard = () => {
       
       {/* Add bottom padding to prevent content from being hidden behind fixed footer */}
       <div className="pb-16"></div>
+
+      {/* Logout Confirmation Popup */}
+{showLogoutPopup && (
+  <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+    <div className={`${darkMode ? 'bg-gray-800 border border-gray-700' : 'bg-white border border-gray-200'} rounded-xl shadow-2xl p-6 max-w-sm w-full mx-auto`}>
+      <div className="flex justify-between items-center mb-4">
+        <h3 className={`font-bold text-lg ${darkMode ? 'text-white' : 'text-gray-800'}`}>Confirm Logout</h3>
+        <button 
+          onClick={() => setShowLogoutPopup(false)}
+          className={`p-1 rounded-full ${darkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-100'}`}
+        >
+          <X size={20} className={darkMode ? 'text-gray-400' : 'text-gray-500'} />
+        </button>
+      </div>
+      <p className={`mb-6 ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+        Are you sure you want to logout from your account?
+      </p>
+      <div className="flex justify-end space-x-3">
+        <button 
+          onClick={() => setShowLogoutPopup(false)}
+          className={`px-4 py-2 rounded-lg ${darkMode ? 'bg-gray-700 hover:bg-gray-600 text-white' : 'bg-gray-200 hover:bg-gray-300 text-gray-800'}`}
+        >
+          Cancel
+        </button>
+        <button 
+          onClick={handleLogout}
+          className={`px-4 py-2 rounded-lg flex items-center ${darkMode ? 'bg-red-600 hover:bg-red-700' : 'bg-red-500 hover:bg-red-600'} text-white`}
+        >
+          <LogOut size={16} className="mr-2" />
+          Logout
+        </button>
+      </div>
+    </div>
+  </div>
+)}
       
       {/* Modals */}
       {showInventoryModal && (
