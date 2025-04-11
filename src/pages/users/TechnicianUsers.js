@@ -6,6 +6,7 @@ import { useAuth } from '../../context/AuthContext';
 import AddTechnicianModal from '../../components/AddTechnicianModal';
 import AssignInventoryModal from '../inventory/AssignInventoryModal';
 import UnifiedInventoryAssignmentModal from '../inventory/UnifiedInventoryAssignmentModal';
+import TechnicianDetailModal from '../technician/TechnicianDetailModal';
 
 const TechnicianUsers = () => {
   const { user } = useAuth();
@@ -15,11 +16,14 @@ const TechnicianUsers = () => {
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [modalOpen, setModalOpen] = useState(false);
+  const [showDetailModal, setShowDetailModal] = useState(false);
+  const [selectedTechnicianId, setSelectedTechnicianId] = useState(null);
   
   // States for expanded rows and inventory assignment
   const [expandedTechnician, setExpandedTechnician] = useState(null);
   const [showAssignInventoryModal, setShowAssignInventoryModal] = useState(false);
   const [selectedTechnician, setSelectedTechnician] = useState(null);
+
 
   const handleRowClick = (technicianId) => {
     setExpandedTechnician(expandedTechnician === technicianId ? null : technicianId);
@@ -106,7 +110,8 @@ const TechnicianUsers = () => {
   };
   
   const handleViewDetails = (technicianId) => {
-    navigate(`/users/technicians/edit/${technicianId}`);
+    setSelectedTechnicianId(technicianId);
+    setShowDetailModal(true);
   };
   
   const handleAssignInventory = (technician) => {
@@ -274,6 +279,14 @@ const TechnicianUsers = () => {
           </div>
         )}
       </div>
+
+      {/* Add the TechnicianDetailModal */}
+      <TechnicianDetailModal 
+        isOpen={showDetailModal}
+        onClose={() => setShowDetailModal(false)}
+        technicianId={selectedTechnicianId}
+        onTechnicianUpdated={() => fetchTechnicians()}
+      />
       
       {/* Add Technician Modal for managers */}
       <AddTechnicianModal 

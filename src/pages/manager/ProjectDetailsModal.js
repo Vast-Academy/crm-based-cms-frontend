@@ -25,6 +25,9 @@ const [selectedBill, setSelectedBill] = useState(null);
     if (project) {
       console.log("Project in modal:", project);
       console.log("Billing info:", project.billingInfo);
+      console.log("Project:", project);
+      console.log("Assigned By:", project.assignedBy);
+      console.log("Status History:", project.statusHistory);
     }
   }, [project]);
   
@@ -246,7 +249,13 @@ const handleViewBillSummary = async (billId) => {
                 )}
                 {project.assignedBy && (
                   <p className="text-sm text-gray-600 mt-1">
-                    Assigned by: {project.assignedBy.firstName} {project.assignedBy.lastName}
+                    Assigned by: {
+    typeof project.assignedBy === 'object' && project.assignedBy?.firstName 
+      ? `${project.assignedBy.firstName} ${project.assignedBy.lastName || ''}`
+      : project.assignedBy 
+        ? `User (ID: ${typeof project.assignedBy === 'string' ? project.assignedBy : project.assignedBy._id})`
+        : 'System'
+  }
                   </p>
                 )}
               </div>
@@ -286,10 +295,16 @@ const handleViewBillSummary = async (billId) => {
                         <p className="mt-2 text-sm">{history.remark}</p>
                       )}
                       {history.updatedBy && (
-                        <p className="mt-1 text-xs text-gray-500">
-                          By: {history.updatedBy.firstName} {history.updatedBy.lastName}
-                        </p>
-                      )}
+  <p className="mt-1 text-xs text-gray-500">
+    By: {
+      typeof history.updatedBy === 'object' && history.updatedBy?.firstName
+        ? `${history.updatedBy.firstName} ${history.updatedBy.lastName || ''}`
+        : typeof history.updatedBy === 'string' 
+          ? `User (ID: ${history.updatedBy})`
+          : 'System'
+    }
+  </p>
+)}
                     </div>
                   ))}
                 </div>

@@ -212,15 +212,18 @@ const DashboardLayout = () => {
   const filteredNavItems = getNavItemsByRole();
   
   return (
-    <div className="flex h-screen bg-gray-100">
+    <div className={`${user?.role === 'technician' ? '' : 'flex'} h-screen bg-gray-100`}>
       <ManagerStatusChecker/>
-      {/* Sidebar overlay for mobile */}
-      <div 
-        className={`md:hidden fixed inset-0 z-20 bg-gray-900 bg-opacity-50 transition-opacity duration-200 ${
-          sidebarOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'
-        }`}
-        onClick={() => setSidebarOpen(false)}
-      ></div>
+
+      {user?.role !== 'technician' && (
+      <>
+        {/* Sidebar overlay for mobile */}
+        <div 
+          className={`md:hidden fixed inset-0 z-20 bg-gray-900 bg-opacity-50 transition-opacity duration-200 ${
+            sidebarOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'
+          }`}
+          onClick={() => setSidebarOpen(false)}
+        ></div>
       
       {/* Sidebar */}
       <div 
@@ -279,10 +282,13 @@ const DashboardLayout = () => {
           </ul>
         </nav>
       </div>
+      </>
+    )}
       
       {/* Main content */}
       <div className="flex-1 flex flex-col overflow-hidden">
-        {/* Top header */}
+       {/* Conditionally show header for non-technicians */}
+      {user?.role !== 'technician' ? (
         <header className="flex items-center justify-between h-16 px-4 bg-white shadow-sm">
           <button
             onClick={() => setSidebarOpen(!sidebarOpen)}
@@ -324,14 +330,15 @@ const DashboardLayout = () => {
             </div>
           </div>
         </header>
+         ) : null}
         
         {/* Page content */}
-        <main className="flex-1 overflow-auto p-4">
-          <Outlet /> {/* This is where page components will be rendered */}
-        </main>
-      </div>
+      <main className={`flex-1 overflow-auto ${user?.role !== 'technician' ? 'p-4' : 'p-0'}`}>
+        <Outlet /> {/* This is where page components will be rendered */}
+      </main>
     </div>
-  );
+  </div>
+);
 };
 
 export default DashboardLayout;

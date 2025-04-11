@@ -228,6 +228,10 @@ const SummaryApi = {
       getBillDetails:{
         url : `${backendDomain}/api/get-bill-details`,
         method: "get"
+      },
+      getTechnicianProjects: {
+        url : `${backendDomain}/api/get-technician-projects`,
+        method: "get"
       }
 }
 
