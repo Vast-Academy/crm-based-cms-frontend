@@ -173,12 +173,21 @@ const TechnicianDashboard = () => {
     }, 0);
   };
 
+  const getCategoryColorClass = (category) => {
+    if (category === 'Repair') {
+      return darkMode ? 'bg-purple-600' : 'bg-purple-500';
+    }
+    // Default to blue for 'New Installation'
+    return darkMode ? 'bg-blue-600' : 'bg-blue-500';
+  };
+
   // Get status color
   const getStatusColor = (status) => {
     if (darkMode) {
       switch(status) {
         case 'assigned': return 'bg-blue-500';
         case 'in-progress': return 'bg-purple-500';
+        case 'pending-approval': return 'bg-amber-500';
         case 'paused': return 'bg-orange-500';
         case 'completed': return 'bg-green-500';
         default: return 'bg-blue-500';
@@ -187,6 +196,7 @@ const TechnicianDashboard = () => {
       switch(status) {
         case 'assigned': return 'bg-blue-600';
         case 'in-progress': return 'bg-purple-600';
+        case 'pending-approval': return 'bg-amber-600';
         case 'paused': return 'bg-orange-600';
         case 'completed': return 'bg-green-600';
         default: return 'bg-blue-600';
@@ -434,40 +444,37 @@ const TechnicianDashboard = () => {
       onClick={() => handleWorkOrderClick(order)}
     >
       <div className="flex items-start gap-3">
-        <div className={`flex-shrink-0 w-10 h-10 rounded-full ${getStatusColor(order.status)} flex items-center justify-center`}>
-          {index % 4 === 0 ? (
-            <Clipboard size={18} className="text-white" />
-          ) : index % 4 === 1 ? (
-            <Package size={18} className="text-white" />
-          ) : index % 4 === 2 ? (
-            <CheckSquare size={18} className="text-white" />
-          ) : (
-            <List size={18} className="text-white" />
-          )}
-        </div>
+      <div className={`flex-shrink-0 w-10 h-10 rounded-full ${getCategoryColorClass(order.projectCategory || 'New Installation')} flex items-center justify-center`}>
+  {order.projectCategory === 'Repair' ? (
+    <Package size={18} className="text-white" />
+  ) : (
+    <Clipboard size={18} className="text-white" />
+  )}
+</div>
         <div className="flex-grow">
           <div className="flex justify-between">
             <h3 className={`font-medium ${darkMode ? 'text-white' : 'text-gray-800'}`}>
               {order.projectType}
             </h3>
             <span className={`px-2 py-1 rounded-full text-xs capitalize ${
-              order.status === 'assigned' ? `${darkMode ? 'bg-blue-600/40' : 'bg-blue-100'} ${darkMode ? 'text-blue-100' : 'text-blue-800'}` :
-              order.status === 'in-progress' ? `${darkMode ? 'bg-purple-600/40' : 'bg-purple-100'} ${darkMode ? 'text-purple-100' : 'text-purple-800'}` :
-              order.status === 'paused' ? `${darkMode ? 'bg-orange-600/40' : 'bg-orange-100'} ${darkMode ? 'text-orange-100' : 'text-orange-800'}` :
-              `${darkMode ? 'bg-green-600/40' : 'bg-green-100'} ${darkMode ? 'text-green-100' : 'text-green-800'}`
-            }`}>
-              {order.status}
-            </span>
+            order.status === 'assigned' ? `${darkMode ? 'bg-blue-600/40' : 'bg-blue-100'} ${darkMode ? 'text-blue-100' : 'text-blue-800'}` :
+            order.status === 'in-progress' ? `${darkMode ? 'bg-purple-600/40' : 'bg-purple-100'} ${darkMode ? 'text-purple-100' : 'text-purple-800'}` :
+            order.status === 'pending-approval' ? `${darkMode ? 'bg-amber-600' : 'bg-amber-100'} ${darkMode ? 'text-amber-100' : 'text-amber-600'}` :
+            order.status === 'paused' ? `${darkMode ? 'bg-orange-600/40' : 'bg-orange-100'} ${darkMode ? 'text-orange-100' : 'text-orange-800'}` :
+            `${darkMode ? 'bg-green-600/40' : 'bg-green-100'} ${darkMode ? 'text-green-100' : 'text-green-800'}`
+          }`}>
+            {order.status}
+          </span>
           </div>
           <div className="mt-2 flex flex-wrap gap-2">
             {/* Add Project Category Badge */}
             <div className={`inline-flex items-center ${
-              order.projectCategory === 'Repair' 
-                ? `${darkMode ? 'bg-red-600/40 text-red-100' : 'bg-red-100 text-red-800'}` 
-                : `${darkMode ? 'bg-green-600/40 text-green-100' : 'bg-green-100 text-green-800'}`
-            } text-xs px-2 py-1 rounded-full`}>
-              {order.projectCategory || 'New Installation'} {/* Default to New Installation if not specified */}
-            </div>
+  order.projectCategory === 'Repair' 
+    ? `${darkMode ? 'bg-purple-600/40 text-purple-100' : 'bg-purple-100 text-purple-800'}` 
+    : `${darkMode ? 'bg-blue-600/40 text-blue-100' : 'bg-blue-100 text-blue-800'}`
+} text-xs px-2 py-1 rounded-full`}>
+  {order.projectCategory || 'New Installation'}
+</div>
             
             {order.customerName && (
               <div className={`inline-flex items-center ${darkMode ? 'text-gray-400 bg-gray-700/50' : 'text-gray-600 bg-gray-200/70'} text-xs px-2 py-1 rounded-full`}>
@@ -665,13 +672,14 @@ const TechnicianDashboard = () => {
                           </div>
                         </div>
                         <span className={`px-2 py-1 rounded-full text-xs capitalize ${
-                          order.status === 'assigned' ? `${darkMode ? 'bg-blue-600/40' : 'bg-blue-100'} ${darkMode ? 'text-blue-100' : 'text-blue-800'}` :
-                          order.status === 'in-progress' ? `${darkMode ? 'bg-purple-600/40' : 'bg-purple-100'} ${darkMode ? 'text-purple-100' : 'text-purple-800'}` :
-                          order.status === 'paused' ? `${darkMode ? 'bg-orange-600/40' : 'bg-orange-100'} ${darkMode ? 'text-orange-100' : 'text-orange-800'}` :
-                          `${darkMode ? 'bg-green-600/40' : 'bg-green-100'} ${darkMode ? 'text-green-100' : 'text-green-800'}`
-                        }`}>
-                          {order.status}
-                        </span>
+            order.status === 'assigned' ? `${darkMode ? 'bg-blue-600/40' : 'bg-blue-100'} ${darkMode ? 'text-blue-100' : 'text-blue-800'}` :
+            order.status === 'in-progress' ? `${darkMode ? 'bg-purple-600/40' : 'bg-purple-100'} ${darkMode ? 'text-purple-100' : 'text-purple-800'}` :
+            order.status === 'pending-approval' ? `${darkMode ? 'bg-amber-600' : 'bg-amber-100'} ${darkMode ? 'text-amber-100' : 'text-amber-600'}` :
+            order.status === 'paused' ? `${darkMode ? 'bg-orange-600/40' : 'bg-orange-100'} ${darkMode ? 'text-orange-100' : 'text-orange-800'}` :
+            `${darkMode ? 'bg-green-600/40' : 'bg-green-100'} ${darkMode ? 'text-green-100' : 'text-green-800'}`
+          }`}>
+            {order.status}
+          </span>
                       </div>
                     </div>
                   ))
@@ -755,13 +763,14 @@ const TechnicianDashboard = () => {
                           </div>
                         </div>
                         <span className={`px-2 py-1 rounded-full text-xs capitalize ${
-                          order.status === 'assigned' ? `${darkMode ? 'bg-blue-600/40' : 'bg-blue-100'} ${darkMode ? 'text-blue-100' : 'text-blue-800'}` :
-                          order.status === 'in-progress' ? `${darkMode ? 'bg-purple-600/40' : 'bg-purple-100'} ${darkMode ? 'text-purple-100' : 'text-purple-800'}` :
-                          order.status === 'paused' ? `${darkMode ? 'bg-orange-600/40' : 'bg-orange-100'} ${darkMode ? 'text-orange-100' : 'text-orange-800'}` :
-                          `${darkMode ? 'bg-green-600/40' : 'bg-green-100'} ${darkMode ? 'text-green-100' : 'text-green-800'}`
-                        }`}>
-                          {order.status}
-                        </span>
+            order.status === 'assigned' ? `${darkMode ? 'bg-blue-600/40' : 'bg-blue-100'} ${darkMode ? 'text-blue-100' : 'text-blue-800'}` :
+            order.status === 'in-progress' ? `${darkMode ? 'bg-purple-600/40' : 'bg-purple-100'} ${darkMode ? 'text-purple-100' : 'text-purple-800'}` :
+            order.status === 'pending-approval' ? `${darkMode ? 'bg-amber-600' : 'bg-amber-100'} ${darkMode ? 'text-amber-100' : 'text-amber-600'}` :
+            order.status === 'paused' ? `${darkMode ? 'bg-orange-600/40' : 'bg-orange-100'} ${darkMode ? 'text-orange-100' : 'text-orange-800'}` :
+            `${darkMode ? 'bg-green-600/40' : 'bg-green-100'} ${darkMode ? 'text-green-100' : 'text-green-800'}`
+          }`}>
+            {order.status}
+          </span>
                       </div>
                     </div>
                   ))
