@@ -100,26 +100,57 @@ const TechnicianDashboard = () => {
   const fetchInventory = async () => {
     try {
       setLoading(true);
-      const response = await fetch(SummaryApi.getTechnicianInventory.url, {
-        method: SummaryApi.getTechnicianInventory.method,
-        credentials: 'include'
-      });
       
-      const data = await response.json();
+      // Check if we have cached data and it's not too old
+      const cachedInventory = localStorage.getItem('technicianInventory');
+      const cachedTimestamp = localStorage.getItem('technicianInventoryTimestamp');
       
-      if (data.success) {
-        setInventoryItems(data.data);
+      // Set a cache expiry time (e.g., 5 minutes = 300000 milliseconds)
+      const cacheExpiryTime = 24 * 60 * 1000;
+      const currentTime = new Date().getTime();
+      
+      // Use cached data if it exists and is fresh
+      if (cachedInventory && cachedTimestamp && 
+          (currentTime - parseInt(cachedTimestamp) < cacheExpiryTime)) {
+        setInventoryItems(JSON.parse(cachedInventory));
+        console.log("Using cached inventory data");
       } else {
-        setError('Failed to load inventory: ' + data.message);
+        // Fetch fresh data
+        const response = await fetch(SummaryApi.getTechnicianInventory.url, {
+          method: SummaryApi.getTechnicianInventory.method,
+          credentials: 'include'
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+          setInventoryItems(data.data);
+          
+          // Cache the data and timestamp
+          localStorage.setItem('technicianInventory', JSON.stringify(data.data));
+          localStorage.setItem('technicianInventoryTimestamp', currentTime.toString());
+        } else {
+          setError('Failed to load inventory: ' + data.message);
+        }
       }
     } catch (err) {
-      setError('Error loading inventory. Please try again later.');
-      console.error('Error fetching inventory:', err);
+      // If there's an error but we have cached data, use it as fallback
+      const cachedInventory = localStorage.getItem('technicianInventory');
+      if (cachedInventory) {
+        setInventoryItems(JSON.parse(cachedInventory));
+        console.log("Using cached inventory data after fetch error");
+      } else {
+        setError('Error loading inventory. Please try again later.');
+        console.error('Error fetching inventory:', err);
+      }
     }
   };
 
   // Handle inventory returned
   const handleInventoryReturned = () => {
+    // Clear inventory cache to force a refresh
+    localStorage.removeItem('technicianInventory');
+    localStorage.removeItem('technicianInventoryTimestamp');
     // Reload inventory data
     fetchInventory();
   };
@@ -127,19 +158,21 @@ const TechnicianDashboard = () => {
   // Fetch technician work orders
   const fetchWorkOrders = async () => {
     try {
-      const response = await fetch(SummaryApi.getTechnicianWorkOrders.url, {
-        method: SummaryApi.getTechnicianWorkOrders.method,
-        credentials: 'include'
-      });
+      // Check cached data
+      const cachedOrders = localStorage.getItem('technicianWorkOrders');
+      const cachedTimestamp = localStorage.getItem('technicianWorkOrdersTimestamp');
+      const cacheExpiryTime = 24 * 60 * 1000; // 5 minutes
+      const currentTime = new Date().getTime();
       
-      const data = await response.json();
-      
-      if (data.success) {
+      if (cachedOrders && cachedTimestamp && 
+          (currentTime - parseInt(cachedTimestamp) < cacheExpiryTime)) {
+        const parsedData = JSON.parse(cachedOrders);
+        
         // Separate active and completed work orders
         const active = [];
         const completed = [];
         
-        data.data.forEach(order => {
+        parsedData.forEach(order => {
           if (order.status === 'completed') {
             completed.push(order);
           } else {
@@ -149,14 +182,68 @@ const TechnicianDashboard = () => {
         
         setWorkOrders(active);
         setCompletedOrders(completed);
+        setLoading(false);
+        console.log("Using cached work orders data");
       } else {
-        setError('Failed to load work orders: ' + data.message);
+        // Fetch fresh data
+        const response = await fetch(SummaryApi.getTechnicianWorkOrders.url, {
+          method: SummaryApi.getTechnicianWorkOrders.method,
+          credentials: 'include'
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+          // Separate active and completed work orders
+          const active = [];
+          const completed = [];
+          
+          data.data.forEach(order => {
+            if (order.status === 'completed') {
+              completed.push(order);
+            } else {
+              active.push(order);
+            }
+          });
+          
+          setWorkOrders(active);
+          setCompletedOrders(completed);
+          
+          // Cache the data and timestamp
+          localStorage.setItem('technicianWorkOrders', JSON.stringify(data.data));
+          localStorage.setItem('technicianWorkOrdersTimestamp', currentTime.toString());
+        } else {
+          setError('Failed to load work orders: ' + data.message);
+        }
+        
+        setLoading(false);
+      }
+    } catch (err) {
+      // Use cached data as fallback
+      const cachedOrders = localStorage.getItem('technicianWorkOrders');
+      if (cachedOrders) {
+        const parsedData = JSON.parse(cachedOrders);
+        
+        // Separate active and completed work orders
+        const active = [];
+        const completed = [];
+        
+        parsedData.forEach(order => {
+          if (order.status === 'completed') {
+            completed.push(order);
+          } else {
+            active.push(order);
+          }
+        });
+        
+        setWorkOrders(active);
+        setCompletedOrders(completed);
+        console.log("Using cached work orders data after fetch error");
+      } else {
+        setError('Error loading work orders. Please try again later.');
+        console.error('Error fetching work orders:', err);
       }
       
-      setLoading(false);
-    } catch (err) {
-      setError('Error loading work orders. Please try again later.');
-      console.error('Error fetching work orders:', err);
       setLoading(false);
     }
   };
@@ -255,7 +342,7 @@ const TechnicianDashboard = () => {
   const handleWorkOrderStatusUpdate = (updatedWorkOrder) => {
     console.log("Work order updated:", updatedWorkOrder);
     
-    // महत्वपूर्ण: selectedWorkOrder को भी अपडेट करें
+    // Update the selected work order
     if (selectedWorkOrder && selectedWorkOrder.orderId === updatedWorkOrder.orderId) {
       setSelectedWorkOrder(updatedWorkOrder);
     }
@@ -271,13 +358,26 @@ const TechnicianDashboard = () => {
       setWorkOrders(prevOrders => {
         return prevOrders.map(order => {
           if (order.orderId === updatedWorkOrder.orderId) {
-            // महत्वपूर्ण: पूरा अपडेटेड ऑब्जेक्ट रिटर्न करें, न कि केवल स्प्रेड करके मर्ज करें
-            // यह सुनिश्चित करेगा कि billingInfo जैसे नेस्टेड ऑब्जेक्ट भी सही से अपडेट हों
             return updatedWorkOrder;
           }
           return order;
         });
       });
+    }
+    
+    // Update localStorage cache
+    const cachedOrders = localStorage.getItem('technicianWorkOrders');
+    if (cachedOrders) {
+      const parsedOrders = JSON.parse(cachedOrders);
+      const updatedOrders = parsedOrders.map(order => {
+        if (order.orderId === updatedWorkOrder.orderId) {
+          return updatedWorkOrder;
+        }
+        return order;
+      });
+      
+      localStorage.setItem('technicianWorkOrders', JSON.stringify(updatedOrders));
+      localStorage.setItem('technicianWorkOrdersTimestamp', new Date().getTime().toString());
     }
   };
 
@@ -615,7 +715,7 @@ const TechnicianDashboard = () => {
                 <div className={`${darkMode ? 'bg-white/10' : 'bg-white/20'} rounded-xl p-4 backdrop-blur-sm`}>
                   {workOrders.filter(order => order.status === 'in-progress').slice(0, 1).map(order => (
                     <div key={order.orderId} className="mb-4">
-                      <p className="text-lg font-medium mb-2">{order.projectType}</p>
+                      <p className="text-lg font-medium mb-2 truncate max-w-[150px]">{order.projectType}</p>
                       <p className={`${darkMode ? 'text-blue-200' : 'text-blue-100'} mb-4`}>
                         Order ID: {order.orderId}
                       </p>
@@ -658,12 +758,12 @@ const TechnicianDashboard = () => {
                       onClick={() => handleWorkOrderClick(order)}
                     >
                       <div className="flex items-center justify-between">
-                        <div className="flex items-center">
+                        <div className="flex items-center max-w-[200px]">
                           <div className={`w-10 h-10 rounded-full ${getStatusColor(order.status)} flex items-center justify-center mr-3`}>
                             <Clipboard size={18} className="text-white" />
                           </div>
                           <div>
-                            <p className={`font-medium ${darkMode ? 'text-white' : 'text-gray-800'}`}>
+                            <p className={`font-medium  truncate max-w-[140px] ${darkMode ? 'text-white' : 'text-gray-800'}`}>
                               {order.projectType}
                             </p>
                             <p className={`text-xs ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
@@ -749,12 +849,12 @@ const TechnicianDashboard = () => {
                       onClick={() => handleWorkOrderClick(order)}
                     >
                       <div className="flex items-center justify-between">
-                        <div className="flex items-center">
+                        <div className="flex items-center max-w-[200px]">
                           <div className={`w-10 h-10 rounded-full ${getStatusColor(order.status)} flex items-center justify-center mr-3`}>
                             <Clipboard size={18} className="text-white" />
                           </div>
                           <div>
-                            <p className={`font-medium ${darkMode ? 'text-white' : 'text-gray-800'}`}>
+                            <p className={`font-medium truncate max-w-[140px] ${darkMode ? 'text-white' : 'text-gray-800'}`}>
                               {order.projectType}
                             </p>
                             <p className={`text-xs ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
@@ -835,7 +935,7 @@ const TechnicianDashboard = () => {
                             <CheckSquare size={18} className="text-white" />
                           </div>
                           <div>
-                            <p className={`font-medium ${darkMode ? 'text-white' : 'text-gray-800'}`}>
+                            <p className={`font-medium truncate max-w-[140px] ${darkMode ? 'text-white' : 'text-gray-800'}`}>
                               {order.projectType}
                             </p>
                             <p className={`text-xs ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
