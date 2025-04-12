@@ -274,30 +274,50 @@ const ReturnInventoryModal = ({ isOpen, onClose, onInventoryReturned, darkMode =
                       
                       {item.type === 'serialized-product' ? (
                         <div 
-                          className="flex items-center"
-                          onClick={() => {
-                            // Only toggle expand if there are active serialized items
-                            if (item.serializedItems?.some(si => si.status === 'active')) {
-                              handleItemExpand(itemKey);
-                            }
-                          }}
+                          className="cursor-pointer"
+                          onClick={() => handleItemExpand(itemKey)}
                         >
-                          {item.serializedItems?.some(si => si.status === 'active') && (
-                            <ChevronDown 
-                              size={20}
-                              className={`transition-transform duration-200 ${isExpanded ? 'transform rotate-180' : ''} ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}
-                            />
-                          )}
+                          <svg 
+                            xmlns="http://www.w3.org/2000/svg" 
+                            viewBox="0 0 24 24" 
+                            width="18" 
+                            height="18" 
+                            fill="none" 
+                            stroke="currentColor" 
+                            strokeWidth="2" 
+                            strokeLinecap="round" 
+                            strokeLinejoin="round" 
+                            className={`transition-transform duration-200 ${isExpanded ? 'transform rotate-180' : ''} ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}
+                          >
+                            <polyline points="6 9 12 15 18 9"></polyline>
+                          </svg>
                         </div>
                       ) : (
+                        <div className="flex items-center">
+                        <button 
+                          onClick={() => handleQuantityChange(item, Math.max(0, getSelectedQuantity(itemKey) - 1))}
+                          className={`w-8 h-8 flex items-center justify-center rounded-l-md ${darkMode ? 'bg-gray-700 text-white' : 'bg-gray-200 text-gray-800'}`}
+                        >
+                          -
+                        </button>
                         <input
                           type="number"
                           min="0"
                           max={item.genericQuantity}
                           value={getSelectedQuantity(itemKey)}
-                          onChange={(e) => handleQuantityChange(item, e.target.value)}
-                          className={`w-16 px-2 py-1 rounded-md text-right ${darkMode ? 'bg-gray-700 text-white border-gray-600' : 'bg-gray-100 text-gray-800'}`}
+                          readOnly
+                          className={`w-16 text-center py-1 appearance-none 
+                            ${darkMode ? 'bg-gray-700 text-white border-gray-600' : 'bg-gray-100 text-gray-800'}
+                            [&::-webkit-inner-spin-button]:appearance-none 
+                            [&::-webkit-outer-spin-button]:appearance-none`}
                         />
+                        <button 
+                          onClick={() => handleQuantityChange(item, Math.min(item.genericQuantity, getSelectedQuantity(itemKey) + 1))}
+                          className={`w-8 h-8 flex items-center justify-center rounded-r-md ${darkMode ? 'bg-gray-700 text-white' : 'bg-gray-200 text-gray-800'}`}
+                        >
+                          +
+                        </button>
+                      </div>
                       )}
                     </div>
                     
@@ -354,7 +374,7 @@ const ReturnInventoryModal = ({ isOpen, onClose, onInventoryReturned, darkMode =
                 : `${darkMode ? 'bg-teal-600 hover:bg-teal-700' : 'bg-teal-500 hover:bg-teal-600'} text-white`
             }`}
           >
-            {loading ? 'Processing...' : 'Return Selected Items'}
+            {loading ? 'Processing...' : 'Return Selected'}
           </button>
         </div>
       </div>
