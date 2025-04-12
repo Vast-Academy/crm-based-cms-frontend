@@ -117,8 +117,6 @@ const handleItemExpand = (itemKey, item) => {
     } else {
       setExpandedItems([...expandedItems, itemKey]);
     }
-  } else {
-    handleInventoryClick(item);
   }
 };
 
@@ -658,28 +656,30 @@ const filteredInventoryItems = getFilteredInventoryItems();
           </>
         )}
 
+{/* Modify the inventory tab section in TechnicianDashboard.jsx */}
+
 {activeTab === 'inventory' && (
   <div className="flex flex-col space-y-6">
     {/* Inventory Summary */}
-    <div className={`${darkMode ? 'bg-gradient-to-br from-purple-600 to-purple-800' : 'bg-gradient-to-br from-purple-500 to-purple-600'} p-6 rounded-2xl shadow-xl text-white`}>
+    <div className={`${darkMode ? 'bg-gradient-to-br from-teal-600 to-teal-800' : 'bg-gradient-to-br from-teal-500 to-teal-600'} p-6 rounded-2xl shadow-xl text-white`}>
       <div className="flex items-center mb-4">
-        <div className="w-16 h-16 bg-purple-700 rounded-full flex items-center justify-center shadow-xl mr-4">
+        <div className="w-16 h-16 bg-teal-700 rounded-full flex items-center justify-center shadow-xl mr-4">
           <Package size={32} className="text-white" />
         </div>
         <div>
           <p className="text-2xl font-bold mb-1">My Inventory</p>
-          <p className={`${darkMode ? 'text-purple-200' : 'text-purple-100'}`}>Manage your stock</p>
+          <p className={`${darkMode ? 'text-teal-200' : 'text-teal-100'}`}>Manage your stock</p>
         </div>
       </div>
       <div className={`${darkMode ? 'bg-white/10' : 'bg-white/20'} rounded-xl p-4 backdrop-blur-sm`}>
         <div className="flex justify-between items-center mb-2">
-          <span className={`${darkMode ? 'text-purple-200' : 'text-purple-100'}`}>Total Units:</span>
+          <span className={`${darkMode ? 'text-teal-200' : 'text-teal-100'}`}>Total Units:</span>
           <span className="text-white text-xl font-bold">{calculateTotalUnits()} items</span>
         </div>
         <div className="flex justify-center mt-4">
           <button 
             onClick={() => setShowReturnModal(true)}
-            className="bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded-md mr-2 flex items-center"
+            className="bg-teal-600 hover:bg-teal-700 text-white px-4 py-2 rounded-md w-full flex items-center justify-center"
           >
             <ArrowLeft size={16} className="mr-2" /> Return Items
           </button>
@@ -689,51 +689,43 @@ const filteredInventoryItems = getFilteredInventoryItems();
 
     {/* Inventory List */}
     <div className={`${darkMode ? 'bg-gray-800/50 backdrop-blur-sm border border-gray-700' : 'bg-white/80 backdrop-blur-sm border border-gray-200'} rounded-2xl shadow-xl overflow-hidden`}>
-      <div className={`p-4 ${darkMode ? 'border-b border-gray-700' : 'border-b border-gray-200'} flex justify-between items-center`}>
-        <h2 className="font-bold text-lg">Inventory Items</h2>
+      <div className={`p-4 ${darkMode ? 'border-b border-gray-700' : 'border-b border-gray-200'}`}>
+        <div className="flex justify-between items-center">
+          <h2 className="font-bold text-lg">Inventory Items</h2>
+        </div>
         
-        {/* Filter dropdown button */}
-        <div className="relative">
+        {/* Filter buttons (horizontal) */}
+        <div className="mt-3 flex space-x-2">
           <button 
-            onClick={() => setShowFilterDropdown(!showFilterDropdown)}
-            className={`text-xs ${darkMode ? 'bg-purple-600 hover:bg-purple-700' : 'bg-purple-500 hover:bg-purple-600'} text-white px-3 py-1 rounded-full transition-colors flex items-center`}
+            onClick={() => setInventoryFilter('All')}
+            className={`px-4 py-1.5 rounded-full text-sm ${
+              inventoryFilter === 'All' 
+                ? `${darkMode ? 'bg-teal-600' : 'bg-teal-500'} text-white` 
+                : `${darkMode ? 'bg-gray-700' : 'bg-gray-200'} ${darkMode ? 'text-gray-300' : 'text-gray-700'}`
+            }`}
           >
-            Filter: {inventoryFilter} <ChevronDown size={14} className="ml-1" />
+            All
           </button>
-          
-          {showFilterDropdown && (
-            <div className={`absolute right-0 mt-2 w-40 ${darkMode ? 'bg-gray-800 border border-gray-700' : 'bg-white border border-gray-200'} rounded-lg shadow-lg z-10`}>
-              <ul>
-                <li 
-                  className={`px-4 py-2 hover:${darkMode ? 'bg-gray-700' : 'bg-gray-100'} cursor-pointer ${inventoryFilter === 'All' ? (darkMode ? 'bg-gray-700' : 'bg-gray-100') : ''}`}
-                  onClick={() => {
-                    setInventoryFilter('All');
-                    setShowFilterDropdown(false);
-                  }}
-                >
-                  All Items
-                </li>
-                <li 
-                  className={`px-4 py-2 hover:${darkMode ? 'bg-gray-700' : 'bg-gray-100'} cursor-pointer ${inventoryFilter === 'Serialized' ? (darkMode ? 'bg-gray-700' : 'bg-gray-100') : ''}`}
-                  onClick={() => {
-                    setInventoryFilter('Serialized');
-                    setShowFilterDropdown(false);
-                  }}
-                >
-                  Serialized
-                </li>
-                <li 
-                  className={`px-4 py-2 hover:${darkMode ? 'bg-gray-700' : 'bg-gray-100'} cursor-pointer ${inventoryFilter === 'Generic' ? (darkMode ? 'bg-gray-700' : 'bg-gray-100') : ''}`}
-                  onClick={() => {
-                    setInventoryFilter('Generic');
-                    setShowFilterDropdown(false);
-                  }}
-                >
-                  Generic
-                </li>
-              </ul>
-            </div>
-          )}
+          <button 
+            onClick={() => setInventoryFilter('Serialized')}
+            className={`px-4 py-1.5 rounded-full text-sm ${
+              inventoryFilter === 'Serialized' 
+                ? `${darkMode ? 'bg-teal-600' : 'bg-teal-500'} text-white` 
+                : `${darkMode ? 'bg-gray-700' : 'bg-gray-200'} ${darkMode ? 'text-gray-300' : 'text-gray-700'}`
+            }`}
+          >
+            Serialized
+          </button>
+          <button 
+            onClick={() => setInventoryFilter('Generic')}
+            className={`px-4 py-1.5 rounded-full text-sm ${
+              inventoryFilter === 'Generic' 
+                ? `${darkMode ? 'bg-teal-600' : 'bg-teal-500'} text-white` 
+                : `${darkMode ? 'bg-gray-700' : 'bg-gray-200'} ${darkMode ? 'text-gray-300' : 'text-gray-700'}`
+            }`}
+          >
+            Generic
+          </button>
         </div>
       </div>
       
@@ -750,28 +742,38 @@ const filteredInventoryItems = getFilteredInventoryItems();
                   className={`p-4 ${darkMode ? 'hover:bg-gray-700/50' : 'hover:bg-gray-100/50'} cursor-pointer transition-colors`}
                   onClick={() => handleItemExpand(itemKey, item)}
                 >
-                  <div className="flex justify-between items-center">
-                    <div className="flex items-center">
-                      <div className={`w-8 h-8 rounded-full ${darkMode ? 'bg-purple-600' : 'bg-purple-500'} flex items-center justify-center mr-3 text-white font-bold`}>
-                        {index + 1}
-                      </div>
-                      <div>
-                        <p className={`font-medium ${darkMode ? 'text-white' : 'text-gray-800'}`}>{item.itemName}</p>
-                        <p className={`text-xs ${darkMode ? 'text-gray-400' : 'text-gray-500'} capitalize`}>
-                          {item.type.replace('-product', '')}
-                        </p>
-                      </div>
+                  <div className="flex items-center">
+                    <div className={`w-8 h-8 rounded-full ${darkMode ? 'bg-teal-600' : 'bg-teal-500'} flex items-center justify-center mr-3 text-white font-bold`}>
+                      {index + 1}
                     </div>
-                    <div className="flex items-center">
-                      <div className={`px-3 py-1 rounded-full ${darkMode ? 'bg-purple-600/30 text-purple-200' : 'bg-purple-100 text-purple-800'}`}>
-                        {itemCount} {item.unit || 'Piece'}
+                    <div className="flex-1">
+                      <div className="flex justify-between items-center">
+                        <p className={`font-medium ${darkMode ? 'text-white' : 'text-gray-800'}`}>{item.itemName}</p>
+                        <div className="flex items-center">
+                          {item.type === 'serialized-product' && (
+                            <svg 
+                              xmlns="http://www.w3.org/2000/svg" 
+                              viewBox="0 0 24 24" 
+                              width="18" 
+                              height="18" 
+                              fill="none" 
+                              stroke="currentColor" 
+                              strokeWidth="2" 
+                              strokeLinecap="round" 
+                              strokeLinejoin="round" 
+                              className={`mr-2 transition-transform duration-200 ${isExpanded ? 'transform rotate-180' : ''} ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}
+                            >
+                              <polyline points="6 9 12 15 18 9"></polyline>
+                            </svg>
+                          )}
+                          <div className={`px-3 py-1 rounded-full ${darkMode ? 'bg-teal-600/30 text-teal-200' : 'bg-teal-100 text-teal-800'}`}>
+                            {itemCount} Pcs
+                          </div>
+                        </div>
                       </div>
-                      {item.type === 'serialized-product' && (
-                        <ChevronDown 
-                          size={18} 
-                          className={`ml-2 transition-transform duration-200 ${isExpanded ? 'transform rotate-180' : ''}`} 
-                        />
-                      )}
+                      <p className={`text-xs ${darkMode ? 'text-gray-400' : 'text-gray-500'} capitalize`}>
+                        {item.type.replace('-product', '')}
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -779,7 +781,7 @@ const filteredInventoryItems = getFilteredInventoryItems();
                 {/* Expanded view for serialized items */}
                 {item.type === 'serialized-product' && isExpanded && (
                   <div className={`px-4 pb-4 ${darkMode ? 'bg-gray-700/30' : 'bg-gray-50'}`}>
-                    <div className="ml-11 border-l-2 pl-4 space-y-2">
+                    <div className="ml-11 border-l-2 border-teal-500 pl-4 space-y-2">
                       {item.serializedItems.filter(serial => serial.status === 'active').map((serial, idx) => (
                         <div 
                           key={serial.serialNumber || idx} 
@@ -1096,7 +1098,7 @@ const filteredInventoryItems = getFilteredInventoryItems();
             onClick={() => handleTabChange('inventory')}
             className={`flex flex-col items-center py-2 px-4 rounded-xl flex-1 mx-1 ${
               activeTab === 'inventory' 
-                ? `${darkMode ? 'bg-gradient-to-r from-purple-600 to-purple-700' : 'bg-gradient-to-r from-purple-500 to-purple-600'} text-white shadow-lg` 
+                ? `${darkMode ? 'bg-gradient-to-r from-teal-600 to-teal-700' : 'bg-gradient-to-r from-teal-500 to-teal-600'} text-white shadow-lg` 
                 : `${darkMode ? 'text-gray-400' : 'text-gray-500'}`
             }`}
           >
