@@ -346,7 +346,9 @@ const TechnicianDashboard = () => {
                   </div>
                   <p className={`${darkMode ? 'text-blue-100' : 'text-blue-50'} text-xs font-medium mb-1`}>Active Assignments</p>
                   <div className="flex items-end">
-                    <p className="text-3xl font-bold">{workOrders.length}</p>
+                  <p className="text-3xl font-bold">
+                    {workOrders.filter(order => order.status === 'assigned' || order.status === 'in-progress').length}
+                  </p>
                     <p className={`${darkMode ? 'text-blue-200' : 'text-blue-100'} ml-2 mb-1 text-xs`}>tasks</p>
                   </div>
                 </div>
@@ -360,13 +362,13 @@ const TechnicianDashboard = () => {
                   <div className="bg-white/20 w-10 h-10 rounded-full flex items-center justify-center mb-2">
                     <Activity size={20} />
                   </div>
-                  <p className={`${darkMode ? 'text-amber-100' : 'text-amber-50'} text-xs font-medium mb-1`}>In Progress</p>
-                  <div className="flex items-end">
-                    <p className="text-3xl font-bold">
-                      {workOrders.filter(order => order.status === 'in-progress').length}
-                    </p>
-                    <p className={`${darkMode ? 'text-amber-200' : 'text-amber-100'} ml-2 mb-1 text-xs`}>tasks</p>
-                  </div>
+                  <p className={`${darkMode ? 'text-amber-100' : 'text-amber-50'} text-xs font-medium mb-1`}>Pending Approvals</p>
+                <div className="flex items-end">
+                  <p className="text-3xl font-bold">
+                    {workOrders.filter(order => order.status === 'pending-approval').length}
+                  </p>
+                  <p className={`${darkMode ? 'text-amber-200' : 'text-amber-100'} ml-2 mb-1 text-xs`}>tasks</p>
+                </div>
                 </div>
               </div>
               <div 
