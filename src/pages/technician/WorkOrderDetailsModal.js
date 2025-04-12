@@ -1,5 +1,6 @@
 import React, { useRef, useEffect, useState } from 'react';
-import { FiX, FiUser, FiMapPin, FiCalendar, FiInfo, FiPlay, FiPause, FiSearch, FiCamera, FiFileText, FiCheckCircle, FiArrowRight } from 'react-icons/fi';
+import { FiX, FiUser, FiMapPin, FiCalendar, FiInfo, FiPlay, FiPause, FiSearch, FiCamera, FiFileText, FiCheckCircle, FiArrowRight} from 'react-icons/fi';
+import { Clipboard } from 'lucide-react';
 import SummaryApi from '../../common';
 import { useAuth } from '../../context/AuthContext';
 import { QRCodeCanvas } from 'qrcode.react';
@@ -629,8 +630,8 @@ const updateItemQuantity = (index, newQuantity) => {
   };
   
   return (
-    <div className="fixed inset-0 bg-gray-600 bg-opacity-75 flex justify-center items-start z-50 p-2 overflow-auto">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-md max-h-[90vh] overflow-hidden my-4">
+    <div className="fixed inset-0 bg-gray-600 bg-opacity-75 flex justify-center items-center z-50 p-2 overflow-auto">
+      <div className="bg-white rounded-lg shadow-xl w-full max-w-md max-h-[90vh] overflow-hidden ">
         <div className="sticky top-0 bg-white p-4 border-b flex justify-between items-center">
           <h2 className="text-lg font-semibold">Work Order Details</h2>
           <button 
@@ -937,18 +938,22 @@ const updateItemQuantity = (index, newQuantity) => {
           )}
           
           {/* Basic Work Order Info */}
-          <div className="bg-gray-50 p-4 rounded-lg mb-4">
-            <h3 className="font-medium text-lg mb-2">
-              Project Type: {workOrder.projectType}
+          <div>
+          <h3 className="text-md font-medium flex items-center mb-3">
+              <Clipboard size={18} className="mr-2" />
+              Project Information
             </h3>
+          <div className="bg-gray-50 p-4 rounded-lg mb-4">
             <div className="space-y-2 text-sm">
-              <p><span className="text-gray-500">Order ID:</span> {workOrder.orderId}</p>
+              {/* <p><span className="text-gray-500">Order ID:</span> {workOrder.orderId}</p>
               <p><span className="text-gray-500">Project ID:</span> {workOrder.projectId}</p>
               {workOrder.branchName && (
                 <p><span className="text-gray-500">Branch:</span> {workOrder.branchName}</p>
-              )}
-              <p><span className="text-gray-500">Project Category:</span> {workOrder.projectCategory || 'New Installation'}</p>
+              )} */}
+              <p><span className="text-gray-500">Project Type:</span> {workOrder.projectCategory || 'New Installation'}</p>
+              <p><span className="text-gray-500">Project Category:</span> {workOrder.projectType}</p>
             </div>
+          </div>
           </div>
           
           {/* Customer Information - Show only address for simplicity */}
