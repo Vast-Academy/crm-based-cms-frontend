@@ -327,10 +327,10 @@ const TechnicianDashboard = () => {
                   {new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
                 </p>
               </div>
-              <button className={`${darkMode ? 'bg-gradient-to-r from-blue-500 to-purple-500' : 'bg-gradient-to-r from-blue-400 to-purple-400'} p-2 rounded-lg shadow-lg flex items-center text-white`}>
+              {/* <button className={`${darkMode ? 'bg-gradient-to-r from-blue-500 to-purple-500' : 'bg-gradient-to-r from-blue-400 to-purple-400'} p-2 rounded-lg shadow-lg flex items-center text-white`}>
                 <Calendar size={18} className="mr-2" />
                 <span className="text-sm font-medium">Calendar</span>
-              </button>
+              </button> */}
             </div>
 
             {/* Dashboard Stats */}
@@ -344,10 +344,28 @@ const TechnicianDashboard = () => {
                   <div className="bg-white/20 w-10 h-10 rounded-full flex items-center justify-center mb-2">
                     <Clipboard size={20} />
                   </div>
-                  <p className={`${darkMode ? 'text-blue-100' : 'text-blue-50'} text-xs font-medium mb-1`}>Today's Assignments</p>
+                  <p className={`${darkMode ? 'text-blue-100' : 'text-blue-50'} text-xs font-medium mb-1`}>Active Assignments</p>
                   <div className="flex items-end">
                     <p className="text-3xl font-bold">{workOrders.length}</p>
                     <p className={`${darkMode ? 'text-blue-200' : 'text-blue-100'} ml-2 mb-1 text-xs`}>tasks</p>
+                  </div>
+                </div>
+              </div>
+              <div 
+                className={`${darkMode ? 'bg-gradient-to-br from-amber-500 to-amber-600' : 'bg-gradient-to-br from-amber-400 to-amber-500'} rounded-2xl shadow-lg p-4 relative overflow-hidden text-white cursor-pointer`}
+                onClick={() => handleTabChange('current-project')}
+              >
+                <div className="absolute right-0 top-0 w-20 h-20 bg-amber-400 rounded-full opacity-20 -mt-10 -mr-10"></div>
+                <div className="relative z-10">
+                  <div className="bg-white/20 w-10 h-10 rounded-full flex items-center justify-center mb-2">
+                    <Activity size={20} />
+                  </div>
+                  <p className={`${darkMode ? 'text-amber-100' : 'text-amber-50'} text-xs font-medium mb-1`}>In Progress</p>
+                  <div className="flex items-end">
+                    <p className="text-3xl font-bold">
+                      {workOrders.filter(order => order.status === 'in-progress').length}
+                    </p>
+                    <p className={`${darkMode ? 'text-amber-200' : 'text-amber-100'} ml-2 mb-1 text-xs`}>tasks</p>
                   </div>
                 </div>
               </div>
@@ -383,24 +401,7 @@ const TechnicianDashboard = () => {
                   </div>
                 </div>
               </div>
-              <div 
-                className={`${darkMode ? 'bg-gradient-to-br from-amber-500 to-amber-600' : 'bg-gradient-to-br from-amber-400 to-amber-500'} rounded-2xl shadow-lg p-4 relative overflow-hidden text-white cursor-pointer`}
-                onClick={() => handleTabChange('current-project')}
-              >
-                <div className="absolute right-0 top-0 w-20 h-20 bg-amber-400 rounded-full opacity-20 -mt-10 -mr-10"></div>
-                <div className="relative z-10">
-                  <div className="bg-white/20 w-10 h-10 rounded-full flex items-center justify-center mb-2">
-                    <Activity size={20} />
-                  </div>
-                  <p className={`${darkMode ? 'text-amber-100' : 'text-amber-50'} text-xs font-medium mb-1`}>In Progress</p>
-                  <div className="flex items-end">
-                    <p className="text-3xl font-bold">
-                      {workOrders.filter(order => order.status === 'in-progress').length}
-                    </p>
-                    <p className={`${darkMode ? 'text-amber-200' : 'text-amber-100'} ml-2 mb-1 text-xs`}>tasks</p>
-                  </div>
-                </div>
-              </div>
+              
             </div>
 
             {/* Task List (All Work Orders) */}
@@ -457,10 +458,10 @@ const TechnicianDashboard = () => {
                             </span>
                           </div>
                           <div className="mt-2 flex flex-wrap gap-2">
-                            <div className={`inline-flex items-center ${darkMode ? 'text-gray-400 bg-gray-700/50' : 'text-gray-600 bg-gray-200/70'} text-xs px-2 py-1 rounded-full`}>
+                            {/* <div className={`inline-flex items-center ${darkMode ? 'text-gray-400 bg-gray-700/50' : 'text-gray-600 bg-gray-200/70'} text-xs px-2 py-1 rounded-full`}>
                               <Clock size={12} className="mr-1" />
                               Order ID: {order.orderId}
-                            </div>
+                            </div> */}
                             {order.customerName && (
                               <div className={`inline-flex items-center ${darkMode ? 'text-gray-400 bg-gray-700/50' : 'text-gray-600 bg-gray-200/70'} text-xs px-2 py-1 rounded-full`}>
                                 <User size={12} className="mr-1" />
