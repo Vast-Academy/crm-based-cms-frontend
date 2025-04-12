@@ -905,7 +905,7 @@ const TechnicianDashboard = () => {
       </footer>
       
       {/* Add bottom padding to prevent content from being hidden behind fixed footer */}
-      <div className="pb-16"></div>
+      {/* <div className="pb-16"></div> */}
 
       {/* Logout Confirmation Popup */}
 {showLogoutPopup && (
