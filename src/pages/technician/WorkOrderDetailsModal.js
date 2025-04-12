@@ -947,6 +947,7 @@ const updateItemQuantity = (index, newQuantity) => {
               {workOrder.branchName && (
                 <p><span className="text-gray-500">Branch:</span> {workOrder.branchName}</p>
               )}
+              <p><span className="text-gray-500">Project Category:</span> {workOrder.projectCategory || 'New Installation'}</p>
             </div>
           </div>
           

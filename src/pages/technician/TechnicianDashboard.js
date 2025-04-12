@@ -424,66 +424,71 @@ const TechnicianDashboard = () => {
                 </div>
               </div>
               <div>
-                {recentWorkOrders.length > 0 ? (
-                  recentWorkOrders.map((order, index) => (
-                    <div
-                      key={order.orderId || `order-${Math.random().toString(36).substr(2, 9)}`}
-                      className={`p-4 ${darkMode ? 'border-b border-gray-700 last:border-b-0 hover:bg-gray-700/50' : 'border-b border-gray-200 last:border-b-0 hover:bg-gray-100/50'} transition-colors cursor-pointer`}
-                      onClick={() => handleWorkOrderClick(order)}
-                    >
-                      <div className="flex items-start gap-3">
-                        <div className={`flex-shrink-0 w-10 h-10 rounded-full ${getStatusColor(order.status)} flex items-center justify-center`}>
-                          {index % 4 === 0 ? (
-                            <Clipboard size={18} className="text-white" />
-                          ) : index % 4 === 1 ? (
-                            <Package size={18} className="text-white" />
-                          ) : index % 4 === 2 ? (
-                            <CheckSquare size={18} className="text-white" />
-                          ) : (
-                            <List size={18} className="text-white" />
-                          )}
-                        </div>
-                        <div className="flex-grow">
-                          <div className="flex justify-between">
-                            <h3 className={`font-medium ${darkMode ? 'text-white' : 'text-gray-800'}`}>
-                              {order.projectType}
-                            </h3>
-                            <span className={`px-2 py-1 rounded-full text-xs capitalize ${
-                              order.status === 'assigned' ? `${darkMode ? 'bg-blue-600/40' : 'bg-blue-100'} ${darkMode ? 'text-blue-100' : 'text-blue-800'}` :
-                              order.status === 'in-progress' ? `${darkMode ? 'bg-purple-600/40' : 'bg-purple-100'} ${darkMode ? 'text-purple-100' : 'text-purple-800'}` :
-                              order.status === 'paused' ? `${darkMode ? 'bg-orange-600/40' : 'bg-orange-100'} ${darkMode ? 'text-orange-100' : 'text-orange-800'}` :
-                              `${darkMode ? 'bg-green-600/40' : 'bg-green-100'} ${darkMode ? 'text-green-100' : 'text-green-800'}`
-                            }`}>
-                              {order.status}
-                            </span>
-                          </div>
-                          <div className="mt-2 flex flex-wrap gap-2">
-                            {/* <div className={`inline-flex items-center ${darkMode ? 'text-gray-400 bg-gray-700/50' : 'text-gray-600 bg-gray-200/70'} text-xs px-2 py-1 rounded-full`}>
-                              <Clock size={12} className="mr-1" />
-                              Order ID: {order.orderId}
-                            </div> */}
-                            {order.customerName && (
-                              <div className={`inline-flex items-center ${darkMode ? 'text-gray-400 bg-gray-700/50' : 'text-gray-600 bg-gray-200/70'} text-xs px-2 py-1 rounded-full`}>
-                                <User size={12} className="mr-1" />
-                                {order.customerName}
-                              </div>
-                            )}
-                            {order.location && (
-                              <div className={`inline-flex items-center ${darkMode ? 'text-gray-400 bg-gray-700/50' : 'text-gray-600 bg-gray-200/70'} text-xs px-2 py-1 rounded-full`}>
-                                <MapPin size={12} className="mr-1" />
-                                {order.location}
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  ))
-                ) : (
-                  <div className="p-8 text-center">
-                    <p className={`${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>No tasks assigned yet</p>
-                  </div>
-                )}
+              {recentWorkOrders.length > 0 ? (
+  recentWorkOrders.map((order, index) => (
+    <div
+      key={order.orderId || `order-${Math.random().toString(36).substr(2, 9)}`}
+      className={`p-4 ${darkMode ? 'border-b border-gray-700 last:border-b-0 hover:bg-gray-700/50' : 'border-b border-gray-200 last:border-b-0 hover:bg-gray-100/50'} transition-colors cursor-pointer`}
+      onClick={() => handleWorkOrderClick(order)}
+    >
+      <div className="flex items-start gap-3">
+        <div className={`flex-shrink-0 w-10 h-10 rounded-full ${getStatusColor(order.status)} flex items-center justify-center`}>
+          {index % 4 === 0 ? (
+            <Clipboard size={18} className="text-white" />
+          ) : index % 4 === 1 ? (
+            <Package size={18} className="text-white" />
+          ) : index % 4 === 2 ? (
+            <CheckSquare size={18} className="text-white" />
+          ) : (
+            <List size={18} className="text-white" />
+          )}
+        </div>
+        <div className="flex-grow">
+          <div className="flex justify-between">
+            <h3 className={`font-medium ${darkMode ? 'text-white' : 'text-gray-800'}`}>
+              {order.projectType}
+            </h3>
+            <span className={`px-2 py-1 rounded-full text-xs capitalize ${
+              order.status === 'assigned' ? `${darkMode ? 'bg-blue-600/40' : 'bg-blue-100'} ${darkMode ? 'text-blue-100' : 'text-blue-800'}` :
+              order.status === 'in-progress' ? `${darkMode ? 'bg-purple-600/40' : 'bg-purple-100'} ${darkMode ? 'text-purple-100' : 'text-purple-800'}` :
+              order.status === 'paused' ? `${darkMode ? 'bg-orange-600/40' : 'bg-orange-100'} ${darkMode ? 'text-orange-100' : 'text-orange-800'}` :
+              `${darkMode ? 'bg-green-600/40' : 'bg-green-100'} ${darkMode ? 'text-green-100' : 'text-green-800'}`
+            }`}>
+              {order.status}
+            </span>
+          </div>
+          <div className="mt-2 flex flex-wrap gap-2">
+            {/* Add Project Category Badge */}
+            <div className={`inline-flex items-center ${
+              order.projectCategory === 'Repair' 
+                ? `${darkMode ? 'bg-red-600/40 text-red-100' : 'bg-red-100 text-red-800'}` 
+                : `${darkMode ? 'bg-green-600/40 text-green-100' : 'bg-green-100 text-green-800'}`
+            } text-xs px-2 py-1 rounded-full`}>
+              {order.projectCategory || 'New Installation'} {/* Default to New Installation if not specified */}
+            </div>
+            
+            {order.customerName && (
+              <div className={`inline-flex items-center ${darkMode ? 'text-gray-400 bg-gray-700/50' : 'text-gray-600 bg-gray-200/70'} text-xs px-2 py-1 rounded-full`}>
+                <User size={12} className="mr-1" />
+                {order.customerName}
+              </div>
+            )}
+            {order.location && (
+              <div className={`inline-flex items-center ${darkMode ? 'text-gray-400 bg-gray-700/50' : 'text-gray-600 bg-gray-200/70'} text-xs px-2 py-1 rounded-full`}>
+                <MapPin size={12} className="mr-1" />
+                {order.location}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  ))
+) : (
+  <div className="p-8 text-center">
+    <p className={`${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>No tasks assigned yet</p>
+  </div>
+)}
               </div>
             </div>
           </>

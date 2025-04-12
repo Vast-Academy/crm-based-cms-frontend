@@ -6,12 +6,13 @@ import { useAuth } from '../../context/AuthContext';
 import Modal from '../../components/Modal';
 import WorkOrderModal from '../customers/WorkOrderModal'
 
-const CustomerDetailModal = ({ isOpen, onClose, customerId, onCustomerUpdated }) => {
+const CustomerDetailModal = ({ isOpen, onClose, customerId }) => {
   const { user } = useAuth();
   const [customer, setCustomer] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [showWorkOrderModal, setShowWorkOrderModal] = useState(false);
+  const [initialProjectCategory, setInitialProjectCategory] = useState('New Installation');
   
   const fetchCustomer = async () => {
     if (!customerId) return;
@@ -60,6 +61,11 @@ const CustomerDetailModal = ({ isOpen, onClose, customerId, onCustomerUpdated })
     };
     return new Date(dateString).toLocaleDateString(undefined, options);
   };
+
+  // const handleNewComplaint = () => {
+  //   setInitialProjectCategory("Repair");
+  //   setShowWorkOrderModal(true);
+  // };
   
   if (!isOpen) return null;
   
@@ -193,8 +199,9 @@ const CustomerDetailModal = ({ isOpen, onClose, customerId, onCustomerUpdated })
                   <button
                     className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
                     onClick={() => {
-                      // New complaint logic to be implemented
-                      alert('New Complaint functionality will be implemented in the future');
+                      // Opening WorkOrderModal for a complaint (Repair)
+                      setShowWorkOrderModal(true);
+                      setInitialProjectCategory('Repair');
                     }}
                   >
                     New Complaint
@@ -203,8 +210,9 @@ const CustomerDetailModal = ({ isOpen, onClose, customerId, onCustomerUpdated })
                   <button
                     className="px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600"
                     onClick={() => {
-                      // New project and work order creation
+                      // Opening WorkOrderModal for a new project (New Installation)
                       setShowWorkOrderModal(true);
+                      setInitialProjectCategory('New Installation');
                     }}
                   >
                     New Project
@@ -216,6 +224,7 @@ const CustomerDetailModal = ({ isOpen, onClose, customerId, onCustomerUpdated })
               isOpen={showWorkOrderModal}
               onClose={() => setShowWorkOrderModal(false)}
               customerId={customerId}
+              initialProjectCategory={initialProjectCategory}
               onSuccess={(data) => {
                 // Refresh customer data after adding new project/work order
                 fetchCustomer();
