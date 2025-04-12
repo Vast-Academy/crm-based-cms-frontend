@@ -453,7 +453,7 @@ const TechnicianDashboard = () => {
 </div>
         <div className="flex-grow">
           <div className="flex justify-between">
-            <h3 className={`font-medium ${darkMode ? 'text-white' : 'text-gray-800'}`}>
+            <h3 className={`font-medium truncate max-w-[150px] ${darkMode ? 'text-white' : 'text-gray-800'}`}>
               {order.projectType}
             </h3>
             <span className={`px-2 py-1 rounded-full text-xs capitalize ${
