@@ -34,8 +34,12 @@ const TechnicianDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [darkMode, setDarkMode] = useState(false); // Default light mode
-  const [activeTab, setActiveTab] = useState('home');
+  const [activeTab, setActiveTab] = useState(() => {
+    // Initialize with value from sessionStorage, default to 'home' if not set
+    return sessionStorage.getItem('technicianDashboardActiveTab') || 'home';
+  });
   const [showLogoutPopup, setShowLogoutPopup] = useState(false);
+  
   
   // States for modals
   const [showInventoryModal, setShowInventoryModal] = useState(false);
@@ -50,6 +54,7 @@ const TechnicianDashboard = () => {
   // Handle logout
   const handleLogout = () => {
     setShowLogoutPopup(false); // Close popup first
+    sessionStorage.removeItem('technicianDashboardActiveTab');
     logout(); // Call the logout function from AuthContext
     // Redirect to login page will be handled by AuthContext/Router
   };
@@ -62,6 +67,8 @@ const TechnicianDashboard = () => {
    // Function to handle tab changes
    const handleTabChange = (tab) => {
     setActiveTab(tab);
+    // Store the active tab in sessionStorage
+    sessionStorage.setItem('technicianDashboardActiveTab', tab);
   };
   
   // Load theme preference from localStorage on component mount
@@ -939,8 +946,8 @@ const filteredInventoryItems = getFilteredInventoryItems();
                     <p className={`text-xs ${darkMode ? 'text-amber-300' : 'text-amber-100'}`}>Assigned</p>
                   </div>
                   <div className={`${darkMode ? 'bg-amber-800/50' : 'bg-amber-700/50'} p-3 rounded-lg`}>
-                    <p className="text-2xl font-bold">{workOrders.filter(order => order.status === 'in-progress').length}</p>
-                    <p className={`text-xs ${darkMode ? 'text-amber-300' : 'text-amber-100'}`}>In Progress</p>
+                    <p className="text-2xl font-bold">{workOrders.filter(order => order.status === 'pending-approval').length}</p>
+                    <p className={`text-xs ${darkMode ? 'text-amber-300' : 'text-amber-100'}`}>Approval</p>
                   </div>
                   <div className={`${darkMode ? 'bg-amber-800/50' : 'bg-amber-700/50'} p-3 rounded-lg`}>
                     <p className="text-2xl font-bold">{workOrders.filter(order => order.status === 'paused').length}</p>
