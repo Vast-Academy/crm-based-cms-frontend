@@ -200,20 +200,10 @@ const handleStopProject = async (project) => {
 const handleBillGenerated = (selectedItems, paymentCompleted = false) => {
   console.log('Bill items:', selectedItems, 'Payment completed:', paymentCompleted);
   
-  // If payment is already completed, no need to show work order modal
   if (paymentCompleted) {
-    // Refresh work orders data
+    // Refresh work orders data to get the updated state with payment info
     fetchWorkOrders();
-    return;
-  }
-  
-  // Show the work order modal for payment processing if payment not completed
-  if (selectedWorkOrder) {
-    setSelectedWorkOrder({
-      ...selectedWorkOrder,
-      billItems: selectedItems
-    });
-    setShowWorkOrderModal(true);
+    // No need to show the work order modal, as payment is already completed
   }
 };
 
