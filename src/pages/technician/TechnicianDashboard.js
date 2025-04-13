@@ -1535,6 +1535,7 @@ const filteredInventoryItems = getFilteredInventoryItems();
           }}
           workOrder={selectedWorkOrder}
           onStatusUpdate={handleWorkOrderStatusUpdate}
+          darkMode={darkMode}
         />
       )}
 

@@ -4,6 +4,7 @@ import { Clipboard } from 'lucide-react';
 import SummaryApi from '../../common';
 import { useAuth } from '../../context/AuthContext';
 import { QRCodeCanvas } from 'qrcode.react';
+import { Play, Clock, Info } from 'lucide-react';
 
 // For more basic projects, a simpler scan simulation approach might be better
 const SimpleScanner = ({ onScan, onClose }) => {
@@ -46,7 +47,7 @@ const SimpleScanner = ({ onScan, onClose }) => {
 };
 
 const WorkOrderDetailsModal = (props) => {
-  const { isOpen, onClose, workOrder, onStatusUpdate, onProjectStarted } = props;
+  const { isOpen, onClose, workOrder, onStatusUpdate, onProjectStarted, darkMode = false } = props;
   const modalContentRef = useRef(null);
   const [remark, setRemark] = useState('');
   const [loading, setLoading] = useState(false);
@@ -189,6 +190,528 @@ const WorkOrderDetailsModal = (props) => {
       setLoading(false);
     }
   };
+
+// पॉज़ की तारीख खोजने के लिए
+const findPauseDateTime = () => {
+  if (!workOrder?.statusHistory) return "N/A";
+  
+  // स्टेटस हिस्ट्री से अंतिम पॉज़ एंट्री खोजें
+  const pauseHistory = [...workOrder.statusHistory]
+    .reverse()
+    .find(history => history.status === 'paused');
+    
+  if (!pauseHistory) return "N/A";
+  
+  return formatDate(pauseHistory.updatedAt);
+};
+
+// पॉज़ का कारण खोजने के लिए
+const findPauseReason = () => {
+  if (!workOrder?.statusHistory) return "No reason provided";
+  
+  // स्टेटस हिस्ट्री से अंतिम पॉज़ एंट्री खोजें
+  const pauseHistory = [...workOrder.statusHistory]
+    .reverse()
+    .find(history => history.status === 'paused');
+    
+  if (!pauseHistory) return "No reason provided";
+  
+  return pauseHistory.remark || "No reason provided";
+};
+
+// प्रोजेक्ट रिज्यूम करने के लिए
+const handleResumeProject = async () => {
+  try {
+    setLoading(true);
+    setError(null);
+    
+    // रिज्यूम नोट के लिए एक डिफॉल्ट मैसेज सेट करें
+    const resumeNote = "Project resumed by technician";
+    
+    const response = await fetch(SummaryApi.updateWorkOrderStatus.url, {
+      method: SummaryApi.updateWorkOrderStatus.method,
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      credentials: 'include',
+      body: JSON.stringify({
+        customerId: workOrder.customerId,
+        orderId: workOrder.orderId,
+        status: 'in-progress',
+        remark: resumeNote
+      })
+    });
+    
+    const data = await response.json();
+    
+    if (data.success) {
+      // Call the parent component's onStatusUpdate to refresh data
+      if (onStatusUpdate) {
+        onStatusUpdate(data.data);
+      }
+      
+      // Close the modal
+      onClose();
+    } else {
+      setError(data.message || 'Failed to resume project');
+    }
+  } catch (err) {
+    setError('Server error. Please try again.');
+    console.error('Error resuming project:', err);
+  } finally {
+    setLoading(false);
+  }
+};
+
+// प्रोजेक्ट स्थिति के आधार पर अलग-अलग विज़ुअल प्रदर्शित करने के लिए
+const renderProjectContent = () => {
+  if (workOrder.status === 'paused') {
+    // पॉज्ड प्रोजेक्ट के लिए विशेष व्यू
+    return (
+      <div className={`${darkMode ? 'bg-gray-800/50' : 'bg-white'} rounded-xl shadow-lg p-4`}>
+        {/* पॉज्ड स्टेटस बैज */}
+        <div className="mb-4 flex justify-between items-center">
+          <span className="px-3 py-1 rounded-full text-sm capitalize bg-orange-100 text-orange-800">
+            Paused
+          </span>
+          
+          <div className="text-sm text-gray-500">
+            <Clock size={16} className="inline mr-1" />
+            {findPauseDateTime()}
+          </div>
+        </div>
+        
+        {/* प्रोजेक्ट इंफॉर्मेशन */}
+        <div className="mb-4">
+          <h3 className="text-md font-medium flex items-center mb-3">
+            <Clipboard size={18} className="mr-2" />
+            Project Information
+          </h3>
+          <div className="bg-gray-50 p-4 rounded-lg">
+            <p><span className="font-medium">Type:</span> {workOrder.projectType}</p>
+            <p><span className="font-medium">Category:</span> {workOrder.projectCategory || 'New Installation'}</p>
+          </div>
+        </div>
+        
+        {/* कस्टमर इंफॉर्मेशन */}
+        <div className="mb-4">
+          <h3 className="text-md font-medium flex items-center mb-3">
+            <FiUser className="mr-2" />
+            Customer Information
+          </h3>
+          <div className="bg-white border rounded-lg p-3 space-y-2">
+            <p className="font-medium">{workOrder.customerName}</p>
+            {workOrder.customerAddress && (
+              <p className="flex items-start text-sm">
+                <FiMapPin className="mr-2 text-gray-500 mt-1" />
+                <span>{workOrder.customerAddress}</span>
+              </p>
+            )}
+          </div>
+        </div>
+        
+        {/* पॉज़ का कारण */}
+        <div className="mb-4">
+          <h3 className="text-md font-medium flex items-center mb-3">
+            <Info size={18} className="mr-2" />
+            Pause Reason
+          </h3>
+          <div className="bg-orange-50 border-l-4 border-orange-500 p-4 rounded-r-lg">
+            <p className="text-sm text-gray-700">{findPauseReason()}</p>
+          </div>
+        </div>
+        
+        {/* Resume Button */}
+        <button
+          onClick={handleResumeProject}
+          className="w-full py-2 bg-blue-500 text-white rounded-lg flex items-center justify-center"
+        >
+          <Play size={18} className="mr-2" /> Resume Project
+        </button>
+      </div>
+    );
+  } else {
+    // अन्य स्टेट्स के लिए रेगुलर व्यू
+    return (
+      <>
+        {/* Status Badge */}
+        <div className="mb-4 flex justify-between items-center">
+          <span className={`px-3 py-1 rounded-full text-sm capitalize ${
+            workOrder.status === 'assigned' ? 'bg-blue-100 text-blue-800' :
+            workOrder.status === 'in-progress' ? 'bg-purple-100 text-purple-800' :
+            workOrder.status === 'paused' ? 'bg-orange-100 text-orange-800' :
+            'bg-green-100 text-green-800'
+          }`}>
+            {workOrder.status}
+          </span>
+          
+          <div className="text-sm text-gray-500">
+            <FiCalendar className="inline mr-1" />
+            {formatDate(workOrder.createdAt)}
+          </div>
+        </div>
+        
+        {/* Error Message */}
+        {error && (
+          <div className="mb-4 bg-red-50 text-red-600 p-3 rounded-md text-sm">
+            {error}
+          </div>
+        )}
+        
+        {/* Basic Work Order Info */}
+        <div>
+          <h3 className="text-md font-medium flex items-center mb-3">
+            <Clipboard size={18} className="mr-2" />
+            Project Information
+          </h3>
+          <div className="bg-gray-50 p-4 rounded-lg mb-4">
+            <div className="space-y-2 text-sm">
+              <p><span className="text-gray-500">Project Type:</span> {workOrder.projectCategory || 'New Installation'}</p>
+              <p><span className="text-gray-500">Project Category:</span> {workOrder.projectType}</p>
+            </div>
+          </div>
+        </div>
+        
+        {/* Customer Information */}
+        <div className="mb-4">
+          <h3 className="text-md font-medium flex items-center mb-3">
+            <FiUser className="mr-2" />
+            Customer Information
+          </h3>
+          
+          <div className="bg-white border rounded-lg p-3 space-y-2">
+            <p className="font-medium">{workOrder.customerName}</p>
+            {workOrder.customerAddress && (
+              <p className="flex items-start text-sm">
+                <FiMapPin className="mr-2 text-gray-500 mt-1" />
+                <span>{workOrder.customerAddress}</span>
+              </p>
+            )}
+          </div>
+        </div>
+        
+        {/* Project Requirements */}
+        {workOrder.initialRemark && (
+          <div className="mb-4">
+            <h3 className="text-md font-medium flex items-center mb-3">
+              <FiInfo className="mr-2" />
+              Project Requirements
+            </h3>
+            
+            <div className="bg-white border rounded-lg p-3">
+              <p className="text-sm">{workOrder.initialRemark}</p>
+            </div>
+          </div>
+        )}
+        
+        {/* Status History */}
+        {workOrder.statusHistory && workOrder.statusHistory.length > 0 && (
+          <div className="mb-4">
+            <h3 className="text-md font-medium mb-3">Status History</h3>
+            
+            <div className="bg-white border rounded-lg p-3">
+              <div className="space-y-3">
+                {workOrder.statusHistory.map((history, index) => (
+                  <div key={index} className="text-sm border-b pb-2 last:border-b-0 last:pb-0">
+                    <div className="flex justify-between">
+                      <span className="font-medium capitalize">
+                        {history.status === 'remark' ? 'Remark Added' : 
+                        history.status === 'communication' ? 'Communication' :
+                        history.status}
+                      </span>
+                      <span className="text-gray-500">{formatDate(history.updatedAt)}</span>
+                    </div>
+                    {history.remark && <p className="mt-1 text-gray-600">{history.remark}</p>}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+        
+        {/* Payment History */}
+        {workOrder.billingInfo && workOrder.billingInfo.length > 0 && (
+          <div className="mb-4">
+            <h3 className="text-md font-medium mb-3">Payment History</h3>
+            
+            <div className="bg-white border rounded-lg p-3">
+              <div className="space-y-3">
+                {workOrder.billingInfo.map((payment, index) => (
+                  <div key={index} className="text-sm border-b pb-2 last:border-b-0 last:pb-0">
+                    <div className="flex justify-between">
+                      <span className="font-medium">Bill #{payment.billNumber}</span>
+                      <span className="text-gray-500">{formatDate(payment.paidAt)}</span>
+                    </div>
+                    <div className="mt-1">
+                      <p><span className="text-gray-600">Amount:</span> ₹{payment.amount.toFixed(2)}</p>
+                      <p><span className="text-gray-600">Method:</span> {payment.paymentMethod === 'online' ? 'Online Payment' : 'Cash Payment'}</p>
+                      {payment.transactionId && (
+                        <p><span className="text-gray-600">Transaction ID:</span> {payment.transactionId}</p>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+        
+        {/* Inventory Management Section - Only for in-progress */}
+        {workOrder.status === 'in-progress' && !paymentCompleted && (
+          <div className="mb-4">
+            <h3 className="text-md font-medium mb-3">Inventory Management</h3>
+            
+            <div className="bg-white border rounded-lg p-3">
+              {/* Search and Scan */}
+              <div className="flex mb-3">
+                <div className="relative flex-1 mr-2">
+                  <input
+                    type="text"
+                    placeholder="Search by name or serial number"
+                    className="w-full pl-10 pr-2 py-2 border rounded-md"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                  />
+                  <FiSearch className="absolute left-3 top-2.5 text-gray-400" />
+                </div>
+                <button
+                  onClick={handleScan}
+                  className="px-3 py-2 bg-green-500 text-white rounded-md"
+                >
+                  Scan
+                </button>
+              </div>
+              
+              {/* Search Results */}
+              {searchResults.length > 0 && (
+                <div className="mb-3 border rounded-md p-2 bg-gray-50">
+                  <p className="text-sm font-medium mb-2">Search Results:</p>
+                  {searchResults.map((item, index) => (
+                    <div 
+                      key={index}
+                      className="flex justify-between items-center p-2 hover:bg-gray-100 cursor-pointer rounded"
+                      onClick={() => addItemToSelection(item)}
+                    >
+                      <div>
+                        <p className="font-medium">{item.itemName}</p>
+                        <p className="text-xs text-gray-500">
+                          {item.type === 'serialized-product' 
+                            ? `S/N: ${item.selectedSerialNumber} - ₹${item.salePrice?.toFixed(2) || '0.00'}` 
+                            : `Generic Item - ₹${item.salePrice?.toFixed(2) || '0.00'}`}
+                        </p>
+                      </div>
+                      <button className="text-blue-500 text-sm">Add</button>
+                    </div>
+                  ))}
+                </div>
+              )}
+                        
+              {/* Selected Items List */}
+              <div className="mb-3">
+                <p className="text-sm font-medium mb-2">Selected Items:</p>
+                {selectedItems.length > 0 ? (
+                  <div className="border rounded-md divide-y">
+                    {selectedItems.map((item, index) => (
+                      <div key={index} className="flex justify-between items-center p-2">
+                        <div className="flex-1">
+                          <p className="font-medium">{item.itemName}</p>
+                          {item.type === 'serialized-product' ? (
+                            <p className="text-xs text-gray-500">
+                              S/N: {item.selectedSerialNumber} - ₹{item.salePrice?.toFixed(2) || '0.00'}
+                            </p>
+                          ) : (
+                            <div>
+                              <p className="text-xs text-gray-500">
+                                ₹{item.salePrice?.toFixed(2) || '0.00'} per {item.unit || 'Piece'}
+                              </p>
+                              <p className="text-xs text-gray-500">
+                                Available: {item.availableQuantity} {item.unit || 'Piece'}
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                        
+                        {/* Quantity controls for generic products */}
+                        {item.type === 'generic-product' && (
+                          <div className="flex items-center mr-2">
+                            <button 
+                              onClick={() => updateItemQuantity(index, item.quantity - 1)}
+                              className="w-8 h-8 flex items-center justify-center border rounded-l-md"
+                              disabled={item.quantity <= 1}
+                            >
+                              -
+                            </button>
+                            <span className="w-10 h-8 flex items-center justify-center border-t border-b">
+                              {item.quantity}
+                            </span>
+                            <button 
+                              onClick={() => updateItemQuantity(index, item.quantity + 1)}
+                              className="w-8 h-8 flex items-center justify-center border rounded-r-md"
+                              disabled={item.quantity >= item.availableQuantity}
+                            >
+                              +
+                            </button>
+                          </div>
+                        )}
+                        
+                        <button 
+                          onClick={() => removeItem(index)}
+                          className="text-red-500 text-sm"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center p-4 bg-gray-50 rounded-md text-gray-500">
+                    No items selected
+                  </div>
+                )}
+              </div>
+                        
+              {/* Generate Bill Button */}
+              {selectedItems.length > 0 && (
+                <button
+                  onClick={generateBill}
+                  className="w-full py-2 bg-blue-500 text-white rounded-md flex items-center justify-center"
+                >
+                  <FiFileText className="mr-2" /> Generate Bill
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Payment Details Section */}
+        {paymentCompleted && workOrder.billingInfo && workOrder.billingInfo.length > 0 && (
+          <div className="mb-4">
+            <h3 className="text-md font-medium mb-3">Payment Details</h3>
+            
+            <div className="bg-white border rounded-lg p-3">
+              <div className="space-y-3">
+                {workOrder.billingInfo.map((payment, index) => (
+                  <div key={index} className="flex justify-between p-2 border-b last:border-b-0">
+                    <div>
+                      <p className="font-medium">Bill #{payment.billNumber}</p>
+                      <p className="text-sm text-gray-600">
+                        {payment.paymentMethod === 'online' ? 'Online Payment' : 'Cash Payment'}
+                      </p>
+                      {payment.transactionId && (
+                        <p className="text-sm text-gray-600">Tx ID: {payment.transactionId}</p>
+                      )}
+                    </div>
+                    <div className="text-right">
+                      <p className="font-bold">₹{payment.amount.toFixed(2)}</p>
+                      <p className="text-xs text-gray-500">
+                        {new Date(payment.paidAt).toLocaleString()}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+        
+        {/* Action Buttons */}
+        <div className="mt-6 space-y-2">
+          {/* For assigned work orders - show Start Project button */}
+          {workOrder.status === 'assigned' && (
+            <button 
+              className="w-full bg-green-500 hover:bg-green-600 text-white py-2 rounded-md flex items-center justify-center"
+              onClick={() => updateStatus('in-progress')}
+              disabled={loading}
+            >
+              <FiPlay className="mr-2" /> Start Project
+            </button>
+          )}
+          
+          {/* For in-progress work orders - show Pause Project OR Complete Project buttons */}
+          {workOrder.status === 'in-progress' && (
+            <>
+              {paymentCompleted || (workOrder.billingInfo && workOrder.billingInfo.length > 0) ? (
+                // Show Complete Project button
+                <>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Completion Notes (optional)
+                    </label>
+                    <textarea
+                      value={remark}
+                      onChange={(e) => setRemark(e.target.value)}
+                      className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      rows="3"
+                      placeholder="Enter any notes about the completed project..."
+                    ></textarea>
+                  </div>
+                  
+                  <button 
+                    className="w-full bg-green-500 hover:bg-green-600 text-white py-2 rounded-md flex items-center justify-center"
+                    onClick={() => updateStatus('completed')}
+                    disabled={loading}
+                  >
+                    <FiCheckCircle className="mr-2" /> Complete Project & Send for Approval
+                  </button>
+                </>
+              ) : (
+                // Show Pause Project when not in payment flow
+                <>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Reason for pausing
+                    </label>
+                    <textarea
+                      value={remark}
+                      onChange={(e) => setRemark(e.target.value)}
+                      className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      rows="3"
+                      placeholder="Enter reason for pausing this project..."
+                    ></textarea>
+                  </div>
+                  
+                  <button 
+                    className="w-full bg-orange-500 hover:bg-orange-600 text-white py-2 rounded-md flex items-center justify-center"
+                    onClick={() => updateStatus('paused')}
+                    disabled={loading || !remark.trim()}
+                  >
+                    <FiPause className="mr-2" /> Pause Project
+                  </button>
+                </>
+              )}
+            </>
+          )}
+          
+          {/* For paused work orders - show Resume Project with remark input */}
+          {workOrder.status === 'paused' && (
+            <>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Reason for resuming
+                </label>
+                <textarea
+                  value={remark}
+                  onChange={(e) => setRemark(e.target.value)}
+                  className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  rows="3"
+                  placeholder="Enter reason for resuming this project..."
+                ></textarea>
+              </div>
+              
+              <button 
+                className="w-full bg-green-500 hover:bg-green-600 text-white py-2 rounded-md flex items-center justify-center"
+                onClick={() => updateStatus('in-progress')}
+                disabled={loading || !remark.trim()}
+              >
+                <FiPlay className="mr-2" /> Resume Project
+              </button>
+            </>
+          )}
+        </div>
+      </>
+    );
+  }
+};
 
   // Function to update the work order status
   const updateStatus = async (newStatus) => {
@@ -636,6 +1159,7 @@ const updateItemQuantity = (index, newQuantity) => {
     return `upi://pay?pa=${upiId}&pn=Your%20Company&am=${amount}&tn=${purpose}`;
   };
   
+  
   return (
     <div className="fixed inset-0 bg-gray-600 bg-opacity-75 flex justify-center items-center z-50 p-2 overflow-auto">
       <div className="bg-white rounded-lg shadow-xl w-full max-w-md max-h-[90vh] overflow-hidden ">
@@ -920,386 +1444,7 @@ const updateItemQuantity = (index, newQuantity) => {
           className="overflow-y-auto p-4"
           style={{ maxHeight: 'calc(90vh - 60px)' }}
         >
-          {/* Status Badge */}
-          <div className="mb-4 flex justify-between items-center">
-            <span className={`px-3 py-1 rounded-full text-sm capitalize ${
-              workOrder.status === 'assigned' ? 'bg-blue-100 text-blue-800' :
-              workOrder.status === 'in-progress' ? 'bg-purple-100 text-purple-800' :
-              workOrder.status === 'paused' ? 'bg-orange-100 text-orange-800' :
-              'bg-green-100 text-green-800'
-            }`}>
-              {workOrder.status}
-            </span>
-            
-            <div className="text-sm text-gray-500">
-              <FiCalendar className="inline mr-1" />
-              {formatDate(workOrder.createdAt)}
-            </div>
-          </div>
-          
-          {/* Error Message */}
-          {error && (
-            <div className="mb-4 bg-red-50 text-red-600 p-3 rounded-md text-sm">
-              {error}
-            </div>
-          )}
-          
-          {/* Basic Work Order Info */}
-          <div>
-          <h3 className="text-md font-medium flex items-center mb-3">
-              <Clipboard size={18} className="mr-2" />
-              Project Information
-            </h3>
-          <div className="bg-gray-50 p-4 rounded-lg mb-4">
-            <div className="space-y-2 text-sm">
-              {/* <p><span className="text-gray-500">Order ID:</span> {workOrder.orderId}</p>
-              <p><span className="text-gray-500">Project ID:</span> {workOrder.projectId}</p>
-              {workOrder.branchName && (
-                <p><span className="text-gray-500">Branch:</span> {workOrder.branchName}</p>
-              )} */}
-              <p><span className="text-gray-500">Project Type:</span> {workOrder.projectCategory || 'New Installation'}</p>
-              <p><span className="text-gray-500">Project Category:</span> {workOrder.projectType}</p>
-            </div>
-          </div>
-          </div>
-          
-          {/* Customer Information - Show only address for simplicity */}
-          <div className="mb-4">
-            <h3 className="text-md font-medium flex items-center mb-3">
-              <FiUser className="mr-2" />
-              Customer Information
-            </h3>
-            
-            <div className="bg-white border rounded-lg p-3 space-y-2">
-              <p className="font-medium">{workOrder.customerName}</p>
-              {workOrder.customerAddress && (
-                <p className="flex items-start text-sm">
-                  <FiMapPin className="mr-2 text-gray-500 mt-1" />
-                  <span>{workOrder.customerAddress}</span>
-                </p>
-              )}
-            </div>
-          </div>
-          
-          {/* Project Requirements */}
-          {workOrder.initialRemark && (
-            <div className="mb-4">
-              <h3 className="text-md font-medium flex items-center mb-3">
-                <FiInfo className="mr-2" />
-                Project Requirements
-              </h3>
-              
-              <div className="bg-white border rounded-lg p-3">
-                <p className="text-sm">{workOrder.initialRemark}</p>
-              </div>
-            </div>
-          )}
-          
-          {/* Status History (if any) */}
-          {workOrder.statusHistory && workOrder.statusHistory.length > 0 && (
-  <div className="mb-4">
-    <h3 className="text-md font-medium mb-3">Status History</h3>
-    
-    <div className="bg-white border rounded-lg p-3">
-      <div className="space-y-3">
-        {workOrder.statusHistory.map((history, index) => (
-          <div key={index} className="text-sm border-b pb-2 last:border-b-0 last:pb-0">
-            <div className="flex justify-between">
-              {/* Display status type appropriately */}
-              <span className="font-medium capitalize">
-                {history.status === 'remark' ? 'Remark Added' : 
-                 history.status === 'communication' ? 'Communication' :
-                 history.status}
-              </span>
-              <span className="text-gray-500">{formatDate(history.updatedAt)}</span>
-            </div>
-            {history.remark && <p className="mt-1 text-gray-600">{history.remark}</p>}
-          </div>
-        ))}
-      </div>
-    </div>
-  </div>
-)}
-
-{/* Payment History - Add this new section */}
-{workOrder.billingInfo && workOrder.billingInfo.length > 0 && (
-  <div className="mb-4">
-    <h3 className="text-md font-medium mb-3">Payment History</h3>
-    
-    <div className="bg-white border rounded-lg p-3">
-      <div className="space-y-3">
-        {workOrder.billingInfo.map((payment, index) => (
-          <div key={index} className="text-sm border-b pb-2 last:border-b-0 last:pb-0">
-            <div className="flex justify-between">
-              <span className="font-medium">Bill #{payment.billNumber}</span>
-              <span className="text-gray-500">{formatDate(payment.paidAt)}</span>
-            </div>
-            <div className="mt-1">
-              <p><span className="text-gray-600">Amount:</span> ₹{payment.amount.toFixed(2)}</p>
-              <p><span className="text-gray-600">Method:</span> {payment.paymentMethod === 'online' ? 'Online Payment' : 'Cash Payment'}</p>
-              {payment.transactionId && (
-                <p><span className="text-gray-600">Transaction ID:</span> {payment.transactionId}</p>
-              )}
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  </div>
-)}
-          
-          {/* Inventory Management Section - Only show if work order is in-progress */}
-          {workOrder.status === 'in-progress' && !paymentCompleted && (
-  <div className="mb-4">
-    <h3 className="text-md font-medium mb-3">Inventory Management</h3>
-    
-    <div className="bg-white border rounded-lg p-3">
-      {/* Search and Scan */}
-      <div className="flex mb-3">
-        <div className="relative flex-1 mr-2">
-          <input
-            type="text"
-            placeholder="Search by name or serial number"
-            className="w-full pl-10 pr-2 py-2 border rounded-md"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
-          <FiSearch className="absolute left-3 top-2.5 text-gray-400" />
-        </div>
-        <button
-          onClick={handleScan}
-          className="px-3 py-2 bg-green-500 text-white rounded-md"
-        >
-          Scan
-        </button>
-      </div>
-      
-      {/* Search Results */}
-      {searchResults.length > 0 && (
-        <div className="mb-3 border rounded-md p-2 bg-gray-50">
-          <p className="text-sm font-medium mb-2">Search Results:</p>
-          {searchResults.map((item, index) => (
-            <div 
-              key={index}
-              className="flex justify-between items-center p-2 hover:bg-gray-100 cursor-pointer rounded"
-              onClick={() => addItemToSelection(item)}
-            >
-              <div>
-                <p className="font-medium">{item.itemName}</p>
-                <p className="text-xs text-gray-500">
-                  {item.type === 'serialized-product' 
-                    ? `S/N: ${item.selectedSerialNumber} - ₹${item.salePrice?.toFixed(2) || '0.00'}` 
-                    : `Generic Item - ₹${item.salePrice?.toFixed(2) || '0.00'}`}
-                </p>
-              </div>
-              <button className="text-blue-500 text-sm">Add</button>
-            </div>
-          ))}
-        </div>
-      )}
-                
-                {/* Selected Items List */}
-                <div className="mb-3">
-        <p className="text-sm font-medium mb-2">Selected Items:</p>
-        {selectedItems.length > 0 ? (
-          <div className="border rounded-md divide-y">
-            {selectedItems.map((item, index) => (
-              <div key={index} className="flex justify-between items-center p-2">
-                <div className="flex-1">
-                  <p className="font-medium">{item.itemName}</p>
-                  {item.type === 'serialized-product' ? (
-                    <p className="text-xs text-gray-500">
-                      S/N: {item.selectedSerialNumber} - ₹{item.salePrice?.toFixed(2) || '0.00'}
-                    </p>
-                  ) : (
-                    <div>
-                      <p className="text-xs text-gray-500">
-                        ₹{item.salePrice?.toFixed(2) || '0.00'} per {item.unit || 'Piece'}
-                      </p>
-                      <p className="text-xs text-gray-500">
-                        Available: {item.availableQuantity} {item.unit || 'Piece'}
-                      </p>
-                    </div>
-                  )}
-                </div>
-                
-                {/* Quantity controls for generic products */}
-                {item.type === 'generic-product' && (
-                  <div className="flex items-center mr-2">
-                    <button 
-                      onClick={() => updateItemQuantity(index, item.quantity - 1)}
-                      className="w-8 h-8 flex items-center justify-center border rounded-l-md"
-                      disabled={item.quantity <= 1}
-                    >
-                      -
-                    </button>
-                    <span className="w-10 h-8 flex items-center justify-center border-t border-b">
-                      {item.quantity}
-                    </span>
-                    <button 
-                      onClick={() => updateItemQuantity(index, item.quantity + 1)}
-                      className="w-8 h-8 flex items-center justify-center border rounded-r-md"
-                      disabled={item.quantity >= item.availableQuantity}
-                    >
-                      +
-                    </button>
-                  </div>
-                )}
-                
-                <button 
-                  onClick={() => removeItem(index)}
-                  className="text-red-500 text-sm"
-                >
-                  Remove
-                </button>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div className="text-center p-4 bg-gray-50 rounded-md text-gray-500">
-            No items selected
-          </div>
-        )}
-      </div>
-                
-                {/* Generate Bill Button */}
-                {selectedItems.length > 0 && (
-        <button
-          onClick={generateBill}
-          className="w-full py-2 bg-blue-500 text-white rounded-md flex items-center justify-center"
-        >
-          <FiFileText className="mr-2" /> Generate Bill
-        </button>
-      )}
-    </div>
-  </div>
-)}
-
-          {/* Payment Details Section - Only show if payment is completed */}
-{paymentCompleted && workOrder.billingInfo && workOrder.billingInfo.length > 0 && (
-  <div className="mb-4">
-    <h3 className="text-md font-medium mb-3">Payment Details</h3>
-    
-    <div className="bg-white border rounded-lg p-3">
-      <div className="space-y-3">
-        {workOrder.billingInfo.map((payment, index) => (
-          <div key={index} className="flex justify-between p-2 border-b last:border-b-0">
-            <div>
-              <p className="font-medium">Bill #{payment.billNumber}</p>
-              <p className="text-sm text-gray-600">
-                {payment.paymentMethod === 'online' ? 'Online Payment' : 'Cash Payment'}
-              </p>
-              {payment.transactionId && (
-                <p className="text-sm text-gray-600">Tx ID: {payment.transactionId}</p>
-              )}
-            </div>
-            <div className="text-right">
-              <p className="font-bold">₹{payment.amount.toFixed(2)}</p>
-              <p className="text-xs text-gray-500">
-                {new Date(payment.paidAt).toLocaleString()}
-              </p>
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  </div>
-)}
-          
-          {/* Action Buttons */}
-          <div className="mt-6 space-y-2">
-            {/* For assigned work orders - show Start Project button */}
-            {workOrder.status === 'assigned' && (
-              <button 
-                className="w-full bg-green-500 hover:bg-green-600 text-white py-2 rounded-md flex items-center justify-center"
-                onClick={() => updateStatus('in-progress')}
-                disabled={loading}
-              >
-                <FiPlay className="mr-2" /> Start Project
-              </button>
-            )}
-            
-            {/* For in-progress work orders - show Pause Project OR Complete Project buttons */}
-            {workOrder.status === 'in-progress' && (
-  <>
-    {paymentCompleted || (workOrder.billingInfo && workOrder.billingInfo.length > 0) ? (
-      // Show Complete Project button
-      <>
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Completion Notes (optional)
-          </label>
-          <textarea
-            value={remark}
-            onChange={(e) => setRemark(e.target.value)}
-            className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            rows="3"
-            placeholder="Enter any notes about the completed project..."
-          ></textarea>
-        </div>
-        
-        <button 
-  className="w-full bg-green-500 hover:bg-green-600 text-white py-2 rounded-md flex items-center justify-center"
-  onClick={() => updateStatus('completed')}
-  disabled={loading}
->
-  <FiCheckCircle className="mr-2" /> Complete Project & Send for Approval
-</button>
-      </>
-    ) : (
-      // Show Pause Project when not in payment flow
-      <>
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Reason for pausing
-          </label>
-          <textarea
-            value={remark}
-            onChange={(e) => setRemark(e.target.value)}
-            className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            rows="3"
-            placeholder="Enter reason for pausing this project..."
-          ></textarea>
-        </div>
-        
-        <button 
-          className="w-full bg-orange-500 hover:bg-orange-600 text-white py-2 rounded-md flex items-center justify-center"
-          onClick={() => updateStatus('paused')}
-          disabled={loading || !remark.trim()}
-        >
-          <FiPause className="mr-2" /> Pause Project
-        </button>
-      </>
-    )}
-  </>
-)}
-            
-            {/* For paused work orders - show Resume Project with remark input */}
-            {workOrder.status === 'paused' && (
-              <>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Reason for resuming
-                  </label>
-                  <textarea
-                    value={remark}
-                    onChange={(e) => setRemark(e.target.value)}
-                    className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    rows="3"
-                    placeholder="Enter reason for resuming this project..."
-                  ></textarea>
-                </div>
-                
-                <button 
-                  className="w-full bg-green-500 hover:bg-green-600 text-white py-2 rounded-md flex items-center justify-center"
-                  onClick={() => updateStatus('in-progress')}
-                  disabled={loading || !remark.trim()}
-                >
-                  <FiPlay className="mr-2" /> Resume Project
-                </button>
-              </>
-            )}
-          </div>
+          {renderProjectContent()}
         </div>
       </div>
     </div>
