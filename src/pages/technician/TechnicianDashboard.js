@@ -28,6 +28,7 @@ import LoadingSpinner from '../../components/LoadingSpinner';
 import InventoryDetailsModal from './InventoryDetailsModal';
 import WorkOrderDetailsModal from './WorkOrderDetailsModal';
 import ReturnInventoryModal from './ReturnInventoryModal';
+import GenerateBillModal from './GenerateBillModal';
 
 const TechnicianDashboard = () => {
   const { user, logout } = useAuth();
@@ -57,6 +58,7 @@ const TechnicianDashboard = () => {
   const [showFullHistory, setShowFullHistory] = useState(false);
 const [showStopProjectModal, setShowStopProjectModal] = useState(false);
 const [pauseProjectRemark, setPauseProjectRemark] = useState('');
+const [showBillModal, setShowBillModal] = useState(false);
   
   // Handle logout
   const handleLogout = () => {
@@ -192,6 +194,33 @@ const handleStopProject = async (project) => {
   } finally {
     setLoading(false);
   }
+};
+
+// Add a handler for bill generation completion
+const handleBillGenerated = (selectedItems, paymentCompleted = false) => {
+  console.log('Bill items:', selectedItems, 'Payment completed:', paymentCompleted);
+  
+  // If payment is already completed, no need to show work order modal
+  if (paymentCompleted) {
+    // Refresh work orders data
+    fetchWorkOrders();
+    return;
+  }
+  
+  // Show the work order modal for payment processing if payment not completed
+  if (selectedWorkOrder) {
+    setSelectedWorkOrder({
+      ...selectedWorkOrder,
+      billItems: selectedItems
+    });
+    setShowWorkOrderModal(true);
+  }
+};
+
+// Update the handleWorkOrderClick function to handle bill generation separately
+const handleGenerateBill = (activeProject) => {
+  setSelectedWorkOrder(activeProject);
+  setShowBillModal(true);
 };
 
 // Add a helper function to format dates
@@ -1025,13 +1054,13 @@ const filteredInventoryItems = getFilteredInventoryItems();
             <div className="bg-blue-400 bg-opacity-30 rounded-lg p-4 mt-2">
               <h3 className="font-semibold">{activeProject.projectType}</h3>
               <p className="text-sm opacity-80 mt-1">Type: {activeProject.projectCategory || 'New Installation'}</p>
-              <button 
-                className="flex items-center justify-center mt-4 w-full bg-blue-600 text-white rounded-lg p-2"
-                onClick={() => handleWorkOrderClick(activeProject)}
-              >
-                <FileText size={18} className="mr-2" />
-                <span>Generate Bill</span>
-              </button>
+              <button
+  onClick={() => handleGenerateBill(activeProject)}
+  className="flex items-center justify-center mt-4 w-full bg-blue-600 text-white rounded-lg p-2"
+>
+  <FileText size={18} className="mr-2" />
+  <span>Generate Bill</span>
+</button>
             </div>
           </div>
           
@@ -1526,6 +1555,15 @@ const filteredInventoryItems = getFilteredInventoryItems();
           onInventoryReturned={handleInventoryReturned}
         />
       )}
+
+{showBillModal && (
+  <GenerateBillModal
+    isOpen={showBillModal}
+    onClose={() => setShowBillModal(false)}
+    workOrder={selectedWorkOrder}
+    onBillGenerated={handleBillGenerated}
+  />
+)}
     </div>
   );
 };
