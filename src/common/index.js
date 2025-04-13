@@ -232,6 +232,10 @@ const SummaryApi = {
       getTechnicianProjects: {
         url : `${backendDomain}/api/get-technician-projects`,
         method: "get"
+      },
+      addWorkOrderRemark:{
+        url : `${backendDomain}/api/remark-add`,
+        method: "post"
       }
 }
 

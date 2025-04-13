@@ -17,7 +17,10 @@ import {
   Home,
   LogOut,
   X,
-  ChevronDown
+  Phone, 
+  MessageSquare,
+  ChevronDown,
+  FileText
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import SummaryApi from '../../common';
@@ -50,6 +53,10 @@ const TechnicianDashboard = () => {
   const [showFilterDropdown, setShowFilterDropdown] = useState(false);
   const [inventoryFilter, setInventoryFilter] = useState('All');
   const [expandedItems, setExpandedItems] = useState([]);
+  // Add these state variables
+  const [showFullHistory, setShowFullHistory] = useState(false);
+const [showStopProjectModal, setShowStopProjectModal] = useState(false);
+const [pauseProjectRemark, setPauseProjectRemark] = useState('');
   
   // Handle logout
   const handleLogout = () => {
@@ -58,7 +65,151 @@ const TechnicianDashboard = () => {
     logout(); // Call the logout function from AuthContext
     // Redirect to login page will be handled by AuthContext/Router
   };
+
+  // Add these functions to handle customer interactions
+const handleCallCustomer = (project) => {
+  if (project.customerPhone) {
+    // Record this action in status history
+    addActivityToHistory(project, `Call initiated to customer`);
+    
+    // Actually make the call
+    window.location.href = `tel:${project.customerPhone}`;
+  } else {
+    alert('Customer phone number not available');
+  }
+};
+
+const handleMessageCustomer = (project) => {
+  if (project.customerWhatsapp || project.customerPhone) {
+    // Record this action in status history
+    addActivityToHistory(project, `WhatsApp message initiated to customer`);
+    
+    // Open WhatsApp with the number
+    const phoneNumber = project.customerWhatsapp || project.customerPhone;
+    window.open(`https://wa.me/${phoneNumber.replace(/[^0-9]/g, '')}`, '_blank');
+  } else {
+    alert('Customer contact number not available');
+  }
+};
+
+// Function to add activity to history
+const addActivityToHistory = async (project, activityText) => {
+  try {
+    const response = await fetch(SummaryApi.addWorkOrderRemark.url, {
+      method: SummaryApi.addWorkOrderRemark.method,
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      credentials: 'include',
+      body: JSON.stringify({
+        customerId: project.customerId,
+        orderId: project.orderId,
+        remark: activityText,
+        activityType: 'communication'
+      })
+    });
+    
+    const data = await response.json();
+    
+    if (data.success) {
+      // Update the work order in our state
+      setWorkOrders(prevOrders => {
+        return prevOrders.map(order => {
+          if (order.orderId === project.orderId) {
+            const updatedOrder = {
+              ...order,
+              statusHistory: [
+                ...order.statusHistory || [],
+                {
+                  status: 'communication',
+                  remark: activityText,
+                  updatedBy: user._id,
+                  updatedAt: new Date()
+                }
+              ]
+            };
+            return updatedOrder;
+          }
+          return order;
+        });
+      });
+    }
+  } catch (err) {
+    console.error('Error recording activity:', err);
+  }
+};
   
+// Function to stop/pause the project
+const handleStopProject = async (project) => {
+  if (!pauseProjectRemark.trim()) {
+    return;
+  }
+  
+  try {
+    setLoading(true);
+    
+    const response = await fetch(SummaryApi.updateWorkOrderStatus.url, {
+      method: SummaryApi.updateWorkOrderStatus.method,
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      credentials: 'include',
+      body: JSON.stringify({
+        customerId: project.customerId,
+        orderId: project.orderId,
+        status: 'paused',
+        remark: pauseProjectRemark
+      })
+    });
+    
+    const data = await response.json();
+    
+    if (data.success) {
+      // Update the work orders state
+      setWorkOrders(prevOrders => 
+        prevOrders.map(order => 
+          order.orderId === project.orderId ? {...order, status: 'paused'} : order
+        )
+      );
+      
+      // Close the modal
+      setShowStopProjectModal(false);
+      
+      // Clear the remark
+      setPauseProjectRemark('');
+      
+      // Navigate back to home
+      handleTabChange('home');
+      
+      // Show confirmation
+      alert('Project has been paused successfully');
+    } else {
+      alert(data.message || 'Failed to pause project');
+    }
+  } catch (err) {
+    console.error('Error pausing project:', err);
+    alert('Server error. Please try again.');
+  } finally {
+    setLoading(false);
+  }
+};
+
+// Add a helper function to format dates
+const formatDate = (dateString) => {
+  if (!dateString) return '';
+  
+  const date = new Date(dateString);
+  
+  return date.toLocaleString('en-IN', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: true
+  });
+};
+
   // Toggle profile popup
   const toggleLogoutPopup = () => {
     setShowLogoutPopup(!showLogoutPopup);
@@ -824,101 +975,255 @@ const filteredInventoryItems = getFilteredInventoryItems();
   </div>
 )}
 
-        {activeTab === 'current-project' && (
-          <div className="flex flex-col space-y-6">
-            {/* In Progress Projects */}
-            <div className={`${darkMode ? 'bg-gradient-to-br from-blue-600 to-blue-800' : 'bg-gradient-to-br from-blue-500 to-blue-600'} p-6 rounded-2xl shadow-xl text-white`}>
-              <div className="flex items-center mb-4">
-                <div className="w-16 h-16 bg-blue-700 rounded-full flex items-center justify-center shadow-xl mr-4">
-                  <Clipboard size={32} className="text-white" />
-                </div>
-                <div>
-                  <p className="text-2xl font-bold mb-1">Active Projects</p>
-                  <p className={`${darkMode ? 'text-blue-200' : 'text-blue-100'}`}>Current assignments</p>
-                </div>
+{activeTab === 'current-project' && (
+  <div className="flex flex-col space-y-4">
+    {(() => {
+      const activeProject = workOrders.find(order => order.status === 'in-progress');
+      
+      if (!activeProject) {
+        return (
+          <div className={`${darkMode ? 'bg-gray-800/50' : 'bg-white'} rounded-xl shadow-lg p-8 text-center`}>
+            <div className="w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Clipboard size={32} className={`${darkMode ? 'text-gray-500' : 'text-gray-400'}`} />
+            </div>
+            <h3 className="text-xl font-semibold mb-2">No Active Project</h3>
+            <p className={`${darkMode ? 'text-gray-400' : 'text-gray-500'} mb-4`}>
+              You don't have any in-progress project at the moment.
+            </p>
+            <button
+              onClick={() => handleTabChange('home')}
+              className={`px-4 py-2 ${darkMode ? 'bg-blue-600' : 'bg-blue-500'} text-white rounded-md`}
+            >
+              Go to Home
+            </button>
+          </div>
+        );
+      }
+      
+      // Get most recent status update for brief history
+      const recentUpdate = activeProject.statusHistory && 
+        activeProject.statusHistory.length > 0 ? 
+        activeProject.statusHistory[activeProject.statusHistory.length - 1] : null;
+        
+      return (
+        <>
+          {/* Active Project Card - Blue Header Card */}
+          <div className=" bg-blue-500 rounded-xl shadow-sm p-4 text-white">
+            <div className="flex items-center mb-3">
+              <div className="bg-blue-600 rounded-full w-10 h-10 flex items-center justify-center mr-3">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                </svg>
               </div>
-              
-              {workOrders.filter(order => order.status === 'in-progress').length > 0 ? (
-                <div className={`${darkMode ? 'bg-white/10' : 'bg-white/20'} rounded-xl p-4 backdrop-blur-sm`}>
-                  {workOrders.filter(order => order.status === 'in-progress').slice(0, 1).map(order => (
-                    <div key={order.orderId} className="mb-4">
-                      <p className="text-lg font-medium mb-2 truncate max-w-[150px]">{order.projectType}</p>
-                      <p className={`${darkMode ? 'text-blue-200' : 'text-blue-100'} mb-4`}>
-                        Order ID: {order.orderId}
-                      </p>
-                      <button 
-                        onClick={() => handleWorkOrderClick(order)}
-                        className="bg-blue-700 hover:bg-blue-800 text-white w-full py-2 rounded-lg flex items-center justify-center"
-                      >
-                        <Eye size={16} className="mr-2" /> View Details
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className={`${darkMode ? 'bg-white/10' : 'bg-white/20'} rounded-xl p-4 backdrop-blur-sm`}>
-                  <p className="text-center py-4">No in-progress projects</p>
-                  {workOrders.length > 0 && (
-                    <button 
-                      onClick={() => handleWorkOrderClick(workOrders[0])}
-                      className="bg-blue-700 hover:bg-blue-800 text-white w-full py-2 rounded-lg flex items-center justify-center mt-2"
-                    >
-                      <Eye size={16} className="mr-2" /> View Assigned Projects
-                    </button>
-                  )}
-                </div>
-              )}
+              <div>
+                <h2 className="text-xl font-bold">Active Projects</h2>
+                <p className="text-sm opacity-80">Current assignment</p>
+              </div>
             </div>
             
-            {/* Work Orders List */}
-            <div className={`${darkMode ? 'bg-gray-800/50 backdrop-blur-sm border border-gray-700' : 'bg-white/80 backdrop-blur-sm border border-gray-200'} rounded-2xl shadow-xl overflow-hidden`}>
-              <div className={`p-4 ${darkMode ? 'border-b border-gray-700' : 'border-b border-gray-200'}`}>
-                <h2 className="font-bold text-lg">All Assignments</h2>
-              </div>
-              
-              <div>
-                {workOrders.length > 0 ? (
-                  workOrders.map((order) => (
-                    <div 
-                      key={order.orderId || `order-${Math.random().toString(36).substr(2, 9)}`} 
-                      className={`p-4 ${darkMode ? 'border-b border-gray-700 last:border-b-0 hover:bg-gray-700/50' : 'border-b border-gray-200 last:border-b-0 hover:bg-gray-100/50'} transition-colors cursor-pointer`}
-                      onClick={() => handleWorkOrderClick(order)}
-                    >
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center max-w-[200px]">
-                          <div className={`w-10 h-10 rounded-full ${getStatusColor(order.status)} flex items-center justify-center mr-3`}>
-                            <Clipboard size={18} className="text-white" />
-                          </div>
-                          <div>
-                            <p className={`font-medium  truncate max-w-[140px] ${darkMode ? 'text-white' : 'text-gray-800'}`}>
-                              {order.projectType}
-                            </p>
-                            <p className={`text-xs ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                              Order ID: {order.orderId}
-                            </p>
-                          </div>
-                        </div>
-                        <span className={`px-2 py-1 rounded-full text-xs capitalize ${
-            order.status === 'assigned' ? `${darkMode ? 'bg-blue-600/40' : 'bg-blue-100'} ${darkMode ? 'text-blue-100' : 'text-blue-800'}` :
-            order.status === 'in-progress' ? `${darkMode ? 'bg-purple-600/40' : 'bg-purple-100'} ${darkMode ? 'text-purple-100' : 'text-purple-800'}` :
-            order.status === 'pending-approval' ? `${darkMode ? 'bg-amber-600' : 'bg-amber-100'} ${darkMode ? 'text-amber-100' : 'text-amber-600'}` :
-            order.status === 'paused' ? `${darkMode ? 'bg-orange-600/40' : 'bg-orange-100'} ${darkMode ? 'text-orange-100' : 'text-orange-800'}` :
-            `${darkMode ? 'bg-green-600/40' : 'bg-green-100'} ${darkMode ? 'text-green-100' : 'text-green-800'}`
-          }`}>
-            {order.status}
-          </span>
-                      </div>
-                    </div>
-                  ))
-                ) : (
-                  <div className="p-8 text-center">
-                    <p className={`${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>No active assignments</p>
-                  </div>
-                )}
-              </div>
+            {/* Project Card */}
+            <div className="bg-blue-400 bg-opacity-30 rounded-lg p-4 mt-2">
+              <h3 className="font-semibold">{activeProject.projectType}</h3>
+              <p className="text-sm opacity-80 mt-1">Type: {activeProject.projectCategory || 'New Installation'}</p>
+              <button 
+                className="flex items-center justify-center mt-4 w-full bg-blue-600 text-white rounded-lg p-2"
+                onClick={() => handleWorkOrderClick(activeProject)}
+              >
+                <FileText size={18} className="mr-2" />
+                <span>Generate Bill</span>
+              </button>
             </div>
           </div>
-        )}
+          
+          {/* Customer Card */}
+          <div className={`${darkMode ? 'bg-gray-800/50' : 'bg-white'} rounded-xl shadow-lg p-4`}>
+            <h3 className="text-lg font-semibold text-blue-800">{activeProject.customerName}</h3>
+            {activeProject.customerAddress && (
+              <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>{activeProject.customerAddress}</p>
+            )}
+            
+            {/* Contact Buttons */}
+            <div className="grid grid-cols-2 gap-3 mt-3">
+              <button
+                onClick={() => handleMessageCustomer(activeProject)}
+                className="bg-blue-500 text-white rounded-lg py-2 flex items-center justify-center"
+              >
+                <MessageSquare size={18} className="mr-2" /> Message
+              </button>
+              <button
+                onClick={() => handleCallCustomer(activeProject)}
+                className="bg-green-500 text-white rounded-lg py-2 flex items-center justify-center"
+              >
+                <Phone size={18} className="mr-2" /> Call
+              </button>
+            </div>
+          </div>
+          
+          {/* Report History Card */}
+          <div className={`${darkMode ? 'bg-gray-800/50' : 'bg-white'} rounded-xl shadow-lg p-4`}>
+            <h3 className="font-bold text-lg mb-3">Report History</h3>
+            
+            {/* Recent updates section */}
+            {recentUpdate && (
+              <div className="mb-3">
+                <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Recent updates</p>
+                <div className="mt-2 border-l-4 border-blue-500 pl-3">
+                  <div className="flex justify-between">
+                    <p className="font-medium">{recentUpdate.updatedBy && recentUpdate.updatedBy.toString() === user._id.toString() ? 'Technician' : 'Manager'}</p>
+                    <p className={`text-xs ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                      {formatDate(recentUpdate.updatedAt)}
+                    </p>
+                  </div>
+                  <p className={`mt-1 text-sm ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                    {recentUpdate.remark || `Status changed to ${recentUpdate.status}`}
+                  </p>
+                </div>
+              </div>
+            )}
+            
+            {/* View Complete History Button */}
+            <button
+              onClick={() => setShowFullHistory(true)}
+              className={`w-full py-2 ${darkMode ? 'bg-gray-700 text-white' : 'bg-blue-50 text-blue-600'} rounded-lg flex items-center justify-center`}
+            >
+              <Eye size={18} className="mr-2" /> View Complete History
+            </button>
+          </div>
+          
+          {/* Stop Project Button */}
+          <button
+            onClick={() => setShowStopProjectModal(true)}
+            className={`w-full py-3 ${darkMode ? 'bg-gray-900' : 'bg-gray-800'} text-white rounded-xl font-medium`}
+          >
+            Stop Project
+          </button>
+          
+          {/* Full History Modal */}
+          {showFullHistory && (
+  <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center px-4">
+    <div className={`w-full max-w-md ${darkMode ? 'bg-gray-800' : 'bg-white'} rounded-xl shadow-2xl`}>
+      <div className="flex justify-between items-center p-4 border-b">
+        <h3 className="font-bold text-lg">Report History</h3>
+        <button
+          onClick={() => setShowFullHistory(false)}
+          className="p-1"
+        >
+          <X size={20} />
+        </button>
+      </div>
+     
+      <div className="p-4 max-h-[70vh] overflow-y-auto">
+        {/* Manager's initial instruction */}
+        <div className="mb-3">
+          <div className={`rounded-lg p-3 max-w-xs ${darkMode ? 'bg-blue-900/30' : 'bg-blue-100'}`}>
+            <div className="flex justify-between mb-1">
+              <p className="font-medium text-sm">Manager</p>
+              <p className="text-xs opacity-70">
+                {formatDate(activeProject.assignedAt || activeProject.createdAt).split(',')[0]}
+              </p>
+            </div>
+            <p className="text-sm">
+              {activeProject.initialRemark || 'Assignment created for ' + activeProject.projectType}
+            </p>
+            <span className="text-xs opacity-70 flex justify-end">
+              {formatDate(activeProject.assignedAt || activeProject.createdAt).split(',')[1]}
+            </span>
+          </div>
+        </div>
+       
+        {/* Status history as chat messages */}
+        {activeProject.statusHistory && activeProject.statusHistory.map((history, index) => {
+          const isTechnician = history.updatedBy && history.updatedBy.toString() === user._id.toString();
+          return (
+            <div
+              key={index}
+              className={`mb-3 ${isTechnician ? 'flex justify-end' : ''}`}
+            >
+              <div className={`rounded-lg p-3 max-w-xs ${
+                isTechnician
+                  ? `${darkMode ? 'bg-green-900/30' : 'bg-green-100'}`
+                  : `${darkMode ? 'bg-blue-900/30' : 'bg-blue-100'}`
+              }`}>
+                <div className="flex justify-between mb-1">
+                  <p className="font-medium text-sm">
+                    {isTechnician ? 'Technician' : 'Manager'}
+                  </p>
+                  <p className="text-xs opacity-70">
+                    {formatDate(history.updatedAt).split(',')[0]}
+                  </p>
+                </div>
+                <p className="text-sm">
+                  {history.remark || `Status changed to ${history.status}`}
+                </p>
+                <span className="text-xs opacity-70 flex justify-end">
+                  {formatDate(history.updatedAt).split(',')[1]}
+                </span>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+      
+      <div className="p-4 border-t">
+        <button 
+          onClick={() => setShowFullHistory(false)} 
+          className={`w-full py-2 ${darkMode ? 'bg-blue-600' : 'bg-blue-500'} text-white rounded-lg`}
+        >
+          Close
+        </button>
+      </div>
+    </div>
+  </div>
+)}
+          
+          {/* Stop Project Modal */}
+          {showStopProjectModal && (
+            <div className="fixed inset-0 bg-black/60 z-50 flex justify-center items-center p-4">
+              <div className={`w-full max-w-md ${darkMode ? 'bg-gray-800' : 'bg-white'} rounded-xl shadow-2xl`}>
+                <div className="flex justify-between items-center p-4 border-b">
+                  <h3 className="font-bold text-lg">Stop Work</h3>
+                  <button 
+                    onClick={() => setShowStopProjectModal(false)}
+                    className="p-1"
+                  >
+                    <X size={20} />
+                  </button>
+                </div>
+                
+                <div className="p-4">
+                  <p className="block text-gray-700 mb-2 font-medium">Remarks</p>
+                  <textarea
+                    className={`w-full p-3 rounded-lg ${darkMode ? 'bg-gray-700 text-white border-gray-600' : 'bg-white border-gray-300'} border mb-4`}
+                    rows="4"
+                    placeholder="Enter your remarks here..."
+                    value={pauseProjectRemark}
+                    onChange={(e) => setPauseProjectRemark(e.target.value)}
+                  ></textarea>
+                  
+                  <div className="flex p-4 border-t">
+                    <button
+                      onClick={() => setShowStopProjectModal(false)}
+                      className="flex-1 mr-2 py-2 border border-gray-300 rounded-lg text-gray-700"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={() => handleStopProject(activeProject)}
+                      className="flex-1 ml-2 py-2 bg-red-500 text-white rounded-lg"
+                      disabled={!pauseProjectRemark.trim()}
+                    >
+                      Submit
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </>
+      );
+    })()}
+  </div>
+)}
           
         {activeTab === 'all-projects' && (
           <div className="flex flex-col space-y-6">

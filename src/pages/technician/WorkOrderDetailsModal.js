@@ -45,7 +45,8 @@ const SimpleScanner = ({ onScan, onClose }) => {
   );
 };
 
-const WorkOrderDetailsModal = ({ isOpen, onClose, workOrder, onStatusUpdate }) => {
+const WorkOrderDetailsModal = (props) => {
+  const { isOpen, onClose, workOrder, onStatusUpdate, onProjectStarted } = props;
   const modalContentRef = useRef(null);
   const [remark, setRemark] = useState('');
   const [loading, setLoading] = useState(false);
@@ -243,7 +244,13 @@ const WorkOrderDetailsModal = ({ isOpen, onClose, workOrder, onStatusUpdate }) =
         // If project is started, load inventory
         if (newStatus === 'in-progress') {
           fetchTechnicianInventory();
-        }
+          // Close the modal
+        onClose();
+        // Call the onProjectStarted function if it exists
+    if (onProjectStarted) {
+      onProjectStarted();
+    }
+      }
         
         // Reset remark field
         setRemark('');
@@ -998,7 +1005,12 @@ const updateItemQuantity = (index, newQuantity) => {
         {workOrder.statusHistory.map((history, index) => (
           <div key={index} className="text-sm border-b pb-2 last:border-b-0 last:pb-0">
             <div className="flex justify-between">
-              <span className="font-medium capitalize">{history.status}</span>
+              {/* Display status type appropriately */}
+              <span className="font-medium capitalize">
+                {history.status === 'remark' ? 'Remark Added' : 
+                 history.status === 'communication' ? 'Communication' :
+                 history.status}
+              </span>
               <span className="text-gray-500">{formatDate(history.updatedAt)}</span>
             </div>
             {history.remark && <p className="mt-1 text-gray-600">{history.remark}</p>}
