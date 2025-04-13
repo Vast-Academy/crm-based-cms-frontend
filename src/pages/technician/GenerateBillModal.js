@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Search, Camera, FileText, ArrowRight, CheckCircle, ArrowLeft } from 'lucide-react';
+import { X, Search, Camera, FileText, ArrowRight, CheckCircle, ArrowLeft, AlertCircle } from 'lucide-react';
 import SummaryApi from '../../common';
 import { QRCodeCanvas } from 'qrcode.react';
 
@@ -134,6 +134,46 @@ const GenerateBillModal = ({ isOpen, onClose, workOrder, onBillGenerated }) => {
     });
     
     setSearchResults(results);
+  };
+
+  // Show payment confirmation screen
+const showPaymentConfirmation = () => {
+    // Validate transaction ID for online payments
+    if (paymentMethod === 'online' && (!transactionId || transactionId.length < 12)) {
+      setError('Please enter a valid UPI transaction ID (min 12 characters)');
+      return;
+    }
+    
+    // Move to confirmation step
+    setCurrentStep('payment-confirmation');
+    setError(null);
+  };
+
+  // Update work order status to pending-approval after payment
+const updateWorkOrderStatus = async () => {
+    try {
+      const response = await fetch(SummaryApi.updateWorkOrderStatus.url, {
+        method: SummaryApi.updateWorkOrderStatus.method,
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          customerId: workOrder.customerId,
+          orderId: workOrder.orderId,
+          status: 'pending-approval',
+          remark: 'Payment collected and project completed'
+        })
+      });
+      
+      const data = await response.json();
+      
+      if (!data.success) {
+        console.error('Failed to update work order status:', data.message);
+      }
+    } catch (err) {
+      console.error('Error updating work order status:', err);
+    }
   };
   
   // Add item to the selected items list
@@ -377,6 +417,7 @@ const GenerateBillModal = ({ isOpen, onClose, workOrder, onBillGenerated }) => {
       const data = await response.json();
       
       if (data.success) {
+        await updateWorkOrderStatus();
         // Move to payment success step
         setCurrentStep('payment-success');
       } else {
@@ -413,6 +454,9 @@ const GenerateBillModal = ({ isOpen, onClose, workOrder, onBillGenerated }) => {
     } else if (currentStep === 'payment-options') {
       setCurrentStep('bill-summary');
     }
+    else if (currentStep === 'payment-confirmation') {
+        setCurrentStep('payment-options');
+      }
   };
 
   // Format date for display
@@ -769,6 +813,43 @@ const GenerateBillModal = ({ isOpen, onClose, workOrder, onBillGenerated }) => {
               )}
             </div>
           )}
+
+           {/* Step 3.5: Payment Confirmation */}
+           {currentStep === 'payment-confirmation' && (
+                <div className="p-4">
+                    <div className="mb-6 flex items-center justify-center">
+                    <div className="h-16 w-16 bg-yellow-100 rounded-full flex items-center justify-center">
+                        <AlertCircle size={32} className="text-yellow-500" />
+                    </div>
+                    </div>
+                    
+                    <h3 className="text-xl font-medium text-center mb-4">Please Verify Payment Details</h3>
+                    
+                    <div className="bg-gray-50 p-4 rounded-lg mb-6">
+                    <div className="mb-3">
+                        <p className="text-sm text-gray-600">Payment Method:</p>
+                        <p className="font-medium">{paymentMethod === 'online' ? 'Online Payment' : 'Cash Payment'}</p>
+                    </div>
+                    
+                    <div className="mb-3">
+                        <p className="text-sm text-gray-600">Total Amount:</p>
+                        <p className="font-medium">₹{calculateTotal().toFixed(2)}</p>
+                    </div>
+                    
+                    {paymentMethod === 'online' && (
+                        <div>
+                        <p className="text-sm text-gray-600">Transaction ID:</p>
+                        <p className="font-medium break-all">{transactionId}</p>
+                        </div>
+                    )}
+                    </div>
+                    
+                    <p className="text-center text-sm text-gray-600 mb-4">
+                    Please confirm that all payment details are correct before proceeding.
+                    {paymentMethod === 'online' && " Verify that the transaction ID is accurate."}
+                    </p>
+                </div>
+                )}
           
           {/* Step 4: Payment Success*/}
           {currentStep === 'payment-success' && (
@@ -794,6 +875,7 @@ const GenerateBillModal = ({ isOpen, onClose, workOrder, onBillGenerated }) => {
             </div>
           )}
           </div>
+
           {/* Footer with action buttons - Dynamic based on current step */}
 <div className="border-t p-4">
   {currentStep === 'select-items' && (
@@ -824,28 +906,49 @@ const GenerateBillModal = ({ isOpen, onClose, workOrder, onBillGenerated }) => {
     </div>
   )}
   
-  {currentStep === 'payment-options' && (
-    <div className="flex space-x-3">
-      <button 
-        className="flex-1 py-2 bg-gray-200 rounded-md"
-        onClick={handleBack}
-        disabled={loading}
-      >
-        Back
-      </button>
-      <button 
-        className="flex-1 py-2 bg-green-500 text-white rounded-md flex items-center justify-center"
-        onClick={handleProcessPayment}
-        disabled={loading || (paymentMethod === 'online' && transactionId.length < 12) || !paymentMethod}
-      >
-        {loading ? 'Processing...' : (
-          <>
-            Confirm and Submit <ArrowRight className="ml-1" size={18} />
-          </>
-        )}
-      </button>
-    </div>
-  )}
+ {/* Update the payment-options button */}
+{currentStep === 'payment-options' && (
+  <div className="flex space-x-3">
+    <button 
+      className="flex-1 py-2 bg-gray-200 rounded-md"
+      onClick={handleBack}
+      disabled={loading}
+    >
+      Back
+    </button>
+    <button 
+      className="flex-1 py-2 bg-green-500 text-white rounded-md flex items-center justify-center"
+      onClick={showPaymentConfirmation}
+      disabled={loading || (paymentMethod === 'online' && transactionId.length < 12) || !paymentMethod}
+    >
+      {loading ? 'Processing...' : (
+        <>
+          Review Payment <ArrowRight className="ml-1" size={18} />
+        </>
+      )}
+    </button>
+  </div>
+)}
+
+{/* Add new buttons for payment-confirmation step */}
+{currentStep === 'payment-confirmation' && (
+  <div className="flex space-x-3">
+    <button 
+      className="flex-1 py-2 bg-gray-200 rounded-md"
+      onClick={handleBack}
+      disabled={loading}
+    >
+      Back
+    </button>
+    <button 
+      className="flex-1 py-2 bg-green-500 text-white rounded-md flex items-center justify-center"
+      onClick={handleProcessPayment}
+      disabled={loading}
+    >
+      {loading ? 'Processing...' : 'Confirm & Submit'}
+    </button>
+  </div>
+)}
   
   {currentStep === 'payment-success' && (
     <button 

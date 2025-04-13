@@ -197,13 +197,53 @@ const handleStopProject = async (project) => {
 };
 
 // Add a handler for bill generation completion
-const handleBillGenerated = (selectedItems, paymentCompleted = false) => {
+const handleBillGenerated = async (selectedItems, paymentCompleted = false) => {
   console.log('Bill items:', selectedItems, 'Payment completed:', paymentCompleted);
   
   if (paymentCompleted) {
+    // If payment is completed, update the project status to pending-approval
+    try {
+      // First, find the active project to get all necessary details
+      const activeProject = workOrders.find(order => order.status === 'in-progress');
+      
+      if (activeProject) {
+        // Update the work order in our state - move from in-progress to pending-approval
+        const updatedWorkOrders = workOrders.map(order => {
+          if (order.orderId === activeProject.orderId) {
+            return { ...order, status: 'pending-approval' };
+          }
+          return order;
+        });
+        
+        setWorkOrders(updatedWorkOrders);
+        
+        // Update localStorage cache
+        const cachedOrders = localStorage.getItem('technicianWorkOrders');
+        if (cachedOrders) {
+          const parsedOrders = JSON.parse(cachedOrders);
+          const updatedCachedOrders = parsedOrders.map(order => {
+            if (order.orderId === activeProject.orderId) {
+              return { ...order, status: 'pending-approval' };
+            }
+            return order;
+          });
+          
+          localStorage.setItem('technicianWorkOrders', JSON.stringify(updatedCachedOrders));
+          localStorage.setItem('technicianWorkOrdersTimestamp', new Date().getTime().toString());
+        }
+        
+        // Redirect to home tab since project is no longer in-progress
+        handleTabChange('home');
+        
+        // Show a success message
+        alert('Payment completed. Project has been marked for approval.');
+      }
+    } catch (err) {
+      console.error('Error updating project status:', err);
+    }
+    
     // Refresh work orders data to get the updated state with payment info
     fetchWorkOrders();
-    // No need to show the work order modal, as payment is already completed
   }
 };
 
