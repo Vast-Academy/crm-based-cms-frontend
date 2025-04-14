@@ -6,13 +6,13 @@ import ConfirmationDialog from '../../components/ConfirmationDialog';
 import { useNotification } from '../../context/NotificationContext';
 import { useAuth } from '../../context/AuthContext';
 
-const GenericProductsList = () => {
+const GenericProductsList = ({ searchTerm = '' }) => {
   const { user } = useAuth();
   const { showNotification } = useNotification();
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [searchTerm, setSearchTerm] = useState('');
+  // const [searchTerm, setSearchTerm] = useState('');
   
   // Modal states
   const [isAddStockModalOpen, setIsAddStockModalOpen] = useState(false);
@@ -264,7 +264,7 @@ const GenericProductsList = () => {
       )}
       
       {/* Search */}
-      <div className="flex justify-end mb-6">
+      {/* <div className="flex justify-end mb-6">
         <div className="relative">
           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
             <FiSearch className="text-gray-400" />
@@ -277,13 +277,13 @@ const GenericProductsList = () => {
             onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
-      </div>
+      </div> */}
       
       {/* Items List */}
       <div className="bg-white rounded-lg shadow-md overflow-hidden">
-        <div className="p-4 border-b bg-gray-50">
+        {/* <div className="p-4 border-b bg-gray-50">
           <h2 className="text-lg font-semibold text-gray-700">Generic Products</h2>
-        </div>
+        </div> */}
         
         {filteredItems.length === 0 ? (
           <div className="p-6 text-center text-gray-500">
