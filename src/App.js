@@ -39,6 +39,7 @@ import WorkOrdersPage from './pages/workOrders/WorkOrdersPage';
 import TechnicianDashboard from './pages/technician/TechnicianDashboard';
 import TransferHistoryTable from './pages/manager/TransferHistoryTable';
 import ManagerProjectDashboard from './pages/manager/ManagerProjectDashboard';
+import InventoryManagement from './pages/inventory/InventoryManagement';
 
 // Protected route component
 const ProtectedRoute = ({ children, allowedRoles = [] }) => {
@@ -226,7 +227,7 @@ function App() {
                 </ProtectedRoute>
               }
             />
-            <Route
+            {/* <Route
               path="inventory/serialized"
               element={
                 <ProtectedRoute>
@@ -249,7 +250,16 @@ function App() {
                   <ServicesList />
                 </ProtectedRoute>
               }
-            />
+            /> */}
+
+        <Route
+          path="inventory"
+          element={
+            <ProtectedRoute>
+              <InventoryManagement />
+            </ProtectedRoute>
+          }
+        />
 
             <Route 
               path="work-orders" 

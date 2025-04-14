@@ -100,10 +100,10 @@ const ServicesList = () => {
   
   return (
     <div>
-      <div className="mb-6">
+      {/* <div className="mb-6">
         <h1 className="text-2xl font-semibold text-gray-800">Services</h1>
         <p className="text-gray-600">View available services</p>
-      </div>
+      </div> */}
       
       {error && (
         <div className="mb-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
@@ -154,7 +154,11 @@ const ServicesList = () => {
               <tbody className="bg-white divide-y divide-gray-200">
                 {filteredServices.map((service, index) => (
                   <tr key={service.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{index + 1}</td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+          <div className="w-8 h-8 rounded-full bg-teal-500 flex items-center justify-center text-white font-medium">
+            {index + 1}
+          </div>
+        </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{service.name}</td>
                     {user.role === 'admin' && (
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">₹{service.purchasePrice || '-'}</td>

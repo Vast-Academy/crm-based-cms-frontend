@@ -398,10 +398,10 @@ const SerializedProductsList = () => {
   
   return (
     <div>
-      <div className="mb-6">
+      {/* <div className="mb-6">
         <h1 className="text-2xl font-semibold text-gray-800">Serialized Products</h1>
         <p className="text-gray-600">Manage products with serial numbers</p>
-      </div>
+      </div> */}
       
       {error && (
         <div className="mb-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
@@ -432,79 +432,40 @@ const SerializedProductsList = () => {
         </div>
         
         {filteredItems.length === 0 ? (
-          <div className="p-6 text-center text-gray-500">
-            {items.length === 0 ? 'No serialized products found.' : 'No products match your search.'}
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">S.No</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Branch</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Unit</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Warranty</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">MRP</th>
-                  {user.role === 'admin' && (
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Purchase Price</th>
-                  )}
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Sale Price</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Stock</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {filteredItems.map((item, index) => (
-                  <tr key={item.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{index + 1}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{item.name}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {item.branch?.name || '-'}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{item.unit}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{item.warranty}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">₹{item.mrp}</td>
-                    {user.role === 'admin' && (
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">₹{item.purchasePrice}</td>
-                    )}
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">₹{item.salePrice}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      <button
-                        onClick={() => openViewStockModal(item)}
-                        className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 hover:bg-blue-200"
-                      >
-                        {item.stock ? item.stock.length : 0} {item.unit}
-                      </button>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                      <div className="flex space-x-2">
-                        {user.role === 'manager' && (
-                          <button 
-                            onClick={() => openAddStockModal(item)}
-                            className="text-blue-600 hover:text-blue-900"
-                            title="Add Stock"
-                          >
-                            <FiPlus size={18} />
-                          </button>
-                        )}
-                        {user.role === 'admin' && (
-                          <button 
-                            onClick={() => handleDeleteItem(item.id)}
-                            className="text-red-600 hover:text-red-900"
-                            title="Delete Item"
-                          >
-                            <FiTrash size={18} />
-                          </button>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
+  <div className="p-6 text-center text-gray-500">
+    {items.length === 0 ? 'No serialized products found.' : 'No products match your search.'}
+  </div>
+) : (
+  <div className="overflow-x-auto">
+  <table className="w-full">
+    <thead className="bg-gray-50">
+      <tr>
+        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">S.NO</th>
+        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">NAME</th>
+        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">BRANCH</th>
+        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">UNIT</th>
+        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">WARRANTY</th>
+        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">MRP</th>
+        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">SALE PRICE</th>
+        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">STOCK</th>
+        {/* <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ACTIONS</th> */}
+      </tr>
+    </thead>
+    <tbody className="bg-white divide-y divide-gray-200">
+      {filteredItems.map((item, index) => (
+        <ClickableTableRow
+          key={item.id}
+          item={item}
+          index={index}
+          user={user}
+          openViewStockModal={openViewStockModal}
+          openAddStockModal={openAddStockModal}
+        />
+      ))}
+    </tbody>
+  </table>
+</div>
+)}
       </div>
       
       {/* Add Stock Modal - For managers only */}
@@ -799,6 +760,76 @@ const SerializedProductsList = () => {
         )}
       </Modal>
     </div>
+  );
+};
+
+const ClickableTableRow = ({ item, index, user, openViewStockModal, openAddStockModal }) => {
+  const [expanded, setExpanded] = useState(false);
+  
+  return (
+    <React.Fragment>
+      <tr 
+        className="hover:bg-gray-50 cursor-pointer"
+        onClick={() => setExpanded(!expanded)}
+      >
+        <td className="px-6 py-4 whitespace-nowrap">
+          <div className="w-8 h-8 rounded-full bg-teal-500 flex items-center justify-center text-white font-medium">
+            {index + 1}
+          </div>
+        </td>
+        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{item.name}</td>
+        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+          {item.branch?.name || '-'}
+        </td>
+        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{item.unit}</td>
+        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{item.warranty || 'No Warranty'}</td>
+        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">₹{item.mrp}</td>
+        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">₹{item.salePrice}</td>
+        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+            {item.stock ? item.stock.length : 0} {item.unit}
+          </span>
+        </td>
+        {/* <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+          <button 
+            className="text-blue-600 hover:text-blue-900"
+            onClick={(e) => {
+              e.stopPropagation();
+              user.role === 'manager' ? openAddStockModal(item) : openViewStockModal(item);
+            }}
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+              <path fillRule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clipRule="evenodd" />
+            </svg>
+          </button>
+        </td> */}
+      </tr>
+      
+      {/* Expandable row for action buttons */}
+      {expanded && (
+        <tr className="bg-gray-50">
+          <td colSpan={9} className="px-6 py-4 border-b">
+            <div className="flex space-x-3">
+              <button
+                onClick={() => openViewStockModal(item)}
+                className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+              >
+                View Details
+              </button>
+              
+              {user.role === 'manager' && (
+                <button
+                  onClick={() => openAddStockModal(item)}
+                  className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-teal-500 hover:bg-teal-600"
+                >
+                  Add Stock
+                </button>
+              )}
+            </div>
+          </td>
+        </tr>
+      )}
+    </React.Fragment>
   );
 };
 

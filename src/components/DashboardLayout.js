@@ -152,11 +152,11 @@ const DashboardLayout = () => {
         navItems = [
           ...navItems,
           // Only show ownership transfer for active managers
-          showTransferOption && {
-            name: 'Ownership Transfer',
-            path: '/ownership-transfer',
-            icon: FiRefreshCw
-          },
+          // showTransferOption && {
+          //   name: 'Ownership Transfer',
+          //   path: '/ownership-transfer',
+          //   icon: FiRefreshCw
+          // },
           {
             name: 'User Management',
             icon: FiUsers,
@@ -169,15 +169,8 @@ const DashboardLayout = () => {
           },
           {
             name: 'Inventory',
-            icon: FiPackage,
-            dropdown: true,
-            isOpen: inventoryDropdownOpen,
-            toggle: () => toggleDropdown('inventory'),
-            items: [
-              { name: 'Serialized Products', path: '/inventory/serialized' },
-              { name: 'Generic Products', path: '/inventory/generic' },
-              { name: 'Services', path: '/inventory/services' }
-            ]
+            path: '/inventory',
+            icon: FiPackage
           },
           { 
             name: 'Customer', 
