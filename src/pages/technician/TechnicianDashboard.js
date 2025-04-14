@@ -587,6 +587,27 @@ const filteredInventoryItems = getFilteredInventoryItems();
 
   // Handle work order click
   const handleWorkOrderClick = async (workOrder) => {
+    // Check the status and redirect or open modal based on it
+  if (workOrder.status === 'in-progress') {
+    // Redirect to current-project tab
+    handleTabChange('current-project');
+    return;
+  } else if (workOrder.status === 'pending-approval') {
+    // Redirect to pending-approval-projects tab
+    handleTabChange('pending-approval-projects');
+    return;
+  } else if (workOrder.status === 'completed') {
+    // Redirect to pending-approval-projects tab
+    handleTabChange('completed');
+    return;
+  } else if (workOrder.status === 'paused') {
+    // For paused projects, open the modal
+    // Logic to fetch data and show modal
+  } else if (workOrder.status === 'assigned') {
+    // For assigned projects, open the modal
+    // Logic to fetch data and show modal
+  }
+
     // अगर workOrder में पहले से billingInfo है, तो नवीनतम डेटा फेच करें
     if (workOrder.billingInfo && workOrder.billingInfo.length > 0) {
       try {
@@ -657,6 +678,11 @@ const filteredInventoryItems = getFilteredInventoryItems();
       localStorage.setItem('technicianWorkOrders', JSON.stringify(updatedOrders));
       localStorage.setItem('technicianWorkOrdersTimestamp', new Date().getTime().toString());
     }
+
+    // Agar project resumed hua hai, to current-project tab par switch kar do
+  if (updatedWorkOrder.status === 'in-progress') {
+    handleTabChange('current-project');
+  }
   };
 
   if (loading) return <LoadingSpinner />;
