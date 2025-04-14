@@ -22,6 +22,7 @@ import {
   ChevronDown,
   FileText
 } from 'lucide-react';
+import { GrCubes } from "react-icons/gr";
 import { useAuth } from '../../context/AuthContext';
 import SummaryApi from '../../common';
 import LoadingSpinner from '../../components/LoadingSpinner';
@@ -1504,17 +1505,21 @@ const filteredInventoryItems = getFilteredInventoryItems();
       
       {/* Bottom Navigation */}
       <footer className={`${darkMode ? 'bg-gray-800 border-t border-gray-700' : 'bg-white border-t border-gray-200'} p-1`}>
-        <div className="flex justify-between px-2 pt-1">
+        <div className="grid grid-cols-5 gap-1 px-2 pt-1">
           <button 
             onClick={() => handleTabChange('home')}
-            className={`flex flex-col items-center py-2 px-4 rounded-xl flex-1 mx-1 ${
+            className={`flex flex-col items-center py-2 px-4 rounded-xl flex-1 mx-1  h-14 ${
               activeTab === 'home' 
                 ? `${darkMode ? 'bg-gradient-to-r from-blue-600 to-blue-700' : 'bg-gradient-to-r from-blue-500 to-blue-600'} text-white shadow-lg` 
                 : `${darkMode ? 'text-gray-400' : 'text-gray-500'}`
             }`}
           >
-            <Home size={20} />
-            <span className="text-xs mt-1">Home</span>
+             <div className="h-5 flex items-center">
+         <Home size={20} />
+      </div>
+      <div className="h-5 flex items-center">
+         <span className="text-xs mt-1">Home</span>
+      </div>
           </button>
           <button 
             onClick={() => handleTabChange('inventory')}
@@ -1524,8 +1529,12 @@ const filteredInventoryItems = getFilteredInventoryItems();
                 : `${darkMode ? 'text-gray-400' : 'text-gray-500'}`
             }`}
           >
-            <Package size={20} />
-            <span className="text-xs mt-1">Inventory</span>
+             <div className="h-5 flex items-center">
+         <GrCubes size={24} />
+      </div>
+      <div className="h-5 flex items-center">
+         <span className="text-xs mt-1">{calculateTotalUnits()}</span>
+      </div>
           </button>
           <button 
             onClick={() => handleTabChange('current-project')}
@@ -1535,8 +1544,12 @@ const filteredInventoryItems = getFilteredInventoryItems();
                 : `${darkMode ? 'text-gray-400' : 'text-gray-500'}`
             }`}
           >
+            <div className="h-5 flex items-center">
             <Clipboard size={20} />
+            </div>
+            <div className="h-5 flex items-center">
             <span className="text-xs mt-1">Current</span>
+            </div>
           </button>
           <button 
             onClick={() => handleTabChange('all-projects')}
@@ -1546,8 +1559,12 @@ const filteredInventoryItems = getFilteredInventoryItems();
                 : `${darkMode ? 'text-gray-400' : 'text-gray-500'}`
             }`}
           >
+            <div className="h-5 flex items-center">
             <List size={20} />
+            </div>
+            <div className="h-5 flex items-center">
             <span className="text-xs mt-1">All</span>
+            </div>
           </button>
           <button 
             onClick={() => handleTabChange('completed')}
@@ -1557,8 +1574,12 @@ const filteredInventoryItems = getFilteredInventoryItems();
                 : `${darkMode ? 'text-gray-400' : 'text-gray-500'}`
             }`}
           >
+            <div className="h-5 flex items-center">
             <CheckSquare size={20} />
+            </div>
+            <div className="h-5 flex items-center">
             <span className="text-xs mt-1">Done</span>
+            </div>
           </button>
         </div>
       </footer>
