@@ -7,6 +7,17 @@ module.exports = {
         primary: '#4f46e5',
         secondary: '#f97316',
       },
+      animation: {
+        'progressBar': 'progressBar 2s ease-in-out infinite',
+        // ... आपके अन्य एनिमेशन
+      },
+      keyframes: {
+        progressBar: {
+          '0%': { width: '0%' },
+          '50%': { width: '70%' },
+          '100%': { width: '100%' },
+        },
+      },
     },
   },
   plugins: [

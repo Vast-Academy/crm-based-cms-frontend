@@ -2,13 +2,20 @@ import React from 'react';
 
 const LoadingSpinner = () => {
   return (
-    <div className="flex items-center justify-center p-12">
-      <div className="relative">
-        <div className="w-12 h-12 rounded-full absolute border-4 border-gray-200"></div>
-        <div className="w-12 h-12 rounded-full animate-spin absolute border-4 border-indigo-500 border-t-transparent"></div>
+    <>
+      {/* Top Progress Bar */}
+      <div className="fixed top-0 left-0 right-0 h-1.5 z-50">
+        <div className="h-full bg-indigo-500 animate-progressBar"></div>
       </div>
-      <span className="ml-4 text-gray-500 text-lg">Loading...</span>
-    </div>
+      
+      {/* Circular Spinner */}
+      <div className="fixed inset-0 flex items-center justify-center bg-white bg-opacity-80 z-40">
+        <div className="relative">
+          <div className="w-16 h-16 rounded-full absolute border-8 border-gray-200"></div>
+          <div className="w-16 h-16 rounded-full animate-spin absolute border-8 border-indigo-500 border-t-transparent"></div>
+        </div>
+      </div>
+    </>
   );
 };
 
