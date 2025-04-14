@@ -9,7 +9,6 @@ module.exports = {
       },
       animation: {
         'progressBar': 'progressBar 2s ease-in-out infinite',
-        // ... आपके अन्य एनिमेशन
       },
       keyframes: {
         progressBar: {

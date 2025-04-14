@@ -5,6 +5,7 @@ import SummaryApi from '../../common';
 import { useAuth } from '../../context/AuthContext';
 import { QRCodeCanvas } from 'qrcode.react';
 import { Play, Clock, Info, X } from 'lucide-react';
+import LoadingSpinner from '../../components/LoadingSpinner';
 
 // For more basic projects, a simpler scan simulation approach might be better
 const SimpleScanner = ({ onScan, onClose }) => {
@@ -269,6 +270,8 @@ const confirmResumeProject = async () => {
     setLoading(false);
   }
 };
+
+if (loading) return <LoadingSpinner />;
 
 // प्रोजेक्ट स्थिति के आधार पर अलग-अलग विज़ुअल प्रदर्शित करने के लिए
 const renderProjectContent = () => {

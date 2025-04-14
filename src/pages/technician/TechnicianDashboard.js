@@ -22,11 +22,7 @@ import {
   ChevronDown,
   FileText
 } from 'lucide-react';
-import { GrCubes } from "react-icons/gr";
-import { FaCartFlatbedSuitcase } from "react-icons/fa6";
-import { ImPriceTags } from "react-icons/im";
 import { LuCctv } from "react-icons/lu";
-import { FaOpencart } from "react-icons/fa";
 import { useAuth } from '../../context/AuthContext';
 import SummaryApi from '../../common';
 import LoadingSpinner from '../../components/LoadingSpinner';
