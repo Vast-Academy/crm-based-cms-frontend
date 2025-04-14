@@ -6,13 +6,13 @@ import { useAuth } from '../../context/AuthContext';
 import ConfirmationDialog from '../../components/ConfirmationDialog';
 import Modal from '../../components/Modal';
 
-const AllInventoryItems = () => {
+const AllInventoryItems = ({ searchTerm = '' }) => {
   const { user } = useAuth();
   const { showNotification } = useNotification();
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [searchTerm, setSearchTerm] = useState('');
+  // const [searchTerm, setSearchTerm] = useState('');
   
   // Modal states
   const [isViewStockModalOpen, setIsViewStockModalOpen] = useState(false);
