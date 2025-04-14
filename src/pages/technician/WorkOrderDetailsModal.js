@@ -4,7 +4,7 @@ import { Clipboard } from 'lucide-react';
 import SummaryApi from '../../common';
 import { useAuth } from '../../context/AuthContext';
 import { QRCodeCanvas } from 'qrcode.react';
-import { Play, Clock, Info } from 'lucide-react';
+import { Play, Clock, Info, X } from 'lucide-react';
 
 // For more basic projects, a simpler scan simulation approach might be better
 const SimpleScanner = ({ onScan, onClose }) => {
@@ -61,6 +61,7 @@ const WorkOrderDetailsModal = (props) => {
   const [searchResults, setSearchResults] = useState([]);
   const [showCameraScanner, setShowCameraScanner] = useState(false);
   const [showBillSummary, setShowBillSummary] = useState(false);
+  const [showResumeConfirmationModal, setShowResumeConfirmationModal] = useState(false);
   
   // Payment related states
   const [showPaymentOptions, setShowPaymentOptions] = useState(false);
@@ -220,12 +221,17 @@ const findPauseReason = () => {
 };
 
 // प्रोजेक्ट रिज्यूम करने के लिए
-const handleResumeProject = async () => {
+const handleShowResumeConfirmation = () => {
+  setShowResumeConfirmationModal(true);
+};
+
+// रिज्यूम को कन्फर्म करने के बाद का लॉजिक
+const confirmResumeProject = async () => {
   try {
     setLoading(true);
     setError(null);
     
-    // रिज्यूम नोट के लिए एक डिफॉल्ट मैसेज सेट करें
+    // रिज्यूम नोट के लिए एक डिफॉल्ट मैसेज
     const resumeNote = "Project resumed by technician";
     
     const response = await fetch(SummaryApi.updateWorkOrderStatus.url, {
@@ -250,7 +256,8 @@ const handleResumeProject = async () => {
         onStatusUpdate(data.data);
       }
       
-      // Close the modal
+      // Close the confirmation modal and main modal
+      setShowResumeConfirmationModal(false);
       onClose();
     } else {
       setError(data.message || 'Failed to resume project');
@@ -323,11 +330,48 @@ const renderProjectContent = () => {
         
         {/* Resume Button */}
         <button
-          onClick={handleResumeProject}
+          onClick={handleShowResumeConfirmation}
           className="w-full py-2 bg-blue-500 text-white rounded-lg flex items-center justify-center"
         >
           <Play size={18} className="mr-2" /> Resume Project
         </button>
+
+        {showResumeConfirmationModal && (
+  <div className="fixed inset-0 bg-black/60 z-50 flex justify-center items-center p-4">
+    <div className={`w-full max-w-md ${darkMode ? 'bg-gray-800' : 'bg-white'} rounded-xl shadow-2xl`}>
+      <div className="flex justify-between items-center p-4 border-b">
+        <h3 className="font-bold text-lg">Confirm Resume</h3>
+        <button 
+          onClick={() => setShowResumeConfirmationModal(false)}
+          className="p-1"
+        >
+          <FiX size={20} />
+        </button>
+      </div>
+      
+      <div className="p-4">
+        <p className="text-center mb-6">
+          Are you sure you want to resume this project?
+        </p>
+        
+        <div className="flex p-4 border-t">
+          <button
+            onClick={() => setShowResumeConfirmationModal(false)}
+            className="flex-1 mr-2 py-2 border border-gray-300 rounded-lg text-gray-700"
+          >
+            No
+          </button>
+          <button
+            onClick={confirmResumeProject}
+            className="flex-1 ml-2 py-2 bg-green-500 text-white rounded-lg"
+          >
+            Yes
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+)}
       </div>
     );
   } else {

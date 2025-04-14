@@ -56,10 +56,11 @@ const TechnicianDashboard = () => {
   const [expandedItems, setExpandedItems] = useState([]);
   // Add these state variables
   const [showFullHistory, setShowFullHistory] = useState(false);
-const [showStopProjectModal, setShowStopProjectModal] = useState(false);
-const [pauseProjectRemark, setPauseProjectRemark] = useState('');
-const [showBillModal, setShowBillModal] = useState(false);
-  
+  const [showStopProjectModal, setShowStopProjectModal] = useState(false);
+  const [pauseProjectRemark, setPauseProjectRemark] = useState('');
+  const [showBillModal, setShowBillModal] = useState(false);
+  const [showPauseConfirmationModal, setShowPauseConfirmationModal] = useState(false);
+
   // Handle logout
   const handleLogout = () => {
     setShowLogoutPopup(false); // Close popup first
@@ -142,11 +143,18 @@ const addActivityToHistory = async (project, activityText) => {
 };
   
 // Function to stop/pause the project
-const handleStopProject = async (project) => {
+// पॉज़ प्रोजेक्ट फंक्शन को अपडेट करें
+const handleStopProject = (project) => {
   if (!pauseProjectRemark.trim()) {
     return;
   }
   
+  // पहले कन्फर्मेशन दिखाएं बजाय सीधे पॉज़ करने के
+  setShowPauseConfirmationModal(true);
+};
+
+// कन्फर्मेशन के बाद पॉज़ का लॉजिक
+const confirmPauseProject = async (project) => {
   try {
     setLoading(true);
     
@@ -174,17 +182,15 @@ const handleStopProject = async (project) => {
         )
       );
       
-      // Close the modal
+      // Close the modals
       setShowStopProjectModal(false);
+      setShowPauseConfirmationModal(false);
       
       // Clear the remark
       setPauseProjectRemark('');
       
       // Navigate back to home
       handleTabChange('home');
-      
-      // Show confirmation
-      alert('Project has been paused successfully');
     } else {
       alert(data.message || 'Failed to pause project');
     }
@@ -195,6 +201,7 @@ const handleStopProject = async (project) => {
     setLoading(false);
   }
 };
+
 
 // Add a handler for bill generation completion
 const handleBillGenerated = async (selectedItems, paymentCompleted = false) => {
@@ -1278,6 +1285,50 @@ const filteredInventoryItems = getFilteredInventoryItems();
               </div>
             </div>
           )}
+
+          {/* Pause Confirmation Modal */}
+{showPauseConfirmationModal && (
+  <div className="fixed inset-0 bg-black/60 z-50 flex justify-center items-center p-4">
+    <div className={`w-full max-w-md ${darkMode ? 'bg-gray-800' : 'bg-white'} rounded-xl shadow-2xl`}>
+      <div className="flex justify-between items-center p-4 border-b">
+        <h3 className="font-bold text-lg">Confirm Pause</h3>
+        <button 
+          onClick={() => setShowPauseConfirmationModal(false)}
+          className="p-1"
+        >
+          <X size={20} />
+        </button>
+      </div>
+      
+      <div className="p-4">
+        <p className="text-center mb-4">
+          You are about to pause your project with the following reason:
+        </p>
+        <div className={`p-3 rounded-md mb-4 text-gray-700 ${darkMode ? 'bg-gray-700 text-gray-300' : 'bg-gray-100'}`}>
+          "{pauseProjectRemark}"
+        </div>
+        <p className="text-center mb-6 font-medium">
+          Are you sure you want to pause this project?
+        </p>
+        
+        <div className="flex p-4 border-t">
+          <button
+            onClick={() => setShowPauseConfirmationModal(false)}
+            className="flex-1 mr-2 py-2 border border-gray-300 rounded-lg text-gray-700"
+          >
+            No
+          </button>
+          <button
+           onClick={() => confirmPauseProject(activeProject)}
+            className="flex-1 ml-2 py-2 bg-red-500 text-white rounded-lg"
+          >
+            Yes
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+)}
         </>
       );
     })()}
