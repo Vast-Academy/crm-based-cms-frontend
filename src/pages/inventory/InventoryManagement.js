@@ -3,10 +3,12 @@ import SerializedProductsList from './SerializedProductsList';
 import GenericProductsList from './GenericProductsList';
 import ServicesList from './ServicesList';
 import AllInventoryItems from './AllInventoryItems';
+import { FiSearch } from 'react-icons/fi';
 
 const InventoryManagement = () => {
   // State to track which filter is currently selected
   const [activeFilter, setActiveFilter] = useState('all');
+   const [searchTerm, setSearchTerm] = useState('');
 
   // Function to handle filter button clicks
   const handleFilterChange = (filter) => {
@@ -17,72 +19,93 @@ const InventoryManagement = () => {
   const renderContent = () => {
     switch (activeFilter) {
       case 'serialized':
-        return <SerializedProductsList />;
+        return <SerializedProductsList searchTerm={searchTerm} />;
       case 'generic':
-        return <GenericProductsList />;
+        return <GenericProductsList searchTerm={searchTerm} />;
       case 'services':
-        return <ServicesList />;
+        return <ServicesList searchTerm={searchTerm} />;
       default:
-        return <AllInventoryItems />;
+        return <AllInventoryItems searchTerm={searchTerm} />;
     }
   };
 
   return (
     <div>
-      <div className="mb-6">
-        <h1 className="text-2xl font-semibold text-gray-800">Inventory Management</h1>
-        <p className="text-gray-600">Manage all inventory items in one place</p>
+    {/* Main container card with shadow */}
+    <div className="bg-white rounded-lg shadow-md overflow-hidden">
+      {/* Header section with title and search */}
+      <div className="p-6 border-b border-gray-200">
+        <h1 className="text-xl font-semibold text-gray-800 mb-1">Inventory Items</h1>
+        
+        {/* Filter and search row */}
+        <div className="flex flex-wrap items-center justify-between mt-4">
+          {/* Filter buttons */}
+          <div className="flex space-x-2 mb-2 sm:mb-0">
+            <button
+              onClick={() => handleFilterChange('all')}
+              className={`px-4 py-2 rounded-full text-sm font-medium ${
+                activeFilter === 'all'
+                  ? 'bg-teal-500 text-white'
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              }`}
+            >
+              All
+            </button>
+            <button
+              onClick={() => handleFilterChange('serialized')}
+              className={`px-4 py-2 rounded-full text-sm font-medium ${
+                activeFilter === 'serialized'
+                  ? 'bg-teal-500 text-white'
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              }`}
+            >
+              Serialized
+            </button>
+            <button
+              onClick={() => handleFilterChange('generic')}
+              className={`px-4 py-2 rounded-full text-sm font-medium ${
+                activeFilter === 'generic'
+                  ? 'bg-teal-500 text-white'
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              }`}
+            >
+              Generic
+            </button>
+            <button
+              onClick={() => handleFilterChange('services')}
+              className={`px-4 py-2 rounded-full text-sm font-medium ${
+                activeFilter === 'services'
+                  ? 'bg-teal-500 text-white'
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              }`}
+            >
+              Services
+            </button>
+          </div>
+          
+          {/* Search bar */}
+          <div className="relative">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <FiSearch className="text-gray-400" />
+            </div>
+            <input
+              type="text"
+              placeholder="Search items..."
+              className="pl-10 pr-4 py-2 border rounded-lg w-full sm:w-auto"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
+        </div>
       </div>
-
-      {/* Filter buttons */}
-      <div className="border-b border-gray-200 mb-6">
-      <nav className="-mb-px flex space-x-8">
-        <button
-          onClick={() => handleFilterChange('all')}
-          className={`py-4 px-1 ${
-            activeFilter === 'all'
-              ? 'border-b-2 border-teal-500 text-teal-600 font-medium'
-              : 'border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-          } transition-colors duration-200 ease-in-out`}>
-          All
-        </button>
-        <button
-          onClick={() => handleFilterChange('serialized')}
-          className={`py-4 px-1 ${
-            activeFilter === 'serialized'
-              ? 'border-b-2 border-teal-500 text-teal-600 font-medium'
-              : 'border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-          } transition-colors duration-200 ease-in-out`}
-        >
-          Serialized
-        </button>
-        <button
-          onClick={() => handleFilterChange('generic')}
-          className={`py-4 px-1 ${
-            activeFilter === 'generic'
-              ? 'border-b-2 border-teal-500 text-teal-600 font-medium'
-              : 'border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-          } transition-colors duration-200 ease-in-out`}
-        >
-          Generic
-        </button>
-        <button
-          onClick={() => handleFilterChange('services')}
-          className={`py-4 px-1 ${
-        activeFilter === 'services'
-          ? 'border-b-2 border-teal-500 text-teal-600 font-medium'
-          : 'border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-      } transition-colors duration-200 ease-in-out`}
-    >
-          Services
-        </button>
-        </nav>
+      
+      {/* Content section */}
+      <div className="p-0">
+        {renderContent()}
       </div>
-
-      {/* Render the content based on selected filter */}
-      {renderContent()}
     </div>
-  );
+  </div>
+);
 };
 
 export default InventoryManagement;

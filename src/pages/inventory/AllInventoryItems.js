@@ -170,7 +170,7 @@ const AllInventoryItems = () => {
       )}
       
       {/* Search */}
-      <div className="flex justify-end mb-6">
+      {/* <div className="flex justify-end mb-6">
         <div className="relative">
           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
             <FiSearch className="text-gray-400" />
@@ -183,13 +183,13 @@ const AllInventoryItems = () => {
             onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
-      </div>
+      </div> */}
       
       {/* Items List */}
       <div className="bg-white rounded-lg shadow-md overflow-hidden">
-        <div className="p-4 border-b bg-gray-50">
+        {/* <div className="p-4 border-b bg-gray-50">
           <h2 className="text-lg font-semibold text-gray-700">All Inventory Items</h2>
-        </div>
+        </div> */}
         
         {loading ? (
           <div className="p-6 text-center text-gray-500">
