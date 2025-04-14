@@ -23,6 +23,10 @@ import {
   FileText
 } from 'lucide-react';
 import { GrCubes } from "react-icons/gr";
+import { FaCartFlatbedSuitcase } from "react-icons/fa6";
+import { ImPriceTags } from "react-icons/im";
+import { LuCctv } from "react-icons/lu";
+import { FaOpencart } from "react-icons/fa";
 import { useAuth } from '../../context/AuthContext';
 import SummaryApi from '../../common';
 import LoadingSpinner from '../../components/LoadingSpinner';
@@ -1357,19 +1361,23 @@ const filteredInventoryItems = getFilteredInventoryItems();
                 </div>
                 
                 <div className="grid grid-cols-2 gap-3 text-center">
-                  <div className={`${darkMode ? 'bg-amber-800/50' : 'bg-amber-700/50'} p-3 rounded-lg`}>
+                  <div className={`${darkMode ? 'bg-amber-800/50' : 'bg-amber-700/50'} p-3 rounded-lg cursor-pointer`}
+                  onClick={() => handleTabChange('assigned-projects')}>
                     <p className="text-2xl font-bold">{workOrders.filter(order => order.status === 'assigned').length}</p>
                     <p className={`text-xs ${darkMode ? 'text-amber-300' : 'text-amber-100'}`}>Assigned</p>
                   </div>
-                  <div className={`${darkMode ? 'bg-amber-800/50' : 'bg-amber-700/50'} p-3 rounded-lg`}>
+                  <div className={`${darkMode ? 'bg-amber-800/50' : 'bg-amber-700/50'} p-3 rounded-lg cursor-pointer`}
+                  onClick={() => handleTabChange('pending-approval-projects')}>
                     <p className="text-2xl font-bold">{workOrders.filter(order => order.status === 'pending-approval').length}</p>
                     <p className={`text-xs ${darkMode ? 'text-amber-300' : 'text-amber-100'}`}>Approval</p>
                   </div>
-                  <div className={`${darkMode ? 'bg-amber-800/50' : 'bg-amber-700/50'} p-3 rounded-lg`}>
+                  <div className={`${darkMode ? 'bg-amber-800/50' : 'bg-amber-700/50'} p-3 rounded-lg cursor-pointer`}
+                  onClick={() => handleTabChange('paused-projects')}>
                     <p className="text-2xl font-bold">{workOrders.filter(order => order.status === 'paused').length}</p>
                     <p className={`text-xs ${darkMode ? 'text-amber-300' : 'text-amber-100'}`}>Paused</p>
                   </div>
-                  <div className={`${darkMode ? 'bg-amber-800/50' : 'bg-amber-700/50'} p-3 rounded-lg`}>
+                  <div className={`${darkMode ? 'bg-amber-800/50' : 'bg-amber-700/50'} p-3 rounded-lg cursor-pointer`}
+                  onClick={() => handleTabChange('completed')}>
                     <p className="text-2xl font-bold">{completedOrders.length}</p>
                     <p className={`text-xs ${darkMode ? 'text-amber-300' : 'text-amber-100'}`}>Completed</p>
                   </div>
@@ -1501,6 +1509,225 @@ const filteredInventoryItems = getFilteredInventoryItems();
             </div>
           </div>
         )}
+
+{activeTab === 'pending-approval-projects' && (
+  <div className="flex flex-col space-y-6">
+    {/* Pending Approval Summary */}
+    <div className={`${darkMode ? 'bg-gradient-to-br from-amber-600 to-amber-800' : 'bg-gradient-to-br from-amber-500 to-amber-600'} p-6 rounded-2xl shadow-xl text-white`}>
+      <div className="flex items-center mb-4">
+        <div className="w-16 h-16 bg-amber-700 rounded-full flex items-center justify-center shadow-xl mr-4">
+          <Activity size={32} className="text-white" />
+        </div>
+        <div>
+          <p className="text-2xl font-bold mb-1">Pending Approvals</p>
+          <p className={`${darkMode ? 'text-amber-200' : 'text-amber-100'}`}>Projects awaiting approval</p>
+        </div>
+      </div>
+      
+      <div className={`${darkMode ? 'bg-white/10' : 'bg-white/20'} rounded-xl p-4 backdrop-blur-sm`}>
+        <div className="flex justify-between items-center mb-4">
+          <span className={`${darkMode ? 'text-amber-200' : 'text-amber-100'}`}>Total Pending:</span>
+          <span className="text-white text-xl font-bold">{workOrders.filter(order => order.status === 'pending-approval').length} projects</span>
+        </div>
+        
+        <button 
+          onClick={() => handleTabChange('home')}
+          className="bg-amber-700 hover:bg-amber-800 text-white w-full py-2 rounded-lg flex items-center justify-center mt-2"
+        >
+          <Home size={16} className="mr-2" /> Back to Home
+        </button>
+      </div>
+    </div>
+    
+    {/* Pending Approval Projects List */}
+    <div className={`${darkMode ? 'bg-gray-800/50 backdrop-blur-sm border border-gray-700' : 'bg-white/80 backdrop-blur-sm border border-gray-200'} rounded-2xl shadow-xl overflow-hidden`}>
+      <div className={`p-4 ${darkMode ? 'border-b border-gray-700' : 'border-b border-gray-200'}`}>
+        <h2 className="font-bold text-lg">Pending Approval Projects</h2>
+      </div>
+      
+      <div>
+        {workOrders.filter(order => order.status === 'pending-approval').length > 0 ? (
+          workOrders.filter(order => order.status === 'pending-approval').map((order) => (
+            <div 
+              key={order.orderId || `order-${Math.random().toString(36).substr(2, 9)}`} 
+              className={`p-4 ${darkMode ? 'border-b border-gray-700 last:border-b-0 hover:bg-gray-700/50' : 'border-b border-gray-200 last:border-b-0 hover:bg-gray-100/50'} transition-colors cursor-pointer`}
+              onClick={() => handleWorkOrderClick(order)}
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex items-center max-w-[200px]">
+                  <div className={`w-10 h-10 rounded-full ${darkMode ? 'bg-amber-600' : 'bg-amber-500'} flex items-center justify-center mr-3`}>
+                    <Activity size={18} className="text-white" />
+                  </div>
+                  <div>
+                    <p className={`font-medium truncate max-w-[140px] ${darkMode ? 'text-white' : 'text-gray-800'}`}>
+                      {order.projectType}
+                    </p>
+                    <p className={`text-xs ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                      Order ID: {order.orderId}
+                    </p>
+                  </div>
+                </div>
+                <span className={`px-2 py-1 rounded-full text-xs capitalize ${darkMode ? 'bg-amber-600/40 text-amber-100' : 'bg-amber-100 text-amber-800'}`}>
+                  {order.status}
+                </span>
+              </div>
+            </div>
+          ))
+        ) : (
+          <div className="p-8 text-center">
+            <p className={`${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>No pending approval projects</p>
+          </div>
+        )}
+      </div>
+    </div>
+  </div>
+)}
+
+{activeTab === 'paused-projects' && (
+  <div className="flex flex-col space-y-6">
+    {/* Paused Projects Summary */}
+    <div className={`${darkMode ? 'bg-gradient-to-br from-orange-600 to-orange-800' : 'bg-gradient-to-br from-orange-500 to-orange-600'} p-6 rounded-2xl shadow-xl text-white`}>
+      <div className="flex items-center mb-4">
+        <div className="w-16 h-16 bg-orange-700 rounded-full flex items-center justify-center shadow-xl mr-4">
+          <Clock size={32} className="text-white" />
+        </div>
+        <div>
+          <p className="text-2xl font-bold mb-1">Paused Projects</p>
+          <p className={`${darkMode ? 'text-orange-200' : 'text-orange-100'}`}>Temporarily stopped assignments</p>
+        </div>
+      </div>
+      
+      <div className={`${darkMode ? 'bg-white/10' : 'bg-white/20'} rounded-xl p-4 backdrop-blur-sm`}>
+        <div className="flex justify-between items-center mb-4">
+          <span className={`${darkMode ? 'text-orange-200' : 'text-orange-100'}`}>Total Paused:</span>
+          <span className="text-white text-xl font-bold">{workOrders.filter(order => order.status === 'paused').length} projects</span>
+        </div>
+        
+        <button 
+          onClick={() => handleTabChange('home')}
+          className="bg-orange-700 hover:bg-orange-800 text-white w-full py-2 rounded-lg flex items-center justify-center mt-2"
+        >
+          <Home size={16} className="mr-2" /> Back to Home
+        </button>
+      </div>
+    </div>
+    
+    {/* Paused Projects List */}
+    <div className={`${darkMode ? 'bg-gray-800/50 backdrop-blur-sm border border-gray-700' : 'bg-white/80 backdrop-blur-sm border border-gray-200'} rounded-2xl shadow-xl overflow-hidden`}>
+      <div className={`p-4 ${darkMode ? 'border-b border-gray-700' : 'border-b border-gray-200'}`}>
+        <h2 className="font-bold text-lg">Paused Projects</h2>
+      </div>
+      
+      <div>
+        {workOrders.filter(order => order.status === 'paused').length > 0 ? (
+          workOrders.filter(order => order.status === 'paused').map((order) => (
+            <div 
+              key={order.orderId || `order-${Math.random().toString(36).substr(2, 9)}`} 
+              className={`p-4 ${darkMode ? 'border-b border-gray-700 last:border-b-0 hover:bg-gray-700/50' : 'border-b border-gray-200 last:border-b-0 hover:bg-gray-100/50'} transition-colors cursor-pointer`}
+              onClick={() => handleWorkOrderClick(order)}
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex items-center max-w-[200px]">
+                  <div className={`w-10 h-10 rounded-full ${darkMode ? 'bg-orange-600' : 'bg-orange-500'} flex items-center justify-center mr-3`}>
+                    <Clock size={18} className="text-white" />
+                  </div>
+                  <div>
+                    <p className={`font-medium truncate max-w-[140px] ${darkMode ? 'text-white' : 'text-gray-800'}`}>
+                      {order.projectType}
+                    </p>
+                    <p className={`text-xs ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                      Order ID: {order.orderId}
+                    </p>
+                  </div>
+                </div>
+                <span className={`px-2 py-1 rounded-full text-xs capitalize ${darkMode ? 'bg-orange-600/40 text-orange-100' : 'bg-orange-100 text-orange-800'}`}>
+                  {order.status}
+                </span>
+              </div>
+            </div>
+          ))
+        ) : (
+          <div className="p-8 text-center">
+            <p className={`${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>No paused projects</p>
+          </div>
+        )}
+      </div>
+    </div>
+  </div>
+)}
+
+{activeTab === 'assigned-projects' && (
+  <div className="flex flex-col space-y-6">
+    {/* Assigned Projects Summary */}
+    <div className={`${darkMode ? 'bg-gradient-to-br from-blue-600 to-blue-800' : 'bg-gradient-to-br from-blue-500 to-blue-600'} p-6 rounded-2xl shadow-xl text-white`}>
+      <div className="flex items-center mb-4">
+        <div className="w-16 h-16 bg-blue-700 rounded-full flex items-center justify-center shadow-xl mr-4">
+          <Clipboard size={32} className="text-white" />
+        </div>
+        <div>
+          <p className="text-2xl font-bold mb-1">Assigned Projects</p>
+          <p className={`${darkMode ? 'text-blue-200' : 'text-blue-100'}`}>New assignments ready to start</p>
+        </div>
+      </div>
+      
+      <div className={`${darkMode ? 'bg-white/10' : 'bg-white/20'} rounded-xl p-4 backdrop-blur-sm`}>
+        <div className="flex justify-between items-center mb-4">
+          <span className={`${darkMode ? 'text-blue-200' : 'text-blue-100'}`}>Total Assigned:</span>
+          <span className="text-white text-xl font-bold">{workOrders.filter(order => order.status === 'assigned').length} projects</span>
+        </div>
+        
+        <button 
+          onClick={() => handleTabChange('home')}
+          className="bg-blue-700 hover:bg-blue-800 text-white w-full py-2 rounded-lg flex items-center justify-center mt-2"
+        >
+          <Home size={16} className="mr-2" /> Back to Home
+        </button>
+      </div>
+    </div>
+    
+    {/* Assigned Projects List */}
+    <div className={`${darkMode ? 'bg-gray-800/50 backdrop-blur-sm border border-gray-700' : 'bg-white/80 backdrop-blur-sm border border-gray-200'} rounded-2xl shadow-xl overflow-hidden`}>
+      <div className={`p-4 ${darkMode ? 'border-b border-gray-700' : 'border-b border-gray-200'}`}>
+        <h2 className="font-bold text-lg">Assigned Projects</h2>
+      </div>
+      
+      <div>
+        {workOrders.filter(order => order.status === 'assigned').length > 0 ? (
+          workOrders.filter(order => order.status === 'assigned').map((order) => (
+            <div 
+              key={order.orderId || `order-${Math.random().toString(36).substr(2, 9)}`} 
+              className={`p-4 ${darkMode ? 'border-b border-gray-700 last:border-b-0 hover:bg-gray-700/50' : 'border-b border-gray-200 last:border-b-0 hover:bg-gray-100/50'} transition-colors cursor-pointer`}
+              onClick={() => handleWorkOrderClick(order)}
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex items-center max-w-[200px]">
+                  <div className={`w-10 h-10 rounded-full ${darkMode ? 'bg-blue-600' : 'bg-blue-500'} flex items-center justify-center mr-3`}>
+                    <Clipboard size={18} className="text-white" />
+                  </div>
+                  <div>
+                    <p className={`font-medium truncate max-w-[140px] ${darkMode ? 'text-white' : 'text-gray-800'}`}>
+                      {order.projectType}
+                    </p>
+                    <p className={`text-xs ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                      Order ID: {order.orderId}
+                    </p>
+                  </div>
+                </div>
+                <span className={`px-2 py-1 rounded-full text-xs capitalize ${darkMode ? 'bg-blue-600/40 text-blue-100' : 'bg-blue-100 text-blue-800'}`}>
+                  {order.status}
+                </span>
+              </div>
+            </div>
+          ))
+        ) : (
+          <div className="p-8 text-center">
+            <p className={`${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>No assigned projects</p>
+          </div>
+        )}
+      </div>
+    </div>
+  </div>
+)}
       </main>
       
       {/* Bottom Navigation */}
@@ -1530,26 +1757,11 @@ const filteredInventoryItems = getFilteredInventoryItems();
             }`}
           >
              <div className="h-5 flex items-center">
-         <GrCubes size={24} />
+         <LuCctv size={24} />
       </div>
       <div className="h-5 flex items-center">
          <span className="text-xs mt-1">{calculateTotalUnits()}</span>
       </div>
-          </button>
-          <button 
-            onClick={() => handleTabChange('current-project')}
-            className={`flex flex-col items-center py-2 px-4 rounded-xl flex-1 mx-1 ${
-              activeTab === 'current-project' 
-                ? `${darkMode ? 'bg-gradient-to-r from-blue-600 to-blue-700' : 'bg-gradient-to-r from-blue-500 to-blue-600'} text-white shadow-lg` 
-                : `${darkMode ? 'text-gray-400' : 'text-gray-500'}`
-            }`}
-          >
-            <div className="h-5 flex items-center">
-            <Clipboard size={20} />
-            </div>
-            <div className="h-5 flex items-center">
-            <span className="text-xs mt-1">Current</span>
-            </div>
           </button>
           <button 
             onClick={() => handleTabChange('all-projects')}
@@ -1566,11 +1778,12 @@ const filteredInventoryItems = getFilteredInventoryItems();
             <span className="text-xs mt-1">All</span>
             </div>
           </button>
+
           <button 
-            onClick={() => handleTabChange('completed')}
+            onClick={() => handleTabChange('pending-approval-projects')}
             className={`flex flex-col items-center py-2 px-4 rounded-xl flex-1 mx-1 ${
-              activeTab === 'completed' 
-                ? `${darkMode ? 'bg-gradient-to-r from-green-600 to-green-700' : 'bg-gradient-to-r from-green-500 to-green-600'} text-white shadow-lg` 
+              activeTab === 'pending-approval-projects' 
+                ? `${darkMode ?  'bg-gradient-to-br from-amber-600 to-amber-800' : 'bg-gradient-to-br from-amber-500 to-amber-600'} text-white shadow-lg` 
                 : `${darkMode ? 'text-gray-400' : 'text-gray-500'}`
             }`}
           >
@@ -1578,9 +1791,26 @@ const filteredInventoryItems = getFilteredInventoryItems();
             <CheckSquare size={20} />
             </div>
             <div className="h-5 flex items-center">
-            <span className="text-xs mt-1">Done</span>
+            <span className="text-xs mt-1">Approval</span>
             </div>
           </button>
+
+          <button 
+            onClick={() => handleTabChange('current-project')}
+            className={`flex flex-col items-center py-2 px-4 rounded-xl flex-1 mx-1 ${
+              activeTab === 'current-project' 
+                ? `${darkMode ? 'bg-gradient-to-r from-blue-600 to-blue-700' : 'bg-gradient-to-r from-blue-500 to-blue-600'} text-white shadow-lg` 
+                : `${darkMode ? 'text-gray-400' : 'text-gray-500'}`
+            }`}
+          >
+            <div className="h-5 flex items-center">
+            <Clipboard size={20} />
+            </div>
+            <div className="h-5 flex items-center">
+            <span className="text-xs mt-1">Current</span>
+            </div>
+          </button>
+         
         </div>
       </footer>
       
