@@ -305,24 +305,19 @@ const formatDate = (dateString) => {
   };
   
   // Filter work orders to show only those from the last 2 days
-  const getRecentWorkOrders = () => {
-    const twoDaysAgo = new Date();
-    twoDaysAgo.setDate(twoDaysAgo.getDate() - 2);
-    
-    // Combine active and completed work orders
-    return [...workOrders, ...completedOrders]
-      .filter(order => {
-        // If updatedAt exists, use it, otherwise fallback to current date
-        const orderDate = order.updatedAt ? new Date(order.updatedAt) : new Date();
-        return orderDate >= twoDaysAgo;
-      })
-      .sort((a, b) => {
-        // Sort by most recently updated
-        if (a.updatedAt && b.updatedAt) {
-          return new Date(b.updatedAt) - new Date(a.updatedAt);
-        }
-        return 0;
-      });
+  const getActiveWorkOrders = () => {
+    // Filter by required statuses
+    return workOrders.filter(order => 
+      order.status === 'assigned' || 
+      order.status === 'in-progress' || 
+      order.status === 'paused'
+    ).sort((a, b) => {
+      // Sort by most recently updated
+      if (a.updatedAt && b.updatedAt) {
+        return new Date(b.updatedAt) - new Date(a.updatedAt);
+      }
+      return 0;
+    });
   };
 
   // Get quantity of an item (for sorting and display)
@@ -697,7 +692,7 @@ const filteredInventoryItems = getFilteredInventoryItems();
   });
 
   // Get work orders from the last 2 days for tasks display
-  const recentWorkOrders = getRecentWorkOrders();
+  const activeWorkOrders = getActiveWorkOrders();
 
   return (
     <div className={`flex flex-col h-screen ${darkMode ? 'bg-gradient-to-b from-gray-900 to-gray-800 text-white' : 'bg-gradient-to-b from-gray-100 to-white text-gray-800'}`}>
@@ -840,8 +835,8 @@ const filteredInventoryItems = getFilteredInventoryItems();
                 </div>
               </div>
               <div>
-              {recentWorkOrders.length > 0 ? (
-  recentWorkOrders.map((order, index) => (
+              {activeWorkOrders.length > 0 ? (
+  activeWorkOrders.map((order, index) => (
     <div
       key={order.orderId || `order-${Math.random().toString(36).substr(2, 9)}`}
       className={`p-4 ${darkMode ? 'border-b border-gray-700 last:border-b-0 hover:bg-gray-700/50' : 'border-b border-gray-200 last:border-b-0 hover:bg-gray-100/50'} transition-colors cursor-pointer`}
