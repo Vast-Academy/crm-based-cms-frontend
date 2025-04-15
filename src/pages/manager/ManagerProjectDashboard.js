@@ -273,14 +273,14 @@ const ManagerProjectDashboard = () => {
   return (
     <div className="">
       {/* Main Container with White Box */}
-      <div className="bg-white rounded-lg shadow-md">
+      <div className="p-6 bg-white rounded-lg shadow-md max-w-[1300px]">
         {/* Header */}
-        <div className="px-4 py-4">
+        <div className="mb-4">
           <h1 className="text-2xl font-semibold text-gray-800">Projects</h1>
         </div>
         
         {/* Tabs and Search */}
-        <div className="px-4 mb-4">
+        <div className=" mb-4">
           <div className="flex flex-wrap items-center gap-4">
             {/* Filter Buttons */}
             <div className="flex space-x-2">
@@ -334,19 +334,20 @@ const ManagerProjectDashboard = () => {
                 </span>
               </button>
             </div>
-            
-            {/* Search */}
-            <div className="relative ml-auto">
+        
+          </div>
+
+           {/* Search */}
+           <div className="relative mt-4">
               <input
                 type="text"
                 placeholder="Search projects..."
-                className="w-60 pl-10 pr-4 py-2 border rounded-lg text-sm"
+                className="w-full px-3 py-2 pl-10 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
               <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
             </div>
-          </div>
         </div>
         
         {error && (

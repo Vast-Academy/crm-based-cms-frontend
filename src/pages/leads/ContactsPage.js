@@ -325,29 +325,15 @@ const handleFilterChange = (type, status = 'all') => {
   return (
     <div className="">
       {/* Main Container with White Box */}
-      <div className="px-6 bg-white rounded-lg shadow-md max-w-[1000px]">
+      <div className="px-6 bg-white rounded-lg shadow-md max-w-[1300px]">
         {/* Header */}
-        <div className=" py-6 pb-4 flex justify-between">
+        <div className="py-6 pb-4 flex justify-between">
           <h1 className="text-2xl font-semibold text-gray-800">Lead & Customer Management</h1>
-        </div>
-        
-        {/* Control Bar - Single row with Add button, filter buttons and search */}
-        <div className="pb-4">
-
-          <div className='flex justify-between mb-4'>
-        <button
-            onClick={() => handleAddNew()}
-            className="bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded-md justify-center flex items-center"
-          >
-            {/* <FiPlusCircle className="mr-2" size={18} /> */}
-            Add New Lead/Customer
-          </button>
-
-          {/* Filter Buttons */}
-          <div className="flex space-x-2">
+            {/* Filter Buttons */}
+            <div className="flex space-x-2">
             <button
              onClick={() => handleFilterChange('all')}
-              className={`px-4 py-1 rounded-full text-sm ${
+              className={`px-4 py-1.5 rounded-full text-sm ${
                 filters.type === 'all' 
                   ? 'bg-blue-500 text-white' 
                   : 'bg-gray-100 text-gray-700'
@@ -357,7 +343,7 @@ const handleFilterChange = (type, status = 'all') => {
             </button>
             <button
                onClick={() => handleFilterChange('lead')}
-              className={`px-4 py-1 rounded-full text-sm ${
+              className={`px-4 py-1.5 rounded-full text-sm ${
                 filters.type === 'lead' 
                   ? 'bg-blue-500 text-white' 
                   : 'bg-gray-100 text-gray-700'
@@ -367,7 +353,7 @@ const handleFilterChange = (type, status = 'all') => {
             </button>
             <button
               onClick={() => handleFilterChange('customer')}
-              className={`px-4 py-1 rounded-full text-sm ${
+              className={`px-4 py-1.5 rounded-full text-sm ${
                 filters.type === 'customer' 
                   ? 'bg-blue-500 text-white' 
                   : 'bg-gray-100 text-gray-700'
@@ -413,15 +399,25 @@ const handleFilterChange = (type, status = 'all') => {
             )}
           </div>
         </div>
+        
+        {/* Control Bar - Single row with Add button, filter buttons and search */}
+        <div className="pb-4">
           
           <div className="flex items-center gap-2">
+          <button
+            onClick={() => handleAddNew()}
+            className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-full flex items-center whitespace-nowrap"
+          >
+            <FiPlusCircle className="mr-2" size={18} />
+            Add New Lead/Customer
+          </button>
 
           {/* Search Bar - push to the right */}
           <div className="relative flex-grow">
             <input
               type="text"
-              placeholder="Search items..."
-              className="w-full pl-10 pr-4 py-2 border rounded-lg text-sm"
+              placeholder="Search customers..."
+              className="w-full px-3 py-2 pl-10 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
@@ -429,6 +425,8 @@ const handleFilterChange = (type, status = 'all') => {
           </div>
           
           </div>
+
+
         </div>
         
         {error && (

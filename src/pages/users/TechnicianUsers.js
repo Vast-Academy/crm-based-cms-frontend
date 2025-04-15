@@ -122,10 +122,10 @@ const TechnicianUsers = () => {
   return (
     <div className="">
       {/* Main Container with White Box */}
-      <div className="bg-white rounded-lg shadow-md">
+      <div className="p-6 bg-white rounded-lg shadow-md max-w-[1300px]">
         {/* Header */}
-        <div className="px-4 py-4">
-  <h1 className="text-2xl font-semibold text-gray-800 mb-6">User Management</h1>
+        <div className="mb-4">
+  <h1 className="text-2xl font-semibold text-gray-800 mb-4">User Management</h1>
   
   {/* बटन और सर्च बार एक लाइन में */}
   <div className="flex items-center gap-2">

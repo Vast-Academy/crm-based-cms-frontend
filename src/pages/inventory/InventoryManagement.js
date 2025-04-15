@@ -32,13 +32,13 @@ const InventoryManagement = () => {
   return (
     <div>
     {/* Main container card with shadow */}
-    <div className="px-6 bg-white rounded-lg shadow-md overflow-hidden lg:w-[1000px] 2xl:w-[1300px]">
+    <div className="px-6 bg-white rounded-lg shadow-md overflow-hidden max-w-[1300px]">
       {/* Header section with title and search */}
       <div className="py-6 border-b border-gray-200">
         <h1 className="text-2xl font-semibold text-gray-800 mb-1">Inventory</h1>
         
         {/* Filter and search row */}
-        <div className="flex items-center justify-end mt-4">
+        <div className="flex items-center mt-4">
 
           {/* Filter buttons */}
           <div className="flex space-x-2 mb-2 sm:mb-0">
