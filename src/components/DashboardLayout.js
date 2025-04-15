@@ -159,13 +159,8 @@ const DashboardLayout = () => {
           // },
           {
             name: 'User Management',
-            icon: FiUsers,
-            dropdown: true,
-            isOpen: usersDropdownOpen,
-            toggle: () => toggleDropdown('users'),
-            items: [
-              { name: 'Technicians', path: '/users/technicians' },
-            ]
+            path: '/users/technicians',
+            icon: FiUsers
           },
           {
             name: 'Inventory',
