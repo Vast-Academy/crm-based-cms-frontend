@@ -8,6 +8,7 @@ import AddContactForm from './AddContactForm';
 import LeadDetailModal from '../leads/LeadDetail';
 import CustomerDetailModal from './CustomerDetailModal';
 import WorkOrderModal from '../customers/WorkOrderModal';
+import ComplaintModal from '../customers/ComplaintModal';
 
 const statusColors = {
   positive: 'bg-green-100 text-green-800',
@@ -38,6 +39,14 @@ const ContactsPage = () => {
   const [initialType, setInitialType] = useState('lead');
   const [expandedRow, setExpandedRow] = useState(null);
   const [openInConvertMode, setOpenInConvertMode] = useState(false);
+  const [showComplaintModal, setShowComplaintModal] = useState(false);
+
+  // Add a handler function for complaint success
+const handleComplaintSuccess = (data) => {
+  // Refresh contacts data to get updated customer info
+  fetchContacts();
+  setShowComplaintModal(false);
+};
 
   const handleRowClick = (contactId) => {
     // अगर पहले से ही expanded है तो collapse करें, अन्यथा expand करें
@@ -556,7 +565,8 @@ const handleFilterChange = (type, status = 'all') => {
                                   <button 
                                     onClick={(e) => {
                                       e.stopPropagation();
-                                      alert('New Complaint functionality will be implemented');
+                                      setSelectedCustomerId(contact._id);
+                                      setShowComplaintModal(true);
                                     }}
                                     className="inline-flex items-center px-4 py-1.5 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-orange-500 hover:bg-orange-600"
                                   >
@@ -659,6 +669,13 @@ const handleFilterChange = (type, status = 'all') => {
         customerId={selectedCustomerId}
         onSuccess={handleWorkOrderSuccess}
       />
+
+<ComplaintModal
+  isOpen={showComplaintModal}
+  onClose={() => setShowComplaintModal(false)}
+  customerId={selectedCustomerId}
+  onSuccess={handleComplaintSuccess}
+/>
     </div>
   );
 };

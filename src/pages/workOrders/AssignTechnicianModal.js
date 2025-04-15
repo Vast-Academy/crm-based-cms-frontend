@@ -97,11 +97,15 @@ const AssignTechnicianModal = ({ isOpen, onClose, workOrder, onSuccess }) => {
   
   if (!isOpen || !workOrder) return null;
   
+  const isComplaint = workOrder.projectCategory === 'Repair';
+  
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
       <div className="bg-white rounded-lg w-full max-w-md p-6">
         <div className="flex justify-between items-center mb-4">
-          <h2 className="text-xl font-semibold">Assign Technician</h2>
+          <h2 className="text-xl font-semibold">
+            {isComplaint ? 'Assign Technician to Complaint' : 'Assign Technician'}
+          </h2>
           <button
             onClick={onClose}
             className="text-gray-500 hover:text-gray-700"
@@ -117,11 +121,22 @@ const AssignTechnicianModal = ({ isOpen, onClose, workOrder, onSuccess }) => {
         )}
         
         <div className="mb-4">
-          <h3 className="font-medium text-gray-700">Work Order Details:</h3>
-          <div className="mt-2 p-3 bg-gray-50 rounded-md">
+          <h3 className="font-medium text-gray-700">
+            {isComplaint ? 'Complaint Details:' : 'Work Order Details:'}
+          </h3>
+          <div className={`mt-2 p-3 rounded-md ${isComplaint ? 'bg-orange-50' : 'bg-gray-50'}`}>
             <p><span className="font-medium">Order ID:</span> {workOrder.orderId}</p>
             <p><span className="font-medium">Customer:</span> {workOrder.customerName}</p>
             <p><span className="font-medium">Project:</span> {workOrder.projectType}</p>
+            {workOrder.initialRemark && (
+              <p className="mt-2">
+                <span className="font-medium">
+                  {isComplaint ? 'Complaint Details:' : 'Initial Requirements:'}
+                </span>
+                <br />
+                <span className="text-gray-700">{workOrder.initialRemark}</span>
+              </p>
+            )}
           </div>
         </div>
         
@@ -163,7 +178,7 @@ const AssignTechnicianModal = ({ isOpen, onClose, workOrder, onSuccess }) => {
                 onChange={(e) => setInstructions(e.target.value)}
                 className="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
                 rows="3"
-                placeholder="Enter instructions for the technician..."
+                placeholder={`Enter instructions for the technician ${isComplaint ? 'handling this complaint' : ''}...`}
               ></textarea>
             </div>
             
@@ -179,7 +194,9 @@ const AssignTechnicianModal = ({ isOpen, onClose, workOrder, onSuccess }) => {
               <button
                 type="submit"
                 disabled={loading || technicians.length === 0}
-                className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 disabled:opacity-50"
+                className={`px-4 py-2 text-white rounded-md hover:bg-blue-600 disabled:opacity-50 ${
+                  isComplaint ? 'bg-orange-500 hover:bg-orange-600' : 'bg-blue-500 hover:bg-blue-600'
+                }`}
               >
                 {loading ? 'Assigning...' : 'Assign Technician'}
               </button>

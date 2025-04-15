@@ -46,7 +46,7 @@ const ManagerStatusChecker = () => {
       });
 
       const data = await response.json();
-      console.log('Status data received:', data);
+      // console.log('Status data received:', data);
 
       if (data.success) {
         setStatusData(data.data);
@@ -75,7 +75,7 @@ const ManagerStatusChecker = () => {
       
       setLoading(true);
       
-      console.log('Accepting transfer with ID:', transferId);
+      // console.log('Accepting transfer with ID:', transferId);
       
       const response = await fetch(`${SummaryApi.acceptTransfer.url}/${transferId}`, {
         method: SummaryApi.acceptTransfer.method,
@@ -87,7 +87,7 @@ const ManagerStatusChecker = () => {
       });
 
       const data = await response.json();
-      console.log('Accept transfer response:', data);
+      // console.log('Accept transfer response:', data);
 
       if (data.success) {
         // Update local state
@@ -119,7 +119,7 @@ const ManagerStatusChecker = () => {
       
       setLoading(true);
       
-      console.log('Rejecting transfer with ID:', transferId);
+      // console.log('Rejecting transfer with ID:', transferId);
       
       const response = await fetch(`${SummaryApi.rejectTransfer.url}/${transferId}`, {
         method: SummaryApi.rejectTransfer.method,
@@ -131,7 +131,7 @@ const ManagerStatusChecker = () => {
       });
 
       const data = await response.json();
-      console.log('Reject transfer response:', data);
+      // console.log('Reject transfer response:', data);
 
       if (data.success) {
         // Update local state
@@ -167,8 +167,8 @@ const ManagerStatusChecker = () => {
     return null;
   }
 
-  console.log('Rendering modal for user:', user._id);
-  console.log('Status data:', statusData);
+  // console.log('Rendering modal for user:', user._id);
+  // console.log('Status data:', statusData);
   
   // Show rejected transfer notification for old manager
   if (transferRejectedInfo) {

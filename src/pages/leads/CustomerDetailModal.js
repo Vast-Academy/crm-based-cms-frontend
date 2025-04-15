@@ -4,14 +4,16 @@ import SummaryApi from '../../common';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import { useAuth } from '../../context/AuthContext';
 import Modal from '../../components/Modal';
-import WorkOrderModal from '../customers/WorkOrderModal'
+import WorkOrderModal from '../customers/WorkOrderModal';
+import ComplaintModal from '../customers/ComplaintModal';
 
-const CustomerDetailModal = ({ isOpen, onClose, customerId }) => {
+const CustomerDetailModal = ({ isOpen, onClose, customerId, onCustomerUpdated }) => {
   const { user } = useAuth();
   const [customer, setCustomer] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [showWorkOrderModal, setShowWorkOrderModal] = useState(false);
+  const [showComplaintModal, setShowComplaintModal] = useState(false);
   const [initialProjectCategory, setInitialProjectCategory] = useState('New Installation');
   
   const fetchCustomer = async () => {
@@ -62,10 +64,36 @@ const CustomerDetailModal = ({ isOpen, onClose, customerId }) => {
     return new Date(dateString).toLocaleDateString(undefined, options);
   };
 
-  // const handleNewComplaint = () => {
-  //   setInitialProjectCategory("Repair");
-  //   setShowWorkOrderModal(true);
-  // };
+  const handleWorkOrderSuccess = (data) => {
+    // Refresh customer data after adding new project/work order
+    fetchCustomer();
+    setShowWorkOrderModal(false);
+    
+    // Notify parent component of the update
+    if (onCustomerUpdated) {
+      onCustomerUpdated(data.customer);
+    }
+  };
+
+  const handleComplaintSuccess = (data) => {
+    // Refresh customer data after adding new complaint
+    fetchCustomer();
+    setShowComplaintModal(false);
+    
+    // Notify parent component of the update
+    if (onCustomerUpdated) {
+      onCustomerUpdated(data.customer);
+    }
+  };
+  
+  const handleNewComplaint = () => {
+    // Check if customer has any projects
+    if (customer?.projects?.length > 0) {
+      setShowComplaintModal(true);
+    } else {
+      alert('Customer must have at least one project before filing a complaint');
+    }
+  };
   
   if (!isOpen) return null;
   
@@ -197,65 +225,94 @@ const CustomerDetailModal = ({ isOpen, onClose, customerId }) => {
                 
                 <div className="flex gap-2">
                   <button
-                    className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
-                    onClick={() => {
-                      // Opening WorkOrderModal for a complaint (Repair)
-                      setShowWorkOrderModal(true);
-                      setInitialProjectCategory('Repair');
-                    }}
+                    className="px-4 py-2 bg-orange-500 text-white rounded-md hover:bg-orange-600"
+                    onClick={handleNewComplaint}
                   >
                     New Complaint
                   </button>
                   
                   <button
                     className="px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600"
-                    onClick={() => {
-                      // Opening WorkOrderModal for a new project (New Installation)
-                      setShowWorkOrderModal(true);
-                      setInitialProjectCategory('New Installation');
-                    }}
+                    onClick={() => setShowWorkOrderModal(true)}
                   >
                     New Project
                   </button>
                 </div>
               </div>
-
-              <WorkOrderModal
-              isOpen={showWorkOrderModal}
-              onClose={() => setShowWorkOrderModal(false)}
-              customerId={customerId}
-              initialProjectCategory={initialProjectCategory}
-              onSuccess={(data) => {
-                // Refresh customer data after adding new project/work order
-                fetchCustomer();
-                setShowWorkOrderModal(false);
-              }}
-            />
               
               {/* Project Information */}
               {customer.projects && customer.projects.length > 0 ? (
-  <div className="mb-6 p-4 border rounded-lg">
-    <h3 className="font-semibold text-lg mb-2">Current Projects</h3>
-    {customer.projects.map((project, index) => (
-      <div key={index} className="flex items-center bg-blue-50 p-3 rounded-md mb-2">
-        <div className="text-blue-500 mr-3 text-xl">🛠️</div>
-        <div>
-          <div className="font-medium">
-            {project.projectType} 
-            <span className="text-xs ml-2 text-gray-500">(ID: {project.projectId})</span>
-          </div>
-          {project.initialRemark && (
-            <div className="text-sm text-gray-600 mt-1">{project.initialRemark}</div>
-          )}
-        </div>
-      </div>
-    ))}
-  </div>
-) : (
-  <div className="mb-6 p-4 border rounded-lg bg-gray-50">
-    <p className="text-center text-gray-500">No projects found for this customer.</p>
-  </div>
-)}
+                <div className="mb-6 p-4 border rounded-lg">
+                  <h3 className="font-semibold text-lg mb-2">Current Projects</h3>
+                  {customer.projects.map((project, index) => (
+                    <div key={index} className="flex items-center bg-blue-50 p-3 rounded-md mb-2">
+                      <div className="text-blue-500 mr-3 text-xl">🛠️</div>
+                      <div className="flex-1">
+                        <div className="font-medium">
+                          {project.projectType} 
+                          <span className="text-xs ml-2 text-gray-500">(ID: {project.projectId})</span>
+                          {project.projectCategory === 'Repair' && (
+                            <span className="px-2 py-0.5 ml-2 rounded-full text-xs bg-orange-100 text-orange-800">
+                              Complaint
+                            </span>
+                          )}
+                        </div>
+                        {project.initialRemark && (
+                          <div className="text-sm text-gray-600 mt-1">{project.initialRemark}</div>
+                        )}
+                        <div className="text-xs text-gray-500 mt-1">
+                          Created: {formatDate(project.createdAt)}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="mb-6 p-4 border rounded-lg bg-gray-50">
+                  <p className="text-center text-gray-500">No projects found for this customer.</p>
+                </div>
+              )}
+              
+              {/* Work Order/Complaint Status */}
+              {customer.workOrders && customer.workOrders.length > 0 && (
+                <div className="mb-6">
+                  <h3 className="font-semibold text-lg mb-2">Work Orders & Complaints</h3>
+                  <div className="space-y-3">
+                    {customer.workOrders.map((order, index) => (
+                      <div 
+                        key={index} 
+                        className={`p-3 rounded-md ${
+                          order.status === 'pending' ? 'bg-yellow-50 border-yellow-200' :
+                          order.status === 'assigned' ? 'bg-blue-50 border-blue-200' :
+                          order.status === 'completed' ? 'bg-green-50 border-green-200' :
+                          'bg-gray-50 border-gray-200'
+                        } border`}
+                      >
+                        <div className="flex justify-between mb-1">
+                          <span className="font-medium">
+                            {order.projectCategory === 'Repair' ? 'Complaint' : 'Work Order'} #{order.orderId}
+                          </span>
+                          <span className={`px-2 py-0.5 rounded-full text-xs capitalize ${
+                            order.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                            order.status === 'assigned' ? 'bg-blue-100 text-blue-800' :
+                            order.status === 'completed' ? 'bg-green-100 text-green-800' :
+                            'bg-gray-100 text-gray-800'
+                          }`}>
+                            {order.status}
+                          </span>
+                        </div>
+                        <p className="text-sm text-gray-700">
+                          <span className="font-medium">Project:</span> {order.projectType} (ID: {order.projectId})
+                        </p>
+                        {order.initialRemark && (
+                          <p className="text-sm text-gray-600 mt-1">{order.initialRemark}</p>
+                        )}
+                        <p className="text-xs text-gray-500 mt-1">Created: {formatDate(order.createdAt)}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
               
               {/* Lead History */}
               {customer.convertedFromLead && customer.leadId && (
@@ -291,15 +348,6 @@ const CustomerDetailModal = ({ isOpen, onClose, customerId }) => {
                   </div>
                 </div>
               )}
-              
-              {/* Activity History Placeholder */}
-              <div>
-                <h3 className="font-semibold text-lg mb-2">Recent Activity</h3>
-                <div className="p-6 text-center border rounded-lg">
-                  <p className="text-gray-500">Complaint and project history will appear here.</p>
-                  <p className="text-sm text-gray-400 mt-2">This functionality will be implemented in future updates.</p>
-                </div>
-              </div>
             </div>
           </div>
         </div>
@@ -308,6 +356,23 @@ const CustomerDetailModal = ({ isOpen, onClose, customerId }) => {
           Customer not found
         </div>
       )}
+      
+      {/* Work Order Modal */}
+      <WorkOrderModal
+        isOpen={showWorkOrderModal}
+        onClose={() => setShowWorkOrderModal(false)}
+        customerId={customerId}
+        initialProjectCategory="New Installation"
+        onSuccess={handleWorkOrderSuccess}
+      />
+      
+      {/* Complaint Modal - new component */}
+      <ComplaintModal
+        isOpen={showComplaintModal}
+        onClose={() => setShowComplaintModal(false)}
+        customerId={customerId}
+        onSuccess={handleComplaintSuccess}
+      />
     </Modal>
   );
 };

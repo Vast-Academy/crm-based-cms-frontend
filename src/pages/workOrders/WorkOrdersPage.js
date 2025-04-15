@@ -21,6 +21,9 @@ const WorkOrdersPage = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [filteredOrders, setFilteredOrders] = useState([]);
   
+  // State for filters
+  const [categoryFilter, setCategoryFilter] = useState('all'); // 'all', 'installation', 'repair'
+  
   // State for assignment modal
   const [showAssignModal, setShowAssignModal] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState(null);
@@ -47,6 +50,7 @@ const WorkOrdersPage = () => {
       });
       
       const data = await response.json();
+      console.log('Work orders from API:', data.data);
       
       if (data.success) {
         // Only keep pending orders
@@ -55,7 +59,7 @@ const WorkOrdersPage = () => {
           order.status === 'Pending'
         );
         setWorkOrders(pendingOrders);
-        applySearch(pendingOrders);
+        applyFilters(pendingOrders, categoryFilter);
       } else {
         setError(data.message || 'Failed to fetch work orders');
       }
@@ -88,16 +92,29 @@ const WorkOrdersPage = () => {
       );
     });
     
-    // Apply search again
-    applySearch(workOrders);
+    // Apply filters again
+    applyFilters(workOrders, categoryFilter);
     
     // Close modal
     setShowAssignModal(false);
   };
   
-  // Apply search to the work orders
-  const applySearch = (ordersToFilter) => {
-    let filtered = ordersToFilter;
+  // Apply filters and search to the work orders
+  const applyFilters = (ordersToFilter, category) => {
+    let filtered = [...ordersToFilter];
+    
+    // Apply category filter
+    if (category !== 'all') {
+      if (category === 'installation') {
+        filtered = filtered.filter(order => 
+          order.projectCategory === 'New Installation' || !order.projectCategory
+        );
+      } else if (category === 'repair') {
+        filtered = filtered.filter(order => 
+          order.projectCategory === 'Repair'
+        );
+      }
+    }
     
     // Apply search query
     if (searchQuery.trim() !== '') {
@@ -105,16 +122,23 @@ const WorkOrdersPage = () => {
         (order.customerName && order.customerName.toLowerCase().includes(searchQuery.toLowerCase())) ||
         (order.customerPhone && order.customerPhone.includes(searchQuery)) ||
         (order.orderId && order.orderId.includes(searchQuery)) ||
-        (order.projectId && order.projectId.includes(searchQuery))
+        (order.projectId && order.projectId.includes(searchQuery)) ||
+        (order.projectType && order.projectType.toLowerCase().includes(searchQuery.toLowerCase()))
       );
     }
     
     setFilteredOrders(filtered);
   };
   
+  // Handle filter change
+  const handleFilterChange = (category) => {
+    setCategoryFilter(category);
+    applyFilters(workOrders, category);
+  };
+  
   // Handle search
   useEffect(() => {
-    applySearch(workOrders);
+    applyFilters(workOrders, categoryFilter);
   }, [searchQuery, workOrders]);
   
   const formatDate = (dateString) => {
@@ -135,24 +159,57 @@ const WorkOrdersPage = () => {
       {/* Main Container with White Box */}
       <div className="p-6 bg-white rounded-lg shadow-md max-w-[1300px]">
         {/* Header */}
-        <div className="">
+        <div className="mb-4">
           <h1 className="text-2xl font-semibold text-gray-800">Pending Work Orders</h1>
         </div>
         
-        {/* Search Bar Only */}
-        <div className="py-4">
-          <div className="flex flex-wrap items-center gap-2">
-            {/* Search Bar */}
-            <div className="relative flex-grow">
-              <input
-                type="text"
-                placeholder="Search by customer name, phone, or order ID..."
-                className="w-full px-3 py-2 pl-10 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-              <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-            </div>
+        {/* Filter Buttons */}
+        <div className="mb-4">
+          <div className="flex space-x-2">
+            <button
+              onClick={() => handleFilterChange('all')}
+              className={`px-4 py-1.5 rounded-full text-sm ${
+                categoryFilter === 'all' 
+                  ? 'bg-blue-500 text-white' 
+                  : 'bg-gray-100 text-gray-700'
+              }`}
+            >
+              All
+            </button>
+            <button
+              onClick={() => handleFilterChange('installation')}
+              className={`px-4 py-1.5 rounded-full text-sm ${
+                categoryFilter === 'installation' 
+                  ? 'bg-blue-500 text-white' 
+                  : 'bg-gray-100 text-gray-700'
+              }`}
+            >
+              New Installations
+            </button>
+            <button
+              onClick={() => handleFilterChange('repair')}
+              className={`px-4 py-1.5 rounded-full text-sm ${
+                categoryFilter === 'repair' 
+                  ? 'bg-orange-500 text-white' 
+                  : 'bg-gray-100 text-gray-700'
+              }`}
+            >
+              Complaints
+            </button>
+          </div>
+        </div>
+        
+        {/* Search Bar */}
+        <div className="py-2 mb-4">
+          <div className="relative flex-grow">
+            <input
+              type="text"
+              placeholder="Search by customer name, phone, or order ID..."
+              className="w-full px-3 py-2 pl-10 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+            <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
           </div>
         </div>
         
@@ -171,7 +228,8 @@ const WorkOrdersPage = () => {
                   <tr>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">S.NO</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">CUSTOMER</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">PROJECT</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">PROJECT TYPE</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">CATEGORY</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">DATE CREATED</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">STATUS</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">TECHNICIAN</th>
@@ -181,11 +239,19 @@ const WorkOrdersPage = () => {
                   {filteredOrders.map((order, index) => (
                     <React.Fragment key={`${order.customerId}-${order.orderId}`}>
                       <tr 
-                        className={`cursor-pointer hover:bg-gray-50 ${expandedRow === `${order.customerId}-${order.orderId}` ? 'bg-gray-50' : 'bg-yellow-50'}`}
+                        className={`cursor-pointer hover:bg-gray-50 ${
+                          expandedRow === `${order.customerId}-${order.orderId}` 
+                            ? 'bg-gray-50' 
+                            : order.projectCategory === 'Repair' 
+                              ? 'bg-orange-50' 
+                              : 'bg-yellow-50'
+                        }`}
                         onClick={() => handleRowClick(`${order.customerId}-${order.orderId}`)}
                       >
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="w-8 h-8 rounded-full bg-yellow-500 flex items-center justify-center text-white font-medium">
+                          <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-medium ${
+                            order.projectCategory === 'Repair' ? 'bg-orange-500' : 'bg-yellow-500'
+                          }`}>
                             {index + 1}
                           </div>
                         </td>
@@ -196,6 +262,15 @@ const WorkOrdersPage = () => {
                         <td className="px-6 py-4 whitespace-nowrap">
                           <span className="px-2 py-1 rounded-full text-xs bg-blue-100 text-blue-800">
                             {order.projectType}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className={`px-2 py-1 rounded-full text-xs ${
+                            order.projectCategory === 'Repair' 
+                              ? 'bg-orange-100 text-orange-800' 
+                              : 'bg-green-100 text-green-800'
+                          }`}>
+                            {order.projectCategory === 'Repair' ? 'Complaint' : 'New Installation'}
                           </span>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
@@ -214,12 +289,16 @@ const WorkOrdersPage = () => {
                       {/* Expanded row */}
                       {expandedRow === `${order.customerId}-${order.orderId}` && (
                         <tr>
-                          <td colSpan="6" className="px-6 py-4 bg-gray-50 border-b">
+                          <td colSpan="7" className="px-6 py-4 bg-gray-50 border-b">
                             <div className="space-y-4">
                               {/* Technical details / Remarks */}
                               {order.initialRemark && (
                                 <div>
-                                  <h4 className="font-semibold">Initial Requirements:</h4>
+                                  <h4 className="font-semibold">
+                                    {order.projectCategory === 'Repair' 
+                                      ? 'Complaint Details:' 
+                                      : 'Initial Requirements:'}
+                                  </h4>
                                   <p className="mt-1 text-gray-600">{order.initialRemark}</p>
                                 </div>
                               )}
@@ -255,7 +334,12 @@ const WorkOrdersPage = () => {
                   </p>
                 </div>
               )}
-              {!searchQuery && (
+              {!searchQuery && categoryFilter !== 'all' && (
+                <p className="text-gray-500">
+                  No pending {categoryFilter === 'repair' ? 'complaints' : 'new installation work orders'} found.
+                </p>
+              )}
+              {!searchQuery && categoryFilter === 'all' && (
                 <p className="text-gray-500">
                   {workOrders.length > 0 ? 'No pending work orders found.' : 'No pending work orders found. Create a work order from the customer details page.'}
                 </p>
