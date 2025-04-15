@@ -133,23 +133,21 @@ const TechnicianUsers = () => {
     {user.role === 'admin' ? (
       <Link
         to="/users/technicians/add"
-        className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 flex items-center whitespace-nowrap"
+        className="px-4 py-2 bg-pink-600 text-white rounded-full hover:bg-pink-700 flex items-center whitespace-nowrap"
       >
         <FiPlus className="mr-2" /> Add Technician
       </Link>
     ) : (
       <button
         onClick={() => setModalOpen(true)}
-        className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 flex items-center whitespace-nowrap"
+        className="px-4 py-2 bg-pink-600 text-white rounded-full hover:bg-pink-700 flex items-center whitespace-nowrap"
       >
         <FiPlus className="mr-2" /> Add Technician
       </button>
     )}
     
-   
-  </div>
-   {/* फुल विड्थ सर्च बार */}
-   <div className="relative flex-grow mt-4">
+    {/* फुल विड्थ सर्च बार */}
+    <div className="relative flex-grow">
       <input
         type="text"
         placeholder="Search technicians..."
@@ -161,6 +159,8 @@ const TechnicianUsers = () => {
         <FiSearch className="text-gray-400" />
       </div>
     </div>
+  </div>
+  
 
 </div>
         
@@ -210,7 +210,7 @@ const TechnicianUsers = () => {
                         onClick={() => handleRowClick(technician._id)}
                       >
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="w-8 h-8 rounded-full bg-pink-500 flex items-center justify-center text-white font-medium">
+                          <div className="w-8 h-8 rounded-full bg-pink-600 flex items-center justify-center text-white font-medium">
                             {index + 1}
                           </div>
                         </td>

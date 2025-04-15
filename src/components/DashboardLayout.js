@@ -185,8 +185,8 @@ const DashboardLayout = () => {
           //   ]
           // },
           { name: 'Work Orders', path: '/work-orders', icon: FiTool },
+          { name: 'Projects', path: '/manager-dashboard', icon: FiActivity },
           { name: 'Logs', path: '/inventory-transfer-history', icon: FiRefreshCw },
-          { name: 'Project Dashboard', path: '/manager-dashboard', icon: FiActivity }
         ];
       }
       

@@ -325,35 +325,29 @@ const handleFilterChange = (type, status = 'all') => {
   return (
     <div className="">
       {/* Main Container with White Box */}
-      <div className="bg-white rounded-lg shadow-md">
+      <div className="px-6 bg-white rounded-lg shadow-md max-w-[1000px]">
         {/* Header */}
-        <div className="px-4 py-4 pb-4 flex justify-between">
+        <div className=" py-6 pb-4 flex justify-between">
           <h1 className="text-2xl font-semibold text-gray-800">Lead & Customer Management</h1>
-          <button
-            onClick={() => handleAddNew()}
-            className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-md flex items-center"
-          >
-            <FiPlusCircle className="mr-2" size={18} />
-            Add New Lead/Customer
-          </button>
         </div>
         
         {/* Control Bar - Single row with Add button, filter buttons and search */}
-        <div className="px-4 pb-6 flex flex-wrap items-center gap-4">
-          {/* Add New Button */}
-          {/* <button
+        <div className="pb-4">
+
+          <div className='flex justify-between mb-4'>
+        <button
             onClick={() => handleAddNew()}
-            className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-md flex items-center"
+            className="bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded-md justify-center flex items-center"
           >
-            <FiPlusCircle className="mr-2" size={18} />
+            {/* <FiPlusCircle className="mr-2" size={18} /> */}
             Add New Lead/Customer
-          </button> */}
-          
+          </button>
+
           {/* Filter Buttons */}
           <div className="flex space-x-2">
             <button
              onClick={() => handleFilterChange('all')}
-              className={`px-4 py-1.5 rounded-full text-sm ${
+              className={`px-4 py-1 rounded-full text-sm ${
                 filters.type === 'all' 
                   ? 'bg-blue-500 text-white' 
                   : 'bg-gray-100 text-gray-700'
@@ -363,7 +357,7 @@ const handleFilterChange = (type, status = 'all') => {
             </button>
             <button
                onClick={() => handleFilterChange('lead')}
-              className={`px-4 py-1.5 rounded-full text-sm ${
+              className={`px-4 py-1 rounded-full text-sm ${
                 filters.type === 'lead' 
                   ? 'bg-blue-500 text-white' 
                   : 'bg-gray-100 text-gray-700'
@@ -373,7 +367,7 @@ const handleFilterChange = (type, status = 'all') => {
             </button>
             <button
               onClick={() => handleFilterChange('customer')}
-              className={`px-4 py-1.5 rounded-full text-sm ${
+              className={`px-4 py-1 rounded-full text-sm ${
                 filters.type === 'customer' 
                   ? 'bg-blue-500 text-white' 
                   : 'bg-gray-100 text-gray-700'
@@ -418,17 +412,22 @@ const handleFilterChange = (type, status = 'all') => {
               </>
             )}
           </div>
+        </div>
           
+          <div className="flex items-center gap-2">
+
           {/* Search Bar - push to the right */}
-          <div className="relative ml-auto">
+          <div className="relative flex-grow">
             <input
               type="text"
               placeholder="Search items..."
-              className="w-60 pl-10 pr-4 py-2 border rounded-lg text-sm"
+              className="w-full pl-10 pr-4 py-2 border rounded-lg text-sm"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
             <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+          </div>
+          
           </div>
         </div>
         
@@ -450,8 +449,8 @@ const handleFilterChange = (type, status = 'all') => {
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">PHONE</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">TYPE</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">DATE ADDED</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">STATUS</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">LAST REMARK/PROJECT</th>
+                    {/* <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">STATUS</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">LAST REMARK/PROJECT</th> */}
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
@@ -485,7 +484,7 @@ const handleFilterChange = (type, status = 'all') => {
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                           {formatDate(contact.createdAt)}
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
+                        {/* <td className="px-6 py-4 whitespace-nowrap">
                           {contact.contactType === 'lead' && (
                             <span className={`px-2 py-1 rounded-full text-xs capitalize ${
                               contact.status === 'positive' ? 'bg-green-100 text-green-800' :
@@ -515,7 +514,7 @@ const handleFilterChange = (type, status = 'all') => {
                           ) : (
                             <span className="text-gray-400">No information</span>
                           )}
-                        </td>
+                        </td> */}
                       </tr>
                       
                       {/* Expanded row - only show when expanded */}

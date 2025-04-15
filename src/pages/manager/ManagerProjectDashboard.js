@@ -276,7 +276,7 @@ const ManagerProjectDashboard = () => {
       <div className="bg-white rounded-lg shadow-md">
         {/* Header */}
         <div className="px-4 py-4">
-          <h1 className="text-2xl font-semibold text-gray-800">Project Dashboard</h1>
+          <h1 className="text-2xl font-semibold text-gray-800">Projects</h1>
         </div>
         
         {/* Tabs and Search */}
