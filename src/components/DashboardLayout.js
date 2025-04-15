@@ -172,18 +172,23 @@ const DashboardLayout = () => {
             path: '/inventory',
             icon: FiPackage
           },
-          { 
-            name: 'Customer', 
-            icon: FiUsers, 
-            dropdown: true,
-            isOpen: leadsDropdownOpen,
-            toggle: () => toggleDropdown('leads'),
-            items: [
-              { name: 'Customer & Leads', path: '/contacts' },
-              { name: 'All Leads', path: '/leads' },
-              { name: 'All Customers', path: '/customers' },
-            ]
+          {
+            name: 'Customers',
+            path: '/contacts',
+            icon: FiUsers
           },
+          // { 
+          //   name: 'Customer', 
+          //   icon: FiUsers, 
+          //   dropdown: true,
+          //   isOpen: leadsDropdownOpen,
+          //   toggle: () => toggleDropdown('leads'),
+          //   items: [
+          //     { name: 'Customer & Leads', path: '/contacts' },
+          //     { name: 'All Leads', path: '/leads' },
+          //     { name: 'All Customers', path: '/customers' },
+          //   ]
+          // },
           { name: 'Work Orders', path: '/work-orders', icon: FiTool },
           { name: 'Logs', path: '/inventory-transfer-history', icon: FiRefreshCw },
           { name: 'Project Dashboard', path: '/manager-dashboard', icon: FiActivity }

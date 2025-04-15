@@ -27,6 +27,9 @@ const AllInventoryItems = ({ searchTerm = '' }) => {
     onConfirm: () => {}
   });
 
+  // State to track which row is expanded
+  const [expandedRowId, setExpandedRowId] = useState(null);
+
   // Fetch all inventory items
   useEffect(() => {
     fetchAllItems();
@@ -161,6 +164,17 @@ const AllInventoryItems = ({ searchTerm = '' }) => {
     }
   };
 
+   // Function to toggle expanded row
+   const toggleRowExpansion = (itemId) => {
+    if (expandedRowId === itemId) {
+      // If clicking the same row that's already expanded, collapse it
+      setExpandedRowId(null);
+    } else {
+      // Otherwise expand the clicked row (and collapse any previously expanded row)
+      setExpandedRowId(itemId);
+    }
+  };
+
   return (
     <div>
       {error && (
@@ -229,6 +243,8 @@ const AllInventoryItems = ({ searchTerm = '' }) => {
                     getStockDisplay={getStockDisplay}
                     openViewStockModal={() => openViewStockModal(item)}
                     openAddStockModal={() => openAddStockModal(item)}
+                    isExpanded={expandedRowId === item.id}
+                    toggleExpanded={() => toggleRowExpansion(item.id)}
                   />
                 ))}
               </tbody>
@@ -1112,14 +1128,14 @@ const GenericStockForm = ({ item, onClose, showNotification, onSuccess }) => {
 
 
 // Add this component at the end of your file (before export default)
-const ClickableTableRow = ({ item, index, user, handleDeleteItem, getItemTypeDisplay, getStockDisplay, openViewStockModal, openAddStockModal }) => {
-  const [expanded, setExpanded] = useState(false);
+const ClickableTableRow = ({ item, index, user, handleDeleteItem, getItemTypeDisplay, getStockDisplay, openViewStockModal, openAddStockModal,  isExpanded, toggleExpanded }) => {
+  // const [expanded, setExpanded] = useState(false);
   
   return (
     <React.Fragment>
       <tr 
         className="hover:bg-gray-50 cursor-pointer"
-        onClick={() => setExpanded(!expanded)}
+        onClick={toggleExpanded}
       >
         <td className="px-6 py-4 whitespace-nowrap">
           <div className="w-8 h-8 rounded-full bg-teal-500 flex items-center justify-center text-white font-medium">
@@ -1186,7 +1202,7 @@ const ClickableTableRow = ({ item, index, user, handleDeleteItem, getItemTypeDis
       </tr>
       
       {/* Expandable row for action buttons */}
-      {expanded && (
+      {isExpanded && (
         <tr className="bg-gray-50">
           <td colSpan={user.role === 'admin' ? 9 : 8} className="px-6 py-4 border-b">
             <div className="flex space-x-3">

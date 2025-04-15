@@ -183,14 +183,14 @@ function App() {
                 } 
               />
 
-            <Route 
+            {/* <Route 
               path="leads" 
               element={
                 <ProtectedRoute>
                   <LeadList />
                 </ProtectedRoute>
               } 
-            />
+            /> */}
             {/* <Route 
               path="leads/add" 
               element={
@@ -199,24 +199,24 @@ function App() {
                 </ProtectedRoute>
               } 
             /> */}
-            <Route 
+            {/* <Route 
               path="leads/:id" 
               element={
                 <ProtectedRoute>
                   <LeadDetailRedirect />
                 </ProtectedRoute>
               } 
-            />
+            /> */}
 
             {/* Customer Management Routes */}
-            <Route 
+            {/* <Route 
               path="customers" 
               element={
                 <ProtectedRoute>
                   <CustomerList />
                 </ProtectedRoute>
               } 
-            />
+            /> */}
             
 
             <Route

@@ -12,14 +12,13 @@ const ManagerProjectDashboard = () => {
   const [searchQuery, setSearchQuery] = useState('');
   
   // State for project data
+  const [allProjects, setAllProjects] = useState([]);
   const [pendingApprovals, setPendingApprovals] = useState([]);
   const [inProgressProjects, setInProgressProjects] = useState([]);
   const [completedProjects, setCompletedProjects] = useState([]);
   
   // Filtered data
-  const [filteredPendingApprovals, setFilteredPendingApprovals] = useState([]);
-  const [filteredInProgressProjects, setFilteredInProgressProjects] = useState([]);
-  const [filteredCompletedProjects, setFilteredCompletedProjects] = useState([]);
+  const [filteredProjects, setFilteredProjects] = useState([]);
   
   // State for modal
   const [showDetailsModal, setShowDetailsModal] = useState(false);
@@ -27,7 +26,7 @@ const ManagerProjectDashboard = () => {
   const [expandedProject, setExpandedProject] = useState(null);
   
   // Selected tab
-  const [activeTab, setActiveTab] = useState('pending');
+  const [activeTab, setActiveTab] = useState('all');
   
   // Fetch projects data
   const fetchProjects = async () => {
@@ -50,6 +49,9 @@ const ManagerProjectDashboard = () => {
       const data = await response.json();
       
       if (data.success) {
+        // Store all projects
+        setAllProjects(data.data);
+        
         // Separate projects by status
         const pending = data.data.filter(project => project.status === 'pending-approval');
         const inProgress = data.data.filter(project => 
@@ -61,10 +63,8 @@ const ManagerProjectDashboard = () => {
         setInProgressProjects(inProgress);
         setCompletedProjects(completed);
         
-        // Set filtered data initially
-        setFilteredPendingApprovals(pending);
-        setFilteredInProgressProjects(inProgress);
-        setFilteredCompletedProjects(completed);
+        // Set initial filtered projects based on active tab
+        applyTabFilter(activeTab, data.data, searchQuery);
       } else {
         setError(data.message || 'Failed to fetch projects');
       }
@@ -76,58 +76,62 @@ const ManagerProjectDashboard = () => {
     }
   };
   
+  // Apply tab filter
+  const applyTabFilter = (tab, projects = allProjects, query = searchQuery) => {
+    let filtered = [];
+    
+    // First filter by tab/status
+    switch(tab) {
+      case 'all':
+        filtered = [...projects];
+        break;
+      case 'pending-approval':
+        filtered = projects.filter(project => project.status === 'pending-approval');
+        break;
+      case 'in-progress':
+        filtered = projects.filter(project => 
+          ['assigned', 'in-progress', 'paused'].includes(project.status)
+        );
+        break;
+      case 'completed':
+        filtered = projects.filter(project => project.status === 'completed');
+        break;
+      default:
+        filtered = [...projects];
+    }
+    
+    // Then apply search query if needed
+    if (query.trim() !== '') {
+      const lowercaseQuery = query.toLowerCase();
+      filtered = filtered.filter(project => 
+        (project.customerName && project.customerName.toLowerCase().includes(lowercaseQuery)) ||
+        (project.projectType && project.projectType.toLowerCase().includes(lowercaseQuery)) ||
+        (project.technician && 
+          (`${project.technician.firstName} ${project.technician.lastName}`).toLowerCase().includes(lowercaseQuery)) ||
+        (project.orderId && project.orderId.toLowerCase().includes(lowercaseQuery)) ||
+        (project.approvedBy && 
+          (`${project.approvedBy.firstName} ${project.approvedBy.lastName}`).toLowerCase().includes(lowercaseQuery))
+      );
+    }
+    
+    setFilteredProjects(filtered);
+  };
+  
   // Initial data fetch
   useEffect(() => {
     fetchProjects();
   }, [user.selectedBranch]);
   
+  // Handle tab change
+  const handleTabChange = (tab) => {
+    setActiveTab(tab);
+    applyTabFilter(tab);
+  };
+  
   // Filter data when search query changes
   useEffect(() => {
-    if (searchQuery.trim() === '') {
-      // Reset to full list when search is empty
-      setFilteredPendingApprovals(pendingApprovals);
-      setFilteredInProgressProjects(inProgressProjects);
-      setFilteredCompletedProjects(completedProjects);
-      return;
-    }
-    
-    const query = searchQuery.toLowerCase();
-    
-    // Filter pending approvals
-    setFilteredPendingApprovals(
-      pendingApprovals.filter(project => 
-        (project.customerName && project.customerName.toLowerCase().includes(query)) ||
-        (project.projectType && project.projectType.toLowerCase().includes(query)) ||
-        (project.technician && 
-          (`${project.technician.firstName} ${project.technician.lastName}`).toLowerCase().includes(query)) ||
-        (project.orderId && project.orderId.toLowerCase().includes(query))
-      )
-    );
-    
-    // Filter in-progress projects
-    setFilteredInProgressProjects(
-      inProgressProjects.filter(project => 
-        (project.customerName && project.customerName.toLowerCase().includes(query)) ||
-        (project.projectType && project.projectType.toLowerCase().includes(query)) ||
-        (project.technician && 
-          (`${project.technician.firstName} ${project.technician.lastName}`).toLowerCase().includes(query)) ||
-        (project.orderId && project.orderId.toLowerCase().includes(query))
-      )
-    );
-    
-    // Filter completed projects
-    setFilteredCompletedProjects(
-      completedProjects.filter(project => 
-        (project.customerName && project.customerName.toLowerCase().includes(query)) ||
-        (project.projectType && project.projectType.toLowerCase().includes(query)) ||
-        (project.technician && 
-          (`${project.technician.firstName} ${project.technician.lastName}`).toLowerCase().includes(query)) ||
-        (project.orderId && project.orderId.toLowerCase().includes(query)) ||
-        (project.approvedBy && 
-          (`${project.approvedBy.firstName} ${project.approvedBy.lastName}`).toLowerCase().includes(query))
-      )
-    );
-  }, [searchQuery, pendingApprovals, inProgressProjects, completedProjects]);
+    applyTabFilter(activeTab, allProjects, searchQuery);
+  }, [searchQuery]);
   
   // Format date function
   const formatDate = (dateString) => {
@@ -155,14 +159,6 @@ const ManagerProjectDashboard = () => {
       const data = await response.json();
       
       if (data.success) {
-        // Console log to debug the project details
-        console.log('Project details received:', data.data);
-        
-        // Check whether assignedBy is properly populated
-        if (data.data.assignedBy) {
-          console.log('AssignedBy details:', data.data.assignedBy);
-        }
-        
         setSelectedProject(data.data);
         setShowDetailsModal(true);
       } else {
@@ -190,35 +186,20 @@ const ManagerProjectDashboard = () => {
     
     setCompletedProjects(prev => [updatedProject, ...prev]);
     
-    // Apply filters again
-    if (searchQuery) {
-      const query = searchQuery.toLowerCase();
+    // Update all projects
+    setAllProjects(prev => {
+      const updatedProjects = prev.map(p => {
+        if (p.orderId === updatedProject.orderId && p.customerId === updatedProject.customerId) {
+          return updatedProject;
+        }
+        return p;
+      });
       
-      // Update filtered pending approvals
-      setFilteredPendingApprovals(prev => prev.filter(p => 
-        !(p.orderId === updatedProject.orderId && p.customerId === updatedProject.customerId)
-      ));
+      // Re-apply filtering
+      applyTabFilter(activeTab, updatedProjects, searchQuery);
       
-      // Check if updated project matches search
-      const projectMatches = 
-        (updatedProject.customerName && updatedProject.customerName.toLowerCase().includes(query)) ||
-        (updatedProject.projectType && updatedProject.projectType.toLowerCase().includes(query)) ||
-        (updatedProject.technician && 
-          (`${updatedProject.technician.firstName} ${updatedProject.technician.lastName}`).toLowerCase().includes(query)) ||
-        (updatedProject.orderId && updatedProject.orderId.toLowerCase().includes(query)) ||
-        (updatedProject.approvedBy && 
-          (`${updatedProject.approvedBy.firstName} ${updatedProject.approvedBy.lastName}`).toLowerCase().includes(query));
-      
-      if (projectMatches) {
-        setFilteredCompletedProjects(prev => [updatedProject, ...prev]);
-      }
-    } else {
-      // No search, just update filtered state
-      setFilteredPendingApprovals(prev => prev.filter(p => 
-        !(p.orderId === updatedProject.orderId && p.customerId === updatedProject.customerId)
-      ));
-      setFilteredCompletedProjects(prev => [updatedProject, ...prev]);
-    }
+      return updatedProjects;
+    });
     
     // Close modal
     setShowDetailsModal(false);
@@ -251,93 +232,247 @@ const ManagerProjectDashboard = () => {
     }
   };
   
-  if (loading && (!pendingApprovals.length && !inProgressProjects.length && !completedProjects.length)) {
+  // Get row border color
+  const getRowBorder = (status) => {
+    switch(status) {
+      case 'pending-approval':
+        return 'border-yellow-500';
+      case 'assigned':
+        return 'border-blue-500';
+      case 'in-progress':
+        return 'border-purple-500';
+      case 'paused':
+        return 'border-orange-500';
+      case 'completed':
+        return 'border-green-500';
+      default:
+        return 'border-gray-300';
+    }
+  };
+  
+  // Get status circle colors for S.NO
+  const getStatusCircleColor = (status) => {
+    switch(status) {
+      case 'pending-approval':
+        return 'bg-yellow-500';
+      case 'assigned':
+      case 'in-progress':
+      case 'paused':
+        return 'bg-blue-500';
+      case 'completed':
+        return 'bg-green-500';
+      default:
+        return 'bg-gray-500';
+    }
+  };
+  
+  if (loading && !allProjects.length) {
     return <LoadingSpinner />;
   }
   
   return (
-    <div className="p-4">
-      <div className="flex justify-between items-center mb-6">
-        <div>
+    <div className="">
+      {/* Main Container with White Box */}
+      <div className="bg-white rounded-lg shadow-md">
+        {/* Header */}
+        <div className="px-4 py-4">
           <h1 className="text-2xl font-semibold text-gray-800">Project Dashboard</h1>
-          <p className="text-gray-600">Manage and monitor all projects</p>
         </div>
         
-        <div className="flex space-x-2">
-          <div className="relative">
-            <input
-              type="text"
-              placeholder="Search projects..."
-              className="pl-10 pr-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
-            <FiSearch className="absolute left-3 top-3 text-gray-400" />
+        {/* Tabs and Search */}
+        <div className="px-4 mb-4">
+          <div className="flex flex-wrap items-center gap-4">
+            {/* Filter Buttons */}
+            <div className="flex space-x-2">
+              <button
+                onClick={() => handleTabChange('all')}
+                className={`px-4 py-1.5 rounded-full text-sm ${
+                  activeTab === 'all' 
+                    ? 'bg-blue-500 text-white' 
+                    : 'bg-gray-100 text-gray-700'
+                }`}
+              >
+                All
+              </button>
+              <button
+                onClick={() => handleTabChange('pending-approval')}
+                className={`px-4 py-1.5 rounded-full text-sm ${
+                  activeTab === 'pending-approval' 
+                    ? 'bg-yellow-500 text-white' 
+                    : 'bg-yellow-100 text-yellow-800'
+                }`}
+              >
+                Pending Approval
+                <span className="ml-2 bg-white text-yellow-800 px-1.5 py-0.5 rounded-full text-xs">
+                  {pendingApprovals.length}
+                </span>
+              </button>
+              <button
+                onClick={() => handleTabChange('in-progress')}
+                className={`px-4 py-1.5 rounded-full text-sm ${
+                  activeTab === 'in-progress' 
+                    ? 'bg-blue-500 text-white' 
+                    : 'bg-blue-100 text-blue-800'
+                }`}
+              >
+                In Progress
+                <span className="ml-2 bg-white text-blue-800 px-1.5 py-0.5 rounded-full text-xs">
+                  {inProgressProjects.length}
+                </span>
+              </button>
+              <button
+                onClick={() => handleTabChange('completed')}
+                className={`px-4 py-1.5 rounded-full text-sm ${
+                  activeTab === 'completed' 
+                    ? 'bg-green-500 text-white' 
+                    : 'bg-green-100 text-green-800'
+                }`}
+              >
+                Completed
+                <span className="ml-2 bg-white text-green-800 px-1.5 py-0.5 rounded-full text-xs">
+                  {completedProjects.length}
+                </span>
+              </button>
+            </div>
+            
+            {/* Search */}
+            <div className="relative ml-auto">
+              <input
+                type="text"
+                placeholder="Search projects..."
+                className="w-60 pl-10 pr-4 py-2 border rounded-lg text-sm"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+              <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+            </div>
           </div>
-          
-          <button
-            onClick={fetchProjects}
-            className="px-4 py-2 bg-white border rounded-md flex items-center hover:bg-gray-50"
-          >
-            <FiRefreshCw className="mr-2" />
-            Refresh
-          </button>
         </div>
-      </div>
-      
-      {error && (
-        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-          {error}
-        </div>
-      )}
-      
-      {/* Tab navigation */}
-      <div className="mb-6 border-b">
-        <div className="flex space-x-6">
-          <button
-            className={`py-3 px-1 flex items-center ${
-              activeTab === 'pending' 
-                ? 'border-b-2 border-blue-500 text-blue-600 font-medium' 
-                : 'text-gray-500 hover:text-gray-700'
-            }`}
-            onClick={() => setActiveTab('pending')}
-          >
-            <FiClock className="mr-2" />
-            Pending Approvals
-            <span className="ml-2 bg-yellow-100 text-yellow-800 px-2 py-0.5 rounded-full text-xs">
-              {filteredPendingApprovals.length}
-            </span>
-          </button>
-          
-          <button
-            className={`py-3 px-1 flex items-center ${
-              activeTab === 'in-progress' 
-                ? 'border-b-2 border-blue-500 text-blue-600 font-medium' 
-                : 'text-gray-500 hover:text-gray-700'
-            }`}
-            onClick={() => setActiveTab('in-progress')}
-          >
-            <FiActivity className="mr-2" />
-            In-Progress Projects
-            <span className="ml-2 bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full text-xs">
-              {filteredInProgressProjects.length}
-            </span>
-          </button>
-          
-          <button
-            className={`py-3 px-1 flex items-center ${
-              activeTab === 'completed' 
-                ? 'border-b-2 border-blue-500 text-blue-600 font-medium' 
-                : 'text-gray-500 hover:text-gray-700'
-            }`}
-            onClick={() => setActiveTab('completed')}
-          >
-            <FiCheckCircle className="mr-2" />
-            Completed Projects
-            <span className="ml-2 bg-green-100 text-green-800 px-2 py-0.5 rounded-full text-xs">
-              {filteredCompletedProjects.length}
-            </span>
-          </button>
+        
+        {error && (
+          <div className="mx-4 mb-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
+            {error}
+          </div>
+        )}
+        
+        {/* Projects Table */}
+        <div className="border-t">
+          {filteredProjects.length > 0 ? (
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">S.NO</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">TECHNICIAN</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">CUSTOMER</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">PROJECT</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">LAST UPDATED</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">STATUS</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200">
+                  {filteredProjects.map((project, index) => (
+                    <React.Fragment key={`${project.customerId}-${project.orderId}`}>
+                      <tr 
+                        className={`hover:bg-gray-50 cursor-pointer ${
+                          expandedProject === `${project.customerId}-${project.orderId}` ? 'bg-gray-50' : ''
+                        }`}
+                        onClick={() => handleRowClick(`${project.customerId}-${project.orderId}`)}
+                      >
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className={`w-8 h-8 rounded-full ${getStatusCircleColor(project.status)} flex items-center justify-center text-white font-medium`}>
+                            {index + 1}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          {project.technician ? (
+                            <div className="font-medium text-gray-900">
+                              {project.technician.firstName} {project.technician.lastName}
+                            </div>
+                          ) : (
+                            <span className="text-gray-500">Not Assigned</span>
+                          )}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          {project.customerName}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className="px-2 py-1 rounded-full text-xs bg-blue-100 text-blue-800">
+                            {project.projectType}
+                          </span>
+                          {/* <div className="text-xs text-gray-500 mt-1">{project.orderId}</div> */}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {project.updatedAt ? formatDate(project.updatedAt) : formatDate(project.createdAt)}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className={`px-2 py-1 rounded-full text-xs capitalize ${getStatusBadge(project.status)}`}>
+                            {project.status === 'pending-approval' ? 'Pending Approval' : project.status}
+                          </span>
+                        </td>
+                      </tr>
+                      
+                      {/* Expanded row */}
+                      {expandedProject === `${project.customerId}-${project.orderId}` && (
+                        <tr>
+                          <td colSpan="6" className="px-6 py-4 bg-gray-50 border-b">
+                            <div className="flex">
+                              {/* <div className="flex-1">
+                                {project.status === 'completed' && (
+                                  <div className="mb-2">
+                                    <span className="font-medium">Approved by:</span>{' '}
+                                    {project.approvedBy ? (
+                                      <span>{project.approvedBy.firstName} {project.approvedBy.lastName}</span>
+                                    ) : (
+                                      <span>Auto-approved</span>
+                                    )}
+                                    {project.approvedAt && (
+                                      <span> on {formatDate(project.approvedAt)}</span>
+                                    )}
+                                  </div>
+                                )}
+                                
+                                {project.completedAt && (
+                                  <div className="mb-2">
+                                    <span className="font-medium">Completed:</span> {formatDate(project.completedAt)}
+                                  </div>
+                                )}
+                              </div> */}
+                              
+                              <button 
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleViewProject(project);
+                                }}
+                                className="inline-flex items-center px-4 py-1.5 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-500 hover:bg-blue-600"
+                              >
+                                <FiEye className="mr-2" /> View Details
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </React.Fragment>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <div className="p-8 text-center">
+              {searchQuery ? (
+                <p className="text-gray-500">
+                  No projects matching "{searchQuery}" found.
+                </p>
+              ) : (
+                <p className="text-gray-500">
+                  {activeTab === 'all' ? 'No projects found.' : 
+                   activeTab === 'pending-approval' ? 'No pending approvals found.' :
+                   activeTab === 'in-progress' ? 'No in-progress projects found.' :
+                   'No completed projects found.'}
+                </p>
+              )}
+            </div>
+          )}
         </div>
       </div>
       
@@ -352,284 +487,6 @@ const ManagerProjectDashboard = () => {
           project={selectedProject}
           onProjectApproved={handleProjectApproved}
         />
-      )}
-      
-      {/* Pending Approvals Section */}
-      {activeTab === 'pending' && (
-        <div className="bg-white rounded-lg shadow-md overflow-hidden">
-          <div className="p-4 border-b">
-            <h2 className="text-lg font-medium text-gray-800 flex items-center">
-              <FiClock className="mr-2 text-yellow-500" />
-              Pending Approvals
-            </h2>
-          </div>
-          
-          {filteredPendingApprovals.length > 0 ? (
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Technician</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Customer</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Project</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Completed Date</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {filteredPendingApprovals.map((project) => (
-                    <React.Fragment key={`${project.customerId}-${project.orderId}`}>
-                      <tr 
-                        className="hover:bg-gray-50 cursor-pointer"
-                        onClick={() => handleRowClick(`${project.customerId}-${project.orderId}`)}
-                      >
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          {project.technician ? (
-                            <div className="font-medium text-gray-900">
-                              {project.technician.firstName} {project.technician.lastName}
-                            </div>
-                          ) : (
-                            <span className="text-gray-500">Not Assigned</span>
-                          )}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="font-medium text-gray-900">{project.customerName}</div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-gray-900">{project.projectType}</div>
-                          <div className="text-sm text-gray-500">{project.orderId}</div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {project.completedAt ? formatDate(project.completedAt) : 'N/A'}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span className={`px-2 py-1 rounded-full text-xs capitalize ${getStatusBadge(project.status)}`}>
-                            Pending Approval
-                          </span>
-                        </td>
-                      </tr>
-                      
-                      {/* Expanded row */}
-                      {expandedProject === `${project.customerId}-${project.orderId}` && (
-                        <tr>
-                          <td colSpan="5" className="px-6 py-4 bg-gray-50">
-                            <div className="text-right">
-                              <button 
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleViewProject(project);
-                                }}
-                                className="px-4 py-2 bg-blue-500 text-white rounded-md flex items-center ml-auto"
-                              >
-                                <FiEye className="mr-2" /> View Details
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      )}
-                    </React.Fragment>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          ) : (
-            <div className="p-8 text-center text-gray-500">
-              No pending approvals found.
-            </div>
-          )}
-        </div>
-      )}
-      
-      {/* In-Progress Projects Section */}
-      {activeTab === 'in-progress' && (
-        <div className="bg-white rounded-lg shadow-md overflow-hidden">
-          <div className="p-4 border-b">
-            <h2 className="text-lg font-medium text-gray-800 flex items-center">
-              <FiActivity className="mr-2 text-blue-500" />
-              In-Progress Projects
-            </h2>
-          </div>
-          
-          {filteredInProgressProjects.length > 0 ? (
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Technician</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Customer</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Project</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Last Updated</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Latest Update</th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {filteredInProgressProjects.map((project) => (
-                    <React.Fragment key={`${project.customerId}-${project.orderId}`}>
-                      <tr 
-                        className={`border-l-4 ${
-                          project.status === 'assigned' ? 'border-blue-500' :
-                          project.status === 'in-progress' ? 'border-purple-500' : 
-                          'border-orange-500'
-                        } hover:bg-gray-50 cursor-pointer`}
-                        onClick={() => handleRowClick(`${project.customerId}-${project.orderId}`)}
-                      >
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          {project.technician ? (
-                            <div className="font-medium text-gray-900">
-                              {project.technician.firstName} {project.technician.lastName}
-                            </div>
-                          ) : (
-                            <span className="text-gray-500">Not Assigned</span>
-                          )}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="font-medium text-gray-900">{project.customerName}</div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-gray-900">{project.projectType}</div>
-                          <div className="text-sm text-gray-500">{project.orderId}</div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {project.updatedAt ? formatDate(project.updatedAt) : 'N/A'}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span className={`px-2 py-1 rounded-full text-xs capitalize ${getStatusBadge(project.status)}`}>
-                            {project.status}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm text-gray-500 max-w-xs truncate">
-                            {project.statusHistory && project.statusHistory.length > 0 
-                              ? project.statusHistory[0].remark || 'No message' 
-                              : 'No updates'}
-                          </div>
-                        </td>
-                      </tr>
-                      
-                      {/* Expanded row */}
-                      {expandedProject === `${project.customerId}-${project.orderId}` && (
-                        <tr>
-                          <td colSpan="6" className="px-6 py-4 bg-gray-50">
-                            <div className="text-right">
-                              <button 
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleViewProject(project);
-                                }}
-                                className="px-4 py-2 bg-blue-500 text-white rounded-md flex items-center ml-auto"
-                              >
-                                <FiEye className="mr-2" /> View Details
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      )}
-                    </React.Fragment>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          ) : (
-            <div className="p-8 text-center text-gray-500">
-              No in-progress projects found.
-            </div>
-          )}
-        </div>
-      )}
-      
-      {/* Completed Projects Section */}
-      {activeTab === 'completed' && (
-        <div className="bg-white rounded-lg shadow-md overflow-hidden">
-          <div className="p-4 border-b">
-            <h2 className="text-lg font-medium text-gray-800 flex items-center">
-              <FiCheckCircle className="mr-2 text-green-500" />
-              Completed Projects
-            </h2>
-          </div>
-          
-          {filteredCompletedProjects.length > 0 ? (
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Technician</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Customer</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Project</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Completed Date</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Approved By</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Approved On</th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {filteredCompletedProjects.map((project) => (
-                    <React.Fragment key={`${project.customerId}-${project.orderId}`}>
-                      <tr 
-                        className="border-l-4 border-green-500 hover:bg-gray-50 cursor-pointer"
-                        onClick={() => handleRowClick(`${project.customerId}-${project.orderId}`)}
-                      >
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          {project.technician ? (
-                            <div className="font-medium text-gray-900">
-                              {project.technician.firstName} {project.technician.lastName}
-                            </div>
-                          ) : (
-                            <span className="text-gray-500">Not Assigned</span>
-                          )}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="font-medium text-gray-900">{project.customerName}</div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-gray-900">{project.projectType}</div>
-                          <div className="text-sm text-gray-500">{project.orderId}</div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {project.completedAt ? formatDate(project.completedAt) : 'N/A'}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          {project.approvedBy ? (
-                            <div className="text-gray-900">
-                              {project.approvedBy.firstName} {project.approvedBy.lastName}
-                            </div>
-                          ) : (
-                            <span className="text-gray-500">Auto-approved</span>
-                          )}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {project.approvedAt ? formatDate(project.approvedAt) : 'N/A'}
-                        </td>
-                      </tr>
-                      
-                      {/* Expanded row */}
-                      {expandedProject === `${project.customerId}-${project.orderId}` && (
-                        <tr>
-                          <td colSpan="6" className="px-6 py-4 bg-gray-50">
-                            <div className="text-right">
-                              <button 
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleViewProject(project);
-                                }}
-                                className="px-4 py-2 bg-blue-500 text-white rounded-md flex items-center ml-auto"
-                              >
-                                <FiEye className="mr-2" /> View Details
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      )}
-                    </React.Fragment>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          ) : (
-            <div className="p-8 text-center text-gray-500">
-              No completed projects found.
-            </div>
-          )}
-        </div>
       )}
     </div>
   );
