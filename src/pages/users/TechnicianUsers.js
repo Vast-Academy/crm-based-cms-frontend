@@ -146,8 +146,10 @@ const TechnicianUsers = () => {
       </button>
     )}
     
-    {/* फुल विड्थ सर्च बार */}
-    <div className="relative flex-grow">
+  </div>
+  
+   {/* फुल विड्थ सर्च बार */}
+   <div className="relative flex-grow mt-4">
       <input
         type="text"
         placeholder="Search technicians..."
@@ -159,8 +161,6 @@ const TechnicianUsers = () => {
         <FiSearch className="text-gray-400" />
       </div>
     </div>
-  </div>
-  
 
 </div>
         

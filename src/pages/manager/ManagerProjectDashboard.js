@@ -390,9 +390,11 @@ const ManagerProjectDashboard = () => {
                             <div className="font-medium text-gray-900">
                               {project.technician.firstName} {project.technician.lastName}
                             </div>
-                          ) : (
+                          ) 
+                          : (
                             <span className="text-gray-500">Not Assigned</span>
-                          )}
+                          )
+                          }
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                           {project.customerName}

@@ -329,8 +329,24 @@ const handleFilterChange = (type, status = 'all') => {
         {/* Header */}
         <div className="py-6 pb-4 flex justify-between">
           <h1 className="text-2xl font-semibold text-gray-800">Lead & Customer Management</h1>
-            {/* Filter Buttons */}
-            <div className="flex space-x-2">
+           
+        </div>
+        
+        {/* Control Bar - Single row with Add button, filter buttons and search */}
+        <div className="pb-4">
+          
+          <div className="flex items-center justify-between gap-4">
+          <button
+            onClick={() => handleAddNew()}
+            className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-full flex items-center whitespace-nowrap"
+          >
+            <FiPlusCircle className="mr-2" size={18} />
+            Add New Lead/Customer
+          </button>
+
+          
+           {/* Filter Buttons */}
+           <div className="flex space-x-2">
             <button
              onClick={() => handleFilterChange('all')}
               className={`px-4 py-1.5 rounded-full text-sm ${
@@ -398,22 +414,10 @@ const handleFilterChange = (type, status = 'all') => {
               </>
             )}
           </div>
-        </div>
-        
-        {/* Control Bar - Single row with Add button, filter buttons and search */}
-        <div className="pb-4">
-          
-          <div className="flex items-center gap-2">
-          <button
-            onClick={() => handleAddNew()}
-            className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-full flex items-center whitespace-nowrap"
-          >
-            <FiPlusCircle className="mr-2" size={18} />
-            Add New Lead/Customer
-          </button>
+          </div>
 
-          {/* Search Bar - push to the right */}
-          <div className="relative flex-grow">
+{/* Search Bar - push to the right */}
+<div className="relative flex-grow mt-4">
             <input
               type="text"
               placeholder="Search customers..."
@@ -423,9 +427,6 @@ const handleFilterChange = (type, status = 'all') => {
             />
             <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
           </div>
-          
-          </div>
-
 
         </div>
         
