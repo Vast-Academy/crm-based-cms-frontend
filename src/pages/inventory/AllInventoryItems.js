@@ -200,7 +200,7 @@ const AllInventoryItems = ({ searchTerm = '' }) => {
       </div> */}
       
       {/* Items List */}
-      <div className="bg-white rounded-lg shadow-md overflow-hidden">
+      <div className="bg-white rounded-lg overflow-hidden">
         {/* <div className="p-4 border-b bg-gray-50">
           <h2 className="text-lg font-semibold text-gray-700">All Inventory Items</h2>
         </div> */}
