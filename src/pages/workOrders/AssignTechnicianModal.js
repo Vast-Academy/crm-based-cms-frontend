@@ -53,6 +53,13 @@ const AssignTechnicianModal = ({ isOpen, onClose, workOrder, onSuccess }) => {
       setError(null);
     }
   }, [isOpen]);
+
+  // कहीं useEffect imports के बाद और component के अंदर
+useEffect(() => {
+  if (isOpen && workOrder) {
+    console.log("Modal workOrder:", workOrder); // यह console में दिखाएगा कि क्या initialRemark मिल रहा है
+  }
+}, [isOpen, workOrder]);
   
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -125,13 +132,23 @@ const AssignTechnicianModal = ({ isOpen, onClose, workOrder, onSuccess }) => {
             {isComplaint ? 'Complaint Details:' : 'Work Order Details:'}
           </h3>
           <div className={`mt-2 p-3 rounded-md ${isComplaint ? 'bg-orange-50' : 'bg-gray-50'}`}>
-            <p><span className="font-medium">Order ID:</span> {workOrder.orderId}</p>
+            {/* <p><span className="font-medium">Order ID:</span> {workOrder.orderId}</p> */}
+            {isComplaint ? (
+      <div className="mb-2 p-2 bg-white rounded border border-orange-200">
+        <p className="font-medium text-orange-700 mb-1">Project Information:</p>
+        <p><span className="font-medium">Type:</span> {workOrder.projectType}</p>
+        <p><span className="font-medium">Project ID:</span> {workOrder.projectId}</p>
+        <p><span className="font-medium">Created:</span> {new Date(workOrder.createdAt).toLocaleDateString()}</p>
+      </div>
+    ) : (
+      <p><span className="font-medium">Project:</span> {workOrder.projectType}</p>
+    )}
             <p><span className="font-medium">Customer:</span> {workOrder.customerName}</p>
-            <p><span className="font-medium">Project:</span> {workOrder.projectType}</p>
+           
             {workOrder.initialRemark && (
               <p className="mt-2">
                 <span className="font-medium">
-                  {isComplaint ? 'Complaint Details:' : 'Initial Requirements:'}
+                  {isComplaint ? 'Complaint Remark:' : 'Project Remark:'}
                 </span>
                 <br />
                 <span className="text-gray-700">{workOrder.initialRemark}</span>

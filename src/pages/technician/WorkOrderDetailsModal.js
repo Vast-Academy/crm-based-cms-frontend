@@ -300,6 +300,19 @@ const renderProjectContent = () => {
           <div className="bg-gray-50 p-4 rounded-lg">
             <p><span className="font-medium">Type:</span> {workOrder.projectType}</p>
             <p><span className="font-medium">Category:</span> {workOrder.projectCategory || 'New Installation'}</p>
+
+             {/* Show Project ID only for Repair/Complaint */}
+      {workOrder.projectCategory === 'Repair' && (
+        <>
+          <p><span className="text-gray-500">Project ID:</span> {workOrder.projectId}</p>
+          <p><span className="text-gray-500">Created Date:</span> {formatDate(workOrder.createdAt)}</p>
+          
+          {/* If we have information about who completed it first */}
+          {workOrder.completedBy && (
+            <p><span className="text-gray-500">Completed By:</span> {workOrder.completedBy}</p>
+          )}
+        </>
+      )}
           </div>
         </div>
         
@@ -437,19 +450,33 @@ const renderProjectContent = () => {
           </div>
         </div>
         
-        {/* Project Requirements */}
-        {workOrder.initialRemark && (
-          <div className="mb-4">
-            <h3 className="text-md font-medium flex items-center mb-3">
-              <FiInfo className="mr-2" />
-              Project Requirements
-            </h3>
-            
-            <div className="bg-white border rounded-lg p-3">
-              <p className="text-sm">{workOrder.initialRemark}</p>
-            </div>
-          </div>
-        )}
+       {/* Project Requirements - only show if available */}
+{workOrder.initialRemark && (
+  <div className="mb-4">
+    <h3 className="text-md font-medium flex items-center mb-3">
+      <FiInfo className="mr-2" />
+      Project Requirements
+    </h3>
+    
+    <div className="bg-white border rounded-lg p-3">
+      <p className="text-sm">{workOrder.initialRemark}</p>
+    </div>
+  </div>
+)}
+
+{/* Special Instructions - only show if available */}
+{workOrder.instructions && (
+  <div className="mb-4">
+    <h3 className="text-md font-medium flex items-center mb-3">
+      <FiInfo className="mr-2" />
+      Special Instructions
+    </h3>
+    
+    <div className="bg-white border rounded-lg p-3">
+      <p className="text-sm">{workOrder.instructions}</p>
+    </div>
+  </div>
+)}
         
         {/* Status History */}
         {workOrder.statusHistory && workOrder.statusHistory.length > 0 && (
@@ -665,14 +692,15 @@ const renderProjectContent = () => {
         <div className="mt-6 space-y-2">
           {/* For assigned work orders - show Start Project button */}
           {workOrder.status === 'assigned' && (
-            <button 
-              className="w-full bg-green-500 hover:bg-green-600 text-white py-2 rounded-md flex items-center justify-center"
-              onClick={() => updateStatus('in-progress')}
-              disabled={loading}
-            >
-              <FiPlay className="mr-2" /> Start Project
-            </button>
-          )}
+  <button 
+    className="w-full bg-green-500 hover:bg-green-600 text-white py-2 rounded-md flex items-center justify-center"
+    onClick={() => updateStatus('in-progress')}
+    disabled={loading}
+  >
+    <FiPlay className="mr-2" /> 
+    {workOrder.projectCategory === 'Repair' ? 'Start Complaint' : 'Start Project'}
+  </button>
+)}
           
           {/* For in-progress work orders - show Pause Project OR Complete Project buttons */}
           {workOrder.status === 'in-progress' && (
@@ -1211,7 +1239,9 @@ const updateItemQuantity = (index, newQuantity) => {
     <div className="fixed inset-0 bg-gray-600 bg-opacity-75 flex justify-center items-center z-50 p-2 overflow-auto">
       <div className="bg-white rounded-lg shadow-xl w-full max-w-md max-h-[90vh] overflow-hidden ">
         <div className="sticky top-0 bg-white p-4 border-b flex justify-between items-center">
-          <h2 className="text-lg font-semibold">Work Order Details</h2>
+        <h2 className="text-lg font-semibold">
+    {workOrder.projectCategory === 'Repair' ? 'Complaint Details' : 'Work Order Details'}
+  </h2>
           <button 
             onClick={onClose}
             className="p-1 rounded-full hover:bg-gray-100"

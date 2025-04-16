@@ -80,6 +80,7 @@ const WorkOrdersPage = () => {
   };
   
   const handleAssignTechnician = (order) => {
+    console.log("Assigning order:", order);
     setSelectedOrder(order);
     setShowAssignModal(true);
   };
