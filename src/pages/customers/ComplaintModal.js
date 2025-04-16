@@ -3,46 +3,68 @@ import React, { useState, useEffect } from 'react';
 import { FiX } from 'react-icons/fi';
 import SummaryApi from '../../common';
 import LoadingSpinner from '../../components/LoadingSpinner';
+import { useNavigate } from 'react-router-dom';
 
 const ComplaintModal = ({ isOpen, onClose, customerId, onSuccess }) => {
   const [loading, setLoading] = useState(false);
+  const navigate = useNavigate();
   const [error, setError] = useState(null);
   const [customerProjects, setCustomerProjects] = useState([]);
   const [selectedProjectId, setSelectedProjectId] = useState('');
   const [complaintRemark, setComplaintRemark] = useState('');
   const [fetchingProjects, setFetchingProjects] = useState(false);
   
-  // Fetch customer's existing projects
-  const fetchCustomerProjects = async () => {
-    if (!customerId) return;
+ // Fetch customer's existing completed projects
+const fetchCustomerProjects = async () => {
+  if (!customerId) return;
+  
+  try {
+    setFetchingProjects(true);
+    setError(null);
     
-    try {
-      setFetchingProjects(true);
-      setError(null);
+    const response = await fetch(`${SummaryApi.getCustomer.url}/${customerId}`, {
+      method: SummaryApi.getCustomer.method,
+      credentials: 'include'
+    });
+    
+    const data = await response.json();
+    
+    if (data.success && data.data.projects && data.data.projects.length > 0) {
+      // Filter projects to include only those with completed work orders
+      const completedProjects = [];
       
-      const response = await fetch(`${SummaryApi.getCustomer.url}/${customerId}`, {
-        method: SummaryApi.getCustomer.method,
-        credentials: 'include'
-      });
-      
-      const data = await response.json();
-      
-      if (data.success && data.data.projects && data.data.projects.length > 0) {
-        setCustomerProjects(data.data.projects);
-        // Auto-select the first project if available
-        if (data.data.projects.length > 0) {
-          setSelectedProjectId(data.data.projects[0].projectId);
+      // Loop through all projects
+      for (const project of data.data.projects) {
+        // Find work orders for this project
+        const matchingWorkOrder = data.data.workOrders && 
+          data.data.workOrders.find(wo => 
+            wo.projectId === project.projectId && wo.status === 'completed'
+          );
+        
+        // If there's a completed work order for this project, add it to our list
+        if (matchingWorkOrder) {
+          completedProjects.push(project);
         }
-      } else {
-        setError('No existing projects found for this customer');
       }
-    } catch (err) {
-      setError('Server error. Please try again later.');
-      console.error('Error fetching customer projects:', err);
-    } finally {
-      setFetchingProjects(false);
+      
+      setCustomerProjects(completedProjects);
+      
+      // Auto-select the first project if available
+      if (completedProjects.length > 0) {
+        setSelectedProjectId(completedProjects[0].projectId);
+      } else {
+        setError('No completed projects found for this customer');
+      }
+    } else {
+      setError('No projects found for this customer');
     }
-  };
+  } catch (err) {
+    setError('Server error. Please try again later.');
+    console.error('Error fetching customer projects:', err);
+  } finally {
+    setFetchingProjects(false);
+  }
+};
   
   // Fetch projects when modal opens
   useEffect(() => {
@@ -101,6 +123,8 @@ const ComplaintModal = ({ isOpen, onClose, customerId, onSuccess }) => {
       if (data.success) {
         if (onSuccess) onSuccess(data.data);
         onClose();
+
+        navigate('/work-orders');
       } else {
         setError(data.message || 'Failed to create complaint');
       }

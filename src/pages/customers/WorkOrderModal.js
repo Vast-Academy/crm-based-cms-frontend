@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { FiSave, FiX } from 'react-icons/fi';
 import SummaryApi from '../../common';
+import { useNavigate } from 'react-router-dom';
 
 // Project types for customers
 const projectTypes = [
@@ -16,6 +17,7 @@ const projectTypes = [
 
 const WorkOrderModal = ({ isOpen, onClose, customerId, initialProjectCategory = 'New Installation', onSuccess }) => {
   const [loading, setLoading] = useState(false);
+  const navigate = useNavigate();
   const [error, setError] = useState(null);
   const [projectType, setProjectType] = useState('');
   const [projectCategory, setProjectCategory] = useState(initialProjectCategory);
@@ -57,6 +59,9 @@ const WorkOrderModal = ({ isOpen, onClose, customerId, initialProjectCategory = 
       if (data.success) {
         if (onSuccess) onSuccess(data.data);
         onClose();
+
+         // Use navigate instead of window.location
+        navigate('/work-orders');
       } else {
         setError(data.message || 'Failed to create work order');
       }

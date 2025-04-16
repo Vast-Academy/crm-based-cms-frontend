@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { FiSave, FiX } from 'react-icons/fi';
 import SummaryApi from '../../common';
 import { useAuth } from '../../context/AuthContext';
+import { useNavigate } from 'react-router-dom';
 
 // Country codes array
 const countryCodes = [
@@ -27,6 +28,7 @@ const projectTypes = [
 
 const AddContactForm = ({ initialPhone = '', initialType = 'lead', onSuccess, onCancel }) => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(false);
@@ -254,9 +256,11 @@ const AddContactForm = ({ initialPhone = '', initialType = 'lead', onSuccess, on
         if (data.success) {
           setSuccess(true);
           // Notify parent component of success
-          setTimeout(() => {
-            if (onSuccess) onSuccess(data.data);
-          }, 1500);
+          // setTimeout(() => {
+          //   if (onSuccess) onSuccess(data.data);
+          // }, 1500);
+
+          navigate('/work-orders');
         } else {
           setError(data.message || 'Failed to add customer');
         }

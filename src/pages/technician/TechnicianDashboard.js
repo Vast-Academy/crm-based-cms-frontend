@@ -1204,7 +1204,7 @@ const filteredInventoryItems = getFilteredInventoryItems();
       <div className="p-4 max-h-[70vh] overflow-y-auto">
         {/* Manager's initial instruction */}
         <div className="mb-3">
-          <div className={`rounded-lg p-3 max-w-xs ${darkMode ? 'bg-blue-900/30' : 'bg-blue-100'}`}>
+          <div className={`rounded-lg p-3 max-w-xs mb-2 ${darkMode ? 'bg-blue-900/30' : 'bg-blue-100'}`}>
             <div className="flex justify-between mb-1">
               <p className="font-medium text-sm">Manager</p>
               <p className="text-xs opacity-70">
@@ -1218,6 +1218,24 @@ const filteredInventoryItems = getFilteredInventoryItems();
               {formatDate(activeProject.assignedAt || activeProject.createdAt).split(',')[1]}
             </span>
           </div>
+          
+          {activeProject.instructions && (
+          <div className={`rounded-lg p-3 max-w-xs ${darkMode ? 'bg-blue-900/30' : 'bg-blue-100'}`}>
+            <div className="flex justify-between mb-1">
+              <p className="font-medium text-sm">Manager</p>
+              <p className="text-xs opacity-70">
+                {formatDate(activeProject.assignedAt || activeProject.createdAt).split(',')[0]}
+              </p>
+            </div>
+            <p className="text-sm">
+              {activeProject.instructions}
+            </p>
+            <span className="text-xs opacity-70 flex justify-end">
+              {formatDate(activeProject.assignedAt || activeProject.createdAt).split(',')[1]}
+            </span>
+          </div>
+          )}
+
         </div>
        
         {/* Status history as chat messages */}

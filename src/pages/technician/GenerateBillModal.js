@@ -96,6 +96,13 @@ const GenerateBillModal = ({ isOpen, onClose, workOrder, onBillGenerated }) => {
     const results = [];
     const query = searchQuery.toLowerCase();
     const addedSerialNumbers = new Set(); // Track added serial numbers
+
+    // First, collect all already selected serial numbers
+  selectedItems.forEach(item => {
+    if (item.type === 'serialized-product' && item.selectedSerialNumber) {
+      addedSerialNumbers.add(item.selectedSerialNumber);
+    }
+  });
     
     // Search in inventory items
     technicianInventory.forEach(item => {
@@ -111,7 +118,6 @@ const GenerateBillModal = ({ isOpen, onClose, workOrder, onBillGenerated }) => {
         
         if (activeSerials && activeSerials.length > 0) {
           activeSerials.forEach(serialItem => {
-            addedSerialNumbers.add(serialItem.serialNumber);
             results.push({
               ...item,
               selectedSerialNumber: serialItem.serialNumber,
