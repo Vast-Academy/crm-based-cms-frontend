@@ -138,7 +138,12 @@ useEffect(() => {
         <p className="font-medium text-orange-700 mb-1">Project Information:</p>
         <p><span className="font-medium">Type:</span> {workOrder.projectType}</p>
         <p><span className="font-medium">Project ID:</span> {workOrder.projectId}</p>
-        <p><span className="font-medium">Created:</span> {new Date(workOrder.createdAt).toLocaleDateString()}</p>
+        <p><span className="font-medium">Created:</span> {
+          // यहां project creation date का उपयोग करें
+          workOrder.projectCreatedAt 
+            ? new Date(workOrder.projectCreatedAt).toLocaleDateString() 
+            : new Date(workOrder.createdAt).toLocaleDateString()
+        }</p>
       </div>
     ) : (
       <p><span className="font-medium">Project:</span> {workOrder.projectType}</p>

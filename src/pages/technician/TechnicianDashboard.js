@@ -465,6 +465,7 @@ const filteredInventoryItems = getFilteredInventoryItems();
         });
         
         const data = await response.json();
+        console.log("data from API", data);
         
         if (data.success) {
           // Separate active and completed work orders

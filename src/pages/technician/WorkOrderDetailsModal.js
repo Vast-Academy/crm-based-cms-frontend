@@ -302,17 +302,16 @@ const renderProjectContent = () => {
             <p><span className="font-medium">Category:</span> {workOrder.projectCategory || 'New Installation'}</p>
 
              {/* Show Project ID only for Repair/Complaint */}
-      {workOrder.projectCategory === 'Repair' && (
+      {/* {workOrder.projectCategory === 'Repair' && (
         <>
           <p><span className="text-gray-500">Project ID:</span> {workOrder.projectId}</p>
           <p><span className="text-gray-500">Created Date:</span> {formatDate(workOrder.createdAt)}</p>
           
-          {/* If we have information about who completed it first */}
           {workOrder.completedBy && (
             <p><span className="text-gray-500">Completed By:</span> {workOrder.completedBy}</p>
           )}
         </>
-      )}
+      )} */}
           </div>
         </div>
         
@@ -428,6 +427,23 @@ const renderProjectContent = () => {
             <div className="space-y-2 text-sm">
               <p><span className="text-gray-500">Project Type:</span> {workOrder.projectCategory || 'New Installation'}</p>
               <p><span className="text-gray-500">Project Category:</span> {workOrder.projectType}</p>
+
+                {/* Show Project ID and Created Date */}
+      <p><span className="text-gray-500">Project ID:</span> {workOrder.projectId}</p>
+      
+      {/* Original Project Date for both Repair and New Installation */}
+      <p>
+        <span className="text-gray-500">Project Date:</span> {
+          workOrder.projectCreatedAt 
+            ? formatDate(workOrder.projectCreatedAt) 
+            : formatDate(workOrder.createdAt)
+        }
+      </p>
+
+      {/* If we have information about who completed it first (only for Repair) */}
+      {workOrder.projectCategory === 'Repair' && workOrder.completedBy && (
+        <p><span className="text-gray-500">Completed By:</span> {workOrder.completedBy}</p>
+      )}
             </div>
           </div>
         </div>
