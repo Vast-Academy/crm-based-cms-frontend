@@ -244,7 +244,7 @@ const handleBillGenerated = async (selectedItems, paymentCompleted = false) => {
         handleTabChange('home');
         
         // Show a success message
-        alert('Payment completed. Project has been marked for approval.');
+        // alert('Payment completed. Project has been marked for approval.');
       }
     } catch (err) {
       console.error('Error updating project status:', err);
