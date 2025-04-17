@@ -106,6 +106,27 @@ const WorkOrderDetailsModal = (props) => {
     }
   }, [workOrder?.orderId]);
 
+  useEffect(() => {
+    // मॉडल खुलने पर हिस्ट्री स्टेट पुश करें
+    if (isOpen) {
+      window.history.pushState({ modal: 'workOrderDetails' }, '');
+      
+      // बैक बटन हैंडलर
+      const handleBackButton = (event) => {
+        // इवेंट.स्टेट चेक करें और मॉडल बंद करें
+        onClose();
+      };
+      
+      // पॉपस्टेट इवेंट लिसनर जोड़ें
+      window.addEventListener('popstate', handleBackButton);
+      
+      // क्लीनअप
+      return () => {
+        window.removeEventListener('popstate', handleBackButton);
+      };
+    }
+  }, [isOpen, onClose]);
+
   // ESC कुंजी के लिए इवेंट हैंडलर
   useEffect(() => {
     const handleEscKey = (event) => {
