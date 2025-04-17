@@ -379,7 +379,7 @@ const filteredInventoryItems = getFilteredInventoryItems();
       const cachedTimestamp = localStorage.getItem('technicianInventoryTimestamp');
       
       // Set a cache expiry time (e.g., 5 minutes = 300000 milliseconds)
-      const cacheExpiryTime = 5 * 60 * 1000;
+      const cacheExpiryTime = 1 * 60 * 1000;
       const currentTime = new Date().getTime();
       
       // Use cached data if it exists and is fresh
@@ -434,7 +434,7 @@ const filteredInventoryItems = getFilteredInventoryItems();
       // Check cached data
       const cachedOrders = localStorage.getItem('technicianWorkOrders');
       const cachedTimestamp = localStorage.getItem('technicianWorkOrdersTimestamp');
-      const cacheExpiryTime = 5 * 60 * 1000; // 5 minutes
+      const cacheExpiryTime = 1 * 60 * 1000; // 5 minutes
       const currentTime = new Date().getTime();
       
       if (cachedOrders && cachedTimestamp && 

@@ -8,15 +8,9 @@ const LoadingSpinner = () => {
         <div className="h-full bg-indigo-500 animate-progressBar"></div>
       </div>
      
-      {/* Absolutely centered circle using calc */}
-      <div className="fixed w-full h-full bg-white bg-opacity-80 z-40">
-        <div
-          className="absolute"
-          style={{
-            top: 'calc(50% - 32px)',
-             left: 'calc(50% - 32px)'
-          }}
-        >
+      {/* Add this to your main content area (the area to the right of sidebar) */}
+      <div className="absolute inset-0 flex items-center justify-center bg-white bg-opacity-80 z-40">
+        <div className="relative">
           <div className="w-16 h-16 rounded-full absolute border-8 border-gray-200"></div>
           <div className="w-16 h-16 rounded-full animate-spin absolute border-8 border-indigo-500 border-t-transparent"></div>
         </div>
@@ -24,4 +18,5 @@ const LoadingSpinner = () => {
     </>
   );
 };
+
 export default LoadingSpinner;
