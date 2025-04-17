@@ -50,6 +50,7 @@ const SimpleScanner = ({ onScan, onClose }) => {
 const WorkOrderDetailsModal = (props) => {
   const { isOpen, onClose, workOrder, onStatusUpdate, onProjectStarted, darkMode = false } = props;
   const modalContentRef = useRef(null);
+  const modalBackdropRef = useRef(null); 
   const [remark, setRemark] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -105,11 +106,31 @@ const WorkOrderDetailsModal = (props) => {
     }
   }, [workOrder?.orderId]);
 
-  // useEffect(() => {
-  //   if (isOpen && workOrder && workOrder.projectCategory === 'Repair') {
-  //     fetchComplaintDetails();
-  //   }
-  // }, [isOpen, workOrder]);
+  // ESC कुंजी के लिए इवेंट हैंडलर
+  useEffect(() => {
+    const handleEscKey = (event) => {
+      if (event.key === 'Escape') {
+        onClose();
+      }
+    };
+
+    // बैकड्रॉप क्लिक हैंडलर
+    const handleClickOutside = (event) => {
+      if (modalBackdropRef.current && event.target === modalBackdropRef.current) {
+        onClose();
+      }
+    };
+
+    // लिसनर्स जोड़ें
+    document.addEventListener('keydown', handleEscKey);
+    document.addEventListener('mousedown', handleClickOutside);
+
+    // क्लीनअप
+    return () => {
+      document.removeEventListener('keydown', handleEscKey);
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [onClose]);
 
   
   // Fetch technician's inventory
@@ -1286,7 +1307,9 @@ const updateItemQuantity = (index, newQuantity) => {
   
   
   return (
-    <div className="fixed inset-0 bg-gray-600 bg-opacity-75 flex justify-center items-center z-50 p-2 overflow-auto">
+    <div
+    ref={modalBackdropRef}
+     className="fixed inset-0 bg-gray-600 bg-opacity-75 flex justify-center items-center z-50 p-2 overflow-auto">
       <div className="bg-white rounded-lg shadow-xl w-full max-w-md max-h-[90vh] overflow-hidden ">
         <div className="sticky top-0 bg-white p-4 border-b flex justify-between items-center">
         <h2 className="text-lg font-semibold">

@@ -428,7 +428,7 @@ const ManagerProjectDashboard = () => {
                       {/* Expanded row */}
                       {expandedProject === `${project.customerId}-${project.orderId}` && (
                         <tr>
-                          <td colSpan="6" className="px-6 py-4 bg-gray-50 border-b">
+                          <td colSpan="8" className="px-6 py-4 bg-gray-50 border-b">
                             <div className="flex">
                               {/* <div className="flex-1">
                                 {project.status === 'completed' && (
