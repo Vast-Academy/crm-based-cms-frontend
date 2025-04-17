@@ -105,12 +105,11 @@ const WorkOrderDetailsModal = (props) => {
     }
   }, [workOrder?.orderId]);
 
-  useEffect(() => {
-    // Only fetch for repair projects
-    if (isOpen && workOrder && workOrder.projectCategory === 'Repair') {
-      fetchComplaintDetails();
-    }
-  }, [isOpen, workOrder]);
+  // useEffect(() => {
+  //   if (isOpen && workOrder && workOrder.projectCategory === 'Repair') {
+  //     fetchComplaintDetails();
+  //   }
+  // }, [isOpen, workOrder]);
 
   
   // Fetch technician's inventory
@@ -160,53 +159,6 @@ const WorkOrderDetailsModal = (props) => {
   
   if (!isOpen || !workOrder) return null;
 
-  
-
-  // Add this function to fetch complaint details
-const fetchComplaintDetails = async () => {
-  try {
-    // First approach: try to find complaint details in the status history
-    if (workOrder.statusHistory && workOrder.statusHistory.length > 0) {
-      // Look for the first status entry, which might contain the complaint details
-      const firstStatusEntry = [...workOrder.statusHistory].reverse().find(entry => 
-        entry.status === 'assigned' || entry.remark.includes('complaint') || entry.remark.includes('Complaint')
-      );
-      
-      if (firstStatusEntry && firstStatusEntry.remark) {
-        setComplaintDetails(firstStatusEntry.remark);
-        return;
-      }
-    }
-    
-    // Second approach: try to directly fetch complaint details from the work order details API
-    const response = await fetch(`${SummaryApi.getWorkOrderDetails.url}/${workOrder.customerId}/${workOrder.orderId}`, {
-      method: SummaryApi.getWorkOrderDetails.method,
-      credentials: 'include'
-    });
-    
-    const data = await response.json();
-    
-    if (data.success && data.data) {
-      // Look for complaint details in various possible locations
-      if (data.data.complaintRemark) {
-        setComplaintDetails(data.data.complaintRemark);
-      } else if (data.data.initialRemark) {
-        setComplaintDetails(data.data.initialRemark);
-      } else if (data.data.statusHistory && data.data.statusHistory.length > 0) {
-        // Try to find complaint details in status history again with more data
-        const firstEntry = [...data.data.statusHistory].reverse().find(entry => 
-          entry.status === 'assigned' || entry.remark.includes('complaint') || entry.remark.includes('Complaint')
-        );
-        
-        if (firstEntry && firstEntry.remark) {
-          setComplaintDetails(firstEntry.remark);
-        }
-      }
-    }
-  } catch (err) {
-    console.error('Error fetching complaint details:', err);
-  }
-};
   
   const formatDate = (dateString) => {
     const options = { 
@@ -522,8 +474,8 @@ const renderProjectContent = () => {
           </div>
         </div>
         
-      {/* Project Requirements or Complaint Details section */}
-      {workOrder.projectCategory === 'Repair' && workOrder.complaintRemark ? (
+        {/* Complaint Details section - ONLY show for 'Repair' category */}
+{/* {workOrder.projectCategory === 'Repair' && (
   <div className="mb-4">
     <h3 className="text-md font-medium flex items-center mb-3">
       <FiInfo className="mr-2" />
@@ -531,21 +483,36 @@ const renderProjectContent = () => {
     </h3>
     
     <div className="bg-white border rounded-lg p-3">
-      <p className="text-sm">{workOrder.complaintRemark}</p>
+      <p className="text-sm">{complaintDetails || "No complaint details available"}</p>
     </div>
   </div>
-) : workOrder.initialRemark ? (
+)}
+
+{(workOrder.projectCategory !== 'Repair' || !complaintDetails) && workOrder.initialRemark && (
   <div className="mb-4">
     <h3 className="text-md font-medium flex items-center mb-3">
       <FiInfo className="mr-2" />
-      {workOrder.projectCategory === 'Repair' ? 'Complaint Details' : 'Project Requirements'}
+      Project Requirements
     </h3>
     
     <div className="bg-white border rounded-lg p-3">
       <p className="text-sm">{workOrder.initialRemark}</p>
     </div>
   </div>
-) : null}
+)} */}
+
+{workOrder.initialRemark && (
+ <div className="mb-4">
+ <h3 className="text-md font-medium flex items-center mb-3">
+   <FiInfo className="mr-2" />
+   Project Requirements
+ </h3>
+ 
+ <div className="bg-white border rounded-lg p-3">
+   <p className="text-sm">{workOrder.initialRemark}</p>
+ </div>
+</div> 
+)}
 
 {/* Special Instructions - only show if available */}
 {workOrder.instructions && (
