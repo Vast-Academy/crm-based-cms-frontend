@@ -44,6 +44,10 @@ const TechnicianDashboard = () => {
     return sessionStorage.getItem('technicianDashboardActiveTab') || 'home';
   });
   const [showLogoutPopup, setShowLogoutPopup] = useState(false);
+  const [lastRefreshTime, setLastRefreshTime] = useState({
+    inventory: 0,
+    workOrders: 0
+  });
   
   
   // States for modals
@@ -61,6 +65,9 @@ const TechnicianDashboard = () => {
   const [pauseProjectRemark, setPauseProjectRemark] = useState('');
   const [showBillModal, setShowBillModal] = useState(false);
   const [showPauseConfirmationModal, setShowPauseConfirmationModal] = useState(false);
+
+  // नया कॉन्स्टेंट जोड़ें
+const CACHE_STALENESS_TIME = 15 * 1000;
 
   // Handle logout
   const handleLogout = () => {
@@ -370,44 +377,27 @@ const getFilteredInventoryItems = () => {
 const filteredInventoryItems = getFilteredInventoryItems();
 
   // Fetch technician inventory
-  const fetchInventory = async () => {
+  const fetchInventory = async (forceFresh = false) => {
     try {
       setLoading(true);
       
-      // Check if we have cached data and it's not too old
+      // चेक करें अगर कैश डेटा है और स्टेल नहीं है
       const cachedInventory = localStorage.getItem('technicianInventory');
-      const cachedTimestamp = localStorage.getItem('technicianInventoryTimestamp');
-      
-      // Set a cache expiry time (e.g., 5 minutes = 300000 milliseconds)
-      const cacheExpiryTime = 1 * 60 * 1000;
       const currentTime = new Date().getTime();
       
-      // Use cached data if it exists and is fresh
-      if (cachedInventory && cachedTimestamp && 
-          (currentTime - parseInt(cachedTimestamp) < cacheExpiryTime)) {
+      // कैश चेक केवल तभी करें जब forceFresh false हो
+      if (!forceFresh && cachedInventory) {
         setInventoryItems(JSON.parse(cachedInventory));
         console.log("Using cached inventory data");
+        
+        // एक हिडन API कॉल करें जो डेटा को बैकग्राउंड में अपडेट करेगा
+        fetchFreshInventoryInBackground();
       } else {
-        // Fetch fresh data
-        const response = await fetch(SummaryApi.getTechnicianInventory.url, {
-          method: SummaryApi.getTechnicianInventory.method,
-          credentials: 'include'
-        });
-        
-        const data = await response.json();
-        
-        if (data.success) {
-          setInventoryItems(data.data);
-          
-          // Cache the data and timestamp
-          localStorage.setItem('technicianInventory', JSON.stringify(data.data));
-          localStorage.setItem('technicianInventoryTimestamp', currentTime.toString());
-        } else {
-          setError('Failed to load inventory: ' + data.message);
-        }
+        // ताज़ा डेटा फेच करें
+        await fetchFreshInventory();
       }
     } catch (err) {
-      // If there's an error but we have cached data, use it as fallback
+      // अगर एरर है लेकिन कैश्ड डेटा है, तो उसे फॉलबैक के रूप में इस्तेमाल करें
       const cachedInventory = localStorage.getItem('technicianInventory');
       if (cachedInventory) {
         setInventoryItems(JSON.parse(cachedInventory));
@@ -416,8 +406,64 @@ const filteredInventoryItems = getFilteredInventoryItems();
         setError('Error loading inventory. Please try again later.');
         console.error('Error fetching inventory:', err);
       }
+    } finally {
+      setLoading(false);
     }
   };
+
+  // बैकग्राउंड में ताजा इन्वेंटरी डेटा फेच करें
+const fetchFreshInventoryInBackground = async () => {
+  try {
+    const response = await fetch(SummaryApi.getTechnicianInventory.url, {
+      method: SummaryApi.getTechnicianInventory.method,
+      credentials: 'include'
+    });
+    
+    const data = await response.json();
+    
+    if (data.success) {
+      // डेटा कैश करें
+      localStorage.setItem('technicianInventory', JSON.stringify(data.data));
+      
+      // स्टेट अपडेट करें, केवल अगर कुछ अलग है
+      if (JSON.stringify(data.data) !== JSON.stringify(inventoryItems)) {
+        setInventoryItems(data.data);
+        console.log("Inventory data updated in background");
+      }
+      
+      // रिफ्रेश टाइम अपडेट करें
+      setLastRefreshTime(prev => ({...prev, inventory: new Date().getTime()}));
+    }
+  } catch (err) {
+    console.error('Error fetching inventory in background:', err);
+  }
+};
+
+// नया फंक्शन जो डायरेक्ट API से ताज़ा डेटा प्राप्त करता है
+const fetchFreshInventory = async () => {
+  try {
+    const response = await fetch(SummaryApi.getTechnicianInventory.url, {
+      method: SummaryApi.getTechnicianInventory.method,
+      credentials: 'include'
+    });
+    
+    const data = await response.json();
+    
+    if (data.success) {
+      setInventoryItems(data.data);
+      
+      // कैश अपडेट करें
+      localStorage.setItem('technicianInventory', JSON.stringify(data.data));
+      
+      // रिफ्रेश टाइम अपडेट करें
+      setLastRefreshTime(prev => ({...prev, inventory: new Date().getTime()}));
+    } else {
+      setError('Failed to load inventory: ' + data.message);
+    }
+  } catch (err) {
+    throw err;
+  }
+};
 
   // Handle inventory returned
   const handleInventoryReturned = () => {
@@ -428,99 +474,147 @@ const filteredInventoryItems = getFilteredInventoryItems();
     fetchInventory();
   };
 
-  // Fetch technician work orders
-  const fetchWorkOrders = async () => {
-    try {
-      // Check cached data
-      const cachedOrders = localStorage.getItem('technicianWorkOrders');
-      const cachedTimestamp = localStorage.getItem('technicianWorkOrdersTimestamp');
-      const cacheExpiryTime = 1 * 60 * 1000; // 5 minutes
-      const currentTime = new Date().getTime();
+ // fetchWorkOrders फंक्शन को अपडेट करें
+const fetchWorkOrders = async (forceFresh = false) => {
+  try {
+    // कैश चेक केवल तभी करें जब forceFresh false हो
+    const cachedOrders = localStorage.getItem('technicianWorkOrders');
+    
+    if (!forceFresh && cachedOrders) {
+      const parsedData = JSON.parse(cachedOrders);
       
-      if (cachedOrders && cachedTimestamp && 
-          (currentTime - parseInt(cachedTimestamp) < cacheExpiryTime)) {
-        const parsedData = JSON.parse(cachedOrders);
-        
-        // Separate active and completed work orders
-        const active = [];
-        const completed = [];
-        
-        parsedData.forEach(order => {
-          if (order.status === 'completed') {
-            completed.push(order);
-          } else {
-            active.push(order);
-          }
-        });
-        
-        setWorkOrders(active);
-        setCompletedOrders(completed);
-        setLoading(false);
-        console.log("Using cached work orders data");
-      } else {
-        // Fetch fresh data
-        const response = await fetch(SummaryApi.getTechnicianWorkOrders.url, {
-          method: SummaryApi.getTechnicianWorkOrders.method,
-          credentials: 'include'
-        });
-        
-        const data = await response.json();
-        console.log("data from API", data);
-        
-        if (data.success) {
-          // Separate active and completed work orders
-          const active = [];
-          const completed = [];
-          
-          data.data.forEach(order => {
-            if (order.status === 'completed') {
-              completed.push(order);
-            } else {
-              active.push(order);
-            }
-          });
-          
-          setWorkOrders(active);
-          setCompletedOrders(completed);
-          
-          // Cache the data and timestamp
-          localStorage.setItem('technicianWorkOrders', JSON.stringify(data.data));
-          localStorage.setItem('technicianWorkOrdersTimestamp', currentTime.toString());
+      // सक्रिय और पूरे किए गए वर्क ऑर्डर्स को अलग करें
+      const active = [];
+      const completed = [];
+      
+      parsedData.forEach(order => {
+        if (order.status === 'completed') {
+          completed.push(order);
         } else {
-          setError('Failed to load work orders: ' + data.message);
+          active.push(order);
         }
-        
-        setLoading(false);
-      }
-    } catch (err) {
-      // Use cached data as fallback
-      const cachedOrders = localStorage.getItem('technicianWorkOrders');
-      if (cachedOrders) {
-        const parsedData = JSON.parse(cachedOrders);
-        
-        // Separate active and completed work orders
-        const active = [];
-        const completed = [];
-        
-        parsedData.forEach(order => {
-          if (order.status === 'completed') {
-            completed.push(order);
-          } else {
-            active.push(order);
-          }
-        });
-        
+      });
+      
+      setWorkOrders(active);
+      setCompletedOrders(completed);
+      console.log("Using cached work orders data");
+      
+      // बैकग्राउंड में फ्रेश डेटा फेच करें
+      fetchFreshWorkOrdersInBackground();
+    } else {
+      // ताज़ा डेटा फेच करें
+      await fetchFreshWorkOrders();
+    }
+  } catch (err) {
+    // फॉलबैक के रूप में कैश का उपयोग करें
+    const cachedOrders = localStorage.getItem('technicianWorkOrders');
+    if (cachedOrders) {
+      const parsedData = JSON.parse(cachedOrders);
+      
+      // सक्रिय और पूरे किए गए वर्क ऑर्डर्स को अलग करें
+      const active = [];
+      const completed = [];
+      
+      parsedData.forEach(order => {
+        if (order.status === 'completed') {
+          completed.push(order);
+        } else {
+          active.push(order);
+        }
+      });
+      
+      setWorkOrders(active);
+      setCompletedOrders(completed);
+      console.log("Using cached work orders data after fetch error");
+    } else {
+      setError('Error loading work orders. Please try again later.');
+      console.error('Error fetching work orders:', err);
+    }
+  } finally {
+    setLoading(false);
+  }
+};
+
+// बैकग्राउंड में ताजा वर्क ऑर्डर डेटा फेच करें
+const fetchFreshWorkOrdersInBackground = async () => {
+  try {
+    const response = await fetch(SummaryApi.getTechnicianWorkOrders.url, {
+      method: SummaryApi.getTechnicianWorkOrders.method,
+      credentials: 'include'
+    });
+    
+    const data = await response.json();
+    
+    if (data.success) {
+      // डेटा कैश करें
+      localStorage.setItem('technicianWorkOrders', JSON.stringify(data.data));
+      
+      // सक्रिय और पूरे किए गए वर्क ऑर्डर्स को अलग करें
+      const active = [];
+      const completed = [];
+      
+      data.data.forEach(order => {
+        if (order.status === 'completed') {
+          completed.push(order);
+        } else {
+          active.push(order);
+        }
+      });
+      
+      // चेक करें कि क्या डेटा अलग है, अगर हां तो ही स्टेट अपडेट करें
+      if (JSON.stringify(active) !== JSON.stringify(workOrders) || 
+          JSON.stringify(completed) !== JSON.stringify(completedOrders)) {
         setWorkOrders(active);
         setCompletedOrders(completed);
-        console.log("Using cached work orders data after fetch error");
-      } else {
-        setError('Error loading work orders. Please try again later.');
-        console.error('Error fetching work orders:', err);
+        console.log("Work orders updated in background");
       }
       
-      setLoading(false);
+      // रिफ्रेश टाइम अपडेट करें
+      setLastRefreshTime(prev => ({...prev, workOrders: new Date().getTime()}));
     }
-  };
+  } catch (err) {
+    console.error('Error fetching work orders in background:', err);
+  }
+};
+
+// नया फंक्शन जो सीधे API से ताज़ा डेटा प्राप्त करता है
+const fetchFreshWorkOrders = async () => {
+  try {
+    const response = await fetch(SummaryApi.getTechnicianWorkOrders.url, {
+      method: SummaryApi.getTechnicianWorkOrders.method,
+      credentials: 'include'
+    });
+    
+    const data = await response.json();
+    
+    if (data.success) {
+      // सक्रिय और पूरे किए गए वर्क ऑर्डर्स को अलग करें
+      const active = [];
+      const completed = [];
+      
+      data.data.forEach(order => {
+        if (order.status === 'completed') {
+          completed.push(order);
+        } else {
+          active.push(order);
+        }
+      });
+      
+      setWorkOrders(active);
+      setCompletedOrders(completed);
+      
+      // कैश अपडेट करें
+      localStorage.setItem('technicianWorkOrders', JSON.stringify(data.data));
+      
+      // रिफ्रेश टाइम अपडेट करें
+      setLastRefreshTime(prev => ({...prev, workOrders: new Date().getTime()}));
+    } else {
+      setError('Failed to load work orders: ' + data.message);
+    }
+  } catch (err) {
+    throw err;
+  }
+};
 
   // Calculate total units across all inventory items
   const calculateTotalUnits = () => {
@@ -714,7 +808,25 @@ const filteredInventoryItems = getFilteredInventoryItems();
               <h1 className="font-bold text-xl">{user?.firstName || 'Technician'}</h1>
             </div>
           </div>
-          <div className="flex space-x-3">
+          <div className="flex ">
+  <div className={`text-xs ${darkMode ? 'text-gray-400' : 'text-gray-500'} flex items-center`}>
+    <button 
+      onClick={() => {
+        fetchFreshInventory();
+        fetchFreshWorkOrders();
+      }}
+      className={`p-2 rounded-full mr-2 ${darkMode ? 'bg-gray-700 hover:bg-gray-600' : 'bg-gray-200 hover:bg-gray-300'}`}
+    >
+      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/>
+      </svg>
+    </button>
+    {/* {lastRefreshTime.workOrders > 0 && (
+      <span>
+        Last updated: {new Date(lastRefreshTime.workOrders).toLocaleTimeString()}
+      </span>
+    )} */}
+  </div>
             <button 
               onClick={toggleTheme}
               className="p-2 rounded-full bg-white/20 backdrop-blur-sm hover:bg-white/30 transition-all"
