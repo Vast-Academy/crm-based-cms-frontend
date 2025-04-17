@@ -307,6 +307,19 @@ const ProjectDetailsModal = ({ isOpen, onClose, project, onProjectApproved }) =>
               </div>
             </div>
           )}
+
+          {project.instructions && (
+            <div className="mb-6">
+              <h3 className="text-md font-medium flex items-center mb-3">
+                <FiInfo className="mr-2" />
+                Special Instructions
+              </h3>
+              
+              <div className="bg-white border rounded-lg p-4">
+                <p className="text-sm">{project.instructions}</p>
+              </div>
+            </div>
+          )}
           
           {/* Status History */}
           {project.statusHistory && project.statusHistory.length > 0 && (

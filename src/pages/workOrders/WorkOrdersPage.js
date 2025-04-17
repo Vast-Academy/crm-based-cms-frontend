@@ -86,18 +86,23 @@ const WorkOrdersPage = () => {
   };
   
   const handleAssignmentSuccess = (updatedOrder) => {
-    // Update the order in the list
+    // Remove the assigned order from the current list
     setWorkOrders(prevOrders => {
       return prevOrders.filter(order => 
         !(order.orderId === updatedOrder.orderId && order.customerId === updatedOrder.customerId)
       );
     });
     
-    // Apply filters again
-    applyFilters(workOrders, categoryFilter);
+    // Apply filters again to update the filtered list
+    applyFilters(workOrders.filter(order => 
+      !(order.orderId === updatedOrder.orderId && order.customerId === updatedOrder.customerId)
+    ), categoryFilter);
     
     // Close modal
     setShowAssignModal(false);
+    
+    // Fetch fresh data to ensure everything is up-to-date
+    fetchWorkOrders();
   };
   
   // Apply filters and search to the work orders

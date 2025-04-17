@@ -859,27 +859,35 @@ const updateWorkOrderStatus = async () => {
           
           {/* Step 4: Payment Success*/}
           {currentStep === 'payment-success' && (
-            <div className="p-4">
-              <div className="text-center py-6">
-                <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <CheckCircle className="text-green-500" size={32} />
-                </div>
-                <h2 className="text-xl font-semibold mb-2">Payment Successful!</h2>
-                <p className="text-gray-600 mb-4">
-                  Payment of ₹{calculateTotal().toFixed(2)} has been successfully processed.
-                </p>
-                
-                <div className="bg-gray-50 p-4 rounded-lg text-left mb-4">
-                  <p className="text-sm mb-1"><span className="font-medium">Customer:</span> {workOrder.customerName}</p>
-                  <p className="text-sm mb-1"><span className="font-medium">Project:</span> {workOrder.projectType}</p>
-                  <p className="text-sm mb-1"><span className="font-medium">Payment Method:</span> {paymentMethod === 'online' ? 'Online Payment' : 'Cash Payment'}</p>
-                  {paymentMethod === 'online' && transactionId && (
-                    <p className="text-sm"><span className="font-medium">Transaction ID:</span> {transactionId}</p>
-                  )}
-                </div>
-              </div>
-            </div>
-          )}
+  <div className="p-4">
+    <div className="text-center py-6">
+      <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+        <CheckCircle className="text-green-500" size={32} />
+      </div>
+      <h2 className="text-xl font-semibold mb-2">Payment Successful!</h2>
+      
+      {/* Different messages based on payment method */}
+      {paymentMethod === 'online' ? (
+        <p className="text-gray-600 mb-4">
+          Your payment has been initiated successfully. We are currently verifying it from our end. You will receive a confirmation shortly.
+        </p>
+      ) : (
+        <p className="text-gray-600 mb-4">
+          Thanks! We've received your cash payment through our technician. It will be updated shortly.
+        </p>
+      )}
+      
+      <div className="bg-gray-50 p-4 rounded-lg text-left mb-4">
+        <p className="text-sm mb-1"><span className="font-medium">Customer:</span> {workOrder.customerName}</p>
+        <p className="text-sm mb-1"><span className="font-medium">Project:</span> {workOrder.projectType}</p>
+        <p className="text-sm mb-1"><span className="font-medium">Payment Method:</span> {paymentMethod === 'online' ? 'Online Payment' : 'Cash Payment'}</p>
+        {paymentMethod === 'online' && transactionId && (
+          <p className="text-sm"><span className="font-medium">Transaction ID:</span> {transactionId}</p>
+        )}
+      </div>
+    </div>
+  </div>
+)}
           </div>
 
           {/* Footer with action buttons - Dynamic based on current step */}

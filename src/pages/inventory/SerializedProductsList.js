@@ -33,6 +33,8 @@ const SerializedProductsList = ({ searchTerm = '' }) => {
   
    // State to track which row is expanded
     const [expandedRowId, setExpandedRowId] = useState(null);
+    const [showSaveConfirmation, setShowSaveConfirmation] = useState(false);
+
 
     // Function to toggle expanded row
    const toggleRowExpansion = (itemId) => {
@@ -357,8 +359,14 @@ const SerializedProductsList = ({ searchTerm = '' }) => {
     }
     
     setStockEntriesToSave(validEntries);
-    showNotification('success', `${validEntries.length} serial numbers ready to save`);
+    // Instead of just showing notification, show the confirmation dialog
+    setShowSaveConfirmation(true);
   };
+
+  // 3. Add a function to handle cancellation of the save dialog
+const handleCancelSave = () => {
+  setShowSaveConfirmation(false);
+};
 
   // Save stock entries
   const handleSaveStock = async () => {
@@ -393,6 +401,7 @@ const SerializedProductsList = ({ searchTerm = '' }) => {
       
       showNotification('success', 'Stock added successfully');
       
+      setShowSaveConfirmation(false);
       setIsAddStockModalOpen(false);
       resetStockEntriesForm();
       fetchItems();
@@ -664,41 +673,17 @@ const SerializedProductsList = ({ searchTerm = '' }) => {
                   Discard & Close
                 </button>
                 
-                {stockEntriesToSave.length > 0 ? (
-                  <button
-                    type="button"
-                    onClick={handleSaveStock}
-                    disabled={loading}
-                    className="inline-flex justify-center items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none disabled:opacity-50"
-                  >
-                    {loading ? (
-                      <span className="flex items-center">
-                        <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                        </svg>
-                        Saving...
-                      </span>
-                    ) : (
-                      <span className="flex items-center">
-                        <FiSave className="mr-2" />
-                        Save & Close
-                      </span>
-                    )}
-                  </button>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={prepareForSaving}
-                    disabled={loading || stockEntries.every(e => !e.serialNumber.trim() || serialNumberStatus[stockEntries.indexOf(e)]?.valid === false)}
-                    className="inline-flex justify-center items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none disabled:opacity-50"
-                  >
-                    <span className="flex items-center">
-                      <FiSave className="mr-2" />
-                      Prepare to Save
-                    </span>
-                  </button>
-                )}
+                <button
+      type="button"
+      onClick={prepareForSaving}
+      disabled={loading || stockEntries.every(e => !e.serialNumber.trim() || serialNumberStatus[stockEntries.indexOf(e)]?.valid === false)}
+      className="inline-flex justify-center items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none disabled:opacity-50"
+    >
+      <span className="flex items-center">
+        <FiSave className="mr-2" />
+        Prepare to Save
+      </span>
+          </button>
               </div>
             </div>
           </div>
@@ -775,6 +760,58 @@ const SerializedProductsList = ({ searchTerm = '' }) => {
           </div>
         )}
       </Modal>
+
+      <Modal
+  isOpen={showSaveConfirmation}
+  onClose={handleCancelSave}
+  title="Confirm Save"
+  size="md"
+>
+  <div className="py-4">
+    <div className="mb-6 flex items-center justify-center">
+      <div className="h-16 w-16 bg-blue-100 rounded-full flex items-center justify-center">
+        <FiSave size={32} className="text-blue-500" />
+      </div>
+    </div>
+    
+    <h3 className="text-xl font-medium text-center mb-4">Ready to Save</h3>
+    
+    <p className="text-center text-gray-600 mb-6">
+      You are about to save <span className="font-bold">{stockEntriesToSave.length}</span> serial number{stockEntriesToSave.length !== 1 ? 's' : ''} for item <span className="font-bold">{selectedItem?.name}</span>.
+    </p>
+    
+    <div className="mt-8 flex justify-center space-x-4">
+      <button
+        type="button"
+        onClick={handleCancelSave}
+        className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none"
+      >
+        Cancel
+      </button>
+      <button
+        type="button"
+        onClick={handleSaveStock}
+        disabled={loading}
+        className="inline-flex justify-center items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none disabled:opacity-50"
+      >
+        {loading ? (
+          <span className="flex items-center">
+            <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            Saving...
+          </span>
+        ) : (
+          <span className="flex items-center">
+            <FiSave className="mr-2" />
+            Save & Close
+          </span>
+        )}
+      </button>
+    </div>
+  </div>
+</Modal>
     </div>
   );
 };
@@ -847,6 +884,8 @@ const ClickableTableRow = ({ item, index, user, openViewStockModal, openAddStock
         </tr>
       )}
     </React.Fragment>
+
+    
   );
 };
 
