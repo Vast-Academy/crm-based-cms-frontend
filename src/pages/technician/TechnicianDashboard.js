@@ -103,6 +103,19 @@ const handleMessageCustomer = (project) => {
   }
 };
 
+// Add this function with your other customer interaction functions
+const handleCallOriginalTechnician = (project) => {
+  if (project.originalTechnician && project.originalTechnician.phoneNumber) {
+    // Record this action in status history
+    addActivityToHistory(project, `Call initiated to original technician (${project.originalTechnician.firstName} ${project.originalTechnician.lastName})`);
+    
+    // Actually make the call
+    window.location.href = `tel:${project.originalTechnician.phoneNumber}`;
+  } else {
+    alert('Original technician phone number not available');
+  }
+};
+
 // Function to add activity to history
 const addActivityToHistory = async (project, activityText) => {
   try {
@@ -1259,6 +1272,29 @@ const fetchFreshWorkOrders = async () => {
               </button>
             </div>
           </div>
+
+          {/* Original Technician Card - Only show for Repair/Complaint projects */}
+{activeProject.projectCategory === 'Repair' && activeProject.originalTechnician && (
+  <div className={`${darkMode ? 'bg-gray-800/50' : 'bg-white'} rounded-xl shadow-lg p-4`}>
+    <h3 className="text-lg font-semibold text-purple-800">Original Technician</h3>
+    <p className={`text-sm font-medium ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+      {activeProject.originalTechnician.firstName} {activeProject.originalTechnician.lastName}
+    </p>
+    <p className={`text-xs ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+      Installation date: {activeProject.projectCreatedAt ? formatDate(activeProject.projectCreatedAt) : 'N/A'}
+    </p>
+    
+    {/* Call Original Technician Button */}
+    <div className="mt-3">
+      <button
+        onClick={() => handleCallOriginalTechnician(activeProject)}
+        className="bg-purple-500 text-white rounded-lg py-2 w-full flex items-center justify-center"
+      >
+        <Phone size={18} className="mr-2" /> Call Original Technician
+      </button>
+    </div>
+  </div>
+)}
           
           {/* Report History Card */}
           <div className={`${darkMode ? 'bg-gray-800/50' : 'bg-white'} rounded-xl shadow-lg p-4`}>

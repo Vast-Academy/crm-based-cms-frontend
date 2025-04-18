@@ -512,7 +512,7 @@ const renderProjectContent = () => {
         </div>
 
         {/* Add this section after customer information - but only for repair/complaint category */}
-{workOrder.projectCategory === 'Repair' && workOrder.originalTechnician && (
+{/* {workOrder.projectCategory === 'Repair' && workOrder.originalTechnician && (
   <div className="mb-4">
     <h3 className="text-md font-medium flex items-center mb-3">
       <FiUser className="mr-2" />
@@ -533,7 +533,7 @@ const renderProjectContent = () => {
       </p>
     </div>
   </div>
-)}
+)} */}
         
         {/* Complaint Details section - ONLY show for 'Repair' category */}
 {/* {workOrder.projectCategory === 'Repair' && (
