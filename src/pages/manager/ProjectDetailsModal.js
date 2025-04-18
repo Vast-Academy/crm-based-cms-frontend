@@ -3,7 +3,6 @@ import { FiX, FiUser, FiCalendar, FiMapPin, FiInfo, FiFileText, FiCheckCircle, F
 import SummaryApi from '../../common';
 import { useAuth } from '../../context/AuthContext';
 import LoadingSpinner from '../../components/LoadingSpinner';
-import InvoiceGenerator from '../../components/InvoiceGenerator';
 
 const ProjectDetailsModal = ({ isOpen, onClose, project, onProjectApproved }) => {
   const { user } = useAuth();
@@ -13,15 +12,6 @@ const ProjectDetailsModal = ({ isOpen, onClose, project, onProjectApproved }) =>
   const [remarkError, setRemarkError] = useState(''); // नया स्टेट फॉर रिमार्क एरर
   const [showBillSummary, setShowBillSummary] = useState(false);
   const [selectedBill, setSelectedBill] = useState(null);
-  const [companyInfo, setCompanyInfo] = useState({
-    name: 'VA Computers',
-    address: 'Vast Academy Near New Bus Stand oppo. Govt. Sen. Sec School (Majitha), Amritsar, Punjab, 143601',
-    mobile: '9356393094',
-    panNumber: 'GMLPS6158A',
-    email: 'vacomputers.com@gmail.com',
-    ownerName: 'Sandeep singh'
-  });
-  
   
   const modalContentRef = useRef(null);
   
@@ -31,6 +21,35 @@ const ProjectDetailsModal = ({ isOpen, onClose, project, onProjectApproved }) =>
       modalContentRef.current.scrollTop = 0;
     }
   }, [isOpen, project]);
+
+  // Set up a click handler for backdrop click to close
+useEffect(() => {
+  const handleOutsideClick = (e) => {
+    // Check if click was outside modal content
+    if (modalContentRef.current && !modalContentRef.current.contains(e.target)) {
+      onClose();
+    }
+  };
+  
+  // Check if ESC key was pressed
+  const handleEscapeKey = (e) => {
+    if (e.key === 'Escape') {
+      onClose();
+    }
+  };
+
+  // Add event listeners when modal opens
+  if (isOpen) {
+    document.addEventListener('mousedown', handleOutsideClick);
+    document.addEventListener('keydown', handleEscapeKey);
+  }
+  
+  // Remove event listeners when component unmounts or modal closes
+  return () => {
+    document.removeEventListener('mousedown', handleOutsideClick);
+    document.removeEventListener('keydown', handleEscapeKey);
+  };
+}, [isOpen, onClose]);
 
   // रिमार्क में शब्दों की संख्या की जाँच करें
   const validateRemark = (text) => {
@@ -197,7 +216,8 @@ const ProjectDetailsModal = ({ isOpen, onClose, project, onProjectApproved }) =>
   
   return (
     <div className="fixed inset-0 bg-gray-600 bg-opacity-75 flex justify-center items-start z-50 p-2 overflow-auto">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-3xl max-h-[90vh] overflow-hidden my-4">
+      <div className="bg-white rounded-lg shadow-xl w-full max-w-3xl max-h-[90vh] overflow-hidden my-4"
+       ref={modalContentRef}>
         <div className="sticky top-0 bg-white p-4 border-b flex justify-between items-center">
           <h2 className="text-xl font-semibold flex items-center">
             Project Details 
@@ -406,7 +426,6 @@ const ProjectDetailsModal = ({ isOpen, onClose, project, onProjectApproved }) =>
                       )}
                     </div>
                     
-                    <div className="flex space-x-2">
                     {/* यहां View Summary बटन जोड़ें */}
                     <button 
                       onClick={() => handleViewBillSummary(bill.billId)}
@@ -414,24 +433,6 @@ const ProjectDetailsModal = ({ isOpen, onClose, project, onProjectApproved }) =>
                     >
                       <FiEye className="mr-1" /> View Bill Summary
                     </button>
-                    
-                    {/* यहां InvoiceGenerator कंपोनेंट का उपयोग करें - आपके पहले वाले कोड के अनुसार */}
-            <InvoiceGenerator 
-              bill={{
-                ...bill,
-                billNumber: bill.billNumber,
-                items: bill.items || [],
-                createdAt: bill.createdAt || bill.paidAt,
-                totalAmount: bill.amount || 0,
-                paymentMethod: bill.paymentMethod,
-                paymentStatus: bill.paymentStatus,
-                transactionId: bill.transactionId,
-                paidAt: bill.paidAt
-              }}
-              company={companyInfo}
-              customer={{name: project.customerName, phoneNumber: project.customerPhone}}
-            />
-                    </div>
                   </div>
                 ))}
               </div>

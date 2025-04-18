@@ -80,27 +80,35 @@ const ManagerProjectDashboard = () => {
   const applyTabFilter = (tab, projects = allProjects, query = searchQuery) => {
     let filtered = [];
     
-    // First filter by tab/status
+    // First, remove all "not-assigned" projects (Issue 1 fix)
+    const assignedProjects = projects.filter(project => {
+      // Check if technician exists AND it's not a placeholder (sometimes APIs return empty objects)
+      return project.technician && 
+             (project.technician.firstName || project.technician.lastName || 
+              (typeof project.technician === 'string' && project.technician.length > 0));
+    });
+    
+    // Then filter by tab/status
     switch(tab) {
       case 'all':
-        filtered = [...projects];
+        filtered = [...assignedProjects];
         break;
       case 'pending-approval':
-        filtered = projects.filter(project => project.status === 'pending-approval');
+        filtered = assignedProjects.filter(project => project.status === 'pending-approval');
         break;
       case 'in-progress':
-        filtered = projects.filter(project => 
+        filtered = assignedProjects.filter(project => 
           ['assigned', 'in-progress', 'paused'].includes(project.status)
         );
         break;
       case 'completed':
-        filtered = projects.filter(project => project.status === 'completed');
+        filtered = assignedProjects.filter(project => project.status === 'completed');
         break;
       default:
-        filtered = [...projects];
+        filtered = [...assignedProjects];
     }
     
-    // Then apply search query if needed
+    // Apply search query if needed
     if (query.trim() !== '') {
       const lowercaseQuery = query.toLowerCase();
       filtered = filtered.filter(project => 
@@ -113,22 +121,33 @@ const ManagerProjectDashboard = () => {
           (`${project.approvedBy.firstName} ${project.approvedBy.lastName}`).toLowerCase().includes(lowercaseQuery))
       );
     }
-
-     // Sort projects by status priority for 'all' tab
-  if (tab === 'all') {
+  
+    // Sort projects by status priority for all tabs (Issue 2 fix)
+    // Define detailed status priority (lower number = higher priority)
+    const statusPriority = {
+      'pending-approval': 1,
+      'in-progress': 2,
+      'assigned': 3,
+      'paused': 4,
+      'completed': 5
+    };
+    
+    // Sort by status priority first, then by updated date
     filtered.sort((a, b) => {
-      // Define status priority (lower number = higher priority)
-      const statusPriority = {
-        'pending-approval': 1,
-        'assigned': 2,
-        'in-progress': 2,
-        'paused': 2,
-        'completed': 3
-      };
+      // First sort by status priority
+      const priorityDiff = statusPriority[a.status] - statusPriority[b.status];
       
-      return statusPriority[a.status] - statusPriority[b.status];
+      if (priorityDiff !== 0) {
+        return priorityDiff;
+      }
+      
+      // If same status, sort by most recent (updatedAt or createdAt)
+      const dateA = a.updatedAt || a.createdAt;
+      const dateB = b.updatedAt || b.createdAt;
+      
+      // Sort descending (newest first)
+      return new Date(dateB) - new Date(dateA);
     });
-  }
     
     setFilteredProjects(filtered);
   };

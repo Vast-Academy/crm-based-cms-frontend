@@ -4,6 +4,7 @@ import SummaryApi from '../../common';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import { useAuth } from '../../context/AuthContext';
 import Modal from '../../components/Modal';
+import { useNavigate } from 'react-router-dom';
 
 const statusColors = {
   positive: 'bg-green-100 border-green-500 text-green-800',
@@ -24,6 +25,7 @@ const projectTypes = [
 
 const LeadDetailModal = ({ isOpen, onClose, leadId, onLeadUpdated, onConvertSuccess, initialConvertMode = false }) => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [lead, setLead] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -184,6 +186,8 @@ const LeadDetailModal = ({ isOpen, onClose, leadId, onLeadUpdated, onConvertSucc
             onConvertSuccess(leadId, data.data);
           }
           onClose();
+
+          navigate('/work-orders');
         } catch (workOrderErr) {
           console.error('Error creating work order after conversion:', workOrderErr);
           // Still consider the conversion successful even if work order failed

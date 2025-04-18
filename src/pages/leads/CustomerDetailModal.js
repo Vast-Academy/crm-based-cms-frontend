@@ -6,6 +6,7 @@ import { useAuth } from '../../context/AuthContext';
 import Modal from '../../components/Modal';
 import WorkOrderModal from '../customers/WorkOrderModal';
 import ComplaintModal from '../customers/ComplaintModal';
+import ProjectDetailsModal from '../manager/ProjectDetailsModal';
 
 const CustomerDetailModal = ({ isOpen, onClose, customerId, onCustomerUpdated }) => {
   const { user } = useAuth();
@@ -15,6 +16,8 @@ const CustomerDetailModal = ({ isOpen, onClose, customerId, onCustomerUpdated })
   const [showWorkOrderModal, setShowWorkOrderModal] = useState(false);
   const [showComplaintModal, setShowComplaintModal] = useState(false);
   const [initialProjectCategory, setInitialProjectCategory] = useState('New Installation');
+  const [showProjectDetailsModal, setShowProjectDetailsModal] = useState(false);
+const [selectedProject, setSelectedProject] = useState(null);
   
   const fetchCustomer = async () => {
     if (!customerId) return;
@@ -42,6 +45,38 @@ const CustomerDetailModal = ({ isOpen, onClose, customerId, onCustomerUpdated })
       setLoading(false);
     }
   };
+
+  // Project details देखने के लिए handler function
+const handleViewProjectDetails = async (project) => {
+  try {
+    setLoading(true);
+    
+    // Fetch full project details
+    const response = await fetch(`${SummaryApi.getWorkOrderDetails.url}/${customer._id}/${project.orderId}`, {
+      method: 'GET',
+      credentials: 'include'
+    });
+    
+    const data = await response.json();
+    
+    if (data.success) {
+      setSelectedProject(data.data);
+      setShowProjectDetailsModal(true);
+    } else {
+      console.error('API returned error:', data.message);
+      // If API fails, use the basic project data we have
+      setSelectedProject(project);
+      setShowProjectDetailsModal(true);
+    }
+  } catch (err) {
+    console.error('Error fetching project details:', err);
+    // Fall back to basic project data
+    setSelectedProject(project);
+    setShowProjectDetailsModal(true);
+  } finally {
+    setLoading(false);
+  }
+};
   
   useEffect(() => {
     if (isOpen && customerId) {
@@ -221,7 +256,7 @@ const CustomerDetailModal = ({ isOpen, onClose, customerId, onCustomerUpdated })
           <div className="lg:col-span-2 bg-white rounded-lg overflow-hidden border border-gray-200">
             <div className="p-6">
               <div className="flex items-center justify-between mb-6">
-                <h2 className="text-xl font-semibold">Projects & Activity</h2>
+                <h2 className="text-xl font-semibold">Work Orders & Complaints</h2>
                 
                 <div className="flex gap-2">
                   <button
@@ -240,53 +275,20 @@ const CustomerDetailModal = ({ isOpen, onClose, customerId, onCustomerUpdated })
                 </div>
               </div>
               
-              {/* Project Information */}
-              {customer.projects && customer.projects.length > 0 ? (
-                <div className="mb-6 p-4 border rounded-lg">
-                  <h3 className="font-semibold text-lg mb-2">Current Projects</h3>
-                  {customer.projects.map((project, index) => (
-                    <div key={index} className="flex items-center bg-blue-50 p-3 rounded-md mb-2">
-                      <div className="text-blue-500 mr-3 text-xl">🛠️</div>
-                      <div className="flex-1">
-                        <div className="font-medium">
-                          {project.projectType} 
-                          <span className="text-xs ml-2 text-gray-500">(ID: {project.projectId})</span>
-                          {project.projectCategory === 'Repair' && (
-                            <span className="px-2 py-0.5 ml-2 rounded-full text-xs bg-orange-100 text-orange-800">
-                              Complaint
-                            </span>
-                          )}
-                        </div>
-                        {project.initialRemark && (
-                          <div className="text-sm text-gray-600 mt-1">{project.initialRemark}</div>
-                        )}
-                        <div className="text-xs text-gray-500 mt-1">
-                          Created: {formatDate(project.createdAt)}
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="mb-6 p-4 border rounded-lg bg-gray-50">
-                  <p className="text-center text-gray-500">No projects found for this customer.</p>
-                </div>
-              )}
-              
               {/* Work Order/Complaint Status */}
-              {customer.workOrders && customer.workOrders.length > 0 && (
+              {customer.workOrders && customer.workOrders.length > 0 ? (
                 <div className="mb-6">
-                  <h3 className="font-semibold text-lg mb-2">Work Orders & Complaints</h3>
                   <div className="space-y-3">
                     {customer.workOrders.map((order, index) => (
                       <div 
                         key={index} 
-                        className={`p-3 rounded-md ${
+                        className={`p-3 rounded-md cursor-pointer ${
                           order.status === 'pending' ? 'bg-yellow-50 border-yellow-200' :
                           order.status === 'assigned' ? 'bg-blue-50 border-blue-200' :
                           order.status === 'completed' ? 'bg-green-50 border-green-200' :
                           'bg-gray-50 border-gray-200'
                         } border`}
+                        onClick={() => handleViewProjectDetails(order)}
                       >
                         <div className="flex justify-between mb-1">
                           <span className="font-medium">
@@ -311,6 +313,10 @@ const CustomerDetailModal = ({ isOpen, onClose, customerId, onCustomerUpdated })
                       </div>
                     ))}
                   </div>
+                </div>
+              ): (
+                <div className="mb-6 p-6 text-center border rounded-md bg-gray-50">
+                  <p className="text-gray-500">No Project and Complaints found for this customer.</p>
                 </div>
               )}
               
@@ -373,6 +379,22 @@ const CustomerDetailModal = ({ isOpen, onClose, customerId, onCustomerUpdated })
         customerId={customerId}
         onSuccess={handleComplaintSuccess}
       />
+
+      {showProjectDetailsModal && selectedProject && (
+        <ProjectDetailsModal 
+          isOpen={showProjectDetailsModal}
+          onClose={() => {
+            setShowProjectDetailsModal(false);
+            setSelectedProject(null);
+          }}
+          project={selectedProject}
+          onProjectApproved={(updatedProject) => {
+            // If project is approved, refresh customer data
+            fetchCustomer();
+            setShowProjectDetailsModal(false);
+          }}
+        />
+      )}
     </Modal>
   );
 };
