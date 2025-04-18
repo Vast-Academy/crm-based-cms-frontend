@@ -113,6 +113,22 @@ const ManagerProjectDashboard = () => {
           (`${project.approvedBy.firstName} ${project.approvedBy.lastName}`).toLowerCase().includes(lowercaseQuery))
       );
     }
+
+     // Sort projects by status priority for 'all' tab
+  if (tab === 'all') {
+    filtered.sort((a, b) => {
+      // Define status priority (lower number = higher priority)
+      const statusPriority = {
+        'pending-approval': 1,
+        'assigned': 2,
+        'in-progress': 2,
+        'paused': 2,
+        'completed': 3
+      };
+      
+      return statusPriority[a.status] - statusPriority[b.status];
+    });
+  }
     
     setFilteredProjects(filtered);
   };
@@ -179,18 +195,44 @@ const ManagerProjectDashboard = () => {
   
   // Handle project approval
   const handleProjectApproved = (updatedProject) => {
-    // Update local state
+    // Find original project to preserve important fields that might be missing in the API response
+    const originalProject = allProjects.find(p => 
+      p.orderId === updatedProject.orderId && p.customerId === updatedProject.customerId
+    );
+    
+    // Preserve category and other important fields that might be missing in the API response
+    if (originalProject) {
+      // Make sure category is preserved
+      if (originalProject.projectCategory && !updatedProject.projectCategory) {
+        updatedProject.projectCategory = originalProject.projectCategory;
+      }
+      
+      // Preserve other important fields if needed
+      if (originalProject.customerName && !updatedProject.customerName) {
+        updatedProject.customerName = originalProject.customerName;
+      }
+      
+      if (originalProject.projectType && !updatedProject.projectType) {
+        updatedProject.projectType = originalProject.projectType;
+      }
+      
+      // Copy any other fields you need to preserve here
+    }
+    
+    // Update pending approvals state - remove the approved project
     setPendingApprovals(prev => prev.filter(p => 
       !(p.orderId === updatedProject.orderId && p.customerId === updatedProject.customerId)
     ));
     
+    // Add to completed projects state
     setCompletedProjects(prev => [updatedProject, ...prev]);
     
-    // Update all projects
+    // Update all projects state
     setAllProjects(prev => {
       const updatedProjects = prev.map(p => {
         if (p.orderId === updatedProject.orderId && p.customerId === updatedProject.customerId) {
-          return updatedProject;
+          // Merge the original project with updates to ensure no data is lost
+          return { ...p, ...updatedProject };
         }
         return p;
       });
@@ -457,9 +499,19 @@ const ManagerProjectDashboard = () => {
                                   e.stopPropagation();
                                   handleViewProject(project);
                                 }}
-                                className="inline-flex items-center px-4 py-1.5 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-500 hover:bg-blue-600"
+                                className={`inline-flex items-center px-4 py-1.5 border border-transparent rounded-md shadow-sm text-sm font-medium text-white ${
+                                  project.status === 'pending-approval' ? 'bg-green-500 hover:bg-green-600' : 'bg-blue-500 hover:bg-blue-600'
+                                }`}
                               >
-                                <FiEye className="mr-2" /> View Details
+                                {project.status === 'pending-approval' ? (
+                                  <>
+                                    <FiCheckCircle className="mr-2" /> Approve Project
+                                  </>
+                                ) : (
+                                  <>
+                                    <FiEye className="mr-2" /> View Details
+                                  </>
+                                )}
                               </button>
                             </div>
                           </td>

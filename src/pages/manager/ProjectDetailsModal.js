@@ -3,6 +3,7 @@ import { FiX, FiUser, FiCalendar, FiMapPin, FiInfo, FiFileText, FiCheckCircle, F
 import SummaryApi from '../../common';
 import { useAuth } from '../../context/AuthContext';
 import LoadingSpinner from '../../components/LoadingSpinner';
+import InvoiceGenerator from '../../components/InvoiceGenerator';
 
 const ProjectDetailsModal = ({ isOpen, onClose, project, onProjectApproved }) => {
   const { user } = useAuth();
@@ -12,6 +13,15 @@ const ProjectDetailsModal = ({ isOpen, onClose, project, onProjectApproved }) =>
   const [remarkError, setRemarkError] = useState(''); // नया स्टेट फॉर रिमार्क एरर
   const [showBillSummary, setShowBillSummary] = useState(false);
   const [selectedBill, setSelectedBill] = useState(null);
+  const [companyInfo, setCompanyInfo] = useState({
+    name: 'VA Computers',
+    address: 'Vast Academy Near New Bus Stand oppo. Govt. Sen. Sec School (Majitha), Amritsar, Punjab, 143601',
+    mobile: '9356393094',
+    panNumber: 'GMLPS6158A',
+    email: 'vacomputers.com@gmail.com',
+    ownerName: 'Sandeep singh'
+  });
+  
   
   const modalContentRef = useRef(null);
   
@@ -396,6 +406,7 @@ const ProjectDetailsModal = ({ isOpen, onClose, project, onProjectApproved }) =>
                       )}
                     </div>
                     
+                    <div className="flex space-x-2">
                     {/* यहां View Summary बटन जोड़ें */}
                     <button 
                       onClick={() => handleViewBillSummary(bill.billId)}
@@ -403,6 +414,24 @@ const ProjectDetailsModal = ({ isOpen, onClose, project, onProjectApproved }) =>
                     >
                       <FiEye className="mr-1" /> View Bill Summary
                     </button>
+                    
+                    {/* यहां InvoiceGenerator कंपोनेंट का उपयोग करें - आपके पहले वाले कोड के अनुसार */}
+            <InvoiceGenerator 
+              bill={{
+                ...bill,
+                billNumber: bill.billNumber,
+                items: bill.items || [],
+                createdAt: bill.createdAt || bill.paidAt,
+                totalAmount: bill.amount || 0,
+                paymentMethod: bill.paymentMethod,
+                paymentStatus: bill.paymentStatus,
+                transactionId: bill.transactionId,
+                paidAt: bill.paidAt
+              }}
+              company={companyInfo}
+              customer={{name: project.customerName, phoneNumber: project.customerPhone}}
+            />
+                    </div>
                   </div>
                 ))}
               </div>

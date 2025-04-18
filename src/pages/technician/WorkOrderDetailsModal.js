@@ -489,11 +489,6 @@ const renderProjectContent = () => {
             : formatDate(workOrder.createdAt)
         }
       </p>
-
-      {/* If we have information about who completed it first (only for Repair) */}
-      {workOrder.projectCategory === 'Repair' && workOrder.completedBy && (
-        <p><span className="text-gray-500">Completed By:</span> {workOrder.completedBy}</p>
-      )}
             </div>
           </div>
         </div>
@@ -515,6 +510,30 @@ const renderProjectContent = () => {
             )}
           </div>
         </div>
+
+        {/* Add this section after customer information - but only for repair/complaint category */}
+{workOrder.projectCategory === 'Repair' && workOrder.originalTechnician && (
+  <div className="mb-4">
+    <h3 className="text-md font-medium flex items-center mb-3">
+      <FiUser className="mr-2" />
+      Original Technician Information
+    </h3>
+    
+    <div className="bg-white border rounded-lg p-3 space-y-2">
+      <p className="font-medium">
+        {workOrder.originalTechnician.firstName} {workOrder.originalTechnician.lastName}
+      </p>
+      {workOrder.originalTechnician.phoneNumber && (
+        <p className="text-sm text-gray-600">
+          Phone: {workOrder.originalTechnician.phoneNumber}
+        </p>
+      )}
+      <p className="text-xs text-gray-500">
+      Project Completed on: {formatDate(workOrder.projectCreatedAt)}
+      </p>
+    </div>
+  </div>
+)}
         
         {/* Complaint Details section - ONLY show for 'Repair' category */}
 {/* {workOrder.projectCategory === 'Repair' && (
