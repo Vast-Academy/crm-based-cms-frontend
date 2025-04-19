@@ -166,7 +166,7 @@ useEffect(() => {
           {/* Add this block to display original technician info for repair category */}
           {isComplaint && workOrder.originalTechnician && (
             <div className="mb-4">
-              <h3 className="font-medium text-orange-700 mb-1">Original Technician:</h3>
+              <h3 className="font-medium text-orange-700 mb-1">Setup Technician:</h3>
               <div className="mt-2 p-2 bg-white rounded border border-orange-200">
                 <p><span className="font-medium">Name:</span> {workOrder.originalTechnician.firstName} {workOrder.originalTechnician.lastName}</p>
                 {workOrder.originalTechnician.phoneNumber && (

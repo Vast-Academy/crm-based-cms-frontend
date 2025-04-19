@@ -890,7 +890,7 @@ const fetchFreshWorkOrders = async () => {
               </div>
               <div 
                 className={`${darkMode ? 'bg-gradient-to-br from-amber-500 to-amber-600' : 'bg-gradient-to-br from-amber-400 to-amber-500'} rounded-2xl shadow-lg p-4 relative overflow-hidden text-white cursor-pointer`}
-                onClick={() => handleTabChange('current-project')}
+                onClick={() => handleTabChange('pending-approval-projects')}
               >
                 <div className="absolute right-0 top-0 w-20 h-20 bg-amber-400 rounded-full opacity-20 -mt-10 -mr-10"></div>
                 <div className="relative z-10">

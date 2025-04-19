@@ -278,9 +278,9 @@ const handleViewProjectDetails = async (project) => {
               
               {/* Work Order/Complaint Status */}
               {customer.workOrders && customer.workOrders.length > 0 ? (
-  <div className="mb-6">
-    <div className="overflow-x-auto">
-      <table className="min-w-full divide-y divide-gray-200">
+  <div className="mb-6 max-h-[400px] overflow-y-auto">
+    <div className="overflow-visible">
+      <table className="min-w-full divide-y divide-gray-200 table-fixed">
         <thead className="bg-gray-50">
           <tr>
             <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -316,10 +316,12 @@ const handleViewProjectDetails = async (project) => {
                             {index + 1}
                           </div>
                         </td>
-              <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-700">
-                {order.projectType}
+                        <td className="px-4 py-3 text-sm text-gray-700">
+                <div style={{ width: "120px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  {order.projectType}
+                </div>
               </td>
-              <td className="px-6 py-4 whitespace-nowrap">
+              <td className="px-4 py-4 whitespace-nowrap">
                           <span className={`px-2 py-1 rounded-full text-xs ${
                             order.projectCategory === 'Repair' 
                               ? 'bg-orange-100 text-orange-800' 
@@ -329,7 +331,9 @@ const handleViewProjectDetails = async (project) => {
                           </span>
                         </td>
               <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
+              <div style={{ width: "120px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                 {formatDate(order.createdAt)}
+                </div>
               </td>
               <td className="px-4 py-3 whitespace-nowrap">
                 <span className={`px-2 py-0.5 rounded-full text-xs capitalize ${

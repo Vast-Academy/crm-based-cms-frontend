@@ -19,6 +19,10 @@ const AllInventoryItems = ({ searchTerm = '' }) => {
   const [selectedStockItem, setSelectedStockItem] = useState(null);
   const [isAddStockModalOpen, setIsAddStockModalOpen] = useState(false);
   const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
+  const [showSaveConfirmation, setShowSaveConfirmation] = useState(false);
+const [stockEntriesToSave, setStockEntriesToSave] = useState([]);
+const [currentSavingItem, setCurrentSavingItem] = useState(null);
+const [saveLoading, setSaveLoading] = useState(false);
   const [confirmData, setConfirmData] = useState({
     title: '',
     message: '',
@@ -77,7 +81,52 @@ const AllInventoryItems = ({ searchTerm = '' }) => {
       setLoading(false);
     }
   };
+
+  const handlePrepareForSaving = (entries, item) => {
+    setStockEntriesToSave(entries);
+    setCurrentSavingItem(item);
+    setShowSaveConfirmation(true);
+  };
   
+  const handleSaveStock = async () => {
+    try {
+      setSaveLoading(true);
+      
+      // Submit each stock entry
+      for (const entry of stockEntriesToSave) {
+        const response = await fetch(SummaryApi.addInventoryStock.url, {
+          method: SummaryApi.addInventoryStock.method,
+          credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            itemId: currentSavingItem.id,
+            ...entry
+          })
+        });
+        
+        const data = await response.json();
+        
+        if (!data.success) {
+          showNotification('error', data.message || 'Failed to add stock');
+          setSaveLoading(false);
+          return;
+        }
+      }
+      
+      showNotification('success', 'Stock added successfully');
+      setShowSaveConfirmation(false);
+      fetchAllItems(); // Refresh the data
+      setIsAddStockModalOpen(false);
+    } catch (err) {
+      showNotification('error', 'Server error. Please try again later.');
+      console.error('Error adding stock:', err);
+    } finally {
+      setSaveLoading(false);
+    }
+  };
+
   // Open view stock modal
   const openViewStockModal = (item) => {
     setSelectedStockItem(item);
@@ -342,6 +391,7 @@ const AllInventoryItems = ({ searchTerm = '' }) => {
             setIsAddStockModalOpen(false);
             fetchAllItems(); // Refresh the data
           }}
+          onPrepareForSaving={handlePrepareForSaving}
         />
       ) : selectedStockItem.itemType === 'generic' ? (
         <GenericStockForm 
@@ -352,6 +402,7 @@ const AllInventoryItems = ({ searchTerm = '' }) => {
             setIsAddStockModalOpen(false);
             fetchAllItems(); // Refresh the data
           }}
+          onPrepareForSaving={handlePrepareForSaving}
         />
       ) : (
         <div className="p-6 text-center text-gray-500">
@@ -372,12 +423,75 @@ const AllInventoryItems = ({ searchTerm = '' }) => {
         type={confirmData.type}
         onConfirm={confirmData.onConfirm}
       />
+
+      {/* Confirm Save Modal */}
+<Modal
+  isOpen={showSaveConfirmation}
+  onClose={() => setShowSaveConfirmation(false)}
+  title="Confirm Save"
+  size="md"
+>
+  <div className="py-4">
+    <div className="mb-6 flex items-center justify-center">
+      <div className="h-16 w-16 bg-blue-100 rounded-full flex items-center justify-center">
+        <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-blue-500" viewBox="0 0 20 20" fill="currentColor">
+          <path fillRule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clipRule="evenodd" />
+        </svg>
+      </div>
+    </div>
+    
+    <h3 className="text-xl font-medium text-center mb-4">Ready to Save</h3>
+    
+    <p className="text-center text-gray-600 mb-6">
+      {currentSavingItem?.itemType === 'serialized' ? (
+        <>You are about to save <span className="font-bold">{stockEntriesToSave.length}</span> serial number{stockEntriesToSave.length !== 1 ? 's' : ''} for item <span className="font-bold">{currentSavingItem?.name}</span>.</>
+      ) : (
+        <>You are about to save <span className="font-bold">
+          {stockEntriesToSave.reduce((sum, entry) => sum + Number(entry.quantity), 0)}
+        </span> {currentSavingItem?.unit || 'items'} for item <span className="font-bold">{currentSavingItem?.name}</span>.</>
+      )}
+    </p>
+    
+    <div className="mt-8 flex justify-center space-x-4">
+      <button
+        type="button"
+        onClick={() => setShowSaveConfirmation(false)}
+        className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none"
+      >
+        Cancel
+      </button>
+      <button
+        type="button"
+        onClick={handleSaveStock}
+        disabled={saveLoading}
+        className="inline-flex justify-center items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-teal-500 hover:bg-teal-600 focus:outline-none disabled:opacity-50"
+      >
+        {saveLoading ? (
+          <span className="flex items-center">
+            <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            Saving...
+          </span>
+        ) : (
+          <span className="flex items-center">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+              <path fillRule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clipRule="evenodd" />
+            </svg>
+            Save & Close
+          </span>
+        )}
+      </button>
+    </div>
+  </div>
+</Modal>
     </div>
   );
 };
 
 // Form for adding serialized product stock
-const SerializedStockForm = ({ item, onClose, showNotification, onSuccess }) => {
+const SerializedStockForm = ({ item, onClose, showNotification, onSuccess, onPrepareForSaving }) => {
     const [error, setError] = useState(null);
     const [stockEntries, setStockEntries] = useState([
       {
@@ -399,11 +513,6 @@ const SerializedStockForm = ({ item, onClose, showNotification, onSuccess }) => 
         barcodeInputRef.current.focus();
       }
     }, []);
-
-    // Add a function to handle cancellation of the save dialog
-const handleCancelSave = () => {
-  setShowSaveConfirmation(false);
-};
   
     // Reset stock entries form
     const resetStockEntriesForm = () => {
@@ -577,55 +686,10 @@ const handleCancelSave = () => {
         return;
       }
       
-      setStockEntriesToSave(validEntries);
-      
-      // Show confirmation dialog instead of notification
-      setShowSaveConfirmation(true);
+      // Call parent component function instead of showing modal
+      onPrepareForSaving(validEntries, item);
     };
-  
-    // Save stock entries
-    const handleSaveStock = async () => {
-      setError(null);
-      
-      try {
-        setLoading(true);
-        
-        // Submit each stock entry
-        for (const entry of stockEntriesToSave) {
-          const response = await fetch(SummaryApi.addInventoryStock.url, {
-            method: SummaryApi.addInventoryStock.method,
-            credentials: 'include',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              itemId: item.id,
-              ...entry
-            })
-          });
-          
-          const data = await response.json();
-          
-          if (!data.success) {
-            showNotification('error', data.message || 'Failed to add stock');
-            setError(data.message || 'Failed to add stock');
-            setLoading(false);
-            return;
-          }
-        }
-        
-        showNotification('success', 'Stock added successfully');
-        // Close both modals
-        setShowSaveConfirmation(false);
-        onSuccess();
-      } catch (err) {
-        showNotification('error', 'Server error. Please try again later.');
-        setError('Server error. Please try again later.');
-        console.error('Error adding stock:', err);
-      } finally {
-        setLoading(false);
-      }
-    };
+
   
     // Discard and close button handler
     const handleDiscardAndClose = () => {
@@ -835,68 +899,13 @@ const handleCancelSave = () => {
     </button>
           </div>
 
-          <Modal
-  isOpen={showSaveConfirmation}
-  onClose={handleCancelSave}
-  title="Confirm Save"
-  size="md"
->
-  <div className="py-4">
-    <div className="mb-6 flex items-center justify-center">
-      <div className="h-16 w-16 bg-blue-100 rounded-full flex items-center justify-center">
-        <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-blue-500" viewBox="0 0 20 20" fill="currentColor">
-          <path fillRule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clipRule="evenodd" />
-        </svg>
-      </div>
-    </div>
-    
-    <h3 className="text-xl font-medium text-center mb-4">Ready to Save</h3>
-    
-    <p className="text-center text-gray-600 mb-6">
-      You are about to save <span className="font-bold">{stockEntriesToSave.length}</span> serial number{stockEntriesToSave.length !== 1 ? 's' : ''} for item <span className="font-bold">{item?.name}</span>.
-    </p>
-    
-    <div className="mt-8 flex justify-center space-x-4">
-      <button
-        type="button"
-        onClick={handleCancelSave}
-        className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none"
-      >
-        Cancel
-      </button>
-      <button
-        type="button"
-        onClick={handleSaveStock}
-        disabled={loading}
-        className="inline-flex justify-center items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-teal-500 hover:bg-teal-600 focus:outline-none disabled:opacity-50"
-      >
-        {loading ? (
-          <span className="flex items-center">
-            <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-            </svg>
-            Saving...
-          </span>
-        ) : (
-          <span className="flex items-center">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
-              <path fillRule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clipRule="evenodd" />
-            </svg>
-            Save & Close
-          </span>
-        )}
-      </button>
-    </div>
-  </div>
-</Modal>
         </div>
       </div>
     );
   };
 
   // Form for adding generic product stock
-const GenericStockForm = ({ item, onClose, showNotification, onSuccess }) => {
+const GenericStockForm = ({ item, onClose, showNotification, onSuccess, onPrepareForSaving  }) => {
     const [error, setError] = useState(null);
     const [loading, setLoading] = useState(false);
     const [stockEntries, setStockEntries] = useState([
@@ -906,12 +915,9 @@ const GenericStockForm = ({ item, onClose, showNotification, onSuccess }) => {
       }
     ]);
     const [stockEntriesToSave, setStockEntriesToSave] = useState([]);
-    const [showSaveConfirmation, setShowSaveConfirmation] = useState(false);
 
     // Add a function to handle cancellation of the save dialog
-const handleCancelSave = () => {
-  setShowSaveConfirmation(false);
-};
+
 
     // Reset stock entries form
     const resetStockEntriesForm = () => {
@@ -978,54 +984,10 @@ const handleCancelSave = () => {
         return;
       }
       
-      setStockEntriesToSave(validEntries);
-      
-      // Show confirmation dialog instead of notification
-      setShowSaveConfirmation(true);
+      // Call parent component function instead of showing modal
+      onPrepareForSaving(validEntries, item);
     };
   
-    // Save stock entries
-    const handleSaveStock = async () => {
-      setError(null);
-      
-      try {
-        setLoading(true);
-        
-        // Submit each stock entry
-        for (const entry of stockEntriesToSave) {
-          const response = await fetch(SummaryApi.addInventoryStock.url, {
-            method: SummaryApi.addInventoryStock.method,
-            credentials: 'include',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              itemId: item.id,
-              ...entry
-            })
-          });
-          
-          const data = await response.json();
-          
-          if (!data.success) {
-            showNotification('error', data.message || 'Failed to add stock');
-            setError(data.message || 'Failed to add stock');
-            setLoading(false);
-            return;
-          }
-        }
-        
-        showNotification('success', 'Stock added successfully');
-        setShowSaveConfirmation(false);
-        onSuccess();
-      } catch (err) {
-        showNotification('error', 'Server error. Please try again later.');
-        setError('Server error. Please try again later.');
-        console.error('Error adding stock:', err);
-      } finally {
-        setLoading(false);
-      }
-    };
   
     return (
       <div>
@@ -1144,63 +1106,6 @@ const handleCancelSave = () => {
     </button>
   </div>
   
-  <Modal
-  isOpen={showSaveConfirmation}
-  onClose={handleCancelSave}
-  title="Confirm Save"
-  size="md"
->
-  <div className="py-4">
-    <div className="mb-6 flex items-center justify-center">
-      <div className="h-16 w-16 bg-blue-100 rounded-full flex items-center justify-center">
-        <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-blue-500" viewBox="0 0 20 20" fill="currentColor">
-          <path fillRule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clipRule="evenodd" />
-        </svg>
-      </div>
-    </div>
-    
-    <h3 className="text-xl font-medium text-center mb-4">Ready to Save</h3>
-    
-    <p className="text-center text-gray-600 mb-6">
-      You are about to save <span className="font-bold">
-        {stockEntriesToSave.reduce((sum, entry) => sum + Number(entry.quantity), 0)}
-      </span> {item?.unit || 'items'} for item <span className="font-bold">{item?.name}</span>.
-    </p>
-    
-    <div className="mt-8 flex justify-center space-x-4">
-      <button
-        type="button"
-        onClick={handleCancelSave}
-        className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none"
-      >
-        Cancel
-      </button>
-      <button
-        type="button"
-        onClick={handleSaveStock}
-        disabled={loading}
-        className="inline-flex justify-center items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-teal-500 hover:bg-teal-600 focus:outline-none disabled:opacity-50"
-      >
-        {loading ? (
-          <span className="flex items-center">
-            <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-            </svg>
-            Saving...
-          </span>
-        ) : (
-          <span className="flex items-center">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
-              <path fillRule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clipRule="evenodd" />
-            </svg>
-            Save & Close
-          </span>
-        )}
-      </button>
-    </div>
-  </div>
-</Modal>
 </div>
     </div>
   );
