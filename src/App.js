@@ -40,6 +40,7 @@ import TechnicianDashboard from './pages/technician/TechnicianDashboard';
 import TransferHistoryTable from './pages/manager/TransferHistoryTable';
 import ManagerProjectDashboard from './pages/manager/ManagerProjectDashboard';
 import InventoryManagement from './pages/inventory/InventoryManagement';
+import TransferredProjectsPage from './pages/manager/TransferredProjectsPage';
 
 // Protected route component
 const ProtectedRoute = ({ children, allowedRoles = [] }) => {
@@ -257,6 +258,15 @@ function App() {
           element={
             <ProtectedRoute>
               <InventoryManagement />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="transferred-projects"
+          element={
+            <ProtectedRoute>
+              <TransferredProjectsPage />
             </ProtectedRoute>
           }
         />

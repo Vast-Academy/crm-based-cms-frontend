@@ -236,6 +236,10 @@ const SummaryApi = {
       addWorkOrderRemark:{
         url : `${backendDomain}/api/remark-add`,
         method: "post"
+      },
+      acceptTechnicianProjectTransfer: {
+        url : `${backendDomain}/api/accept-technician-project-transfer`,
+        method: 'post'
       }
 }
 

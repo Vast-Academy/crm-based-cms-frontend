@@ -73,7 +73,7 @@ const ReturnInventoryModal = ({ isOpen, onClose, onInventoryReturned, darkMode =
 
   // Toggle item selection for serialized items
   const toggleSerialItemSelection = (item, serialNumber) => {
-    const itemKey = item._id || item.id || item.itemId;
+    const itemKey = item.id || item.itemId || item._id;
     
     const existingIndex = selectedItems.findIndex(
       selected => selected.itemId === itemKey && selected.serialNumber === serialNumber
@@ -99,7 +99,7 @@ const ReturnInventoryModal = ({ isOpen, onClose, onInventoryReturned, darkMode =
   
   // Handle generic item quantity change
   const handleQuantityChange = (item, value) => {
-    const itemKey = item._id || item.id || item.itemId;
+    const itemKey = item.id || item.itemId || item._id;
     const quantity = parseInt(value);
     const maxQuantity = item.genericQuantity;
 
@@ -194,7 +194,7 @@ const ReturnInventoryModal = ({ isOpen, onClose, onInventoryReturned, darkMode =
       setSelectedItems([]);
       
       // Show success message
-      alert('Selected items have been returned to manager successfully!');
+      // alert('Selected items have been returned to manager successfully!');
       
       // Close modal
       onClose();
@@ -251,7 +251,7 @@ const ReturnInventoryModal = ({ isOpen, onClose, onInventoryReturned, darkMode =
             <div className="space-y-1">
               {filteredInventory.map((item, index) => {
                 // Make sure we have a solid ID for the item
-                const itemKey = item._id || item.id || item.itemId;
+                const itemKey = item.id || item.itemId || item._id;
                 const itemCount = getItemQuantity(item);
                 const isExpanded = expandedItems.includes(itemKey);
                 

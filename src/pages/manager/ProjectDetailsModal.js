@@ -353,39 +353,42 @@ useEffect(() => {
           
           {/* Status History */}
           {project.statusHistory && project.statusHistory.length > 0 && (
-            <div className="mb-6">
-              <h3 className="text-md font-medium mb-3">Status History</h3>
-              
-              <div className="bg-white border rounded-lg p-4">
-                <div className="space-y-4">
-                  {project.statusHistory.map((history, index) => (
-                    <div key={index} className="border-l-2 border-blue-500 pl-4 pb-4">
-                      <div className="flex justify-between">
-                        <span className={`px-2 py-1 rounded-full text-xs capitalize ${getStatusBadge(history.status)}`}>
-                          {history.status}
-                        </span>
-                        <span className="text-sm text-gray-500">{formatDate(history.updatedAt)}</span>
-                      </div>
-                      {history.remark && (
-                        <p className="mt-2 text-sm">{history.remark}</p>
-                      )}
-                      {history.updatedBy && (
-                        <p className="mt-1 text-xs text-gray-500">
-                          By: {
-                            history.updatedBy.firstName
-                              ? `${history.updatedBy.firstName} ${history.updatedBy.lastName || ''}`
-                              : history.updatedBy._id
-                                ? `User (ID: ${history.updatedBy._id})`
-                                : 'System'
-                          }
-                        </p>
-                      )}
-                    </div>
-                  ))}
-                </div>
+  <div className="mb-6">
+    <h3 className="text-md font-medium mb-3">Status History</h3>
+    
+    <div className="bg-white border rounded-lg p-4">
+      <div className="space-y-4">
+        {/* Sort the statusHistory array by date (newest first) before rendering */}
+        {[...project.statusHistory]
+          .sort((a, b) => new Date(a.updatedAt) - new Date(b.updatedAt))
+          .map((history, index) => (
+            <div key={index} className="border-l-2 border-blue-500 pl-4 pb-4">
+              <div className="flex justify-between">
+                <span className={`px-2 py-1 rounded-full text-xs capitalize ${getStatusBadge(history.status)}`}>
+                  {history.status}
+                </span>
+                <span className="text-sm text-gray-500">{formatDate(history.updatedAt)}</span>
               </div>
+              {history.remark && (
+                <p className="mt-2 text-sm">{history.remark}</p>
+              )}
+              {history.updatedBy && (
+                <p className="mt-1 text-xs text-gray-500">
+                  By: {
+                    history.updatedBy.firstName
+                      ? `${history.updatedBy.firstName} ${history.updatedBy.lastName || ''}`
+                      : history.updatedBy._id
+                        ? `User (ID: ${history.updatedBy._id})`
+                        : 'System'
+                  }
+                </p>
+              )}
             </div>
-          )}
+          ))}
+      </div>
+    </div>
+  </div>
+)}
           
           {/* Payment & Billing Information */}
           {project.billingInfo && project.billingInfo.length > 0 && (

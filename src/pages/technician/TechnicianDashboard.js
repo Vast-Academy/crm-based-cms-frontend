@@ -20,7 +20,8 @@ import {
   Phone, 
   MessageSquare,
   ChevronDown,
-  FileText
+  FileText,
+  
 } from 'lucide-react';
 import { LuCctv } from "react-icons/lu";
 import { useAuth } from '../../context/AuthContext';
@@ -30,6 +31,7 @@ import InventoryDetailsModal from './InventoryDetailsModal';
 import WorkOrderDetailsModal from './WorkOrderDetailsModal';
 import ReturnInventoryModal from './ReturnInventoryModal';
 import GenerateBillModal from './GenerateBillModal';
+import { FiPause } from 'react-icons/fi';
 
 const TechnicianDashboard = () => {
   const { user, logout } = useAuth();
@@ -65,6 +67,9 @@ const TechnicianDashboard = () => {
   const [pauseProjectRemark, setPauseProjectRemark] = useState('');
   const [showBillModal, setShowBillModal] = useState(false);
   const [showPauseConfirmationModal, setShowPauseConfirmationModal] = useState(false);
+  const [showTransferModal, setShowTransferModal] = useState(false);
+  const [transferRemark, setTransferRemark] = useState('');
+  const [transferredProjects, setTransferredProjects] = useState([]);
 
   // नया कॉन्स्टेंट जोड़ें
 const CACHE_STALENESS_TIME = 15 * 1000;
@@ -223,6 +228,61 @@ const confirmPauseProject = async (project) => {
   }
 };
 
+// Function to stop/transfer the project
+const handleTransferProject = async (project) => {
+  if (!transferRemark.trim()) {
+    return;
+  }
+  
+  try {
+    setLoading(true);
+    
+    const response = await fetch(SummaryApi.updateWorkOrderStatus.url, {
+      method: SummaryApi.updateWorkOrderStatus.method,
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      credentials: 'include',
+      body: JSON.stringify({
+        customerId: project.customerId,
+        orderId: project.orderId,
+        status: 'transferring',
+        remark: transferRemark
+      })
+    });
+    
+    const data = await response.json();
+    
+    if (data.success) {
+      // Update the work orders state
+      setWorkOrders(prevOrders => 
+        prevOrders.filter(order => order.orderId !== project.orderId)
+      );
+      
+      // Add to transferred projects
+      setTransferredProjects(prev => [
+        {...project, status: 'transferring'}, 
+        ...prev
+      ]);
+      
+      // Close the modal
+      setShowTransferModal(false);
+      
+      // Clear the remark
+      setTransferRemark('');
+      
+      // Navigate back to home
+      handleTabChange('home');
+    } else {
+      alert(data.message || 'Failed to stop project');
+    }
+  } catch (err) {
+    console.error('Error stopping project:', err);
+    alert('Server error. Please try again.');
+  } finally {
+    setLoading(false);
+  }
+};
 
 // Add a handler for bill generation completion
 const handleBillGenerated = async (selectedItems, paymentCompleted = false) => {
@@ -499,10 +559,13 @@ const fetchWorkOrders = async (forceFresh = false) => {
       // सक्रिय और पूरे किए गए वर्क ऑर्डर्स को अलग करें
       const active = [];
       const completed = [];
+      const transferred = [];
       
       parsedData.forEach(order => {
         if (order.status === 'completed') {
           completed.push(order);
+        }else if (order.status === 'transferring') {
+          transferred.push(order);
         } else {
           active.push(order);
         }
@@ -510,6 +573,7 @@ const fetchWorkOrders = async (forceFresh = false) => {
       
       setWorkOrders(active);
       setCompletedOrders(completed);
+      setTransferredProjects(transferred);
       console.log("Using cached work orders data");
       
       // बैकग्राउंड में फ्रेश डेटा फेच करें
@@ -640,6 +704,8 @@ const fetchFreshWorkOrders = async () => {
       }
     }, 0);
   };
+
+
 
   const getCategoryColorClass = (category) => {
     if (category === 'Repair') {
@@ -908,7 +974,7 @@ const fetchFreshWorkOrders = async () => {
               </div>
               <div 
                 className={`${darkMode ? 'bg-gradient-to-br from-green-500 to-green-600' : 'bg-gradient-to-br from-green-400 to-green-500'} rounded-2xl shadow-lg p-4 relative overflow-hidden text-white cursor-pointer`}
-                onClick={() => handleTabChange('completed')}
+                onClick={() => handleTabChange('transferred-projects')}
               >
                 <div className="absolute right-0 top-0 w-20 h-20 bg-green-400 rounded-full opacity-20 -mt-10 -mr-10"></div>
                 <div className="relative z-10">
@@ -986,6 +1052,7 @@ const fetchFreshWorkOrders = async () => {
             order.status === 'in-progress' ? `${darkMode ? 'bg-purple-600/40' : 'bg-purple-100'} ${darkMode ? 'text-purple-100' : 'text-purple-800'}` :
             order.status === 'pending-approval' ? `${darkMode ? 'bg-amber-600' : 'bg-amber-100'} ${darkMode ? 'text-amber-100' : 'text-amber-600'}` :
             order.status === 'paused' ? `${darkMode ? 'bg-orange-600/40' : 'bg-orange-100'} ${darkMode ? 'text-orange-100' : 'text-orange-800'}` :
+            order.status === 'transferring' ? `${darkMode ? 'bg-red-600/40' : 'bg-red-100'} ${darkMode ? 'text-red-100' : 'text-red-800'}` :
             `${darkMode ? 'bg-green-600/40' : 'bg-green-100'} ${darkMode ? 'text-green-100' : 'text-green-800'}`
           }`}>
             {order.status}
@@ -1327,13 +1394,23 @@ const fetchFreshWorkOrders = async () => {
             </button>
           </div>
           
-          {/* Stop Project Button */}
-          <button
-            onClick={() => setShowStopProjectModal(true)}
-            className={`w-full py-3 ${darkMode ? 'bg-gray-900' : 'bg-gray-800'} text-white rounded-xl font-medium`}
-          >
-            Stop Project
-          </button>
+          <div className="flex gap-4 mt-6">
+  {/* Pause Project Button */}
+  <button
+    onClick={() => setShowStopProjectModal(true)}
+    className={`flex-1 py-3 ${darkMode ? 'bg-orange-900' : 'bg-orange-500'} text-white rounded-xl font-medium flex items-center justify-center`}
+  >
+    <FiPause size={18} className="mr-2" /> Pause Project
+  </button>
+  
+  {/* Stop Project Button */}
+  <button
+    onClick={() => setShowTransferModal(true)}
+    className={`flex-1 py-3 ${darkMode ? 'bg-red-900' : 'bg-red-500'} text-white rounded-xl font-medium flex items-center justify-center`}
+  >
+    <ArrowLeft size={18} className="mr-2" /> Stop Project
+  </button>
+</div>
           
           {/* Full History Modal */}
           {showFullHistory && (
@@ -1518,6 +1595,56 @@ const fetchFreshWorkOrders = async () => {
     </div>
   </div>
 )}
+
+{/* Transfer Project Modal */}
+{showTransferModal && (
+  <div className="fixed inset-0 bg-black/60 z-50 flex justify-center items-center p-4">
+    <div className={`w-full max-w-md ${darkMode ? 'bg-gray-800' : 'bg-white'} rounded-xl shadow-2xl`}>
+      <div className="flex justify-between items-center p-4 border-b">
+        <h3 className="font-bold text-lg">Stop Project</h3>
+        <button 
+          onClick={() => setShowTransferModal(false)}
+          className="p-1"
+        >
+          <X size={20} />
+        </button>
+      </div>
+      
+      <div className="p-4">
+        <p className="text-gray-600 mb-4">
+          Stopping a project will transfer it back to the manager for reassignment.
+          Please provide a detailed reason for stopping this project.
+        </p>
+        <label className="block text-sm font-medium text-gray-700 mb-2">
+          Reason for Stopping Project*
+        </label>
+        <textarea
+          className={`w-full p-3 rounded-lg ${darkMode ? 'bg-gray-700 text-white border-gray-600' : 'bg-white border-gray-300'} border mb-4`}
+          rows="4"
+          placeholder="Enter detailed reason for stopping this project..."
+          value={transferRemark}
+          onChange={(e) => setTransferRemark(e.target.value)}
+        ></textarea>
+        
+        <div className="flex p-4 border-t">
+          <button
+            onClick={() => setShowTransferModal(false)}
+            className="flex-1 mr-2 py-2 border border-gray-300 rounded-lg text-gray-700"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={() => handleTransferProject(activeProject)}
+            className="flex-1 ml-2 py-2 bg-red-500 text-white rounded-lg"
+            disabled={!transferRemark.trim()}
+          >
+            Submit
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+)}
         </>
       );
     })()}
@@ -1602,6 +1729,7 @@ const fetchFreshWorkOrders = async () => {
             order.status === 'in-progress' ? `${darkMode ? 'bg-purple-600/40' : 'bg-purple-100'} ${darkMode ? 'text-purple-100' : 'text-purple-800'}` :
             order.status === 'pending-approval' ? `${darkMode ? 'bg-amber-600' : 'bg-amber-100'} ${darkMode ? 'text-amber-100' : 'text-amber-600'}` :
             order.status === 'paused' ? `${darkMode ? 'bg-orange-600/40' : 'bg-orange-100'} ${darkMode ? 'text-orange-100' : 'text-orange-800'}` :
+            order.status === 'transferring' ? `${darkMode ? 'bg-red-600/40' : 'bg-red-100'} ${darkMode ? 'text-red-100' : 'text-red-800'}` :
             `${darkMode ? 'bg-green-600/40' : 'bg-green-100'} ${darkMode ? 'text-green-100' : 'text-green-800'}`
           }`}>
             {order.status}
@@ -1906,6 +2034,79 @@ const fetchFreshWorkOrders = async () => {
         ) : (
           <div className="p-8 text-center">
             <p className={`${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>No assigned projects</p>
+          </div>
+        )}
+      </div>
+    </div>
+  </div>
+)}
+
+{activeTab === 'transferred-projects' && (
+  <div className="flex flex-col space-y-6">
+    {/* Transferred Projects Summary */}
+    <div className={`${darkMode ? 'bg-gradient-to-br from-red-600 to-red-800' : 'bg-gradient-to-br from-red-500 to-red-600'} p-6 rounded-2xl shadow-xl text-white`}>
+      <div className="flex items-center mb-4">
+        <div className="w-16 h-16 bg-red-700 rounded-full flex items-center justify-center shadow-xl mr-4">
+          <ArrowLeft size={32} className="text-white" />
+        </div>
+        <div>
+          <p className="text-2xl font-bold mb-1">Transferred Projects</p>
+          <p className={`${darkMode ? 'text-red-200' : 'text-red-100'}`}>Projects pending transfer</p>
+        </div>
+      </div>
+      
+      <div className={`${darkMode ? 'bg-white/10' : 'bg-white/20'} rounded-xl p-4 backdrop-blur-sm`}>
+        <div className="flex justify-between items-center mb-4">
+          <span className={`${darkMode ? 'text-red-200' : 'text-red-100'}`}>Total Transferred:</span>
+          <span className="text-white text-xl font-bold">{transferredProjects.length} projects</span>
+        </div>
+        
+        <button 
+          onClick={() => handleTabChange('home')}
+          className="bg-red-700 hover:bg-red-800 text-white w-full py-2 rounded-lg flex items-center justify-center mt-2"
+        >
+          <Home size={16} className="mr-2" /> Back to Home
+        </button>
+      </div>
+    </div>
+    
+    {/* Transferred Projects List */}
+    <div className={`${darkMode ? 'bg-gray-800/50 backdrop-blur-sm border border-gray-700' : 'bg-white/80 backdrop-blur-sm border border-gray-200'} rounded-2xl shadow-xl overflow-hidden`}>
+      <div className={`p-4 ${darkMode ? 'border-b border-gray-700' : 'border-b border-gray-200'}`}>
+        <h2 className="font-bold text-lg">Transferred Projects</h2>
+      </div>
+      
+      <div>
+        {transferredProjects.length > 0 ? (
+          transferredProjects.map((order) => (
+            <div 
+              key={order.orderId || `order-${Math.random().toString(36).substr(2, 9)}`} 
+              className={`p-4 ${darkMode ? 'border-b border-gray-700 last:border-b-0 hover:bg-gray-700/50' : 'border-b border-gray-200 last:border-b-0 hover:bg-gray-100/50'} transition-colors cursor-pointer`}
+              onClick={() => handleWorkOrderClick(order)}
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex items-center max-w-[200px]">
+                  <div className={`w-10 h-10 rounded-full bg-red-500 flex items-center justify-center mr-3`}>
+                    <ArrowLeft size={18} className="text-white" />
+                  </div>
+                  <div>
+                    <p className={`font-medium truncate max-w-[140px] ${darkMode ? 'text-white' : 'text-gray-800'}`}>
+                      {order.projectType}
+                    </p>
+                    <p className={`text-xs ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                      Order ID: {order.orderId}
+                    </p>
+                  </div>
+                </div>
+                <span className={`px-2 py-1 rounded-full text-xs capitalize bg-red-100 text-red-800`}>
+                  Transferring
+                </span>
+              </div>
+            </div>
+          ))
+        ) : (
+          <div className="p-8 text-center">
+            <p className={`${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>No transferred projects</p>
           </div>
         )}
       </div>

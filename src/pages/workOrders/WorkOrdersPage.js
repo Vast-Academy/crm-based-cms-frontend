@@ -297,6 +297,24 @@ const WorkOrdersPage = () => {
                         <tr>
                           <td colSpan="7" className="px-6 py-4 bg-gray-50 border-b">
                             <div className="space-y-4">
+                               {/* Check if this was a transferred project */}
+        {order.statusHistory && order.statusHistory.some(history => history.status === 'transferring') && (
+          <div className="bg-red-50 p-3 rounded-lg border-l-4 border-red-500">
+            <h4 className="font-semibold text-red-700">Transferred Project</h4>
+            <p className="mt-1 text-gray-700">
+              {order.statusHistory.find(history => history.status === 'transferring')?.remark || 'No transfer reason provided'}
+            </p>
+            <p className="text-xs text-gray-500 mt-1">
+              Transfer accepted by manager: {
+                order.statusHistory.find(history => 
+                  history.status === 'pending' && 
+                  order.statusHistory.some(h => h.status === 'transferring')
+                )?.remark || 'No transfer acceptance note provided'
+              }
+            </p>
+          </div>
+        )}
+        
                               {/* Technical details / Remarks */}
                               {order.initialRemark && (
                                 <div>
