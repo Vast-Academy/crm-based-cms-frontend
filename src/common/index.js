@@ -239,7 +239,15 @@ const SummaryApi = {
       },
       acceptTechnicianProjectTransfer: {
         url : `${backendDomain}/api/accept-technician-project-transfer`,
-        method: 'post'
+        method: "post"
+      },
+      getReturnedInventory: {
+        url: `${backendDomain}/api/get-returned-inventory`,
+        method: "get"
+      },
+      confirmReturnedInventory:{
+        url : `${backendDomain}/api/confirm-returned-inventory`,
+        method: "post"
       }
 }
 
