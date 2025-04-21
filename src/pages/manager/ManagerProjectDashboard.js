@@ -16,6 +16,7 @@ const ManagerProjectDashboard = () => {
   const [pendingApprovals, setPendingApprovals] = useState([]);
   const [inProgressProjects, setInProgressProjects] = useState([]);
   const [completedProjects, setCompletedProjects] = useState([]);
+  const [transferredProjects, setTransferredProjects] = useState([]);
   
   // Filtered data
   const [filteredProjects, setFilteredProjects] = useState([]);
@@ -57,10 +58,14 @@ const ManagerProjectDashboard = () => {
         const inProgress = data.data.filter(project => 
           ['assigned', 'in-progress', 'paused'].includes(project.status)
         );
+        const transferred = data.data.filter(project => 
+          ['transferring', 'transferred'].includes(project.status)
+        );
         const completed = data.data.filter(project => project.status === 'completed');
         
         setPendingApprovals(pending);
         setInProgressProjects(inProgress);
+        setTransferredProjects(transferred);
         setCompletedProjects(completed);
         
         // Set initial filtered projects based on active tab
@@ -101,6 +106,11 @@ const ManagerProjectDashboard = () => {
           ['assigned', 'in-progress', 'paused'].includes(project.status)
         );
         break;
+        case 'transferred':
+    filtered = assignedProjects.filter(project => 
+      ['transferring', 'transferred'].includes(project.status)
+    );
+    break;
       case 'completed':
         filtered = assignedProjects.filter(project => project.status === 'completed');
         break;
@@ -129,7 +139,8 @@ const ManagerProjectDashboard = () => {
       'in-progress': 2,
       'assigned': 3,
       'paused': 4,
-      'completed': 5
+      'transferred' : 5,
+      'completed': 6
     };
     
     // Sort by status priority first, then by updated date
@@ -286,6 +297,10 @@ const ManagerProjectDashboard = () => {
         return 'bg-purple-100 text-purple-800';
       case 'paused':
         return 'bg-orange-100 text-orange-800';
+        case 'transferring':
+      return 'bg-red-100 text-red-800';
+    case 'transferred':
+      return 'bg-red-200 text-red-800';
       case 'completed':
         return 'bg-green-100 text-green-800';
       default:
@@ -320,6 +335,9 @@ const ManagerProjectDashboard = () => {
       case 'in-progress':
       case 'paused':
         return 'bg-blue-500';
+        case 'transferring':
+    case 'transferred':
+      return 'bg-red-500';
       case 'completed':
         return 'bg-green-500';
       default:
@@ -381,6 +399,20 @@ const ManagerProjectDashboard = () => {
                   {inProgressProjects.length}
                 </span>
               </button>
+              {/* Add new Transferred button here */}
+            <button
+              onClick={() => handleTabChange('transferred')}
+              className={`px-4 py-1.5 rounded-full text-sm ${
+                activeTab === 'transferred' 
+                  ? 'bg-red-500 text-white' 
+                  : 'bg-red-100 text-red-800'
+              }`}
+            >
+              Transferred
+              <span className="ml-2 bg-white text-red-800 px-1.5 py-0.5 rounded-full text-xs">
+                {transferredProjects.length}
+              </span>
+            </button>
               <button
                 onClick={() => handleTabChange('completed')}
                 className={`px-4 py-1.5 rounded-full text-sm ${
@@ -552,6 +584,7 @@ const ManagerProjectDashboard = () => {
                   {activeTab === 'all' ? 'No projects found.' : 
                    activeTab === 'pending-approval' ? 'No pending approvals found.' :
                    activeTab === 'in-progress' ? 'No in-progress projects found.' :
+                   activeTab === 'transferred' ? 'No transferred projects found.' :
                    'No completed projects found.'}
                 </p>
               )}

@@ -254,16 +254,12 @@ const handleTransferProject = async (project) => {
     const data = await response.json();
     
     if (data.success) {
-      // Update the work orders state
+      // Update the work orders state - don't remove yet, just update status
       setWorkOrders(prevOrders => 
-        prevOrders.filter(order => order.orderId !== project.orderId)
+        prevOrders.map(order => 
+          order.orderId === project.orderId ? {...order, status: 'transferring'} : order
+        )
       );
-      
-      // Add to transferred projects
-      setTransferredProjects(prev => [
-        {...project, status: 'transferring'}, 
-        ...prev
-      ]);
       
       // Close the modal
       setShowTransferModal(false);
@@ -390,7 +386,8 @@ const formatDate = (dateString) => {
     return workOrders.filter(order => 
       order.status === 'assigned' || 
       order.status === 'in-progress' || 
-      order.status === 'paused'
+      order.status === 'paused' ||
+      order.status === 'transferring'
     ).sort((a, b) => {
       // Sort by most recently updated
       if (a.updatedAt && b.updatedAt) {
@@ -399,6 +396,15 @@ const formatDate = (dateString) => {
       return 0;
     });
   };
+
+  // Add a helper function to check status text
+const getStatusDisplayText = (status) => {
+  switch(status) {
+    case 'transferring': return 'Transfer Pending';
+    case 'transferred': return 'Transferred';
+    default: return status;
+  }
+};
 
   // Get quantity of an item (for sorting and display)
 const getItemQuantity = (item) => {
@@ -564,7 +570,7 @@ const fetchWorkOrders = async (forceFresh = false) => {
       parsedData.forEach(order => {
         if (order.status === 'completed') {
           completed.push(order);
-        }else if (order.status === 'transferring') {
+        } else if (order.status === 'transferring' || order.status === 'transferred') {
           transferred.push(order);
         } else {
           active.push(order);
@@ -668,10 +674,13 @@ const fetchFreshWorkOrders = async () => {
       // सक्रिय और पूरे किए गए वर्क ऑर्डर्स को अलग करें
       const active = [];
       const completed = [];
+      const transferred = [];
       
       data.data.forEach(order => {
         if (order.status === 'completed') {
           completed.push(order);
+        } else if (order.status === 'transferring' || order.status === 'transferred') {
+          transferred.push(order);
         } else {
           active.push(order);
         }
@@ -679,6 +688,7 @@ const fetchFreshWorkOrders = async () => {
       
       setWorkOrders(active);
       setCompletedOrders(completed);
+      setTransferredProjects(transferred);
       
       // कैश अपडेट करें
       localStorage.setItem('technicianWorkOrders', JSON.stringify(data.data));
@@ -2051,7 +2061,7 @@ const fetchFreshWorkOrders = async () => {
         </div>
         <div>
           <p className="text-2xl font-bold mb-1">Transferred Projects</p>
-          <p className={`${darkMode ? 'text-red-200' : 'text-red-100'}`}>Projects pending transfer</p>
+          <p className={`${darkMode ? 'text-red-200' : 'text-red-100'}`}>Projects transferred to others</p>
         </div>
       </div>
       
@@ -2060,13 +2070,6 @@ const fetchFreshWorkOrders = async () => {
           <span className={`${darkMode ? 'text-red-200' : 'text-red-100'}`}>Total Transferred:</span>
           <span className="text-white text-xl font-bold">{transferredProjects.length} projects</span>
         </div>
-        
-        <button 
-          onClick={() => handleTabChange('home')}
-          className="bg-red-700 hover:bg-red-800 text-white w-full py-2 rounded-lg flex items-center justify-center mt-2"
-        >
-          <Home size={16} className="mr-2" /> Back to Home
-        </button>
       </div>
     </div>
     
@@ -2099,7 +2102,7 @@ const fetchFreshWorkOrders = async () => {
                   </div>
                 </div>
                 <span className={`px-2 py-1 rounded-full text-xs capitalize bg-red-100 text-red-800`}>
-                  Transferring
+                  {order.status === 'transferred' ? 'Transferred' : 'Transfer Pending'}
                 </span>
               </div>
             </div>

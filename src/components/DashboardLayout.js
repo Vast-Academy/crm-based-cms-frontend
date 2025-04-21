@@ -165,30 +165,18 @@ const DashboardLayout = () => {
             icon: FiUsers
           },
           {
-            name: 'Inventory',
-            path: '/inventory',
-            icon: FiPackage
-          },
-          {
             name: 'Customers',
             path: '/contacts',
             icon: FiUsers
           },
-          // { 
-          //   name: 'Customer', 
-          //   icon: FiUsers, 
-          //   dropdown: true,
-          //   isOpen: leadsDropdownOpen,
-          //   toggle: () => toggleDropdown('leads'),
-          //   items: [
-          //     { name: 'Customer & Leads', path: '/contacts' },
-          //     { name: 'All Leads', path: '/leads' },
-          //     { name: 'All Customers', path: '/customers' },
-          //   ]
-          // },
           { name: 'Work Orders', path: '/work-orders', icon: FiTool },
-          { name: 'Transferred Projects', path: '/transferred-projects', icon: FiArrowLeft },
           { name: 'Projects', path: '/manager-dashboard', icon: FiActivity },
+          { name: 'Transferring Requests', path: '/transferred-projects', icon: FiArrowLeft },
+          {
+            name: 'Inventory',
+            path: '/inventory',
+            icon: FiPackage
+          },
           { name: 'Returned Inventory', path: '/returned-inventory', icon: FiRepeat },
           { name: 'Logs', path: '/inventory-transfer-history', icon: FiRefreshCw },
         ];

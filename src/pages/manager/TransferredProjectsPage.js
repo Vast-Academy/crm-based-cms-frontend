@@ -15,6 +15,7 @@ const TransferredProjectsPage = () => {
   const [showTransferModal, setShowTransferModal] = useState(false);
   const [selectedProject, setSelectedProject] = useState(null);
   const [expandedProject, setExpandedProject] = useState(null);
+  const [approvedProjects, setApprovedProjects] = useState([]);
   
   // Fetch transferred projects
   const fetchTransferredProjects = async () => {
@@ -133,13 +134,25 @@ const TransferredProjectsPage = () => {
   
   // Handle project transfer completion
   const handleProjectTransferred = (updatedProject) => {
-    // Remove the transferred project from the list
+    // Update the project in the list - change status to transferred instead of removing
     setTransferredProjects(prev => 
-      prev.filter(p => !(p.orderId === updatedProject.orderId && p.customerId === updatedProject.customerId))
+      prev.map(p => {
+        if (p.orderId === updatedProject.orderId && p.customerId === updatedProject.customerId) {
+          return { ...p, status: 'transferred' };
+        }
+        return p;
+      })
     );
     
-    // Show success message
-    alert('Transfer request accepted. The project is now available for reassignment.');
+    // Update filtered projects as well
+    setFilteredProjects(prev => 
+      prev.map(p => {
+        if (p.orderId === updatedProject.orderId && p.customerId === updatedProject.customerId) {
+          return { ...p, status: 'transferred' };
+        }
+        return p;
+      })
+    );
     
     // Close modal
     setShowTransferModal(false);
@@ -255,15 +268,16 @@ const TransferredProjectsPage = () => {
                           <td colSpan="8" className="px-6 py-4 bg-gray-50 border-b">
                             <div className="flex ">
                               
-                              <button 
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleTransferProject(project);
-                                }}
-                                className="inline-flex items-center px-4 py-1.5 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-500 hover:bg-blue-600"
-                              >
-                                <FiArrowLeft className="mr-2" /> Transfer Project
-                              </button>
+                            <button 
+  onClick={(e) => {
+    e.stopPropagation();
+    handleTransferProject(project);
+  }}
+  className="inline-flex items-center px-4 py-1.5 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-500 hover:bg-blue-600"
+>
+  <FiArrowLeft className="mr-2" /> 
+  {project.status === 'transferring' ? 'View Details & Approve' : 'View Details'}
+</button>
                             </div>
                           </td>
                         </tr>

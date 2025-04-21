@@ -3,9 +3,11 @@ import { FiX, FiUser, FiCalendar, FiMapPin, FiInfo, FiArrowLeft, FiAlertCircle }
 import SummaryApi from '../../common';
 import { useAuth } from '../../context/AuthContext';
 import LoadingSpinner from '../../components/LoadingSpinner';
+import { useNavigate } from 'react-router-dom';
 
 const TransferProjectModal = ({ isOpen, onClose, project, onProjectTransferred }) => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [transferRemark, setTransferRemark] = useState('');
@@ -105,8 +107,6 @@ const TransferProjectModal = ({ isOpen, onClose, project, onProjectTransferred }
       setLoading(true);
       setError(null);
 
-      console.log("customerId:", project.customerId);
-console.log("orderId:", project.orderId);
       
       // API call to accept transfer
       const response = await fetch(SummaryApi.acceptTechnicianProjectTransfer.url, {
@@ -126,9 +126,17 @@ console.log("orderId:", project.orderId);
       
       if (data.success) {
         // Call parent component's handler with the updated project
-        if (onProjectTransferred) {
-          onProjectTransferred(data.data);
-        }
+      if (onProjectTransferred) {
+        // Pass the updated project with new status
+        const updatedProject = {
+          ...project,
+          status: 'transferred'
+        };
+        onProjectTransferred(updatedProject);
+      }
+
+      // Navigate to work orders page to show the newly created work order
+      navigate('/work-orders');
       } else {
         setError(data.message || 'Failed to accept transfer request');
       }
@@ -272,7 +280,9 @@ console.log("orderId:", project.orderId);
             </div>
           )}
           
+          
           {/* Transfer Acceptance Section */}
+          {project.status === 'transferring' ? (
           <div className="mt-8 border-t pt-6">
             <h3 className="text-lg font-medium mb-4">Accept Transfer Request</h3>
             
@@ -324,6 +334,17 @@ console.log("orderId:", project.orderId);
               </button>
             </div>
           </div>
+) : (
+  // For already transferred projects, just show a close button
+  <div className="mt-8 border-t pt-6 flex justify-end">
+    <button
+      onClick={onClose}
+      className="px-6 py-2 bg-gray-200 text-gray-800 rounded-md"
+    >
+      Close
+    </button>
+  </div>
+)}
         </div>
       </div>
     </div>

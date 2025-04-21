@@ -1,6 +1,6 @@
 import React, { useRef, useEffect, useState } from 'react';
-import { FiX, FiUser, FiMapPin, FiCalendar, FiInfo, FiPlay, FiPause, FiSearch, FiCamera, FiFileText, FiCheckCircle, FiArrowRight} from 'react-icons/fi';
-import { Clipboard } from 'lucide-react';
+import { FiX, FiUser, FiMapPin, FiCalendar, FiInfo, FiPlay, FiPause, FiSearch, FiCamera, FiFileText, FiCheckCircle, FiArrowRight } from 'react-icons/fi';
+import { ArrowLeft, Clipboard } from 'lucide-react';
 import SummaryApi from '../../common';
 import { useAuth } from '../../context/AuthContext';
 import { QRCodeCanvas } from 'qrcode.react';
@@ -511,56 +511,71 @@ const renderProjectContent = () => {
           </div>
         </div>
 
-        {/* Add this section after customer information - but only for repair/complaint category */}
-{/* {workOrder.projectCategory === 'Repair' && workOrder.originalTechnician && (
+        {workOrder.status === 'transferring' && (
   <div className="mb-4">
     <h3 className="text-md font-medium flex items-center mb-3">
-      <FiUser className="mr-2" />
-      Original Technician Information
+      <ArrowLeft size={18} className="mr-2" />
+      Transfer Status
     </h3>
-    
-    <div className="bg-white border rounded-lg p-3 space-y-2">
-      <p className="font-medium">
-        {workOrder.originalTechnician.firstName} {workOrder.originalTechnician.lastName}
-      </p>
-      {workOrder.originalTechnician.phoneNumber && (
-        <p className="text-sm text-gray-600">
-          Phone: {workOrder.originalTechnician.phoneNumber}
-        </p>
+    <div className="bg-red-50 border-l-4 border-red-500 p-4 rounded-r-lg">
+      <div className="flex justify-between items-center mb-2">
+        <span className="font-medium">Status:</span>
+        <span className="px-2 py-1 bg-red-100 text-red-800 rounded-full text-xs">Transfer Pending</span>
+      </div>
+      
+      {/* Find transfer request reason */}
+      {workOrder.statusHistory && (
+        <>
+          {workOrder.statusHistory
+            .filter(history => history.status === 'transferring')
+            .map((history, idx) => (
+              <div key={idx} className="mb-2">
+                <p className="text-sm text-gray-700 font-medium">Transfer reason:</p>
+                <p className="mt-1 text-sm">{history.remark || 'No reason provided'}</p>
+                <p className="text-xs text-gray-500 mt-1">
+                  Requested on: {formatDate(history.updatedAt)}
+                </p>
+              </div>
+            ))
+          }
+        </>
       )}
-      <p className="text-xs text-gray-500">
-      Project Completed on: {formatDate(workOrder.projectCreatedAt)}
+      
+      <p className="text-sm text-orange-600 mt-2">
+        Your request is waiting for manager approval. Once approved, this project will be assigned to another technician.
       </p>
-    </div>
-  </div>
-)} */}
-        
-        {/* Complaint Details section - ONLY show for 'Repair' category */}
-{/* {workOrder.projectCategory === 'Repair' && (
-  <div className="mb-4">
-    <h3 className="text-md font-medium flex items-center mb-3">
-      <FiInfo className="mr-2" />
-      Complaint Details
-    </h3>
-    
-    <div className="bg-white border rounded-lg p-3">
-      <p className="text-sm">{complaintDetails || "No complaint details available"}</p>
     </div>
   </div>
 )}
 
-{(workOrder.projectCategory !== 'Repair' || !complaintDetails) && workOrder.initialRemark && (
+{workOrder.status === 'transferred' && (
   <div className="mb-4">
     <h3 className="text-md font-medium flex items-center mb-3">
-      <FiInfo className="mr-2" />
-      Project Requirements
+      <ArrowLeft size={18} className="mr-2" />
+      Transfer Complete
     </h3>
-    
-    <div className="bg-white border rounded-lg p-3">
-      <p className="text-sm">{workOrder.initialRemark}</p>
+    <div className="bg-green-50 border-l-4 border-green-500 p-4 rounded-r-lg">
+      <p className="font-medium">This project has been successfully transferred.</p>
+      
+      {/* Find transfer approval details */}
+      {workOrder.statusHistory && (
+        <>
+          {workOrder.statusHistory
+            .filter(history => history.status === 'transferred')
+            .map((history, idx) => (
+              <div key={idx} className="mt-2">
+                <p className="text-sm text-gray-700">{history.remark || 'No additional comments'}</p>
+                <p className="text-xs text-gray-500 mt-1">
+                  Transferred on: {formatDate(history.updatedAt)}
+                </p>
+              </div>
+            ))
+          }
+        </>
+      )}
     </div>
   </div>
-)} */}
+)}
 
 {workOrder.initialRemark && (
  <div className="mb-4">
