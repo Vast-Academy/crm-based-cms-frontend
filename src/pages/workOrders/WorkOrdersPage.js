@@ -42,7 +42,7 @@ const WorkOrdersPage = () => {
       
       // Always filter for pending status only
       const statusParam = branchParam ? '&' : '?';
-      branchParam += `${statusParam}status=pending,transferred`;
+      branchParam += `${statusParam}status=pending`;
       
       const response = await fetch(`${SummaryApi.getWorkOrders.url}${branchParam}`, {
         method: SummaryApi.getWorkOrders.method,
@@ -56,9 +56,7 @@ const WorkOrdersPage = () => {
         // Only keep pending orders
         const pendingOrders = data.data.filter(order => 
           order.status === 'pending' || 
-          order.status === 'Pending' ||
-          order.status === 'transferred' || 
-          order.status === 'Transferred'
+          order.status === 'Pending'
         );
         setWorkOrders(pendingOrders);
         applyFilters(pendingOrders, categoryFilter);
@@ -285,14 +283,10 @@ const WorkOrdersPage = () => {
                           {formatDate(order.createdAt)}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-  <span className={`px-2 py-1 rounded-full text-xs capitalize ${
-    order.status === 'transferred' 
-      ? 'bg-purple-100 text-purple-800' 
-      : 'bg-yellow-100 text-yellow-800'
-  }`}>
-    {order.status === 'transferred' ? 'Transferred' : 'Pending'}
-  </span>
-</td>
+                          <span className="px-2 py-1 rounded-full text-xs capitalize bg-yellow-100 text-yellow-800">
+                            Pending
+                          </span>
+                        </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                           <span className="text-yellow-600">Not Assigned</span>
                         </td>
