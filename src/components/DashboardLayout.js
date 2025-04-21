@@ -7,7 +7,8 @@ import {
   FiBell, FiLogOut, FiChevronDown,
   FiBriefcase, FiFileText, FiTool, FiRefreshCw,
   FiActivity,
-  FiArrowLeft
+  FiArrowLeft,
+  FiRepeat
 } from 'react-icons/fi';
 import ManagerStatusChecker from './ManagerStatusChecker';
 // import GlobalSearch from './GlobalSearch';
@@ -188,7 +189,7 @@ const DashboardLayout = () => {
           { name: 'Work Orders', path: '/work-orders', icon: FiTool },
           { name: 'Transferred Projects', path: '/transferred-projects', icon: FiArrowLeft },
           { name: 'Projects', path: '/manager-dashboard', icon: FiActivity },
-          { name: 'Returned Inventory', path: '/returned-inventory', icon: FiRefreshCw },
+          { name: 'Returned Inventory', path: '/returned-inventory', icon: FiRepeat },
           { name: 'Logs', path: '/inventory-transfer-history', icon: FiRefreshCw },
         ];
       }
