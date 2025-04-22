@@ -42,6 +42,7 @@ import ManagerProjectDashboard from './pages/manager/ManagerProjectDashboard';
 import InventoryManagement from './pages/inventory/InventoryManagement';
 import TransferredProjectsPage from './pages/manager/TransferredProjectsPage';
 import ReturnedInventoryTable from './pages/manager/ReturnedInventoryTable';
+import ReplacementWarranty from './pages/manager/ReplacementWarranty';
 
 // Protected route component
 const ProtectedRoute = ({ children, allowedRoles = [] }) => {
@@ -286,6 +287,15 @@ function App() {
           element={
             <ProtectedRoute>
               <ReturnedInventoryTable />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="replacement-warranty"
+          element={
+            <ProtectedRoute>
+              <ReplacementWarranty />
             </ProtectedRoute>
           }
         />

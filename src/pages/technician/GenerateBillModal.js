@@ -423,6 +423,7 @@ const updateWorkOrderStatus = async () => {
       const data = await response.json();
       
       if (data.success) {
+        await updateSerializedItems();
         await updateWorkOrderStatus();
         // Move to payment success step
         setCurrentStep('payment-success');
@@ -436,6 +437,43 @@ const updateWorkOrderStatus = async () => {
       setLoading(false);
     }
   };
+
+  // Add this new function to update serialized items
+  const updateSerializedItems = async () => {
+    try {
+      // Filter only serialized items with serial numbers
+      const serializedItems = selectedItems.filter(
+        item => item.type === 'serialized-product' && item.selectedSerialNumber
+      );
+      
+      if (serializedItems.length === 0) return;
+      
+      // Create array of just the serial number strings
+      const serialNumbers = serializedItems.map(item => item.selectedSerialNumber);
+    
+    // Call API to update serialized items
+    const response = await fetch(SummaryApi.updateUsedSerialNumbers.url, {
+      method: SummaryApi.updateUsedSerialNumbers.method || 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      credentials: 'include',
+      body: JSON.stringify({
+        serialNumbers: serialNumbers,
+        workOrderId: workOrder.orderId,
+        customerId: workOrder.customerId
+      })
+    });
+    
+    const data = await response.json();
+    
+    if (!data.success) {
+      console.error('Warning: Failed to update serial numbers:', data.message);
+    }
+  } catch (err) {
+    console.error('Error updating serial numbers:', err);
+  }
+};
   
   // Handle closing the modal with different behaviors based on current step
   const handleModalClose = () => {

@@ -8,8 +8,9 @@ import {
   FiBriefcase, FiFileText, FiTool, FiRefreshCw,
   FiActivity,
   FiArrowLeft,
-  FiRepeat
+  FiRepeat, FiShield 
 } from 'react-icons/fi';
+import { Replace } from 'lucide-react';
 import ManagerStatusChecker from './ManagerStatusChecker';
 // import GlobalSearch from './GlobalSearch';
 
@@ -178,6 +179,7 @@ const DashboardLayout = () => {
             icon: FiPackage
           },
           { name: 'Returned Inventory', path: '/returned-inventory', icon: FiRepeat },
+          { name: 'Replacement Warranty', path: '/replacement-warranty', icon: FiShield  },
           { name: 'Logs', path: '/inventory-transfer-history', icon: FiRefreshCw },
         ];
       }

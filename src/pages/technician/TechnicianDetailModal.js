@@ -14,12 +14,14 @@ const TechnicianDetailModal = ({ isOpen, onClose, technicianId, onTechnicianUpda
   const [projectsData, setProjectsData] = useState({
     inProgressProjects: [],
     pendingApprovalProjects: [],
+    transferredProjects: [],
     completedProjects: []
   });
   
   // Project details modal state
   const [showProjectDetailsModal, setShowProjectDetailsModal] = useState(false);
   const [selectedProject, setSelectedProject] = useState(null);
+  const [expandedRow, setExpandedRow] = useState(null);
 
   const fetchTechnician = async () => {
     if (!technicianId) return;
@@ -67,6 +69,9 @@ const TechnicianDetailModal = ({ isOpen, onClose, technicianId, onTechnicianUpda
         const pendingApproval = data.data.filter(project => 
           project.status === 'pending-approval'
         );
+        const transferred = data.data.filter(project => 
+          ['transferring', 'transferred'].includes(project.status)
+        );
         const completed = data.data.filter(project => 
           project.status === 'completed'
         );
@@ -74,6 +79,7 @@ const TechnicianDetailModal = ({ isOpen, onClose, technicianId, onTechnicianUpda
         setProjectsData({
           inProgressProjects: inProgress,
           pendingApprovalProjects: pendingApproval,
+          transferredProjects: transferred,
           completedProjects: completed
         });
       } else {
@@ -94,6 +100,7 @@ const TechnicianDetailModal = ({ isOpen, onClose, technicianId, onTechnicianUpda
       setProjectsData({
         inProgressProjects: [],
         pendingApprovalProjects: [],
+        transferredProjects: [],
         completedProjects: []
       });
     }
@@ -256,127 +263,126 @@ const TechnicianDetailModal = ({ isOpen, onClose, technicianId, onTechnicianUpda
           
           {/* Projects panel - Right side */}
           <div className="lg:col-span-2 bg-white rounded-lg overflow-hidden border border-gray-200">
-            <div className="p-6">
-              <h2 className="text-xl font-semibold mb-6">Projects</h2>
-              
-              {/* In-Progress & Pending Approval Projects */}
-              <div className="mb-6">
-                <h3 className="font-semibold text-lg mb-3">In-Progress & Pending Approval Projects</h3>
-                {projectsData.inProgressProjects.length === 0 && projectsData.pendingApprovalProjects.length === 0 ? (
-                  <div className="bg-gray-50 p-4 rounded-lg text-center text-gray-500">
-                    No active projects found
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    {/* In-Progress Projects */}
-                    {projectsData.inProgressProjects.map((project, index) => (
-                      <div 
-                        key={`in-progress-${index}`}
-                        className={`border-l-4 rounded-md p-3 bg-white shadow-sm hover:bg-gray-50 cursor-pointer ${
-                          project.status === 'assigned' ? 'border-blue-500' :
-                          project.status === 'in-progress' ? 'border-purple-500' : 
-                          'border-orange-500'
-                        }`}
-                        onClick={() => handleViewProject(project)}
-                      >
-                        <div className="flex justify-between mb-1">
-                          <span className="font-medium">{project.projectType}</span>
-                          <span className={`px-2 py-1 text-xs rounded-full capitalize ${getStatusBadge(project.status)}`}>
-                            {project.status}
-                          </span>
-                        </div>
-                        <p className="text-sm text-gray-500">Customer: {project.customerName}</p>
-                        <p className="text-sm text-gray-500">Order ID: {project.orderId}</p>
-                        <div className="mt-2 flex justify-end">
-                          <button 
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleViewProject(project);
-                            }}
-                            className="text-blue-600 text-sm flex items-center"
-                          >
-                            <FiEye className="mr-1" /> View Details
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                    
-                    {/* Pending Approval Projects */}
-                    {projectsData.pendingApprovalProjects.map((project, index) => (
-                      <div 
-                        key={`pending-${index}`}
-                        className="border-l-4 border-yellow-500 rounded-md p-3 bg-white shadow-sm hover:bg-gray-50 cursor-pointer"
-                        onClick={() => handleViewProject(project)}
-                      >
-                        <div className="flex justify-between mb-1">
-                          <span className="font-medium">{project.projectType}</span>
-                          <span className="bg-yellow-100 text-yellow-800 px-2 py-1 text-xs rounded-full">
-                            Pending Approval
-                          </span>
-                        </div>
-                        <p className="text-sm text-gray-500">Customer: {project.customerName}</p>
-                        <p className="text-sm text-gray-500">Order ID: {project.orderId}</p>
-                        <div className="mt-2 flex justify-end">
-                          <button 
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleViewProject(project);
-                            }}
-                            className="text-blue-600 text-sm flex items-center"
-                          >
-                            <FiEye className="mr-1" /> View Details
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-              
-              {/* Completed Projects */}
-              <div>
-                <h3 className="font-semibold text-lg mb-3">Completed Projects</h3>
-                {projectsData.completedProjects.length === 0 ? (
-                  <div className="bg-gray-50 p-4 rounded-lg text-center text-gray-500">
-                    No completed projects found
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    {projectsData.completedProjects.map((project, index) => (
-                      <div 
-                        key={`completed-${index}`}
-                        className="border-l-4 border-green-500 rounded-md p-3 bg-white shadow-sm hover:bg-gray-50 cursor-pointer"
-                        onClick={() => handleViewProject(project)}
-                      >
-                        <div className="flex justify-between mb-1">
-                          <span className="font-medium">{project.projectType}</span>
-                          <span className="bg-green-100 text-green-800 px-2 py-1 text-xs rounded-full">
-                            Completed
-                          </span>
-                        </div>
-                        <p className="text-sm text-gray-500">Customer: {project.customerName}</p>
-                        <p className="text-sm text-gray-500">Order ID: {project.orderId}</p>
-                        <p className="text-sm text-gray-500">
-                          Completed on: {formatDate(project.completedAt)}
-                        </p>
-                        <div className="mt-2 flex justify-end">
-                          <button 
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleViewProject(project);
-                            }}
-                            className="text-blue-600 text-sm flex items-center"
-                          >
-                            <FiEye className="mr-1" /> View Details
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
+  <div className="p-6">
+    <h2 className="text-xl font-semibold mb-6">Projects</h2>
+    
+    {/* Projects table */}
+    {projectsData.inProgressProjects.length === 0 && 
+     projectsData.pendingApprovalProjects.length === 0 && 
+     projectsData.transferredProjects.length === 0 &&
+     projectsData.completedProjects.length === 0 ? (
+      <div className="bg-gray-50 p-4 rounded-lg text-center text-gray-500">
+        No projects found for this technician.
+      </div>
+    ) : (
+      <div className="mb-6 max-h-[400px] overflow-y-auto">
+        <div className="overflow-visible">
+          <table className="min-w-full divide-y divide-gray-200 table-fixed">
+            <thead className="bg-gray-50">
+              <tr>
+                <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Sr.No
+                </th>
+                <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Project Name
+                </th>
+                <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Customer
+                </th>
+                <th scope="col" className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Status
+                </th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+            {[
+  ...projectsData.inProgressProjects,
+  ...projectsData.pendingApprovalProjects,
+  ...projectsData.transferredProjects,
+  ...projectsData.completedProjects
+]
+  .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+  .map((project, index) => {
+    // यहां unique identifier समझ लेते हैं (project._id या orderId)
+    const projectId = project._id || project.orderId || `project-${index}`;
+    
+    return (
+      <React.Fragment key={projectId}>
+        <tr 
+          onClick={() => setExpandedRow(expandedRow === projectId ? null : projectId)}
+          className={`hover:bg-gray-50 cursor-pointer ${
+            expandedRow === projectId ? 'bg-gray-50' : ''
+          }`}
+        >
+          <td className="px-2 py-3 whitespace-nowrap">
+            <div className="w-8 h-8 rounded-full bg-pink-600 flex items-center justify-center text-white font-medium">
+              {index + 1}
             </div>
-          </div>
+          </td>
+          <td className="px-4 py-3">
+            <div className="text-sm text-gray-700">
+              {project.projectType}
+            </div>
+            <div className="text-xs text-gray-500">
+          {project.projectCategory === 'Repair' ? 'Complaint' : 'New Installation'}
+        </div>
+          </td>
+          <td className="px-4 py-3">
+            <div className="text-sm text-gray-700">
+              {project.customerName}
+            </div>
+            <div className="text-xs text-gray-500">
+              {project.customerPhone || (project.phoneNumber ? '+' + project.phoneNumber : 'No phone')}
+            </div>
+          </td>
+          <td className="px-4 py-3">
+            <span className={`px-2 py-0.5 rounded-full text-xs capitalize ${
+              project.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+              project.status === 'assigned' ? 'bg-blue-100 text-blue-800' :
+              project.status === 'in-progress' ? 'bg-purple-100 text-purple-800' :
+              project.status === 'paused' ? 'bg-orange-100 text-orange-800' :
+              project.status === 'transferred' ? 'bg-red-100 text-red-800' :
+              project.status === 'completed' ? 'bg-green-100 text-green-800' :
+              project.status === 'pending-approval' ? 'bg-yellow-100 text-yellow-800' :
+              'bg-gray-100 text-gray-800'
+            }`}>
+              {project.status}
+            </span>
+            {project.status === 'completed' && (
+              <div className="text-xs text-gray-500 mt-1">
+                {formatDate(project.completedAt || project.updatedAt)}
+              </div>
+            )}
+          </td>
+        </tr>
+        {expandedRow === projectId && (
+          <tr>
+            <td colSpan="5" className="px-6 py-4 bg-gray-50 border-b">
+              <div className="flex space-x-3">
+                <button 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleViewProject(project);
+                  }}
+                  className="inline-flex items-center px-4 py-1.5 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-500 hover:bg-blue-600"
+                >
+                  View Details
+                </button>
+              </div>
+            </td>
+          </tr>
+        )}
+      </React.Fragment>
+    );
+  })
+}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    )}
+  </div>
+</div>
         </div>
       ) : (
         <div className="p-6 text-center text-gray-500">

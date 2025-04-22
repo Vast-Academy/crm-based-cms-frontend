@@ -248,6 +248,26 @@ const SummaryApi = {
       confirmReturnedInventory:{
         url : `${backendDomain}/api/confirm-returned-inventory`,
         method: "post"
+      },
+      getSerialNumberDetails : {
+        url: `${backendDomain}/api/serial-number-detail`,
+        method: "get"
+      },
+      updateUsedSerialNumbers: {
+        url : `${backendDomain}/api/update-serial-status`,
+        method: "post"
+      },
+      registerWarrantyReplacement : {
+        url :  `${backendDomain}/api/register-replacement`,
+        method: "post"
+      },
+      getAllWarrantyReplacements :{
+        url : `${backendDomain}/api/get-replacements`,
+        method: "get"
+      },
+      completeWarrantyReplacement : {
+        url : `${backendDomain}/api/complete-replacement`,
+        method: "post"
       }
 }
 
