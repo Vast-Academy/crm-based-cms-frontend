@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { FiPlus, FiEdit2, FiUserCheck, FiUserX, FiLoader, FiSearch } from 'react-icons/fi';
+import { FiPlus, FiEdit2, FiUserCheck, FiUserX, FiLoader, FiSearch, FiUser } from 'react-icons/fi';
 import SummaryApi from '../../common';
 
 const ManagerUsers = () => {
@@ -10,6 +10,8 @@ const ManagerUsers = () => {
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [branchFilter, setBranchFilter] = useState('');
+  // State to track which row is expanded
+  const [expandedRow, setExpandedRow] = useState(null);
   
   useEffect(() => {
     fetchData();
@@ -65,6 +67,17 @@ const ManagerUsers = () => {
     setBranchFilter(e.target.value);
   };
   
+  // Function to handle row click
+  const handleRowClick = (managerId) => {
+    // If the clicked row is already expanded, collapse it
+    if (expandedRow === managerId) {
+      setExpandedRow(null);
+    } else {
+      // Otherwise, expand the clicked row
+      setExpandedRow(managerId);
+    }
+  };
+  
   const filteredManagers = managers.filter(manager => {
     // Apply search term filter
     const matchesSearch = 
@@ -114,7 +127,7 @@ const ManagerUsers = () => {
         <h1 className="text-2xl font-semibold text-gray-800">Manager Users</h1>
         <Link
           to="/users/managers/add"
-          className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-md flex items-center"
+          className="bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded-md flex items-center"
         >
           <FiPlus className="mr-2" /> Add Manager
         </Link>
@@ -164,62 +177,101 @@ const ManagerUsers = () => {
             <table className="min-w-full divide-y divide-gray-200">
               <thead>
                 <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      S.NO
+                    </th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Username</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Phone</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Branch</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                  {/* <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th> */}
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {filteredManagers.map((manager) => (
-                  <tr key={manager._id}>
-                    <td className="px-4 py-3 whitespace-nowrap">
-                      <div className="font-medium text-gray-900">{manager.firstName} {manager.lastName}</div>
-                    </td>
-                    <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
-                      {manager.username}
-                    </td>
-                    <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
-                      {manager.email}
-                    </td>
-                    <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
-                      {manager.phone || 'N/A'}
-                    </td>
-                    <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
-                      {manager.branch ? manager.branch.name : 'N/A'}
-                    </td>
-                    <td className="px-4 py-3 whitespace-nowrap">
-                      <span className={`px-2 py-1 text-xs rounded-full ${
-                        manager.status === 'active' 
-                          ? 'bg-green-100 text-green-800' 
-                          : 'bg-red-100 text-red-800'
-                      }`}>
-                        {manager.status === 'active' ? 'Active' : 'Inactive'}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
-                      <div className="flex space-x-2">
-                        <button 
-                          className="text-indigo-600 hover:text-indigo-900"
-                          title="Edit User"
-                        >
-                          <FiEdit2 />
-                        </button>
-                        <button 
-                          className={`${
-                            manager.status === 'active' ? 'text-red-600 hover:text-red-900' : 'text-green-600 hover:text-green-900'
-                          }`}
-                          title={manager.status === 'active' ? 'Deactivate User' : 'Activate User'}
-                          onClick={() => handleStatusToggle(manager._id, manager.status)}
-                        >
-                          {manager.status === 'active' ? <FiUserX /> : <FiUserCheck />}
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
+                {filteredManagers.map((manager, index) => (
+                  <React.Fragment key={manager._id}>
+                    <tr 
+                      className={`hover:bg-gray-50 cursor-pointer ${expandedRow === manager._id ? 'bg-gray-50' : ''}`}
+                      onClick={() => handleRowClick(manager._id)}
+                    >
+                      <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="w-8 h-8 rounded-full bg-orange-600 flex items-center justify-center text-white font-medium">
+                            {index + 1}
+                          </div>
+                        </td>
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        <div className="font-medium text-gray-900">{manager.firstName} {manager.lastName}</div>
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
+                        {manager.username}
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
+                        {manager.email}
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
+                        {manager.phone || 'N/A'}
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
+                        {manager.branch ? manager.branch.name : 'N/A'}
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        <span className={`px-2 py-1 text-xs rounded-full ${
+                          manager.status === 'active' 
+                            ? 'bg-green-100 text-green-800' 
+                            : 'bg-red-100 text-red-800'
+                        }`}>
+                          {manager.status === 'active' ? 'Active' : 'Inactive'}
+                        </span>
+                      </td>
+                      {/* <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
+                        <div className="flex space-x-2">
+                          <button 
+                            className="text-indigo-600 hover:text-indigo-900"
+                            title="Edit User"
+                            onClick={(e) => {
+                              e.stopPropagation(); 
+                            }}
+                          >
+                            <FiEdit2 />
+                          </button>
+                          <button 
+                            className={`${
+                              manager.status === 'active' ? 'text-red-600 hover:text-red-900' : 'text-green-600 hover:text-green-900'
+                            }`}
+                            title={manager.status === 'active' ? 'Deactivate User' : 'Activate User'}
+                            onClick={(e) => {
+                              e.stopPropagation(); 
+                              handleStatusToggle(manager._id, manager.status);
+                            }}
+                          >
+                            {manager.status === 'active' ? <FiUserX /> : <FiUserCheck />}
+                          </button>
+                        </div>
+                      </td> */}
+                    </tr>
+                    
+                    {/* Expanded row with action buttons */}
+                    {expandedRow === manager._id && (
+                      <tr>
+                        <td colSpan="7" className="px-4 py-3 bg-gray-50 border-b">
+                          <div className="flex space-x-4">
+                            <button 
+                              className="px-4 py-1.5 bg-orange-500 text-white rounded-md hover:bg-orange-600 flex items-center text-sm"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                // Add view details functionality here if needed
+                              }}
+                            >
+                              <FiUser className="mr-2" />
+                              View Details
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </React.Fragment>
                 ))}
               </tbody>
             </table>
