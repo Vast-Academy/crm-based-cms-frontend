@@ -44,6 +44,7 @@ import TransferredProjectsPage from './pages/manager/TransferredProjectsPage';
 import ReturnedInventoryTable from './pages/manager/ReturnedInventoryTable';
 import ReplacementWarranty from './pages/manager/ReplacementWarranty';
 import Test from './pages/test';
+import ManagerDetail from './pages/users/ManagerDetail';
 
 // Protected route component
 const ProtectedRoute = ({ children, allowedRoles = [] }) => {
@@ -131,6 +132,15 @@ function App() {
                 </ProtectedRoute>
               } 
             />
+
+          <Route 
+            path="users/managers/:managerId" 
+            element={
+              <ProtectedRoute allowedRoles={['admin']}>
+                <ManagerDetail />
+              </ProtectedRoute>
+            } 
+          />
             
             {/* Technician Users */}
             <Route 

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { FiPlus, FiEdit2, FiUserCheck, FiUserX, FiLoader, FiSearch, FiUser } from 'react-icons/fi';
 import SummaryApi from '../../common';
 
@@ -12,6 +12,7 @@ const ManagerUsers = () => {
   const [branchFilter, setBranchFilter] = useState('');
   // State to track which row is expanded
   const [expandedRow, setExpandedRow] = useState(null);
+  const navigate = useNavigate();
   
   useEffect(() => {
     fetchData();
@@ -76,6 +77,11 @@ const ManagerUsers = () => {
       // Otherwise, expand the clicked row
       setExpandedRow(managerId);
     }
+  };
+
+  // Handle view details click
+  const handleViewDetails = (managerId) => {
+    navigate(`/users/managers/${managerId}`);
   };
   
   const filteredManagers = managers.filter(manager => {
@@ -186,7 +192,6 @@ const ManagerUsers = () => {
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Phone</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Branch</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                  {/* <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th> */}
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
@@ -225,31 +230,6 @@ const ManagerUsers = () => {
                           {manager.status === 'active' ? 'Active' : 'Inactive'}
                         </span>
                       </td>
-                      {/* <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
-                        <div className="flex space-x-2">
-                          <button 
-                            className="text-indigo-600 hover:text-indigo-900"
-                            title="Edit User"
-                            onClick={(e) => {
-                              e.stopPropagation(); 
-                            }}
-                          >
-                            <FiEdit2 />
-                          </button>
-                          <button 
-                            className={`${
-                              manager.status === 'active' ? 'text-red-600 hover:text-red-900' : 'text-green-600 hover:text-green-900'
-                            }`}
-                            title={manager.status === 'active' ? 'Deactivate User' : 'Activate User'}
-                            onClick={(e) => {
-                              e.stopPropagation(); 
-                              handleStatusToggle(manager._id, manager.status);
-                            }}
-                          >
-                            {manager.status === 'active' ? <FiUserX /> : <FiUserCheck />}
-                          </button>
-                        </div>
-                      </td> */}
                     </tr>
                     
                     {/* Expanded row with action buttons */}
@@ -261,7 +241,7 @@ const ManagerUsers = () => {
                               className="px-4 py-1.5 bg-orange-500 text-white rounded-md hover:bg-orange-600 flex items-center text-sm"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                // Add view details functionality here if needed
+                                handleViewDetails(manager._id);
                               }}
                             >
                               <FiUser className="mr-2" />

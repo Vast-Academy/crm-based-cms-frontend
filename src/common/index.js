@@ -272,6 +272,10 @@ const SummaryApi = {
       getTechnicianInventoryHistory:{
         url : `${backendDomain}/api/get-inventory-history`,
         method: "get"
+      },
+      getManagerById: {
+        url: `${backendDomain}/api/get-manager-detail`,
+        method: "get"
       }
 }
 
