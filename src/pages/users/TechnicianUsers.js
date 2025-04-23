@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { FiEdit, FiTrash2, FiPlus, FiSearch, FiUser, FiPackage } from 'react-icons/fi';
+import { FiEdit, FiTrash2, FiPlus, FiSearch, FiUser, FiPackage, FiList } from 'react-icons/fi';
 import SummaryApi from '../../common';
 import { useAuth } from '../../context/AuthContext';
 import AddTechnicianModal from '../../components/AddTechnicianModal';
 import AssignInventoryModal from '../inventory/AssignInventoryModal';
 import UnifiedInventoryAssignmentModal from '../inventory/UnifiedInventoryAssignmentModal';
 import TechnicianDetailModal from '../technician/TechnicianDetailModal';
+import TechnicianInventoryModal from './TechnicianInventoryModal';
 
 const TechnicianUsers = () => {
   const { user } = useAuth();
@@ -23,7 +24,10 @@ const TechnicianUsers = () => {
   const [expandedTechnician, setExpandedTechnician] = useState(null);
   const [showAssignInventoryModal, setShowAssignInventoryModal] = useState(false);
   const [selectedTechnician, setSelectedTechnician] = useState(null);
-
+  
+  // New state for technician inventory modal
+  const [showInventoryModal, setShowInventoryModal] = useState(false);
+  const [selectedTechnicianForInventory, setSelectedTechnicianForInventory] = useState(null);
 
   const handleRowClick = (technicianId) => {
     setExpandedTechnician(expandedTechnician === technicianId ? null : technicianId);
@@ -119,50 +123,54 @@ const TechnicianUsers = () => {
     setShowAssignInventoryModal(true);
   };
   
+  // New handler for viewing inventory
+  const handleViewInventory = (technician) => {
+    setSelectedTechnicianForInventory(technician);
+    setShowInventoryModal(true);
+  };
+  
   return (
     <div className="">
       {/* Main Container with White Box */}
       <div className="p-6 bg-white rounded-lg shadow-md max-w-[1300px]">
         {/* Header */}
         <div className="mb-4">
-  <h1 className="text-2xl font-semibold text-gray-800 mb-4">User Management</h1>
-  
-  {/* बटन और सर्च बार एक लाइन में */}
-  <div className="flex items-center gap-2">
-    {/* Add Technician बटन */}
-    {user.role === 'admin' ? (
-      <Link
-        to="/users/technicians/add"
-        className="px-4 py-2 bg-pink-600 text-white rounded-full hover:bg-pink-700 flex items-center whitespace-nowrap"
-      >
-        <FiPlus className="mr-2" /> Add Technician
-      </Link>
-    ) : (
-      <button
-        onClick={() => setModalOpen(true)}
-        className="px-4 py-2 bg-pink-600 text-white rounded-full hover:bg-pink-700 flex items-center whitespace-nowrap"
-      >
-        <FiPlus className="mr-2" /> Add Technician
-      </button>
-    )}
-    
-  </div>
-  
-   {/* फुल विड्थ सर्च बार */}
-   <div className="relative flex-grow mt-4">
-      <input
-        type="text"
-        placeholder="Search technicians..."
-        value={searchTerm}
-        onChange={handleSearch}
-        className="w-full px-3 py-2 pl-10 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-      />
-      <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
-        <FiSearch className="text-gray-400" />
-      </div>
-    </div>
-
-</div>
+          <h1 className="text-2xl font-semibold text-gray-800 mb-4">User Management</h1>
+          
+          {/* बटन और सर्च बार एक लाइन में */}
+          <div className="flex items-center gap-2">
+            {/* Add Technician बटन */}
+            {user.role === 'admin' ? (
+              <Link
+                to="/users/technicians/add"
+                className="px-4 py-2 bg-pink-600 text-white rounded-full hover:bg-pink-700 flex items-center whitespace-nowrap"
+              >
+                <FiPlus className="mr-2" /> Add Technician
+              </Link>
+            ) : (
+              <button
+                onClick={() => setModalOpen(true)}
+                className="px-4 py-2 bg-pink-600 text-white rounded-full hover:bg-pink-700 flex items-center whitespace-nowrap"
+              >
+                <FiPlus className="mr-2" /> Add Technician
+              </button>
+            )}
+          </div>
+          
+          {/* फुल विड्थ सर्च बार */}
+          <div className="relative flex-grow mt-4">
+            <input
+              type="text"
+              placeholder="Search technicians..."
+              value={searchTerm}
+              onChange={handleSearch}
+              className="w-full px-3 py-2 pl-10 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+            />
+            <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+              <FiSearch className="text-gray-400" />
+            </div>
+          </div>
+        </div>
         
         {error && (
           <div className="mx-4 mb-4 bg-red-100 text-red-700 p-3 rounded">
@@ -216,22 +224,15 @@ const TechnicianUsers = () => {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex items-center">
-                            {/* <div className="h-10 w-10 flex-shrink-0 bg-indigo-100 rounded-full flex items-center justify-center text-indigo-500 font-semibold">
-                              {technician.firstName.charAt(0)}{technician.lastName.charAt(0)}
-                            </div> */}
                             <div className="">
                               <div className="text-sm font-medium text-gray-900">
                                 {technician.firstName} {technician.lastName}
                               </div>
-                              {/* <div className="text-sm text-gray-500">
-                                {technician.phone || 'No phone'}
-                              </div> */}
                             </div>
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="text-sm text-gray-900">{technician.username}</div>
-                          {/* <div className="text-sm text-gray-500">{technician.email}</div> */}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="text-sm text-gray-900">
@@ -239,11 +240,6 @@ const TechnicianUsers = () => {
                               ? technician.branch.name 
                               : 'N/A'}
                           </div>
-                          {/* <div className="text-sm text-gray-500">
-                            {technician.branch && typeof technician.branch === 'object' 
-                              ? technician.branch.location 
-                              : ''}
-                          </div> */}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <span 
@@ -275,16 +271,30 @@ const TechnicianUsers = () => {
                               </button>
                               
                               {user.role === 'manager' && (
-                                <button 
-                                  className="px-4 py-1.5 bg-green-500 text-white rounded-md hover:bg-green-600 flex items-center text-sm"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleAssignInventory(technician);
-                                  }}
-                                >
-                                  <FiPackage className="mr-2" />
-                                  Assign Inventory
-                                </button>
+                                <>
+                                  <button 
+                                    className="px-4 py-1.5 bg-green-500 text-white rounded-md hover:bg-green-600 flex items-center text-sm"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleAssignInventory(technician);
+                                    }}
+                                  >
+                                    <FiPackage className="mr-2" />
+                                    Assign Inventory
+                                  </button>
+                                  
+                                  {/* New View Inventory button */}
+                                  <button 
+                                    className="px-4 py-1.5 bg-purple-500 text-white rounded-md hover:bg-purple-600 flex items-center text-sm"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleViewInventory(technician);
+                                    }}
+                                  >
+                                    <FiList className="mr-2" />
+                                    View Inventory
+                                  </button>
+                                </>
                               )}
                             </div>
                           </td>
@@ -324,6 +334,15 @@ const TechnicianUsers = () => {
             // Refresh the technicians list after successful assignment
             fetchTechnicians();
           }}
+        />
+      )}
+      
+      {/* Technician Inventory Modal */}
+      {selectedTechnicianForInventory && (
+        <TechnicianInventoryModal
+          isOpen={showInventoryModal}
+          onClose={() => setShowInventoryModal(false)}
+          technician={selectedTechnicianForInventory}
         />
       )}
     </div>

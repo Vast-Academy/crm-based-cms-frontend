@@ -268,6 +268,10 @@ const SummaryApi = {
       completeWarrantyReplacement : {
         url : `${backendDomain}/api/complete-replacement`,
         method: "post"
+      },
+      getTechnicianInventoryHistory:{
+        url : `${backendDomain}/api/get-inventory-history`,
+        method: "get"
       }
 }
 

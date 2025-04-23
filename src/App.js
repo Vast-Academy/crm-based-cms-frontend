@@ -43,6 +43,7 @@ import InventoryManagement from './pages/inventory/InventoryManagement';
 import TransferredProjectsPage from './pages/manager/TransferredProjectsPage';
 import ReturnedInventoryTable from './pages/manager/ReturnedInventoryTable';
 import ReplacementWarranty from './pages/manager/ReplacementWarranty';
+import Test from './pages/test';
 
 // Protected route component
 const ProtectedRoute = ({ children, allowedRoles = [] }) => {
@@ -296,6 +297,15 @@ function App() {
           element={
             <ProtectedRoute>
               <ReplacementWarranty />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="test"
+          element={
+            <ProtectedRoute>
+              <Test />
             </ProtectedRoute>
           }
         />
