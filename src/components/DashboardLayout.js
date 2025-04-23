@@ -126,13 +126,7 @@ const DashboardLayout = () => {
           {
             name: 'Branch Management',
             icon: FiBriefcase,
-            dropdown: true,
-            isOpen: branchesDropdownOpen,
-            toggle: () => toggleDropdown('branches'),
-            items: [
-              { name: 'All Branches', path: '/branches' },
-              { name: 'Add Branch', path: '/branches/add' },
-            ]
+            path: '/branches'
           },
           {
             name: 'Inventory',
