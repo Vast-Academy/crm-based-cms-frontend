@@ -115,10 +115,30 @@ const [branchSummary, setBranchSummary] = useState({
         const completed = projects.filter(p => p.status === 'completed').length;
         const transferring = projects.filter(p => p.status === 'transferring').length;
         const transferred = projects.filter(p => p.status === 'transferred').length;
+
+        // Fetch unassigned pending work orders
+    const workOrdersResponse = await fetch(`${SummaryApi.getWorkOrders.url}?branch=${branchId}&status=pending`, {
+      method: 'GET',
+      credentials: 'include',
+    });
+    
+    const workOrdersData = await workOrdersResponse.json();
+    let pendingWorkOrders = 0;
+    
+    if (workOrdersData.success) {
+      // Important: Filter to match WorkOrdersPage criteria - pending orders with no technician
+      const pendingOrders = workOrdersData.data || [];
+      pendingWorkOrders = pendingOrders.filter(order => 
+        (order.status === 'pending' || order.status === 'Pending') && 
+        (!order.technician || 
+         (typeof order.technician === 'object' && !order.technician.firstName && !order.technician.lastName) ||
+         (typeof order.technician === 'string' && order.technician.trim() === ''))
+      ).length;
+    }
         
         setBranchPerformance({
           teamSize,
-          workOrders: projects.length,
+          workOrders: pendingWorkOrders,
           assigned,
           pendingApproval,
           completed,
