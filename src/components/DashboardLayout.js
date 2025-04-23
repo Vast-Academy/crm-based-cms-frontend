@@ -10,7 +10,7 @@ import {
   FiArrowLeft,
   FiRepeat, FiShield 
 } from 'react-icons/fi';
-import { Replace } from 'lucide-react';
+import { Replace, Layers, Users } from 'lucide-react';
 import ManagerStatusChecker from './ManagerStatusChecker';
 // import GlobalSearch from './GlobalSearch';
 
@@ -112,35 +112,25 @@ const DashboardLayout = () => {
         navItems = [
           ...navItems,
           {
-            name: 'User Management',
-            icon: FiUsers,
-            dropdown: true,
-            isOpen: usersDropdownOpen,
-            toggle: () => toggleDropdown('users'),
-            items: [
-              { name: 'Admin Users', path: '/users/admin' },
-              { name: 'Managers', path: '/users/managers' },
-              { name: 'Technicians', path: '/users/technicians' },
-            ]
-          },
-          {
-            name: 'Branch Management',
+            name: 'Branches',
             icon: FiBriefcase,
             path: '/branches'
           },
           {
+            name: 'Managers',
+            icon: Users,
+            path: '/users/managers'
+          },
+          {
+            name: 'Technicians',
+            icon: Layers,
+            path: '/users/technicians'
+          },
+          {
             name: 'Inventory',
             icon: FiPackage,
-            dropdown: true,
-            isOpen: inventoryDropdownOpen,
-            toggle: () => toggleDropdown('inventory'),
-            items: [
-              { name: 'Add Inventory', path: '/inventory/add' },
-              { name: 'Serialized Products', path: '/inventory/serialized' },
-              { name: 'Generic Products', path: '/inventory/generic' },
-              { name: 'Services', path: '/inventory/services' }
-            ]
-          }
+            path: '/inventory/add'
+          },
         ];
       }
       
@@ -208,12 +198,12 @@ const DashboardLayout = () => {
       
       {/* Sidebar */}
       <div 
-        className={`fixed z-30 inset-y-0 left-0 w-64 bg-white shadow-lg transition-transform duration-200 ease-in-out transform ${
+        className={`fixed z-30 inset-y-0 left-0 w-64 bg-gray-800 text-white shadow-lg transition-transform duration-200 ease-in-out transform ${
           sidebarOpen ? 'translate-x-0' : '-translate-x-full'
         } md:translate-x-0 md:static md:inset-0`}
       >
-        <div className="flex items-center justify-center h-16 border-b">
-          <h1 className="text-xl font-bold text-gray-800">CRM System</h1>
+        <div className="flex p-4 h-16 border-b">
+          <h1 className="text-2xl font-bold text-white">CRM Panel</h1>
         </div>
         
         <nav className="mt-5">
@@ -224,7 +214,7 @@ const DashboardLayout = () => {
                   <div>
                     <button
                       onClick={item.toggle}
-                      className={`w-full flex items-center justify-between px-4 py-3 text-gray-600 hover:bg-indigo-50 hover:text-indigo-700`}
+                      className={`w-full flex items-center justify-between px-4 py-3 text-white hover:bg-indigo-50 hover:text-indigo-700`}
                     >
                       <div className="flex items-center">
                         <item.icon className="w-5 h-5 mr-3" />
@@ -238,7 +228,7 @@ const DashboardLayout = () => {
                         <Link
                           key={subIndex}
                           to={subItem.path}
-                          className={`flex pl-12 py-2 text-sm text-gray-600 hover:bg-indigo-50 hover:text-indigo-700 ${
+                          className={`flex pl-12 py-2 text-sm text-white hover:bg-indigo-50 hover:text-indigo-700 ${
                             location.pathname === subItem.path ? 'bg-indigo-50 text-indigo-700 border-l-4 border-indigo-700' : ''
                           }`}
                         >
@@ -250,8 +240,8 @@ const DashboardLayout = () => {
                 ) : (
                   <Link
                     to={item.path}
-                    className={`flex items-center px-4 py-3 text-gray-600 hover:bg-indigo-50 hover:text-indigo-700 ${
-                      location.pathname === item.path ? 'bg-indigo-50 text-indigo-700 border-l-4 border-indigo-700' : ''
+                    className={`flex items-center px-4 py-3 text-white hover:bg-gray-700 ${
+                      location.pathname === item.path ? 'bg-blue-600 border-indigo-700' : ''
                     }`}
                   >
                     <item.icon className="w-5 h-5 mr-3" />
