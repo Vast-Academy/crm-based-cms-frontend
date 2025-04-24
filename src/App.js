@@ -45,6 +45,7 @@ import ReturnedInventoryTable from './pages/manager/ReturnedInventoryTable';
 import ReplacementWarranty from './pages/manager/ReplacementWarranty';
 import Test from './pages/test';
 import ManagerDetail from './pages/users/ManagerDetail';
+import BranchDetails from './pages/branches/BranchDetails';
 
 // Protected route component
 const ProtectedRoute = ({ children, allowedRoles = [] }) => {
@@ -179,6 +180,16 @@ function App() {
                 </ProtectedRoute>
               } 
             />
+
+          <Route 
+              path="branches/:branchId" 
+              element={
+                <ProtectedRoute allowedRoles={['admin']}>
+                  <BranchDetails />
+                </ProtectedRoute>
+              } 
+            />
+
             <Route 
               path="branches/add" 
               element={

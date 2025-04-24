@@ -10,7 +10,7 @@ import {
   FiArrowLeft,
   FiRepeat, FiShield 
 } from 'react-icons/fi';
-import { Replace, Layers, Users } from 'lucide-react';
+import { Replace, Layers, Users, Building } from 'lucide-react';
 import ManagerStatusChecker from './ManagerStatusChecker';
 // import GlobalSearch from './GlobalSearch';
 
@@ -113,7 +113,7 @@ const DashboardLayout = () => {
           ...navItems,
           {
             name: 'Branches',
-            icon: FiBriefcase,
+            icon: Building,
             path: '/branches'
           },
           {

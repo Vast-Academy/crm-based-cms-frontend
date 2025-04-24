@@ -254,6 +254,10 @@ const BranchList = () => {
       ) : filteredBranches.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {filteredBranches.map((branch) => (
+            <Link 
+            key={branch._id}
+            to={`/branches/${branch._id}`} 
+            className='cursor-pointer'>
             <div key={branch._id} className="bg-white rounded-lg shadow-md overflow-hidden">
               <div className="p-5 border-b">
                 <h2 className="text-xl font-semibold text-gray-800">{branch.name}</h2>
@@ -290,14 +294,14 @@ const BranchList = () => {
               </div>
               
               <div className="p-4 bg-gray-50 text-center">
-                <Link 
-                  to={`/branches/${branch._id}`} 
+                <div 
                   className="text-indigo-600 hover:text-indigo-800 font-medium"
                 >
                   Click to view details
-                </Link>
+                </div>
               </div>
             </div>
+            </Link>
           ))}
         </div>
       ) : (
