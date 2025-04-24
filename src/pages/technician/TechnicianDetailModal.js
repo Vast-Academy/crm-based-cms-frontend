@@ -5,6 +5,7 @@ import LoadingSpinner from '../../components/LoadingSpinner';
 import { useAuth } from '../../context/AuthContext';
 import Modal from '../../components/Modal';
 import ProjectDetailsModal from '../manager/ProjectDetailsModal';
+import EditTechnicianModal from '../users/EditTechnicianModal';
 
 const TechnicianDetailModal = ({ isOpen, onClose, technicianId, onTechnicianUpdated }) => {
   const { user } = useAuth();
@@ -21,6 +22,7 @@ const TechnicianDetailModal = ({ isOpen, onClose, technicianId, onTechnicianUpda
   // Project details modal state
   const [showProjectDetailsModal, setShowProjectDetailsModal] = useState(false);
   const [selectedProject, setSelectedProject] = useState(null);
+  const [showEditModal, setShowEditModal] = useState(false);
   const [expandedRow, setExpandedRow] = useState(null);
 
   const fetchTechnician = async () => {
@@ -149,8 +151,18 @@ const TechnicianDetailModal = ({ isOpen, onClose, technicianId, onTechnicianUpda
   
   // Function to navigate to edit page
   const handleEditTechnician = () => {
-    window.location.href = `/users/technicians/edit/${technicianId}`;
+    setShowEditModal(true);
   };
+
+  // Add this function to handle successful update
+const handleTechnicianUpdated = () => {
+  // Refresh technician data
+  fetchTechnician();
+  // Close the edit modal
+  setShowEditModal(false);
+  // Call the onTechnicianUpdated prop if provided
+  onTechnicianUpdated && onTechnicianUpdated();
+};
   
   // Get status badge style
   const getStatusBadge = (status) => {
@@ -406,7 +418,16 @@ const TechnicianDetailModal = ({ isOpen, onClose, technicianId, onTechnicianUpda
           }}
         />
       )}
-    </Modal>
+
+{showEditModal && (
+  <EditTechnicianModal
+    isOpen={showEditModal}
+    onClose={() => setShowEditModal(false)}
+    technicianId={technicianId}
+    onSuccess={handleTechnicianUpdated}
+  />
+)}
+    </Modal>  
   );
 };
 

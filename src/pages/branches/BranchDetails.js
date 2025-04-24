@@ -519,48 +519,60 @@ const handleLeadUpdated = (updatedLead) => {
       
       {/* Branch details card */}
       <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-        <div className="flex flex-col md:flex-row">
-          {/* Left side - Branch info */}
-          <div className="md:w-1/3 pr-6">
-            <div className="flex items-start">
-              <div className="w-16 h-16 rounded-full bg-indigo-500 flex items-center justify-center text-white text-2xl font-semibold mr-4">
-                {branch.name.charAt(0)}
-              </div>
-              <div>
-                <h2 className="text-xl font-semibold">{branch.name}</h2>
-                <div className="flex items-center gap-1 text-gray-600 text-sm mt-1">
-                  <Building size={18}/>
-                  {branch.location || 'No location specified'}
-                </div>
-                {branch.createdBy && (
-                  <div className="text-xs text-gray-500 mt-2">
-                    Created by: {branch.createdBy.firstName} {branch.createdBy.lastName}
-                  </div>
-                )}
-              </div>
+  <div className="flex flex-col md:flex-row gap-6">
+    {/* Left side - Branch info in its own box */}
+    <div className="md:w-1/3">
+      <div className="bg-gray-50 rounded-lg shadow p-5 cursor-pointer hover:bg-gray-100
+       transition-colors duration-200"
+       onClick={() => navigate(`/users/managers/${manager._id}`)}>
+        <div className="flex items-start">
+          <div className="w-16 h-16 rounded-full bg-indigo-500 flex items-center justify-center text-white text-2xl font-semibold mr-4">
+            {branch.name.charAt(0)}
+          </div>
+          <div>
+            <h2 className="text-xl font-semibold">{branch.name}</h2>
+            <div className="flex items-center gap-1 text-gray-600 text-sm mt-1">
+              <Building size={18}/>
+              {branch.location || 'No location specified'}
             </div>
-            
-            <div className="mt-6">
-              <h3 className="font-medium text-gray-700 mb-3">Branch Manager</h3>
-              {manager ? (
-                <div className="space-y-2">
-                  <div className="font-medium capitalize">Manager: {manager.firstName} {manager.lastName}</div>
-                  <div className="flex items-center">
-                    <FiMail className="text-gray-500 mr-2" />
-                    <a href={`mailto:${manager.email}`} className="text-blue-600">{manager.email}</a>
-                  </div>
-                  {manager.phone && (
-                    <div className="flex items-center">
-                      <FiPhone className="text-gray-500 mr-2" />
-                      <span>{manager.phone}</span>
-                    </div>
-                  )}
+            {branch.createdBy && (
+              <div className="text-xs text-gray-500 mt-2">
+                Created by: {branch.createdBy.firstName} {branch.createdBy.lastName}
+              </div>
+            )}
+          </div>
+        </div>
+        
+        <div className="mt-6">
+          <h3 className="font-medium text-gray-700 mb-3">Branch Manager</h3>
+          
+          {manager ? (
+            <div 
+            >
+              <div className="font-medium text-gray-800">Manager: {manager.firstName} {manager.lastName}</div>
+              <div className="flex items-center mt-2">
+                <FiMail className="text-gray-500 mr-2" />
+                <a 
+                  href={`mailto:${manager.email}`} 
+                  className="text-blue-600"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  {manager.email}
+                </a>
+              </div>
+              {manager.phone && (
+                <div className="flex items-center mt-2">
+                  <FiPhone className="text-gray-500 mr-2" />
+                  <span>{manager.phone}</span>
                 </div>
-              ) : (
-                <div className="text-gray-500">No manager assigned</div>
               )}
             </div>
-          </div>
+          ) : (
+            <div className="text-gray-500">No manager assigned</div>
+          )}
+        </div>
+      </div>
+    </div>
           
           {/* Right side - Branch Performance */}
           <div className="md:w-2/3 mt-6 md:mt-0">

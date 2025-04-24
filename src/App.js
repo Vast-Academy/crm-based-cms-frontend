@@ -14,7 +14,6 @@ import AddAdmin from './pages/users/AddAdmin';
 
 // Manager Users Management
 import ManagerUsers from './pages/users/ManagerUsers';
-import AddManager from './pages/users/AddManager';
 
 // Technician Users Management
 import TechnicianUsers from './pages/users/TechnicianUsers';
@@ -125,14 +124,7 @@ function App() {
                 </ProtectedRoute>
               } 
             />
-            <Route 
-              path="users/managers/add" 
-              element={
-                <ProtectedRoute allowedRoles={['admin']}>
-                  <AddManager />
-                </ProtectedRoute>
-              } 
-            />
+            
 
           <Route 
             path="users/managers/:managerId" 

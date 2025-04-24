@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { FiPlus, FiEdit2, FiUserCheck, FiUserX, FiLoader, FiSearch, FiUser } from 'react-icons/fi';
 import SummaryApi from '../../common';
+import AddManagerModal from './AddManagerModal';
 
 const ManagerUsers = () => {
   const [managers, setManagers] = useState([]);
@@ -12,6 +13,7 @@ const ManagerUsers = () => {
   const [branchFilter, setBranchFilter] = useState('');
   // State to track which row is expanded
   const [expandedRow, setExpandedRow] = useState(null);
+  const [showAddModal, setShowAddModal] = useState(false);
   const navigate = useNavigate();
   
   useEffect(() => {
@@ -129,24 +131,18 @@ const ManagerUsers = () => {
   
   return (
     <div>
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-semibold text-gray-800">Manager Users</h1>
-        <Link
-          to="/users/managers/add"
-          className="bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded-md flex items-center"
+      <div className="p-6 bg-white rounded-lg shadow-md max-w-[1300px]">
+      <div className="mb-4">
+        <h1 className="text-2xl font-semibold text-gray-800 mb-4">Manager Users</h1>
+
+        <button
+          onClick={() => setShowAddModal(true)}
+          className="bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded-full flex items-center"
         >
           <FiPlus className="mr-2" /> Add Manager
-        </Link>
-      </div>
-      
-      {error && (
-        <div className="bg-red-100 text-red-700 p-3 rounded mb-4">
-          {error}
-        </div>
-      )}
-      
-      <div className="bg-white rounded-lg shadow-md p-6">
-        <div className="flex flex-col md:flex-row gap-4 mb-4">
+        </button>
+
+        <div className="flex flex-col md:flex-row gap-4 mt-4">
           <div className="relative flex-1">
             <input
               type="text"
@@ -173,7 +169,17 @@ const ManagerUsers = () => {
             </select>
           </div>
         </div>
-        
+
+      </div>
+      
+      
+      {error && (
+        <div className="bg-red-100 text-red-700 p-3 rounded mb-4">
+          {error}
+        </div>
+      )}
+      
+      <div className="border-t">
         {loading ? (
           <div className="flex justify-center items-center py-8">
             <FiLoader className="w-8 h-8 animate-spin text-indigo-600" />
@@ -181,7 +187,7 @@ const ManagerUsers = () => {
         ) : filteredManagers.length > 0 ? (
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
-              <thead>
+              <thead className='bg-gray-50'>
                 <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       S.NO
@@ -268,6 +274,15 @@ const ManagerUsers = () => {
           </div>
         )}
       </div>
+
+      </div>
+
+       {/* Add the modal component */}
+       <AddManagerModal 
+        isOpen={showAddModal}
+        onClose={() => setShowAddModal(false)}
+        onSuccess={fetchData}
+      />
     </div>
   );
 };

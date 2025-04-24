@@ -570,7 +570,7 @@ const fetchBranchSummary = async (branchId) => {
       </div>
 
       {/* Branch Summary Section */}
-<div className="bg-white rounded-lg shadow-md p-6 mt-6">
+{/* <div className="bg-white rounded-lg shadow-md p-6 mt-6">
   <h2 className="text-xl font-semibold mb-6">Branch Summary</h2>
   
   <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
@@ -594,7 +594,7 @@ const fetchBranchSummary = async (branchId) => {
       <p className="text-xl font-semibold">{branchSummary.ongoingProjects}</p>
     </div>
   </div>
-</div>
+</div> */}
 
     </div>
   );
