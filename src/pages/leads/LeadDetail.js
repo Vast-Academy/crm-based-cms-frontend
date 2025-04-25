@@ -347,6 +347,7 @@ const LeadDetailModal = ({ isOpen, onClose, leadId, onLeadUpdated, onConvertSucc
                 )}
               </div>
               
+              {user.role !== 'admin' && (
               <div className="mt-8 space-y-3">
                 <button
                   onClick={handleEdit}
@@ -366,6 +367,7 @@ const LeadDetailModal = ({ isOpen, onClose, leadId, onLeadUpdated, onConvertSucc
                   </button>
                 )}
               </div>
+              )}
             </div>
           </div>
           

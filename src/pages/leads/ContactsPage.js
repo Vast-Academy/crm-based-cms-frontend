@@ -345,6 +345,7 @@ const handleFilterChange = (type, status = 'all') => {
         <div className="pb-4">
           
           <div className="flex items-center justify-between gap-4">
+          {user.role !== 'admin' && (
           <button
             onClick={() => handleAddNew()}
             className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-full flex items-center whitespace-nowrap"
@@ -352,7 +353,7 @@ const handleFilterChange = (type, status = 'all') => {
             <FiPlusCircle className="mr-2" size={18} />
             Add New Lead/Customer
           </button>
-
+          )}
           
            {/* Filter Buttons */}
            <div className="flex space-x-2">
@@ -541,6 +542,8 @@ const handleFilterChange = (type, status = 'all') => {
                                   >
                                     View Details
                                   </button>
+                                  {/* Only show Convert to Customer button if not admin */}
+                                  {user.role !== 'admin' && (
                                   <button 
                                     onClick={(e) => {
                                       e.stopPropagation();
@@ -550,6 +553,7 @@ const handleFilterChange = (type, status = 'all') => {
                                   >
                                     Convert to Customer
                                   </button>
+                                  )}
                                 </>
                               ) : (
                                 <>
@@ -562,6 +566,9 @@ const handleFilterChange = (type, status = 'all') => {
                                   >
                                     View Details
                                   </button>
+                                  {/* Only show these buttons if not admin */}
+                                  {user.role !== 'admin' && (
+                                    <>
                                   <button 
                                     onClick={(e) => {
                                       e.stopPropagation();
@@ -581,6 +588,8 @@ const handleFilterChange = (type, status = 'all') => {
                                   >
                                     New Project
                                   </button>
+                                  </>
+                                  )}
                                 </>
                               )}
                             </div>

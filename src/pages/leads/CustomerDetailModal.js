@@ -239,6 +239,7 @@ const handleViewProjectDetails = async (project) => {
               </div>
               
               <div className="mt-8 space-y-3">
+              {user.role !== 'admin' && (
                 <button
                   onClick={() => {
                     // Edit logic to be implemented
@@ -249,6 +250,7 @@ const handleViewProjectDetails = async (project) => {
                   <FiEdit2 className="mr-2" />
                   Edit Customer
                 </button>
+              )}
               </div>
             </div>
           </div>
@@ -259,6 +261,7 @@ const handleViewProjectDetails = async (project) => {
               <div className="flex items-center justify-between mb-6">
                 <h2 className="text-xl font-semibold">Work Orders & Complaints</h2>
                 
+                {user.role !== 'admin' && (
                 <div className="flex gap-2">
                   <button
                     className="px-4 py-2 bg-orange-500 text-white rounded-md hover:bg-orange-600"
@@ -274,6 +277,7 @@ const handleViewProjectDetails = async (project) => {
                     New Project
                   </button>
                 </div>
+                )}
               </div>
               
               {/* Work Order/Complaint Status */}
