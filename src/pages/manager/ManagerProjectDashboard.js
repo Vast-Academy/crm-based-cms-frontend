@@ -34,18 +34,32 @@ const ManagerProjectDashboard = () => {
     try {
       setLoading(true);
       setError(null);
+
+       // Get branch parameter if needed
+       let branchParam = '';
+       if (user.selectedBranch) {
+         branchParam = `?branch=${user.selectedBranch}`;
+       }
       
-      // Get branch parameter if needed
-      let branchParam = '';
-      if (user.selectedBranch) {
-        branchParam = `?branch=${user.selectedBranch}`;
-      }
-      
-      // Fetch manager projects
       const response = await fetch(`${SummaryApi.getManagerProjects.url}${branchParam}`, {
         method: 'GET',
         credentials: 'include'
       });
+      
+      // Check if response is ok before parsing
+      if (!response.ok) {
+        const errorData = await response.json();
+        
+        // Special handling for no branch assigned
+        if (response.status === 400 && errorData.message && 
+            errorData.message.includes('no assigned branch')) {
+          setError('Manager has no assigned branch. Please contact an administrator.');
+          setLoading(false);
+          return;
+        }
+        
+        throw new Error(errorData.message || 'Failed to fetch projects');
+      }
       
       const data = await response.json();
       
