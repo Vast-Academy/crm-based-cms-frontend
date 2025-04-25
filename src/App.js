@@ -22,16 +22,8 @@ import AddTechnician from './pages/users/AddTechnician';
 // Branch Management
 import BranchList from './pages/branches/BranchList';
 import AddBranch from './pages/branches/AddBranch';
-import LeadList from './pages/leads/LeadList';
 
-
-import CustomerList from './pages/customers/CustomerList'
-import LeadDetailRedirect from './pages/leads/LeadDetailRedirect';
-import EditTechnician from './pages/users/EditTechnician';
 import AddInventoryItem from './pages/inventory/AddInventoryItem';
-import SerializedProductsList from './pages/inventory/SerializedProductsList';
-import GenericProductsList from './pages/inventory/GenericProductsList';
-import ServicesList from './pages/inventory/ServicesList';
 import OwnershipTransferPage from './pages/users/OwnershipTransferPage';
 import ContactsPage from './pages/leads/ContactsPage';
 import WorkOrdersPage from './pages/workOrders/WorkOrdersPage';
@@ -153,15 +145,6 @@ function App() {
     </ProtectedRoute>
   } 
 />
-{/* Edit technician route accessible to both */}
-<Route 
-  path="users/technicians/edit/:id" 
-  element={
-    <ProtectedRoute allowedRoles={['admin', 'manager']}>
-      <EditTechnician />
-    </ProtectedRoute>
-  } 
-/>
             
             {/* Branch Management Routes */}
             <Route 
@@ -199,41 +182,6 @@ function App() {
                   </ProtectedRoute>
                 } 
               />
-
-            {/* <Route 
-              path="leads" 
-              element={
-                <ProtectedRoute>
-                  <LeadList />
-                </ProtectedRoute>
-              } 
-            /> */}
-            {/* <Route 
-              path="leads/add" 
-              element={
-                <ProtectedRoute>
-                  <AddLead />
-                </ProtectedRoute>
-              } 
-            /> */}
-            {/* <Route 
-              path="leads/:id" 
-              element={
-                <ProtectedRoute>
-                  <LeadDetailRedirect />
-                </ProtectedRoute>
-              } 
-            /> */}
-
-            {/* Customer Management Routes */}
-            {/* <Route 
-              path="customers" 
-              element={
-                <ProtectedRoute>
-                  <CustomerList />
-                </ProtectedRoute>
-              } 
-            /> */}
             
 
             <Route
@@ -244,30 +192,6 @@ function App() {
                 </ProtectedRoute>
               }
             />
-            {/* <Route
-              path="inventory/serialized"
-              element={
-                <ProtectedRoute>
-                  <SerializedProductsList />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="inventory/generic"
-              element={
-                <ProtectedRoute>
-                  <GenericProductsList />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="inventory/services"
-              element={
-                <ProtectedRoute>
-                  <ServicesList />
-                </ProtectedRoute>
-              }
-            /> */}
 
         <Route
           path="inventory"

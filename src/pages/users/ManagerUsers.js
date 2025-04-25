@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { FiPlus, FiEdit2, FiUserCheck, FiUserX, FiLoader, FiSearch, FiUser } from 'react-icons/fi';
 import SummaryApi from '../../common';
 import AddManagerModal from './AddManagerModal';
+import EditManagerModal from './EditManagerModal';
 
 const ManagerUsers = () => {
   const [managers, setManagers] = useState([]);
@@ -14,6 +15,9 @@ const ManagerUsers = () => {
   // State to track which row is expanded
   const [expandedRow, setExpandedRow] = useState(null);
   const [showAddModal, setShowAddModal] = useState(false);
+  // New state for edit modal
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [selectedManagerId, setSelectedManagerId] = useState(null);
   const navigate = useNavigate();
   
   useEffect(() => {
@@ -99,6 +103,12 @@ const ManagerUsers = () => {
     
     return matchesSearch && matchesBranch;
   });
+
+  // New function to handle edit button click
+  const handleEditManager = (managerId) => {
+    setSelectedManagerId(managerId);
+    setShowEditModal(true);
+  };
   
   const handleStatusToggle = async (userId, currentStatus) => {
     try {
@@ -253,6 +263,18 @@ const ManagerUsers = () => {
                               <FiUser className="mr-2" />
                               View Details
                             </button>
+
+                            {/* New Edit button */}
+                            <button 
+                                className="px-4 py-1.5 bg-indigo-500 text-white rounded-md hover:bg-indigo-600 flex items-center text-sm"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleEditManager(manager._id);
+                                }}
+                              >
+                                <FiEdit2 className="mr-2" />
+                                Edit Details
+                              </button>
                           </div>
                         </td>
                       </tr>
@@ -281,6 +303,14 @@ const ManagerUsers = () => {
        <AddManagerModal 
         isOpen={showAddModal}
         onClose={() => setShowAddModal(false)}
+        onSuccess={fetchData}
+      />
+
+       {/* New Edit Manager Modal */}
+       <EditManagerModal 
+        isOpen={showEditModal}
+        onClose={() => setShowEditModal(false)}
+        managerId={selectedManagerId}
         onSuccess={fetchData}
       />
     </div>

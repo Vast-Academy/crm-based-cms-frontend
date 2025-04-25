@@ -10,8 +10,9 @@ import {
   FiArrowLeft,
   FiRepeat, FiShield 
 } from 'react-icons/fi';
-import { Replace, Layers, Users, Building } from 'lucide-react';
+import { Replace, Layers, Users, Building, X } from 'lucide-react';
 import ManagerStatusChecker from './ManagerStatusChecker';
+import UserSettingsModal from '../pages/users/UserSettingsModal';
 // import GlobalSearch from './GlobalSearch';
 
 const DashboardLayout = () => {
@@ -24,6 +25,9 @@ const DashboardLayout = () => {
   const [inventoryDropdownOpen, setInventoryDropdownOpen] = useState(false);
   const [leadsDropdownOpen, setLeadsDropdownOpen] = useState(false);
   const [showTransferOption, setShowTransferOption] = useState(false);
+  const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [showLogoutPopup, setShowLogoutPopup] = useState(false);
   
   useEffect(() => {
     // Check if user is a manager and has activeManagerStatus='active'
@@ -42,8 +46,13 @@ const DashboardLayout = () => {
   }, [user, navigate]);
 
   const handleLogout = () => {
-    logout();
-    navigate('/login');
+    setShowLogoutPopup(false); // Close popup first
+    logout(); // Call the logout function from AuthContext
+  };
+
+  // Toggle profile popup
+  const toggleLogoutPopup = () => {
+    setShowLogoutPopup(!showLogoutPopup);
   };
   
   // Function to toggle dropdowns and close others
@@ -96,6 +105,20 @@ const DashboardLayout = () => {
     }
   };
   
+  // Add this useEffect in your component
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (profileDropdownOpen && !event.target.closest('.relative')) {
+        setProfileDropdownOpen(false);
+      }
+    };
+  
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [profileDropdownOpen]);
+
   // Define navigation items by role
   const getNavItemsByRole = () => {
     // Default items that show for everyone - empty for now
@@ -286,19 +309,87 @@ const DashboardLayout = () => {
             </button>
             
             <div className="relative flex items-center">
-              <div className="w-8 h-8 rounded-full bg-indigo-500 flex items-center justify-center text-white font-medium mr-2">
-                {user?.firstName?.charAt(0) || 'U'}
-              </div>
-              <span className="text-sm font-medium text-gray-700 mr-2">
-                {user?.firstName || 'User'} ({user?.role || 'user'})
-              </span>
-              <button 
-                onClick={handleLogout}
-                className="p-1 text-gray-500 hover:text-gray-600"
-              >
-                <FiLogOut className="w-5 h-5" />
-              </button>
-            </div>
+  <button 
+    onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
+    className="flex items-center focus:outline-none"
+    aria-haspopup="true"
+    aria-expanded={profileDropdownOpen}
+  >
+    <div className="w-10 h-10 rounded-full  flex items-center justify-center text-white text-lg font-medium cursor-pointer">
+    🧑
+    </div>
+  </button>
+  
+  {/* Profile Dropdown */}
+  {profileDropdownOpen && (
+    <div 
+      className="absolute right-0 top-12 w-48 bg-white rounded-md shadow-lg py-1 z-50 border border-gray-200"
+    >
+      <div className="px-4 py-2 border-b border-gray-100">
+        <p className="text-sm font-medium capitalize">{user?.firstName} {user?.lastName}</p>
+        <p className="text-xs text-gray-500 capitalize">{user?.role || 'User'}</p>
+      </div>
+      
+      <button 
+        onClick={() => {
+          setShowSettingsModal(true);
+          setProfileDropdownOpen(false);
+        }}
+        className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center"
+      >
+        <FiSettings className="mr-2 h-4 w-4" />
+        Settings
+      </button>
+      
+      <button 
+        onClick={() => {
+          toggleLogoutPopup();
+          setProfileDropdownOpen(false);
+        }}
+        className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center"
+      >
+        <FiLogOut className="mr-2 h-4 w-4" />
+        Logout
+      </button>
+    </div>
+  )}
+</div>
+
+     {/* Logout Confirmation Popup */}
+{showLogoutPopup && (
+  <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+    <div className={` bg-white border border-gray-200 rounded-xl shadow-2xl p-6 max-w-sm w-full mx-auto`}>
+      <div className="flex justify-between items-center mb-4">
+        <h3 className={`font-bold text-lg text-gray-800`}>Confirm Logout</h3>
+        <button 
+          onClick={() => setShowLogoutPopup(false)}
+          className={`p-1 rounded-full hover:bg-gray-100`}
+        >
+          <X size={20} className={'text-gray-500'} />
+        </button>
+      </div>
+      <p className={`mb-6 text-gray-600`}>
+        Are you sure you want to logout from your account?
+      </p>
+      <div className="flex justify-end space-x-3">
+        <button 
+          onClick={() => setShowLogoutPopup(false)}
+          className={`px-4 py-2 rounded-lg bg-gray-200 hover:bg-gray-300 text-gray-800`}
+        >
+          Cancel
+        </button>
+        <button 
+          onClick={handleLogout}
+          className={`px-4 py-2 rounded-lg flex items-center bg-red-600 hover:bg-red-700 text-white`}
+        >
+          <FiLogOut size={16} className="mr-2" />
+          Logout
+        </button>
+      </div>
+    </div>
+  </div>
+)}
+
           </div>
         </header>
          ) : null}
@@ -308,6 +399,12 @@ const DashboardLayout = () => {
         <Outlet /> {/* This is where page components will be rendered */}
       </main>
     </div>
+    
+    {/* Settings Modal */}
+<UserSettingsModal 
+  isOpen={showSettingsModal}
+  onClose={() => setShowSettingsModal(false)}
+/>
   </div>
 );
 };

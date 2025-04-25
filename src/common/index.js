@@ -276,6 +276,14 @@ const SummaryApi = {
       getManagerById: {
         url: `${backendDomain}/api/get-manager-detail`,
         method: "get"
+      },
+      changePassword: {
+        url : `${backendDomain}/api/change-password`,
+        method: "post"
+      },
+      adminChangePassword: {
+        url: `${backendDomain}/api/admin-change-password`,
+        method: "post"
       }
 }
 

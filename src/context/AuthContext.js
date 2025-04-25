@@ -47,12 +47,23 @@ export const AuthProvider = ({ children }) => {
       console.error('Logout error:', error);
     }
   };
+
+  // New function to update user context
+  const updateUserContext = (updatedUserData) => {
+    if (!user) return;
+    
+    const updatedUser = { ...user, ...updatedUserData };
+    localStorage.setItem('user', JSON.stringify(updatedUser));
+    setUser(updatedUser);
+  };
+
   // Context values to be provided
   const value = {
     user,
     loading,
     login,
     logout,
+    updateUserContext,
     isAuthenticated: !!user
   };
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -22,6 +22,11 @@ const EditTechnicianModal = ({ isOpen, onClose, technicianId, onSuccess }) => {
   const [branches, setBranches] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [showPasswordChange, setShowPasswordChange] = useState(false);
+const [passwordData, setPasswordData] = useState({
+  newPassword: '',
+  confirmPassword: ''
+});
   
   useEffect(() => {
     if (isOpen && technicianId) {
@@ -145,6 +150,56 @@ const EditTechnicianModal = ({ isOpen, onClose, technicianId, onSuccess }) => {
     } catch (err) {
       setError('Server error. Please try again later.');
       console.error('Error updating technician:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handlePasswordChange = (e) => {
+    setPasswordData({
+      ...passwordData,
+      [e.target.name]: e.target.value
+    });
+  };
+  
+  const handlePasswordSubmit = async (e) => {
+    e.preventDefault();
+    setError(null);
+    
+    if (!passwordData.newPassword || !passwordData.confirmPassword) {
+      setError('Both password fields are required');
+      return;
+    }
+    
+    if (passwordData.newPassword !== passwordData.confirmPassword) {
+      setError('Passwords do not match');
+      return;
+    }
+    
+    try {
+      setLoading(true);
+      
+      const response = await fetch(`${SummaryApi.adminChangePassword.url}/${technicianId}`, {
+        method: SummaryApi.adminChangePassword.method,
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ newPassword: passwordData.newPassword })
+      });
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        showNotification('success', 'Password updated successfully');
+        setPasswordData({ newPassword: '', confirmPassword: '' });
+        setShowPasswordChange(false);
+      } else {
+        setError(data.message || 'Failed to update password');
+      }
+    } catch (err) {
+      setError('Server error. Please try again later.');
+      console.error('Error updating password:', err);
     } finally {
       setLoading(false);
     }
@@ -316,6 +371,77 @@ const EditTechnicianModal = ({ isOpen, onClose, technicianId, onSuccess }) => {
             </button>
           </div>
         </form>
+
+        {/* Add password change section */}
+<div className="mt-8 pt-6 border-t border-gray-200">
+  <h3 className="text-lg font-medium mb-4">Change Password</h3>
+  
+  {!showPasswordChange ? (
+    <button
+      type="button"
+      onClick={() => setShowPasswordChange(true)}
+      className="bg-gray-200 text-gray-800 px-4 py-2 rounded-md hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-500"
+    >
+      Change Password
+    </button>
+  ) : (
+    <div className="space-y-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div>
+          <label className="block text-gray-700 mb-2" htmlFor="newPassword">
+            New Password*
+          </label>
+          <input
+            id="newPassword"
+            name="newPassword"
+            type="password"
+            value={passwordData.newPassword}
+            onChange={handlePasswordChange}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+            required
+          />
+        </div>
+        
+        <div>
+          <label className="block text-gray-700 mb-2" htmlFor="confirmPassword">
+            Confirm New Password*
+          </label>
+          <input
+            id="confirmPassword"
+            name="confirmPassword"
+            type="password"
+            value={passwordData.confirmPassword}
+            onChange={handlePasswordChange}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+            required
+          />
+        </div>
+      </div>
+      
+      <div className="flex space-x-3">
+        <button
+          type="button"
+          onClick={handlePasswordSubmit}
+          disabled={loading}
+          className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
+        >
+          Update Password
+        </button>
+        
+        <button
+          type="button"
+          onClick={() => {
+            setShowPasswordChange(false);
+            setPasswordData({ newPassword: '', confirmPassword: '' });
+          }}
+          className="bg-gray-200 text-gray-800 px-4 py-2 rounded-md hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-500"
+        >
+          Cancel
+        </button>
+      </div>
+    </div>
+  )}
+</div>
       </div>
     </Modal>
   );
