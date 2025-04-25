@@ -291,22 +291,17 @@ const DashboardLayout = () => {
             <FiMenu className="w-6 h-6" />
           </button>
           
-          <div className="flex-1 px-4 flex items-center">
-            {user && user.role === 'admin' && (
-              <select className="px-4 py-2 border rounded-md">
-                <option value="">All Branches</option>
-                {/* Branches will be populated dynamically */}
-              </select>
-            )}
+          <div className="flex-1 px-2 flex items-center">
+          <p className="text-md font-medium capitalize">{user?.firstName} {user?.lastName} ({user?.role || 'User'}) </p>
           </div>
           
           <div className="flex items-center">
-            <button className="p-1 mr-4 text-gray-500 hover:text-gray-600 relative">
+            {/* <button className="p-1 mr-4 text-gray-500 hover:text-gray-600 relative">
               <FiBell className="w-6 h-6" />
               <span className="absolute top-0 right-0 bg-red-500 rounded-full w-4 h-4 text-white text-xs flex items-center justify-center">
                 0
               </span>
-            </button>
+            </button> */}
             
             <div className="relative flex items-center">
   <button 
@@ -315,7 +310,7 @@ const DashboardLayout = () => {
     aria-haspopup="true"
     aria-expanded={profileDropdownOpen}
   >
-    <div className="w-10 h-10 rounded-full  flex items-center justify-center text-white text-lg font-medium cursor-pointer">
+    <div className="w-10 h-10 text-3xl cursor-pointer">
     🧑
     </div>
   </button>
