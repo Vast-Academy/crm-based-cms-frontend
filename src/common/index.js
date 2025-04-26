@@ -284,6 +284,22 @@ const SummaryApi = {
       adminChangePassword: {
         url: `${backendDomain}/api/admin-change-password`,
         method: "post"
+      },
+      getReplacementHistory: {
+        url: `${backendDomain}/api/serial-number-history`,
+        method: "get"
+      },
+      checkWarrantyStatus: {
+        url: `${backendDomain}/api/check-warranty-status`,
+        method: "get"
+      },
+      findByReplacementSerial: {
+         url: `${backendDomain}/api/replaced-serial-number`,
+        method: "get"
+      },
+      updateWarrantyClaim: {
+        url : `${backendDomain}/api/warranty-claim`,
+        method: "post"
       }
 }
 

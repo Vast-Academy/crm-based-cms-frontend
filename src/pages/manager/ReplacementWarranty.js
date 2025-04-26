@@ -3,7 +3,6 @@ import { FiSearch, FiRefreshCw, FiAlertCircle, FiCheck } from 'react-icons/fi';
 import SerialDetailsModal from './SerialDetailsModal';
 import SummaryApi from '../../common'; // Assuming this is your API utility
 import LoadingSpinner from '../../components/LoadingSpinner';
-import ProductReplacementModal from './ProductReplacementModal';
 
 const ReplacementWarranty = () => {
   const [searchQuery, setSearchQuery] = useState('');
@@ -11,13 +10,10 @@ const ReplacementWarranty = () => {
   const [error, setError] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [productDetails, setProductDetails] = useState(null);
+  const [replacementData, setReplacementData] = useState(null);
   const [replacements, setReplacements] = useState([]);
   const [loadingReplacements, setLoadingReplacements] = useState(false);
-
-  // Add new state variables to ReplacementWarranty component
-const [selectedReplacement, setSelectedReplacement] = useState(null);
-const [showReplaceProductModal, setShowReplaceProductModal] = useState(false);
-const [expandedRowId, setExpandedRowId] = useState(null);
+  const [expandedRowId, setExpandedRowId] = useState(null);
 
   // Fetch warranty replacements on component mount
   useEffect(() => {
@@ -25,13 +21,13 @@ const [expandedRowId, setExpandedRowId] = useState(null);
   }, []);
   
   // Add handleRowClick function
-const handleRowClick = (replacementId) => {
-  if (expandedRowId === replacementId) {
-    setExpandedRowId(null);
-  } else {
-    setExpandedRowId(replacementId);
-  }
-};
+  const handleRowClick = (replacementId) => {
+    if (expandedRowId === replacementId) {
+      setExpandedRowId(null);
+    } else {
+      setExpandedRowId(replacementId);
+    }
+  };
 
   // Handle search when Enter key is pressed
   const handleKeyDown = async (e) => {
@@ -53,19 +49,87 @@ const handleRowClick = (replacementId) => {
       setLoading(true);
       setError('');
       
-      // Call your API to search for the serial number
-      const response = await fetch(`${SummaryApi.getSerialNumberDetails.url}/${searchQuery.trim()}`, {
-        method: SummaryApi.getSerialNumberDetails.method || 'GET',
+      // First, check if this is a replacement serial number
+      const replacementResponse = await fetch(`${SummaryApi.findByReplacementSerial.url}/${searchQuery.trim()}`, {
+        method: 'GET',
         credentials: 'include'
       });
       
-      const data = await response.json();
+      const replacementData = await replacementResponse.json();
       
-      if (data.success && data.data) {
-        setProductDetails(data.data);
-        setShowModal(true);
+      // If we found that this is a replacement serial number
+      if (replacementData.success && replacementData.data) {
+        const replacement = replacementData.data;
+        
+        // Get original product details
+        const productResponse = await fetch(`${SummaryApi.getSerialNumberDetails.url}/${replacement.serialNumber}`, {
+          method: SummaryApi.getSerialNumberDetails.method || 'GET',
+          credentials: 'include'
+        });
+        
+        const productData = await productResponse.json();
+        
+        if (productData.success && productData.data) {
+          setReplacementData({
+            ...replacement,
+            productDetails: productData.data
+          });
+          setProductDetails(null);
+          setShowModal(true);
+        } else {
+          setError('Could not load product details');
+        }
+        return;
+      }
+      
+      // Second, check if this serial has a pending warranty claim
+      const warrantyResponse = await fetch(`${SummaryApi.checkWarrantyStatus.url}/${searchQuery.trim()}`, {
+        method: 'GET',
+        credentials: 'include'
+      });
+      
+      const warrantyData = await warrantyResponse.json();
+      
+      // If we found an existing warranty claim for this serial
+      if (warrantyData.success && warrantyData.data) {
+        // This is a registered serial number with a pending/replaced warranty claim
+        const replacement = warrantyData.data;
+        
+        // Get product details
+        const productResponse = await fetch(`${SummaryApi.getSerialNumberDetails.url}/${replacement.serialNumber}`, {
+          method: SummaryApi.getSerialNumberDetails.method || 'GET',
+          credentials: 'include'
+        });
+        
+        const productData = await productResponse.json();
+        
+        if (productData.success && productData.data) {
+          setReplacementData({
+            ...replacement,
+            productDetails: productData.data
+          });
+          setProductDetails(null);
+          setShowModal(true);
+        } else {
+          setError('Could not load product details');
+        }
       } else {
-        setError(data.message || 'Serial number not found');
+        // This is a fresh serial number, not yet registered for warranty
+        // Do the regular product details lookup
+        const response = await fetch(`${SummaryApi.getSerialNumberDetails.url}/${searchQuery.trim()}`, {
+          method: SummaryApi.getSerialNumberDetails.method || 'GET',
+          credentials: 'include'
+        });
+        
+        const data = await response.json();
+        
+        if (data.success && data.data) {
+          setProductDetails(data.data);
+          setReplacementData(null);
+          setShowModal(true);
+        } else {
+          setError(data.message || 'Serial number not found');
+        }
       }
     } catch (err) {
       console.error('Error searching serial number:', err);
@@ -99,79 +163,121 @@ const handleRowClick = (replacementId) => {
     }
   };
 
-  // Add function to handle View Details click
-const handleViewDetails = async (replacement) => {
-  try {
-    setLoading(true);
-    
-    // Fetch the original serial number details
-    const response = await fetch(`${SummaryApi.getSerialNumberDetails.url}/${replacement.serialNumber}`, {
-      method: SummaryApi.getSerialNumberDetails.method || 'GET',
-      credentials: 'include'
-    });
-    
-    const data = await response.json();
-    
-    if (data.success && data.data) {
-      setSelectedReplacement({
-        ...replacement,
-        productDetails: data.data
+  // Handle viewing details for a replacement
+  const handleViewDetails = async (replacement) => {
+    try {
+      setLoading(true);
+      
+      // Fetch the original serial number details
+      const response = await fetch(`${SummaryApi.getSerialNumberDetails.url}/${replacement.serialNumber}`, {
+        method: SummaryApi.getSerialNumberDetails.method || 'GET',
+        credentials: 'include'
       });
-      setShowReplaceProductModal(true);
-    } else {
-      setError('Could not load product details');
+      
+      const data = await response.json();
+      
+      if (data.success && data.data) {
+        setReplacementData({
+          ...replacement,
+          productDetails: data.data
+        });
+        
+        setProductDetails(null);
+        setShowModal(true);
+      } else {
+        setError('Could not load product details');
+      }
+    } catch (err) {
+      console.error('Error loading replacement details:', err);
+      setError('Server error. Please try again later.');
+    } finally {
+      setLoading(false);
     }
-  } catch (err) {
-    console.error('Error loading replacement details:', err);
-    setError('Server error. Please try again later.');
-  } finally {
-    setLoading(false);
-  }
-};
-
-// Add to ReplacementWarranty component
-const handleCompleteReplacement = async (replacementData) => {
+  };
+  
+  // Handle completing a replacement (add new serial number)
+  const handleCompleteReplacement = async (replacementData) => {
+    try {
+      setLoading(true);
+      
+      const response = await fetch(SummaryApi.completeWarrantyReplacement.url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          replacementId: replacementData.replacementId,
+          newSerialNumber: replacementData.newSerialNumber,
+        })
+      });
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        // Close the modal
+        setShowModal(false);
+        
+        // Reset selected replacement
+        setReplacementData(null);
+        setProductDetails(null);
+        
+        // Refresh the replacements list
+        fetchWarrantyReplacements();
+        
+        // Show success message
+        alert('Product replacement completed successfully!');
+      } else {
+        setError(data.message || 'Failed to complete replacement');
+      }
+    } catch (err) {
+      console.error('Error completing replacement:', err);
+      setError('Server error. Please try again later.');
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  // Add new function to handle the update API
+const handleUpdateWarranty = async (updateData) => {
   try {
-    setLoading(true);
-    
-    const response = await fetch(SummaryApi.completeWarrantyReplacement.url, {
+    const response = await fetch(SummaryApi.updateWarrantyClaim.url, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
       },
       credentials: 'include',
-      body: JSON.stringify({
-        replacementId: replacementData.replacementId,
-        newSerialNumber: replacementData.newSerialNumber,
-        remarks: replacementData.remarks
-      })
+      body: JSON.stringify(updateData)
     });
     
     const data = await response.json();
     
     if (data.success) {
       // Close the modal
-      setShowReplaceProductModal(false);
+      setShowModal(false);
       
-      // Reset selected replacement
-      setSelectedReplacement(null);
+      // Reset states
+      setProductDetails(null);
+      setReplacementData(null);
       
       // Refresh the replacements list
       fetchWarrantyReplacements();
       
+      // Clear the search
+      setSearchQuery('');
+      
       // Show success message
-      alert('Product replacement completed successfully!');
+      alert('Warranty issue updated successfully!');
     } else {
-      setError(data.message || 'Failed to complete replacement');
+      console.error('Failed to update warranty:', data.message);
+      setError(data.message || 'Failed to update warranty');
     }
   } catch (err) {
-    console.error('Error completing replacement:', err);
+    console.error('Error updating warranty:', err);
     setError('Server error. Please try again later.');
-  } finally {
-    setLoading(false);
   }
 };
-  
+
   // Handle warranty registration
   const handleRegisterWarranty = async (warrantyData) => {
     try {
@@ -186,7 +292,8 @@ const handleCompleteReplacement = async (replacementData) => {
           workOrderId: warrantyData.workOrderId,
           customerName: warrantyData.customerName,
           customerPhone: warrantyData.customerPhone,
-          issueDescription: warrantyData.issueDescription
+          issueDescription: warrantyData.issueDescription,
+          issueCheckedBy: warrantyData.issueCheckedBy
         })
       });
       
@@ -196,11 +303,18 @@ const handleCompleteReplacement = async (replacementData) => {
         // Close the modal
         setShowModal(false);
         
+        // Reset states
+        setProductDetails(null);
+        setReplacementData(null);
+        
         // Refresh the replacements list
         fetchWarrantyReplacements();
         
         // Clear the search
         setSearchQuery('');
+        
+        // Show success message
+        alert('Warranty issue registered successfully!');
       } else {
         console.error('Failed to register warranty:', data.message);
         setError(data.message || 'Failed to register warranty');
@@ -211,8 +325,8 @@ const handleCompleteReplacement = async (replacementData) => {
     }
   };
 
-   // Format date
-   const formatDate = (dateString) => {
+  // Format date
+  const formatDate = (dateString) => {
     return new Date(dateString).toLocaleDateString('en-IN', {
       day: '2-digit',
       month: 'short',
@@ -225,7 +339,16 @@ const handleCompleteReplacement = async (replacementData) => {
     setSearchQuery('');
     setError('');
     setProductDetails(null);
+    setReplacementData(null);
     fetchWarrantyReplacements();
+  };
+  
+  // Handle modal close
+  const handleCloseModal = () => {
+    setShowModal(false);
+    setProductDetails(null);
+    setReplacementData(null);
+    setError('');
   };
   
   return (
@@ -306,53 +429,53 @@ const handleCompleteReplacement = async (replacementData) => {
                 <tbody className="bg-white divide-y divide-gray-200">
                   {replacements.map((replacement) => (
                     <React.Fragment key={replacement._id}> 
-                    <tr 
-                    className={`hover:bg-gray-50 cursor-pointer ${expandedRowId === replacement._id ? 'bg-gray-50' : ''}`}
-                    onClick={() => handleRowClick(replacement._id)}
-                  >
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                        {replacement.serialNumber}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {replacement.productName}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {replacement.customerName}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {formatDate(replacement.registeredAt)}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                          replacement.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                          replacement.status === 'approved' ? 'bg-blue-100 text-blue-800' :
-                          replacement.status === 'replaced' ? 'bg-green-100 text-green-800' :
-                          'bg-red-100 text-red-800'
-                        }`}>
-                          {replacement.status.charAt(0).toUpperCase() + replacement.status.slice(1)}
-                        </span>
-                      </td>
-                    </tr>
+                      <tr 
+                        className={`hover:bg-gray-50 cursor-pointer ${expandedRowId === replacement._id ? 'bg-gray-50' : ''}`}
+                        onClick={() => handleRowClick(replacement._id)}
+                      >
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                          {replacement.serialNumber}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {replacement.productName}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {replacement.customerName}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {formatDate(replacement.registeredAt)}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                            replacement.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                            replacement.status === 'approved' ? 'bg-blue-100 text-blue-800' :
+                            replacement.status === 'replaced' ? 'bg-green-100 text-green-800' :
+                            'bg-red-100 text-red-800'
+                          }`}>
+                            {replacement.status.charAt(0).toUpperCase() + replacement.status.slice(1)}
+                          </span>
+                        </td>
+                      </tr>
 
-                    {/* Expanded row */}
-    {expandedRowId === replacement._id && (
-      <tr>
-        <td colSpan="5" className="px-6 py-4 bg-gray-50 border-b">
-          <div className="flex ">
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                handleViewDetails(replacement);
-              }}
-              className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
-            >
-              View Details
-            </button>
-          </div>
-        </td>
-      </tr>
-    )}
-  </React.Fragment>
+                      {/* Expanded row */}
+                      {expandedRowId === replacement._id && (
+                        <tr>
+                          <td colSpan="5" className="px-6 py-4 bg-gray-50 border-b">
+                            <div className="flex">
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleViewDetails(replacement);
+                                }}
+                                className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
+                              >
+                                View Details
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </React.Fragment>
                   ))}
                 </tbody>
               </table>
@@ -376,28 +499,18 @@ const handleCompleteReplacement = async (replacementData) => {
         )}
       </div>
       
-      {/* Serial Details Modal */}
+      {/* Combined Serial Details and Replacement Modal */}
       <SerialDetailsModal
         isOpen={showModal}
-        onClose={() => setShowModal(false)}
+        onClose={handleCloseModal}
         productDetails={productDetails}
+        replacementData={replacementData}
         onRegisterWarranty={handleRegisterWarranty}
+        onUpdateWarranty={handleUpdateWarranty}
+        onCompleteReplacement={handleCompleteReplacement}
       />
-
-      {/* Product Replacement Modal */}
-{showReplaceProductModal && selectedReplacement && (
-  <ProductReplacementModal
-    isOpen={showReplaceProductModal}
-    onClose={() => {
-      setShowReplaceProductModal(false);
-      setSelectedReplacement(null);
-    }}
-    replacementData={selectedReplacement}
-    onCompleteReplacement={handleCompleteReplacement}
-  />
-)}
     </div>
   );
 };
 
-export default ReplacementWarranty;
+export default ReplacementWarranty;   
