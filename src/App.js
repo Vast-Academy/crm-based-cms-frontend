@@ -50,7 +50,6 @@ const ProtectedRoute = ({ children, allowedRoles = [] }) => {
     return <Navigate to="/login" />;
   }
   
-  // If allowedRoles is empty array, allow any authenticated user
   if (allowedRoles.length > 0 && !allowedRoles.includes(user.role)) {
     // Redirect to dashboard if user doesn't have permission
     return <Navigate to="/dashboard" />;
