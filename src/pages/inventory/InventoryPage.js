@@ -1,142 +1,157 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { FiPlus, FiTrash, FiSearch, FiCamera, FiSave } from 'react-icons/fi';
-import Modal from '../../components/Modal';
+import React, { useState, useEffect } from 'react';
+import { FiBox, FiX, FiSave, FiSearch } from 'react-icons/fi';
 import SummaryApi from '../../common';
-import ConfirmationDialog from '../../components/ConfirmationDialog';
 import { useNotification } from '../../context/NotificationContext';
-import { useAuth } from '../../context/AuthContext';
 
 // Sample product units for selection
 const productUnits = [
   'Piece', 'Kg', 'Meter', 'Liter', 'Box', 'Carton', 'Dozen', 'Pair'
 ];
 
-// Updated warranty options with "No Warranty"
+// Warranty options
 const warrantyOptions = [
-  'No Warranty', '6 months', '1 year', '1.5 years', '2 years', '3 years', '5 years'
+  'No Warranty', '1 day', '6 months', '1 year', '1.5 years', '2 years', '3 years', '5 years'
 ];
 
 const InventoryPage = () => {
-  const [items, setItems] = useState([]);
-  const [branches, setBranches] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [searchTerm, setSearchTerm] = useState('');
   const { showNotification } = useNotification();
-  const { user } = useAuth();
-  
-  // Modal states
-  const [isAddItemModalOpen, setIsAddItemModalOpen] = useState(false);
-  const [isAddStockModalOpen, setIsAddStockModalOpen] = useState(false);
-  const [selectedItem, setSelectedItem] = useState(null);
-  const [isViewStockModalOpen, setIsViewStockModalOpen] = useState(false);
-  const [selectedStockItem, setSelectedStockItem] = useState(null);
-  const [serialNumberStatus, setSerialNumberStatus] = useState({});
-  const [stockEntriesToSave, setStockEntriesToSave] = useState([]);
-  const [checkingSerial, setCheckingSerial] = useState(false);
-  const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
-  const [confirmAction, setConfirmAction] = useState(null);
-  const [confirmData, setConfirmData] = useState({
-    title: '',
-    message: '',
-    type: 'warning',
-    confirmText: 'Confirm',
-    onConfirm: () => {}
-  });
-  
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [inventoryItems, setInventoryItems] = useState([]);
+  const [activeFilter, setActiveFilter] = useState('All');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [expandedRowId, setExpandedRowId] = useState(null);
+const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+const [selectedItem, setSelectedItem] = useState(null);
+
   // New item form state
   const [newItem, setNewItem] = useState({
     type: 'serialized-product',
     name: '',
-    branch: '',
     unit: 'Piece',
     warranty: '1 year',
     mrp: '',
     purchasePrice: '',
     salePrice: ''
   });
-  
-  // Stock entries state
-  const [stockEntries, setStockEntries] = useState([
-    {
-      serialNumber: '',
-      quantity: 1,
-      date: new Date().toISOString().split('T')[0]
-    }
-  ]);
-  const barcodeInputRef = useRef(null);
-  
-  // Fetch inventory items
-  useEffect(() => {
-    fetchItems();
-    
-    // If user is admin, fetch branches
-    if (user.role === 'admin') {
-      fetchBranches();
-    }
-  }, [user.role]);
-  
-  // Focus on barcode input when stock modal opens
-  useEffect(() => {
-    if (!isAddStockModalOpen) {
-      const timer = setTimeout(() => {
-        resetStockEntriesForm();
-        setSerialNumberStatus({});
-        setStockEntriesToSave([]);
-      }, 300);
-      
-      return () => clearTimeout(timer);
-    }
-  }, [isAddStockModalOpen]);
-  
-  const fetchItems = async () => {
-    try {
-      setLoading(true);
-      const response = await fetch(SummaryApi.getAllInventoryItems.url, {
-        method: SummaryApi.getAllInventoryItems.method,
-        credentials: 'include'
-      });
-      
-      const data = await response.json();
-      
-      if (data.success) {
-        setItems(data.items);
-      } else {
-        setError(data.message || 'Failed to fetch inventory items');
-      }
-    } catch (err) {
-      setError('Server error. Please try again later.');
-      console.error('Error fetching inventory items:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
-  
-  const fetchBranches = async () => {
-    try {
-      const response = await fetch(SummaryApi.getBranches.url, {
-        method: SummaryApi.getBranches.method,
-        credentials: 'include'
-      });
-      
-      const data = await response.json();
-      
-      if (data.success) {
-        setBranches(data.data || []);
-      } else {
-        console.error('Failed to fetch branches:', data.message);
-      }
-    } catch (err) {
-      console.error('Error fetching branches:', err);
-      setBranches([]);
-    }
-  };
 
-  const openViewStockModal = (item) => {
-    setSelectedStockItem(item);
-    setIsViewStockModalOpen(true);
-  };
-  
+  // Fetch inventory items on component mount
+  useEffect(() => {
+    fetchInventoryItems();
+  }, []);
+
+  // Fetch all inventory items from API
+const fetchInventoryItems = async () => {
+  try {
+    setLoading(true);
+    
+    // सभी तीन प्रकार के इंवेंटरी आइटम्स को पैरेलल में फेच करें
+    const [serializedResponse, genericResponse, servicesResponse] = await Promise.all([
+      fetch(`${SummaryApi.getInventoryByType.url}/serialized-product`, {
+        method: SummaryApi.getInventoryByType.method,
+        credentials: 'include'
+      }),
+      fetch(`${SummaryApi.getInventoryByType.url}/generic-product`, {
+        method: SummaryApi.getInventoryByType.method,
+        credentials: 'include'
+      }),
+      fetch(`${SummaryApi.getInventoryByType.url}/service`, {
+        method: SummaryApi.getInventoryByType.method,
+        credentials: 'include'
+      })
+    ]);
+    
+    // सभी रिस्पॉन्स पार्स करें
+    const [serializedData, genericData, servicesData] = await Promise.all([
+      serializedResponse.json(),
+      genericResponse.json(),
+      servicesResponse.json()
+    ]);
+    
+    // सभी आइटम्स को कम्बाइन करें और टाइप प्रॉपर्टी जोड़ें
+    const combinedItems = [
+      ...(serializedData.success ? serializedData.items : []),
+      ...(genericData.success ? genericData.items : []),
+      ...(servicesData.success ? servicesData.items : [])
+    ];
+    
+    setInventoryItems(combinedItems);
+  } catch (err) {
+    showNotification('error', 'Server error. Failed to fetch inventory items.');
+    console.error('Error fetching inventory items:', err);
+  } finally {
+    setLoading(false);
+  }
+};
+
+// Function to toggle expanded row
+const toggleRowExpansion = (itemId) => {
+  if (expandedRowId === itemId) {
+    // If clicking the same row that's already expanded, collapse it
+    setExpandedRowId(null);
+  } else {
+    // Otherwise expand the clicked row (and collapse any previously expanded row)
+    setExpandedRowId(itemId);
+  }
+};
+
+// Function to open edit modal
+const openEditModal = (item) => {
+  setSelectedItem(item);
+  setIsEditModalOpen(true);
+};
+
+// Add a function to handle the update
+const handleUpdateItem = async () => {
+  try {
+    setLoading(true);
+    setError(null);
+    
+    const response = await fetch(`${SummaryApi.updateInventoryItem.url}/${selectedItem.id}`, {
+      method: SummaryApi.updateInventoryItem.method,
+      credentials: 'include',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(selectedItem)
+    });
+    
+    const data = await response.json();
+    console.log("check API data:", data);
+    
+    if (data.success) {
+      showNotification('success', 'Item updated successfully');
+      setIsEditModalOpen(false);
+      // Update the local state immediately with the new values
+      setInventoryItems(prevItems => 
+        prevItems.map(item => 
+          item.id === selectedItem.id ? {...item, ...selectedItem} : item
+        )
+      );
+      fetchInventoryItems(); // Refresh the list
+    } else {
+      showNotification('error', data.message || 'Failed to update item');
+      setError(data.message || 'Failed to update item');
+    }
+  } catch (err) {
+    showNotification('error', 'Server error. Please try again later.');
+    setError('Server error. Please try again later.');
+    console.error('Error updating item:', err);
+  } finally {
+    setLoading(false);
+  }
+};
+
+// Add a function to handle edit form input changes
+const handleEditItemChange = (e) => {
+  const { name, value } = e.target;
+  setSelectedItem({
+    ...selectedItem,
+    [name]: value
+  });
+};
+
   // Handle input change for new item form
   const handleItemInputChange = (e) => {
     const { name, value } = e.target;
@@ -145,71 +160,7 @@ const InventoryPage = () => {
       [name]: value
     });
   };
-  
-  // Reset new item form
-  const resetNewItemForm = () => {
-    setNewItem({
-      type: 'serialized-product',
-      name: '',
-      branch: user.role === 'admin' ? (branches.length > 0 ? branches[0]._id : '') : '',
-      unit: 'Piece',
-      warranty: '1 year',
-      mrp: '',
-      purchasePrice: '',
-      salePrice: ''
-    });
-  };
-  
-  // Reset stock entries form
-  const resetStockEntriesForm = () => {
-    setStockEntries([
-      {
-        serialNumber: '',
-        quantity: 1,
-        date: new Date().toISOString().split('T')[0]
-      }
-    ]);
-    setError(null);
-    
-    setSerialNumberStatus({});
-    setStockEntriesToSave([]);
-  };
 
-  // Show confirmation dialog helper function
-  const showConfirmation = (title, message, type, confirmText, onConfirm) => {
-    setConfirmData({
-      title,
-      message,
-      type,
-      confirmText,
-      onConfirm
-    });
-    setConfirmDialogOpen(true);
-  };
-
-  // Discard and close button handler
-  const handleDiscardAndClose = () => {
-    if (stockEntries.some(entry => entry.serialNumber.trim() !== '' || entry.quantity > 1)) {
-      showConfirmation(
-        'Discard Changes?',
-        'All unsaved changes will be lost. Are you sure you want to discard them?',
-        'warning',
-        'Discard',
-        () => {
-          resetStockEntriesForm(); 
-          setSerialNumberStatus({});
-          setStockEntriesToSave([]);
-          setIsAddStockModalOpen(false);
-        }
-      );
-    } else {
-      resetStockEntriesForm();
-      setSerialNumberStatus({});
-      setStockEntriesToSave([]);
-      setIsAddStockModalOpen(false);
-    }
-  };
-  
   // Validate new item form
   const validateNewItemForm = () => {
     setError(null);
@@ -219,21 +170,14 @@ const InventoryPage = () => {
       return false;
     }
     
-    if (user.role === 'admin' && !newItem.branch && (newItem.type === 'serialized-product' || newItem.type === 'generic-product')) {
-      setError('Branch is required for products');
+    if ((newItem.type === 'serialized-product' || newItem.type === 'generic-product') && !newItem.mrp) {
+      setError('MRP is required for products');
       return false;
     }
     
-    if (newItem.type === 'serialized-product' || newItem.type === 'generic-product') {
-      if (!newItem.mrp) {
-        setError('MRP is required for products');
-        return false;
-      }
-      
-      if (!newItem.purchasePrice) {
-        setError('Purchase price is required for products');
-        return false;
-      }
+    if ((newItem.type === 'serialized-product' || newItem.type === 'generic-product') && !newItem.purchasePrice) {
+      setError('Purchase price is required for products');
+      return false;
     }
     
     if (!newItem.salePrice) {
@@ -243,7 +187,42 @@ const InventoryPage = () => {
     
     return true;
   };
-  
+
+  // Add a function to fetch the selected item details
+const fetchItemDetails = async (itemId) => {
+  try {
+    setLoading(true);
+    const response = await fetch(`${SummaryApi.getInventoryItemById.url}/${itemId}`, {
+      method: SummaryApi.getInventoryItemById.method,
+      credentials: 'include'
+    });
+    
+    const data = await response.json();
+    
+    if (data.success) {
+      setSelectedItem(data.item);
+    } else {
+      showNotification('error', data.message || 'Failed to fetch item details');
+    }
+  } catch (err) {
+    showNotification('error', 'Server error. Failed to fetch item details.');
+    console.error('Error fetching item details:', err);
+  } finally {
+    setLoading(false);
+  }
+};
+
+// Calculate stock display for different item types
+const getStockDisplay = (item) => {
+  if (item.type === 'serialized-product') {
+    return item.stock ? item.stock.length : 0;
+  } else if (item.type === 'generic-product') {
+    return item.stock ? item.stock.reduce((total, stock) => total + parseInt(stock.quantity, 10), 0) : 0;
+  } else {
+    return 'N/A'; // Services don't have stock
+  }
+};
+
   // Add new inventory item
   const handleAddItem = async () => {
     if (!validateNewItemForm()) {
@@ -272,9 +251,21 @@ const InventoryPage = () => {
       
       if (data.success) {
         showNotification('success', 'Item added successfully');
-        setIsAddItemModalOpen(false);
-        resetNewItemForm();
-        fetchItems();
+        
+        // Reset form and close modal
+        setNewItem({
+          type: 'serialized-product',
+          name: '',
+          unit: 'Piece',
+          warranty: '1 year',
+          mrp: '',
+          purchasePrice: '',
+          salePrice: ''
+        });
+        setIsModalOpen(false);
+        
+        // Refresh inventory items
+        fetchInventoryItems();
       } else {
         showNotification('error', data.message || 'Failed to add inventory item');
         setError(data.message || 'Failed to add inventory item');
@@ -288,449 +279,406 @@ const InventoryPage = () => {
     }
   };
 
-  const checkSerialNumber = async (serialNumber, index) => {
-    if (!serialNumber.trim()) return;
-    
-    // Check if this serial number already exists in current entries
-    const isDuplicateInCurrentEntries = stockEntries.some(
-      (entry, i) => i !== index && entry.serialNumber === serialNumber
-    );
-    
-    if (isDuplicateInCurrentEntries) {
-      setSerialNumberStatus(prev => ({
-        ...prev,
-        [index]: {
-          valid: false,
-          message: 'Duplicate serial number in current entries'
-        }
-      }));
-      return;
+  // Filter items based on active filter
+  const filteredItems = inventoryItems.filter(item => {
+    // First apply type filter
+    if (activeFilter !== 'All') {
+      // Convert from filter button names to actual type values in data
+      const filterTypeMap = {
+        'Serialized': 'serialized-product',
+        'Generic': 'generic-product',
+        'Services': 'service'
+      };
+      
+      if (item.type !== filterTypeMap[activeFilter]) {
+        return false;
+      }
     }
     
-    try {
-      setCheckingSerial(true);
-      
-      const response = await fetch(`${SummaryApi.checkSerialNumber.url}/${serialNumber}`, {
-        method: SummaryApi.checkSerialNumber.method,
-        credentials: 'include'
-      });
-      
-      const data = await response.json();
-      
-      if (data.exists) {
-        setSerialNumberStatus(prev => ({
-          ...prev,
-          [index]: {
-            valid: false,
-            message: `Serial number already exists for item: ${data.item.name}`
-          }
-        }));
-      } else {
-        setSerialNumberStatus(prev => ({
-          ...prev,
-          [index]: {
-            valid: true,
-            message: 'Serial number is valid'
-          }
-        }));
-      }
-    } catch (err) {
-      console.error('Error checking serial number:', err);
-      setSerialNumberStatus(prev => ({
-        ...prev,
-        [index]: {
-          valid: false,
-          message: 'Error checking serial number'
-        }
-      }));
-    } finally {
-      setCheckingSerial(false);
+    // Then apply search term filter
+    if (searchTerm) {
+      return item.name.toLowerCase().includes(searchTerm.toLowerCase());
     }
-  };
-  
-  // Delete an inventory item
-  const handleDeleteItem = async (id) => {
-    showConfirmation(
-      'Delete Item',
-      'Are you sure you want to delete this item? This action cannot be undone.',
-      'warning',
-      'Delete',
-      async () => {
-        try {
-          const response = await fetch(`${SummaryApi.deleteInventoryItem.url}/${id}`, {
-            method: SummaryApi.deleteInventoryItem.method,
-            credentials: 'include'
-          });
-          
-          const data = await response.json();
-          
-          if (data.success) {
-            setItems(items.filter(item => item.id !== id));
-            showNotification('success', 'Item deleted successfully');
-          } else {
-            showNotification('error', data.message || 'Failed to delete item');
-            setError(data.message || 'Failed to delete item');
-          }
-        } catch (err) {
-          showNotification('error', 'Server error. Please try again later.');
-          setError('Server error. Please try again later.');
-          console.error('Error deleting item:', err);
-        }
-      }
-    );
-  };
-  
-  // Open add stock modal for an item
-  const openAddStockModal = (item) => {
-    resetStockEntriesForm();
-    setSerialNumberStatus({});
-    setStockEntriesToSave([]);
     
-    setSelectedItem(item);
-    setIsAddStockModalOpen(true);
-    
-    setTimeout(() => {
-      const firstInput = document.getElementById('barcode-input-0');
-      if (firstInput) {
-        firstInput.focus();
-      }
-    }, 300);
-  };
-  
-  // Handle barcode input
-  const handleBarcodeInput = (e, index) => {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      
-      const scannedValue = e.target.value.trim();
-      
-      if (!scannedValue) {
-        return;
-      }
-      
-      const updatedEntries = [...stockEntries];
-      updatedEntries[index].serialNumber = scannedValue;
-      setStockEntries(updatedEntries);
-      
-      checkSerialNumber(scannedValue, index);
-      
-      setTimeout(() => {
-        if (index === stockEntries.length - 1) {
-          handleAddStockEntry();
-        } else {
-          const nextInput = document.getElementById(`barcode-input-${index + 1}`);
-          if (nextInput) {
-            nextInput.focus();
-          }
-        }
-      }, 100);
-    }
-  };
-  
-  // Add a new stock entry
-  const handleAddStockEntry = () => {
-    const newEntryIndex = stockEntries.length;
-    
-    setStockEntries([
-      ...stockEntries,
-      {
-        serialNumber: '',
-        quantity: 1,
-        date: new Date().toISOString().split('T')[0]
-      }
-    ]);
-    
-    setTimeout(() => {
-      const newInput = document.getElementById(`barcode-input-${newEntryIndex}`);
-      if (newInput) {
-        newInput.focus();
-      }
-    }, 100);
-  };
-  
-  // Remove a stock entry
-  const handleRemoveStockEntry = (index) => {
-    const updatedEntries = stockEntries.filter((_, i) => i !== index);
-    setStockEntries(updatedEntries);
-  };
-  
-  // Handle input change for stock entries
-  const handleStockEntryChange = (index, field, value) => {
-    const updatedEntries = [...stockEntries];
-    updatedEntries[index][field] = value;
-    setStockEntries(updatedEntries);
-    
-    // Check serial number if changed
-    if (field === 'serialNumber' && value.trim()) {
-      if (window.serialCheckTimeout) {
-        clearTimeout(window.serialCheckTimeout);
-      }
-      
-      window.serialCheckTimeout = setTimeout(() => {
-        checkSerialNumber(value, index);
-      }, 500);
+    return true;
+  });
+
+  // Get display type value
+  const getDisplayType = (type) => {
+    switch(type) {
+      case 'serialized-product':
+        return 'Serialized Product';
+      case 'generic-product':
+        return 'Generic Product';
+      case 'service':
+        return 'Service';
+      default:
+        return type;
     }
   };
 
-  const prepareForSaving = () => {
-    if (selectedItem.type === 'serialized-product') {
-      // For serial products, filter valid entries with serial numbers
-      const validEntries = stockEntries
-        .filter(entry => 
-          entry.serialNumber.trim() !== '' && 
-          !stockEntries.some((e, i) => 
-            e.serialNumber === entry.serialNumber && 
-            stockEntries.indexOf(entry) > i
-          ) &&
-          serialNumberStatus[stockEntries.indexOf(entry)]?.valid === true
-        )
-        .map(entry => ({
-          ...entry,
-          quantity: 1 // Always 1 for serial products
-        }));
-      
-      if (validEntries.length === 0) {
-        setError('No valid serial numbers to save');
-        showNotification('error', 'No valid serial numbers to save');
-        return;
-      }
-      
-      setStockEntriesToSave(validEntries);
-      showNotification('success', `${validEntries.length} serial numbers ready to save`);
-    } else if (selectedItem.type === 'generic-product') {
-      // For non-serial products, validate quantities
-      const validEntries = stockEntries
-        .filter(entry => entry.quantity > 0)
-        .map(entry => ({
-          ...entry,
-          serialNumber: '' // No serial number for non-serial products
-        }));
-      
-      if (validEntries.length === 0) {
-        setError('No valid quantities to save');
-        showNotification('error', 'No valid quantities to save');
-        return;
-      }
-      
-      setStockEntriesToSave(validEntries);
-      const totalQuantity = validEntries.reduce((sum, entry) => sum + Number(entry.quantity), 0);
-      showNotification('success', `${totalQuantity} items ready to save`);
-    }
-  };
-
-  // Save stock entries
-  const handleSaveStock = async () => {
-    setError(null);
-    
-    try {
-      setLoading(true);
-      
-      // Submit each stock entry
-      for (const entry of stockEntriesToSave) {
-        const response = await fetch(SummaryApi.addInventoryStock.url, {
-          method: SummaryApi.addInventoryStock.method,
-          credentials: 'include',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            itemId: selectedItem.id,
-            ...entry
-          })
-        });
-        
-        const data = await response.json();
-        
-        if (!data.success) {
-          showNotification('error', data.message || 'Failed to add stock');
-          setError(data.message || 'Failed to add stock');
-          setLoading(false);
-          return;
-        }
-      }
-      
-      showNotification('success', 'Stock added successfully');
-      
-      setIsAddStockModalOpen(false);
-      resetStockEntriesForm();
-      fetchItems();
-    } catch (err) {
-      showNotification('error', 'Server error. Please try again later.');
-      setError('Server error. Please try again later.');
-      console.error('Error adding stock:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
-  
-  // Filter items based on search term
-  const filteredItems = items.filter(
-    item => item.name.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-  
-  // Check if user has permission to add inventory
-  const hasAddPermission = user && (user.role === 'admin' || user.role === 'manager');
-  
-  if (loading && items.length === 0) {
-    return (
-      <div className="flex justify-center items-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-500"></div>
-      </div>
-    );
-  }
-  
   return (
-    <div>
-      <div className="mb-6">
-        <h1 className="text-2xl font-semibold text-gray-800">Inventory Management</h1>
-        <p className="text-gray-600">Manage your products and services</p>
-      </div>
-      
-      {error && (
-        <div className="mb-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
-          {error}
-        </div>
-      )}
-      
-      {/* Actions */}
-      <div className="flex justify-between mb-6">
-        {hasAddPermission && (
-          <button 
-            onClick={() => setIsAddItemModalOpen(true)}
-            className="bg-indigo-600 text-white px-4 py-2 rounded-lg flex items-center hover:bg-indigo-700 transition-colors"
-          >
-            <FiPlus className="mr-2" />
-            Add New Item
-          </button>
-        )}
+    <div className="container mx-auto">
+      <div className="bg-white rounded-lg shadow p-6">
+        <h1 className="text-2xl font-bold mb-6">Inventory</h1>
         
-        <div className="relative">
-          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-            <FiSearch className="text-gray-400" />
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+          {/* Add Inventory Button */}
+          <button 
+            onClick={() => setIsModalOpen(true)}
+            className="flex items-center px-4 py-2 bg-teal-500 text-white rounded-md hover:bg-teal-600 transition-colors"
+          >
+            <FiBox className="mr-2" />
+            Add Inventory
+          </button>
+          
+          {/* Filter Buttons */}
+          <div className="flex flex-wrap gap-2">
+            <button 
+              onClick={() => setActiveFilter('All')}
+              className={`px-4 py-2 ${activeFilter === 'All' ? 'bg-teal-500 text-white' : 'bg-gray-200 text-gray-800'} rounded-full text-sm hover:bg-teal-600 hover:text-white transition-colors`}
+            >
+              All
+            </button>
+            <button 
+              onClick={() => setActiveFilter('Serialized')}
+              className={`px-4 py-2 ${activeFilter === 'Serialized' ? 'bg-teal-500 text-white' : 'bg-gray-200 text-gray-800'} rounded-full text-sm hover:bg-teal-600 hover:text-white transition-colors`}
+            >
+              Serialized
+            </button>
+            <button 
+              onClick={() => setActiveFilter('Generic')}
+              className={`px-4 py-2 ${activeFilter === 'Generic' ? 'bg-teal-500 text-white' : 'bg-gray-200 text-gray-800'} rounded-full text-sm hover:bg-teal-600 hover:text-white transition-colors`}
+            >
+              Generic
+            </button>
+            <button 
+              onClick={() => setActiveFilter('Services')}
+              className={`px-4 py-2 ${activeFilter === 'Services' ? 'bg-teal-500 text-white' : 'bg-gray-200 text-gray-800'} rounded-full text-sm hover:bg-teal-600 hover:text-white transition-colors`}
+            >
+              Services
+            </button>
           </div>
-          <input
-            type="text"
-            placeholder="Search items..."
-            className="pl-10 pr-4 py-2 border rounded-lg"
+        </div>
+        
+        {/* Search Bar */}
+        <div className="relative mb-6">
+        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+        <FiSearch className="text-gray-400" />
+          </div>
+          <input 
+            type="search" 
+            className="w-full pl-10 pr-4 py-2 border rounded-lg" 
+            placeholder="Search items..." 
             value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+            onChange={e => setSearchTerm(e.target.value)}
           />
         </div>
+        
+        {/* Inventory Items Table */}
+        <div className="overflow-x-auto">
+          <table className="min-w-full bg-white">
+            <thead>
+              <tr className="text-left bg-gray-100">
+                <th className="px-4 py-3 text-gray-600 font-semibold">S.NO</th>
+                <th className="px-4 py-3 text-gray-600 font-semibold">NAME</th>
+                <th className="px-4 py-3 text-gray-600 font-semibold">TYPE</th>
+                <th className="px-4 py-3 text-gray-600 font-semibold">UNIT</th>
+                <th className="px-4 py-3 text-gray-600 font-semibold">WARRANTY</th>
+                <th className="px-4 py-3 text-gray-600 font-semibold">MRP</th>
+                <th className="px-4 py-3 text-gray-600 font-semibold">PURCHASE PRICE</th>
+                <th className="px-4 py-3 text-gray-600 font-semibold">SALE PRICE</th>
+                <th className="px-4 py-3 text-gray-600 font-semibold">STOCK</th>
+              </tr>
+            </thead>
+            <tbody>
+  {filteredItems.map((item, index) => (
+    <React.Fragment key={item.id}>
+      <tr 
+        className={`${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'} hover:bg-gray-100 cursor-pointer`}
+        onClick={() => toggleRowExpansion(item.id)}
+      >
+        <td className="px-4 py-3 border-t">
+          <div className="flex items-center justify-center w-8 h-8 bg-teal-500 text-white rounded-full">
+            {index + 1}
+          </div>
+        </td>
+        <td className="px-4 py-3 border-t">{item.name}</td>
+        <td className="px-4 py-3 border-t">
+          <span className={`px-2 py-1 rounded text-xs ${
+            item.type === 'serialized-product' ? 'bg-blue-100 text-blue-800' : 
+            item.type === 'generic-product' ? 'bg-green-100 text-green-800' : 
+            'bg-purple-100 text-purple-800'
+          }`}>
+            {getDisplayType(item.type)}
+          </span>
+        </td>
+        <td className="px-4 py-3 border-t">{item.unit}</td>
+        <td className="px-4 py-3 border-t">{item.warranty}</td>
+        <td className="px-4 py-3 border-t">₹{item.mrp}</td>
+        <td className="px-4 py-3 border-t">₹{item.purchasePrice}</td>
+        <td className="px-4 py-3 border-t">₹{item.salePrice}</td>
+        <td className="px-4 py-3 border-t">
+          {item.type !== 'service' ? (
+            <span className="px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+              {item.totalStock !== undefined ? item.totalStock : getStockDisplay(item)} {item.unit}
+            </span>
+          ) : (
+            'N/A'
+          )}
+        </td>
+      </tr>
+      
+      {/* Expandable row for action buttons */}
+      {expandedRowId === item.id && (
+        <tr className="bg-gray-50">
+          <td colSpan={9} className="px-6 py-4 border-b">
+            <div className="flex space-x-3">
+              <button
+                onClick={() => openEditModal(item)}
+                className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-teal-500 hover:bg-teal-600"
+              >
+                <FiSave className="mr-2" />
+                Edit Item
+              </button>
+            </div>
+          </td>
+        </tr>
+      )}
+    </React.Fragment>
+  ))}
+  {filteredItems.length === 0 && (
+    <tr>
+      <td colSpan="9" className="px-4 py-8 text-center text-gray-500">
+        {loading ? 'Loading inventory items...' : 'No inventory items found'}
+      </td>
+    </tr>
+  )}
+</tbody>
+          </table>
+        </div>
       </div>
       
-      {/* Items List */}
-      <div className="bg-white rounded-lg shadow-md overflow-hidden">
-        <div className="p-4 border-b bg-gray-50">
-          <h2 className="text-lg font-semibold text-gray-700">Inventory Items</h2>
-        </div>
-        
-        {filteredItems.length === 0 ? (
-          <div className="p-6 text-center text-gray-500">
-            {items.length === 0 ? 'No items in inventory. Add your first item.' : 'No items match your search.'}
+      {/* Add Inventory Modal */}
+      {isModalOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white max-h-[600px] overflow-y-auto rounded-lg shadow-xl w-full max-w-2xl">
+            <div className="flex items-center justify-between bg-gray-100 px-6 py-4">
+              <h2 className="text-xl font-semibold text-gray-800">Add New Inventory Item</h2>
+              <button 
+                onClick={() => setIsModalOpen(false)}
+                className="text-gray-500 hover:text-gray-700 focus:outline-none"
+              >
+                <FiX size={24} />
+              </button>
+            </div>
+            
+            <div className="p-6">
+              {error && (
+                <div className="mb-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
+                  {error}
+                </div>
+              )}
+              
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Item Type *
+                  </label>
+                  <div className="grid grid-cols-3 gap-4">
+                    <label className="inline-flex items-center">
+                      <input
+                        type="radio"
+                        name="type"
+                        value="serialized-product"
+                        checked={newItem.type === 'serialized-product'}
+                        onChange={handleItemInputChange}
+                        className="h-4 w-4 text-teal-600 border-gray-300 focus:ring-teal-500"
+                      />
+                      <span className="ml-2">Serialized Product</span>
+                    </label>
+                    <label className="inline-flex items-center">
+                      <input
+                        type="radio"
+                        name="type"
+                        value="generic-product"
+                        checked={newItem.type === 'generic-product'}
+                        onChange={handleItemInputChange}
+                        className="h-4 w-4 text-teal-600 border-gray-300 focus:ring-teal-500"
+                      />
+                      <span className="ml-2">Generic Product</span>
+                    </label>
+                    <label className="inline-flex items-center">
+                      <input
+                        type="radio"
+                        name="type"
+                        value="service"
+                        checked={newItem.type === 'service'}
+                        onChange={handleItemInputChange}
+                        className="h-4 w-4 text-teal-600 border-gray-300 focus:ring-teal-500"
+                      />
+                      <span className="ml-2">Service</span>
+                    </label>
+                  </div>
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Name *
+                  </label>
+                  <input
+                    type="text"
+                    name="name"
+                    value={newItem.name}
+                    onChange={handleItemInputChange}
+                    className="w-full p-2 border rounded-md"
+                    placeholder="Item name"
+                    required
+                  />
+                </div>
+                
+                {(newItem.type === 'serialized-product' || newItem.type === 'generic-product') && (
+                  <>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Unit *
+                      </label>
+                      <select
+                        name="unit"
+                        value={newItem.unit}
+                        onChange={handleItemInputChange}
+                        className="w-full p-2 border rounded-md bg-white"
+                        required
+                      >
+                        {productUnits.map(unit => (
+                          <option key={unit} value={unit}>{unit}</option>
+                        ))}
+                      </select>
+                    </div>
+                    
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Warranty *
+                      </label>
+                      <select
+                        name="warranty"
+                        value={newItem.warranty}
+                        onChange={handleItemInputChange}
+                        className="w-full p-2 border rounded-md bg-white"
+                        required
+                      >
+                        {warrantyOptions.map(option => (
+                          <option key={option} value={option}>{option}</option>
+                        ))}
+                      </select>
+                    </div>
+                    
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        MRP (₹) *
+                      </label>
+                      <input
+                        type="number"
+                        name="mrp"
+                        value={newItem.mrp}
+                        onChange={handleItemInputChange}
+                        className="w-full p-2 border rounded-md"
+                        placeholder="MRP"
+                        required
+                      />
+                    </div>
+                    
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Purchase Price (₹) *
+                      </label>
+                      <input
+                        type="number"
+                        name="purchasePrice"
+                        value={newItem.purchasePrice}
+                        onChange={handleItemInputChange}
+                        className="w-full p-2 border rounded-md"
+                        placeholder="Purchase Price"
+                        required
+                      />
+                    </div>
+                  </>
+                )}
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Sale Price (₹) *
+                  </label>
+                  <input
+                    type="number"
+                    name="salePrice"
+                    value={newItem.salePrice}
+                    onChange={handleItemInputChange}
+                    className="w-full p-2 border rounded-md"
+                    placeholder="Sale Price"
+                    required
+                  />
+                </div>
+              </div>
+            </div>
+            
+            <div className="bg-gray-100 px-6 py-4 flex justify-end space-x-3">
+              <button
+                onClick={() => setIsModalOpen(false)}
+                className="px-4 py-2 text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300 focus:outline-none"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleAddItem}
+                disabled={loading}
+                className="inline-flex justify-center items-center px-4 py-2 rounded-md shadow-sm text-sm font-medium text-white bg-teal-600 hover:bg-teal-700 focus:outline-none disabled:opacity-50"
+              >
+                {loading ? (
+                  <span className="flex items-center">
+                    <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Saving...
+                  </span>
+                ) : (
+                  <span className="flex items-center">
+                    <FiSave className="mr-2" />
+                    Save Item
+                  </span>
+                )}
+              </button>
+            </div>
           </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">S.No</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Branch</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Unit</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Warranty</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">MRP</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Purchase Price</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Sale Price</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Stock</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {filteredItems.map((item, index) => (
-                  <tr key={item.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{index + 1}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 capitalize">
-                      {item.type === 'serialized-product' ? 'Serialized Product' : 
-                       item.type === 'generic-product' ? 'Generic Product' : 'Service'}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{item.name}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {item.branchName || '-'}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {(item.type === 'serialized-product' || item.type === 'generic-product') ? item.unit : '-'}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {(item.type === 'serialized-product' || item.type === 'generic-product') ? item.warranty : '-'}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {(item.type === 'serialized-product' || item.type === 'generic-product') ? `₹${item.mrp}` : '-'}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {(item.type === 'serialized-product' || item.type === 'generic-product') ? `₹${item.purchasePrice}` : '-'}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">₹{item.salePrice}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {item.type === 'service' ? '-' : (
-                        <button
-                          onClick={() => openViewStockModal(item)}
-                          className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 hover:bg-blue-200"
-                        >
-                          {item.type === 'serialized-product' 
-                            ? (item.stock ? item.stock.length : 0)
-                            : (item.stock ? item.stock.reduce((total, stock) => total + parseInt(stock.quantity, 10), 0) : 0)
-                          } {item.unit}
-                        </button>
-                      )}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                      <div className="flex space-x-2">
-                        {(item.type === 'serialized-product' || item.type === 'generic-product') && hasAddPermission && (
-                          <button 
-                            onClick={() => openAddStockModal(item)}
-                            className="text-blue-600 hover:text-blue-900"
-                            title="Add Stock"
-                          >
-                            <FiPlus size={18} />
-                          </button>
-                        )}
-                        {hasAddPermission && (
-                          <button 
-                            onClick={() => handleDeleteItem(item.id)}
-                            className="text-red-600 hover:text-red-900"
-                            title="Delete Item"
-                          >
-                            <FiTrash size={18} />
-                          </button>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+        </div>
+      )}
+
+      {/* Edit Inventory Modal */}
+{isEditModalOpen && selectedItem && (
+  <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+    <div className="bg-white max-h-[600px] overflow-y-auto rounded-lg shadow-xl w-full max-w-2xl">
+      <div className="flex items-center justify-between bg-gray-100 px-6 py-4">
+        <h2 className="text-xl font-semibold text-gray-800">Edit Item: {selectedItem.name}</h2>
+        <button 
+          onClick={() => setIsEditModalOpen(false)}
+          className="text-gray-500 hover:text-gray-700 focus:outline-none"
+        >
+          <FiX size={24} />
+        </button>
+      </div>
+      
+      <div className="p-6">
+        {error && (
+          <div className="mb-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
+            {error}
           </div>
         )}
-      </div>
-      
-      {/* Add Item Modal */}
-      <Modal
-        isOpen={isAddItemModalOpen}
-        onClose={() => setIsAddItemModalOpen(false)}
-        title="Add New Inventory Item"
-        size="md"
-      >
+        
         <div className="space-y-4">
-          {error && (
-            <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
-              {error}
-            </div>
-          )}
-          
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Item Type *
+              Item Type
             </label>
             <div className="grid grid-cols-3 gap-4">
               <label className="inline-flex items-center">
@@ -738,9 +686,10 @@ const InventoryPage = () => {
                   type="radio"
                   name="type"
                   value="serialized-product"
-                  checked={newItem.type === 'serialized-product'}
-                  onChange={handleItemInputChange}
-                  className="h-4 w-4 text-indigo-600 border-gray-300 focus:ring-indigo-500"
+                  checked={selectedItem.type === 'serialized-product'}
+                  onChange={handleEditItemChange}
+                  disabled={selectedItem.type === 'serialized-product' || selectedItem.type === 'generic-product'}
+                  className="h-4 w-4 text-teal-600 border-gray-300 focus:ring-teal-500"
                 />
                 <span className="ml-2">Serialized Product</span>
               </label>
@@ -749,9 +698,10 @@ const InventoryPage = () => {
                   type="radio"
                   name="type"
                   value="generic-product"
-                  checked={newItem.type === 'generic-product'}
-                  onChange={handleItemInputChange}
-                  className="h-4 w-4 text-indigo-600 border-gray-300 focus:ring-indigo-500"
+                  checked={selectedItem.type === 'generic-product'}
+                  onChange={handleEditItemChange}
+                  disabled={selectedItem.type === 'serialized-product' || selectedItem.type === 'generic-product'}
+                  className="h-4 w-4 text-teal-600 border-gray-300 focus:ring-teal-500"
                 />
                 <span className="ml-2">Generic Product</span>
               </label>
@@ -760,67 +710,56 @@ const InventoryPage = () => {
                   type="radio"
                   name="type"
                   value="service"
-                  checked={newItem.type === 'service'}
-                  onChange={handleItemInputChange}
-                  className="h-4 w-4 text-indigo-600 border-gray-300 focus:ring-indigo-500"
+                  checked={selectedItem.type === 'service'}
+                  onChange={handleEditItemChange}
+                  disabled={selectedItem.type === 'serialized-product' || selectedItem.type === 'generic-product'}
+                  className="h-4 w-4 text-teal-600 border-gray-300 focus:ring-teal-500"
                 />
                 <span className="ml-2">Service</span>
               </label>
             </div>
+            {(selectedItem.type === 'serialized-product' || selectedItem.type === 'generic-product') && (
+              <p className="mt-1 text-xs text-gray-500">
+                Product type cannot be changed after creation
+              </p>
+            )}
           </div>
           
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Name *
+              Name
             </label>
             <input
               type="text"
               name="name"
-              value={newItem.name}
-              onChange={handleItemInputChange}
-              className="w-full p-2 border rounded-md"
+              value={selectedItem.name}
+              onChange={handleEditItemChange}
+              readOnly={selectedItem.type === 'serialized-product' || selectedItem.type === 'generic-product'}
+              className={`w-full p-2 border rounded-md ${
+                (selectedItem.type === 'serialized-product' || selectedItem.type === 'generic-product') 
+                ? 'bg-gray-200 cursor-not-allowed' : ''
+              }`}
               placeholder="Item name"
-              required
+              disabled
             />
+            {(selectedItem.type === 'serialized-product' || selectedItem.type === 'generic-product') && (
+              <p className="mt-1 text-xs text-gray-500">
+                Product name cannot be changed after creation
+              </p>
+            )}
           </div>
           
-          {/* Branch selection for admin only */}
-          {user.role === 'admin' && (newItem.type === 'serialized-product' || newItem.type === 'generic-product') && (
-  <div>
-    <label className="block text-sm font-medium text-gray-700 mb-2">
-      Branch *
-    </label>
-    <select
-      name="branch"
-      value={newItem.branch}
-      onChange={handleItemInputChange}
-      className="w-full p-2 border rounded-md"
-      required
-    >
-      <option value="">Select Branch</option>
-      {branches && branches.length > 0 ? branches.map(branch => (
-        <option key={branch._id} value={branch._id}>
-          {branch.name}
-        </option>
-      )) : (
-        <option value="" disabled>No branches available</option>
-      )}
-    </select>
-  </div>
-)}
-          
-          {(newItem.type === 'serialized-product' || newItem.type === 'generic-product') && (
+          {(selectedItem.type === 'serialized-product' || selectedItem.type === 'generic-product') && (
             <>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Unit *
+                  Unit
                 </label>
                 <select
                   name="unit"
-                  value={newItem.unit}
-                  onChange={handleItemInputChange}
-                  className="w-full p-2 border rounded-md"
-                  required
+                  value={selectedItem.unit}
+                  onChange={handleEditItemChange}
+                  className="w-full p-2 border rounded-md bg-white"
                 >
                   {productUnits.map(unit => (
                     <option key={unit} value={unit}>{unit}</option>
@@ -830,14 +769,13 @@ const InventoryPage = () => {
               
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Warranty *
+                  Warranty
                 </label>
                 <select
                   name="warranty"
-                  value={newItem.warranty}
-                  onChange={handleItemInputChange}
-                  className="w-full p-2 border rounded-md"
-                  required
+                  value={selectedItem.warranty}
+                  onChange={handleEditItemChange}
+                  className="w-full p-2 border rounded-md bg-white"
                 >
                   {warrantyOptions.map(option => (
                     <option key={option} value={option}>{option}</option>
@@ -847,31 +785,29 @@ const InventoryPage = () => {
               
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  MRP (₹) *
+                  MRP (₹)
                 </label>
                 <input
                   type="number"
                   name="mrp"
-                  value={newItem.mrp}
-                  onChange={handleItemInputChange}
+                  value={selectedItem.mrp}
+                  onChange={handleEditItemChange}
                   className="w-full p-2 border rounded-md"
                   placeholder="MRP"
-                  required
                 />
               </div>
               
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Purchase Price (₹) *
+                  Purchase Price (₹)
                 </label>
                 <input
                   type="number"
                   name="purchasePrice"
-                  value={newItem.purchasePrice}
-                  onChange={handleItemInputChange}
+                  value={selectedItem.purchasePrice}
+                  onChange={handleEditItemChange}
                   className="w-full p-2 border rounded-md"
                   placeholder="Purchase Price"
-                  required
                 />
               </div>
             </>
@@ -879,402 +815,51 @@ const InventoryPage = () => {
           
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Sale Price (₹) *
+              Sale Price (₹)
             </label>
             <input
               type="number"
               name="salePrice"
-              value={newItem.salePrice}
-              onChange={handleItemInputChange}
+              value={selectedItem.salePrice}
+              onChange={handleEditItemChange}
               className="w-full p-2 border rounded-md"
               placeholder="Sale Price"
-              required
             />
           </div>
-          
-          <div className="flex justify-end pt-4">
-            <button
-              type="button"
-              onClick={() => setIsAddItemModalOpen(false)}
-              className="mr-4 px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none"
-            >
-              Cancel
-            </button>
-            <button
-              type="button"
-              onClick={handleAddItem}
-              disabled={loading}
-              className="inline-flex justify-center items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none disabled:opacity-50"
-            >
-              {loading ? (
-                <span className="flex items-center">
-                  <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
-                  Saving...
-                </span>
-              ) : (
-                <span className="flex items-center">
-                  <FiSave className="mr-2" />
-                  Save Item
-                </span>
-              )}
-            </button>
-          </div>
         </div>
-      </Modal>
+      </div>
       
-      {/* Add Stock Modal - Updated for both serial and non-serial products */}
-      <Modal
-        isOpen={isAddStockModalOpen}
-        onClose={() => handleDiscardAndClose()}
-        title={`Add Stock for ${selectedItem?.name || ''}`}
-        size="lg"
-      >
-        {selectedItem && (
-          <div>
-            {error && (
-              <div className="mb-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
-                {error}
-              </div>
-            )}
-            
-            <div className="mb-4">
-              <div className="flex justify-between items-center">
-                <h3 className="text-lg font-medium text-gray-900">Stock Entry</h3>
-                {selectedItem.type === 'serialized-product' && (
-                  <div className="flex items-center">
-                    <span className="text-sm text-gray-500 mr-2">Scan barcode or type manually</span>
-                    <FiCamera className="text-gray-400" />
-                  </div>
-                )}
-              </div>
-              <p className="text-sm text-gray-500">
-                {selectedItem.type === 'serialized-product' 
-                  ? 'Connect your barcode scanner and scan directly into the Serial Number field.'
-                  : 'Enter the quantity of items you want to add to inventory.'}
-              </p>
-              {selectedItem.type === 'serialized-product' && (
-                <p className="text-sm text-gray-600 mt-1">
-                  <span className="font-semibold">Pro Tip:</span> Press <kbd className="px-2 py-1 text-xs bg-gray-100 border border-gray-300 rounded">Enter</kbd> after each serial number to automatically move to the next field.
-                </p>
-              )}
-              <p className="text-sm text-gray-600 mt-1 font-semibold">
-                {selectedItem.type === 'serialized-product' 
-                  ? 'Note: Quantity is fixed at 1 for each serial number entry.'
-                  : 'Note: Each entry will be added as a separate stock record.'}
-              </p>
-            </div>
-            
-            <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2">
-              {stockEntries.map((entry, index) => (
-                <div 
-                  key={index} 
-                  className={`p-4 border rounded-md ${
-                    selectedItem.type === 'serialized-product' && serialNumberStatus[index]?.valid === false 
-                      ? 'border-red-300 bg-red-50' 
-                      : selectedItem.type === 'serialized-product' && serialNumberStatus[index]?.valid === true 
-                        ? 'border-green-300 bg-green-50' 
-                        : 'bg-gray-50'
-                  }`}
-                >
-                  <div className="flex justify-between items-center mb-4">
-                    <h3 className="font-medium">Item #{index + 1}</h3>
-                    {stockEntries.length > 1 && (
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveStockEntry(index)}
-                        className="text-red-600 hover:text-red-800"
-                      >
-                        <FiTrash size={18} />
-                      </button>
-                    )}
-                  </div>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    {selectedItem.type === 'serialized-product' ? (
-                      <>
-                        {/* Serial Product Fields */}
-                        <div className="md:col-span-2">
-                          <label className="block text-sm font-medium text-gray-700 mb-1">
-                            Serial Number *
-                          </label>
-                          <div className="relative">
-                            <input
-                              id={`barcode-input-${index}`}
-                              type="text"
-                              value={entry.serialNumber}
-                              onChange={(e) => handleStockEntryChange(index, 'serialNumber', e.target.value)}
-                              onKeyDown={(e) => handleBarcodeInput(e, index)}
-                              className={`w-full p-2 border rounded-md ${
-                                serialNumberStatus[index]?.valid === false 
-                                  ? 'border-red-300 bg-red-50 pr-10' 
-                                  : serialNumberStatus[index]?.valid === true 
-                                    ? 'border-green-300 bg-green-50 pr-10' 
-                                    : 'bg-white'
-                              }`}
-                              placeholder="Scan or type serial number"
-                              ref={index === 0 ? barcodeInputRef : null}
-                              autoFocus={index > 0 && index === stockEntries.length - 1}
-                              required
-                            />
-                            {checkingSerial && entry.serialNumber.trim() && (
-                              <div className="absolute right-2 top-1/2 transform -translate-y-1/2">
-                                <svg className="animate-spin h-5 w-5 text-gray-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                </svg>
-                              </div>
-                            )}
-                            {serialNumberStatus[index]?.valid === true && !checkingSerial && (
-                              <div className="absolute right-2 top-1/2 transform -translate-y-1/2">
-                                <svg className="h-5 w-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
-                                </svg>
-                              </div>
-                            )}
-                            {serialNumberStatus[index]?.valid === false && !checkingSerial && (
-                              <div className="absolute right-2 top-1/2 transform -translate-y-1/2">
-                                <svg className="h-5 w-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path>
-                                </svg>
-                              </div>
-                            )}
-                          </div>
-                          {serialNumberStatus[index]?.message && (
-                            <p className={`mt-1 text-xs ${
-                              serialNumberStatus[index]?.valid ? 'text-green-600' : 'text-red-600'
-                            }`}>
-                              {serialNumberStatus[index].message}
-                            </p>
-                          )}
-                        </div>
-                        
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">
-                            Quantity (Fixed)
-                          </label>
-                          <div className="relative">
-                            <input
-                              type="number"
-                              value="1"
-                              readOnly
-                              className="w-full p-2 border rounded-md bg-gray-100 cursor-not-allowed text-gray-500"
-                            />
-                            <div className="absolute inset-y-0 right-0 flex items-center pr-3">
-                              <svg className="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
-                              </svg>
-                            </div>
-                          </div>
-                          <p className="mt-1 text-xs text-gray-500">
-                            Each serial number equals one unit
-                          </p>
-                        </div>
-                      </>
-                    ) : (
-                      <>
-                        {/* Non-serial Product Fields */}
-                        <div className="md:col-span-2">
-                          <label className="block text-sm font-medium text-gray-700 mb-1">
-                            Quantity *
-                          </label>
-                          <input
-                            type="number"
-                            value={entry.quantity}
-                            onChange={(e) => handleStockEntryChange(index, 'quantity', e.target.value)}
-                            className="w-full p-2 border rounded-md"
-                            placeholder="Enter quantity"
-                            min="1"
-                            required
-                          />
-                          <p className="mt-1 text-xs text-gray-500">
-                            Enter the number of {selectedItem.unit.toLowerCase()} to add
-                          </p>
-                        </div>
-                      </>
-                    )}
-                    
-                    <div className={selectedItem.type === 'serialized-product' ? "md:col-span-3" : "md:col-span-1"}>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Date
-                      </label>
-                      <input
-                        type="date"
-                        value={entry.date}
-                        onChange={(e) => handleStockEntryChange(index, 'date', e.target.value)}
-                        className="w-full p-2 border rounded-md bg-white"
-                        required
-                      />
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-            
-            <div className="mt-4 mb-6">
-              <button
-                type="button"
-                onClick={handleAddStockEntry}
-                className="flex items-center text-indigo-600 hover:text-indigo-800"
-              >
-                <FiPlus className="mr-1" />
-                Add Another {selectedItem.type === 'serialized-product' ? 'Serial Number' : 'Quantity Entry'}
-              </button>
-            </div>
-            
-            <div className="mt-6 pt-4 border-t flex justify-between">
-              <div>
-                {selectedItem.type === 'serialized-product' ? (
-                  <span className="text-sm text-gray-500">
-                    {stockEntries.filter(e => serialNumberStatus[stockEntries.indexOf(e)]?.valid).length} valid serial numbers
-                  </span>
-                ) : (
-                  <span className="text-sm text-gray-500">
-                    Total: {stockEntries.reduce((sum, entry) => sum + Number(entry.quantity || 0), 0)} {selectedItem.unit}
-                  </span>
-                )}
-              </div>
-              <div className="flex">
-                <button
-                  type="button"
-                  onClick={handleDiscardAndClose}
-                  className="mr-4 px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none"
-                >
-                  Discard & Close
-                </button>
-                
-                {stockEntriesToSave.length > 0 ? (
-                  <button
-                    type="button"
-                    onClick={handleSaveStock}
-                    disabled={loading}
-                    className="inline-flex justify-center items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none disabled:opacity-50"
-                  >
-                    {loading ? (
-                      <span className="flex items-center">
-                        <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                        </svg>
-                        Saving...
-                      </span>
-                    ) : (
-                      <span className="flex items-center">
-                        <FiSave className="mr-2" />
-                        Save & Close
-                      </span>
-                    )}
-                  </button>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={prepareForSaving}
-                    disabled={loading || (
-                      selectedItem.type === 'serialized-product' && 
-                      stockEntries.every(e => 
-                        !e.serialNumber.trim() || 
-                        serialNumberStatus[stockEntries.indexOf(e)]?.valid === false
-                      )
-                    ) || (
-                      selectedItem.type === 'generic-product' && 
-                      stockEntries.every(e => !e.quantity || e.quantity <= 0)
-                    )}
-                    className="inline-flex justify-center items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none disabled:opacity-50"
-                  >
-                    <span className="flex items-center">
-                      <FiSave className="mr-2" />
-                      Prepare to Save
-                    </span>
-                  </button>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
-      </Modal>
-
-      {/* Confirmation Dialog */}
-      <ConfirmationDialog
-        isOpen={confirmDialogOpen}
-        onClose={() => setConfirmDialogOpen(false)}
-        title={confirmData.title}
-        message={confirmData.message}
-        confirmText={confirmData.confirmText}
-        type={confirmData.type}
-        onConfirm={confirmData.onConfirm}
-      />
-
-      {/* View Stock Modal - Updated for both serial and non-serial products */}
-      <Modal
-        isOpen={isViewStockModalOpen}
-        onClose={() => setIsViewStockModalOpen(false)}
-        title={`Stock Details - ${selectedStockItem?.name || ''}`}
-        size="lg"
-      >
-        {selectedStockItem && (
-          <div>
-            <div className="mb-4">
-              <h3 className="text-lg font-medium text-gray-900">
-                {selectedStockItem.type === 'serialized-product' ? 'Serial Numbers' : 'Stock Entries'}
-              </h3>
-              <p className="text-sm text-gray-500">
-                Total Stock: {
-                  selectedStockItem.type === 'serialized-product'
-                    ? (selectedStockItem.stock ? selectedStockItem.stock.length : 0)
-                    : (selectedStockItem.stock ? selectedStockItem.stock.reduce((total, stock) => total + parseInt(stock.quantity, 10), 0) : 0)
-                } {selectedStockItem.unit}
-              </p>
-            </div>
-            
-            {selectedStockItem.stock && selectedStockItem.stock.length > 0 ? (
-              <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Sr No.</th>
-                      {selectedStockItem.type === 'serialized-product' && (
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Serial Number</th>
-                      )}
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Quantity</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date Added</th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
-                    {selectedStockItem.stock.map((stockItem, index) => (
-                      <tr key={index}>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{index + 1}</td>
-                        {selectedStockItem.type === 'serialized-product' && (
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{stockItem.serialNumber}</td>
-                        )}
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{stockItem.quantity}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {new Date(stockItem.date).toLocaleDateString()}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            ) : (
-              <div className="text-center py-8 text-gray-500">
-                No stock entries found for this product.
-              </div>
-            )}
-            
-            <div className="mt-6 flex justify-end">
-              <button
-                type="button"
-                onClick={() => setIsViewStockModalOpen(false)}
-                className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none"
-              >
-                Close
-              </button>
-            </div>
-          </div>
-        )}
-      </Modal>
+      <div className="bg-gray-100 px-6 py-4 flex justify-end space-x-3">
+        <button
+          onClick={() => setIsEditModalOpen(false)}
+          className="px-4 py-2 text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300 focus:outline-none"
+        >
+          Cancel
+        </button>
+        <button
+          onClick={handleUpdateItem}
+          disabled={loading}
+          className="inline-flex justify-center items-center px-4 py-2 rounded-md shadow-sm text-sm font-medium text-white bg-teal-600 hover:bg-teal-700 focus:outline-none disabled:opacity-50"
+        >
+          {loading ? (
+            <span className="flex items-center">
+              <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+              Updating...
+            </span>
+          ) : (
+            <span className="flex items-center">
+              <FiSave className="mr-2" />
+              Update Item
+            </span>
+          )}
+        </button>
+      </div>
+    </div>
+  </div>
+)}
     </div>
   );
 };

@@ -23,7 +23,6 @@ import AddTechnician from './pages/users/AddTechnician';
 import BranchList from './pages/branches/BranchList';
 import AddBranch from './pages/branches/AddBranch';
 
-import AddInventoryItem from './pages/inventory/AddInventoryItem';
 import OwnershipTransferPage from './pages/users/OwnershipTransferPage';
 import ContactsPage from './pages/leads/ContactsPage';
 import WorkOrdersPage from './pages/workOrders/WorkOrdersPage';
@@ -37,6 +36,7 @@ import ReplacementWarranty from './pages/manager/ReplacementWarranty';
 import Test from './pages/test';
 import ManagerDetail from './pages/users/ManagerDetail';
 import BranchDetails from './pages/branches/BranchDetails';
+import InventoryPage from './pages/inventory/InventoryPage';
 
 // Protected route component
 const ProtectedRoute = ({ children, allowedRoles = [] }) => {
@@ -182,13 +182,12 @@ function App() {
                   </ProtectedRoute>
                 } 
               />
-            
 
-            <Route
-              path="inventory/add"
+                <Route
+              path="inventory-items"
               element={
                 <ProtectedRoute allowedRoles={['admin']}>
-                  <AddInventoryItem />
+                  <InventoryPage />
                 </ProtectedRoute>
               }
             />

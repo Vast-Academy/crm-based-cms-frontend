@@ -152,7 +152,7 @@ const DashboardLayout = () => {
           {
             name: 'Inventory',
             icon: FiPackage,
-            path: '/inventory/add'
+            path: '/inventory-items'
           },
         ];
       }
