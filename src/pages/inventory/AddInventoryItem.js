@@ -10,7 +10,7 @@ const productUnits = [
 
 // Warranty options
 const warrantyOptions = [
-  'No Warranty', '6 months', '1 year', '1.5 years', '2 years', '3 years', '5 years'
+  'No Warranty', '1 day', '6 months', '1 year', '1.5 years', '2 years', '3 years', '5 years'
 ];
 
 const AddInventoryItem = () => {
