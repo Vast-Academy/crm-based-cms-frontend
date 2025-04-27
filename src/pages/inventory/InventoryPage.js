@@ -413,10 +413,10 @@ const getStockDisplay = (item) => {
             {getDisplayType(item.type)}
           </span>
         </td>
-        <td className="px-4 py-3 border-t">{item.unit}</td>
-        <td className="px-4 py-3 border-t">{item.warranty}</td>
-        <td className="px-4 py-3 border-t">₹{item.mrp}</td>
-        <td className="px-4 py-3 border-t">₹{item.purchasePrice}</td>
+        <td className="px-4 py-3 border-t">{item.unit || 'N/A'}</td>
+        <td className="px-4 py-3 border-t">{item.warranty || 'N/A'}</td>
+        <td className="px-4 py-3 border-t">{item.mrp || 'N/A'}</td>
+        <td className="px-4 py-3 border-t">{item.purchasePrice || 'N/A'}</td>
         <td className="px-4 py-3 border-t">₹{item.salePrice}</td>
         <td className="px-4 py-3 border-t">
           {item.type !== 'service' ? (
