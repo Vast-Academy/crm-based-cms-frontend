@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { FiPlus, FiLoader, FiSearch } from 'react-icons/fi';
+import { FiPlus, FiLoader, FiSearch, FiX, FiSave } from 'react-icons/fi';
 import SummaryApi from '../../common';
 
 const BranchList = () => {
@@ -9,15 +9,85 @@ const BranchList = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [formData, setFormData] = useState({
+    name: '',
+    location: '',
+    address: '',
+    phone: '',
+    status: 'active'
+  });
+  const [formError, setFormError] = useState(null);
+  const [formLoading, setFormLoading] = useState(false);
+  const [lastRefreshTime, setLastRefreshTime] = useState(0);
+  
+  // Cache staleness time - 15 minutes
+  const CACHE_STALENESS_TIME = 15 * 60 * 1000;
   
   useEffect(() => {
     fetchBranchesWithData();
   }, []);
   
-  const fetchBranchesWithData = async () => {
+  const fetchBranchesWithData = async (forceFresh = false) => {
     try {
-      setLoading(true);
+      // Check for cached data
+      const cachedBranchesData = localStorage.getItem('branchesWithData');
+      const cachedTimestamp = localStorage.getItem('branchesWithDataTimestamp');
+      const currentTime = new Date().getTime();
       
+      // Use cached data if it's valid and not forcing fresh data
+      if (!forceFresh && cachedBranchesData && cachedTimestamp && 
+          (currentTime - parseInt(cachedTimestamp) < CACHE_STALENESS_TIME)) {
+        
+        const parsedData = JSON.parse(cachedBranchesData);
+        setBranches(parsedData.branches || []);
+        setBranchData(parsedData.branchData || {});
+        
+        console.log("Using cached branches data");
+        
+        // Fetch fresh data in background
+        fetchFreshBranchesInBackground();
+        return;
+      }
+      
+      // If no valid cache or force fresh, fetch new data
+      setLoading(true);
+      await fetchFreshBranchesData();
+      
+    } catch (err) {
+      // Try to use cached data as fallback if API fails
+      const cachedBranchesData = localStorage.getItem('branchesWithData');
+      if (cachedBranchesData) {
+        const parsedData = JSON.parse(cachedBranchesData);
+        setBranches(parsedData.branches || []);
+        setBranchData(parsedData.branchData || {});
+        console.log("Using cached branches data after fetch error");
+      } else {
+        setError('Server error. Please try again later.');
+        console.error('Error fetching branch data:', err);
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  // Function to fetch fresh branches data in background
+  const fetchFreshBranchesInBackground = async () => {
+    try {
+      await fetchFreshBranchesData(true);
+      console.log("Branches data updated in background");
+    } catch (err) {
+      console.error('Error fetching branches data in background:', err);
+    }
+  };
+  
+  // Function to fetch fresh branches data directly from API
+  const fetchFreshBranchesData = async (isBackground = false) => {
+    if (!isBackground) {
+      setLoading(true);
+    }
+    
+    try {
       // 1. Fetch all branches
       const branchResponse = await fetch(SummaryApi.getBranches.url, {
         method: SummaryApi.getBranches.method,
@@ -34,20 +104,17 @@ const BranchList = () => {
       }
       
       const allBranches = branchData.data || [];
-      setBranches(allBranches);
       
       // Initialize branch data with default values
-      const defaultBranchData = {};
+      const tempBranchData = {};
       allBranches.forEach(branch => {
-        defaultBranchData[branch._id] = {
+        tempBranchData[branch._id] = {
           manager: 'None',
           techniciansCount: 0,
           customersCount: 0,
           projectsCount: 0
         };
       });
-      
-      setBranchData(defaultBranchData);
       
       // 2. Try to fetch managers if endpoint exists
       if (SummaryApi.getManagerUsers) {
@@ -61,19 +128,14 @@ const BranchList = () => {
           });
           
           const managersData = await managersResponse.json();
-          console.log('Managers API response:', managersData);
           
           if (managersData.success) {
             const managers = managersData.data || [];
-            console.log("Managers data:", managers);
             
             // Update branch data with managers
-            const updatedBranchData = { ...defaultBranchData };
-            
             allBranches.forEach(branch => {
               // Convert IDs to strings for safer comparison
               const branchId = branch._id.toString();
-              console.log(`Looking for manager for branch: ${branch.name} (${branchId})`);
               
               const branchManager = managers.find(m => {
                 // Safely check if branch exists and convert IDs to strings
@@ -81,21 +143,16 @@ const BranchList = () => {
                   ? m.branch._id.toString() 
                   : (m.branch && m.branch._id);
                   
-                console.log(`Comparing with manager ${m.firstName} ${m.lastName}, branch ID: ${managerBranchId}`);
                 return managerBranchId === branchId && m.status === 'active';
               });
               
               if (branchManager) {
-                console.log(`Found manager for branch ${branch.name}: ${branchManager.firstName} ${branchManager.lastName}`);
-                updatedBranchData[branchId] = {
-                  ...updatedBranchData[branchId],
+                tempBranchData[branchId] = {
+                  ...tempBranchData[branchId],
                   manager: `${branchManager.firstName} ${branchManager.lastName}`
                 };
               }
             });
-            
-            console.log("Updated branch data with managers:", updatedBranchData);
-            setBranchData(updatedBranchData);
           }
         } catch (err) {
           console.log('Could not fetch managers:', err);
@@ -114,23 +171,18 @@ const BranchList = () => {
           });
           
           const techniciansData = await techniciansResponse.json();
-          console.log('API Response for technicians:', techniciansData);
           if (techniciansData.success) {
             const technicians = techniciansData.data || [];
             
             // Update branch data with technician counts
-            setBranchData(prevData => {
-              const newData = { ...prevData };
-              allBranches.forEach(branch => {
-                const branchTechnicians = technicians.filter(t => 
-                  t.branch && t.branch._id === branch._id && t.status === 'active'
-                );
-                
-                if (newData[branch._id]) {
-                  newData[branch._id].techniciansCount = branchTechnicians.length;
-                }
-              });
-              return newData;
+            allBranches.forEach(branch => {
+              const branchTechnicians = technicians.filter(t => 
+                t.branch && t.branch._id === branch._id && t.status === 'active'
+              );
+              
+              if (tempBranchData[branch._id]) {
+                tempBranchData[branch._id].techniciansCount = branchTechnicians.length;
+              }
             });
           }
         } catch (err) {
@@ -155,18 +207,14 @@ const BranchList = () => {
             const customers = customersData.data || [];
             
             // Update branch data with customer counts
-            setBranchData(prevData => {
-              const newData = { ...prevData };
-              allBranches.forEach(branch => {
-                const branchCustomers = customers.filter(c => 
-                  c.branch && c.branch._id === branch._id
-                );
-                
-                if (newData[branch._id]) {
-                  newData[branch._id].customersCount = branchCustomers.length;
-                }
-              });
-              return newData;
+            allBranches.forEach(branch => {
+              const branchCustomers = customers.filter(c => 
+                c.branch && c.branch._id === branch._id
+              );
+              
+              if (tempBranchData[branch._id]) {
+                tempBranchData[branch._id].customersCount = branchCustomers.length;
+              }
             });
           }
         } catch (err) {
@@ -191,19 +239,15 @@ const BranchList = () => {
             const projects = projectsData.data || [];
             
             // Update branch data with project counts
-            setBranchData(prevData => {
-              const newData = { ...prevData };
-              allBranches.forEach(branch => {
-                // Count projects for this branch (completed ones)
-                const branchProjects = projects.filter(p => 
-                  p.branch && p.branch._id === branch._id && p.status === 'completed'
-                );
-                
-                if (newData[branch._id]) {
-                  newData[branch._id].projectsCount = branchProjects.length;
-                }
-              });
-              return newData;
+            allBranches.forEach(branch => {
+              // Count projects for this branch (completed ones)
+              const branchProjects = projects.filter(p => 
+                p.branch && p.branch._id === branch._id && p.status === 'completed'
+              );
+              
+              if (tempBranchData[branch._id]) {
+                tempBranchData[branch._id].projectsCount = branchProjects.length;
+              }
             });
           }
         } catch (err) {
@@ -212,11 +256,32 @@ const BranchList = () => {
         }
       }
       
+      // Set the state with all gathered data
+      setBranches(allBranches);
+      setBranchData(tempBranchData);
+      
+      // Cache the complete data
+      const branchesWithData = {
+        branches: allBranches,
+        branchData: tempBranchData
+      };
+      
+      localStorage.setItem('branchesWithData', JSON.stringify(branchesWithData));
+      localStorage.setItem('branchesWithDataTimestamp', new Date().getTime().toString());
+      
+      // Update last refresh time
+      setLastRefreshTime(new Date().getTime());
+      
     } catch (err) {
-      setError('Server error. Please try again later.');
-      console.error('Error fetching branch data:', err);
+      if (!isBackground) {
+        setError('Server error. Please try again later.');
+        console.error('Error fetching branch data:', err);
+      }
+      throw err;
     } finally {
-      setLoading(false);
+      if (!isBackground) {
+        setLoading(false);
+      }
     }
   };
   
@@ -229,16 +294,97 @@ const BranchList = () => {
     branch.location.toLowerCase().includes(searchTerm.toLowerCase())
   );
   
+  const openModal = () => {
+    setIsModalOpen(true);
+    // Reset form data and errors
+    setFormData({
+      name: '',
+      location: '',
+      address: '',
+      phone: '',
+      status: 'active'
+    });
+    setFormError(null);
+  };
+  
+  const closeModal = () => {
+    setIsModalOpen(false);
+  };
+  
+  const handleFormChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+  
+  const handleFormSubmit = async (e) => {
+    e.preventDefault();
+    setFormError(null);
+    
+    // Validate form
+    if (!formData.name || !formData.location) {
+      setFormError('Branch name and location are required');
+      return;
+    }
+    
+    try {
+      setFormLoading(true);
+      
+      const response = await fetch(SummaryApi.addBranch.url, {
+        method: SummaryApi.addBranch.method,
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData)
+      });
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        // Close modal
+        closeModal();
+        
+        // Invalidate the cache
+        localStorage.removeItem('branchesWithData');
+        localStorage.removeItem('branchesWithDataTimestamp');
+        
+        // Fetch fresh branch data
+        fetchFreshBranchesData();
+      } else {
+        setFormError(data.message || 'Failed to add branch');
+      }
+    } catch (err) {
+      setFormError('Server error. Please try again later.');
+      console.error('Error adding branch:', err);
+    } finally {
+      setFormLoading(false);
+    }
+  };
+  
   return (
     <div>
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-semibold text-gray-800">Branches</h1>
-        <Link
-          to="/branches/add"
-          className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-md flex items-center"
-        >
-          <FiPlus className="mr-2" /> Add Branch
-        </Link>
+        <div className="flex items-center">
+          <button 
+            onClick={() => fetchFreshBranchesData()}
+            className="p-2 rounded-full bg-gray-200 hover:bg-gray-300 text-gray-700 mr-3"
+            title="Refresh Branches"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/>
+            </svg>
+          </button>
+          <button
+            onClick={openModal}
+            className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-md flex items-center"
+          >
+            <FiPlus className="mr-2" /> Add Branch
+          </button>
+        </div>
       </div>
       
       {error && (
@@ -246,6 +392,20 @@ const BranchList = () => {
           {error}
         </div>
       )}
+      
+      {/* Search Bar */}
+      {/* <div className="mb-4 relative">
+        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+          <FiSearch className="text-gray-400" />
+        </div>
+        <input
+          type="text"
+          placeholder="Search branches by name or location..."
+          className="pl-10 pr-4 py-2 border border-gray-300 rounded-md w-full focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+          value={searchTerm}
+          onChange={handleSearch}
+        />
+      </div> */}
       
       {loading ? (
         <div className="flex justify-center items-center py-8">
@@ -307,12 +467,146 @@ const BranchList = () => {
       ) : (
         <div className="text-center py-8 bg-white rounded-lg shadow-md">
           <p className="text-gray-500">No branches found.</p>
-          <Link
-            to="/branches/add"
+          <button
+            onClick={openModal}
             className="mt-4 inline-block bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-md"
           >
             Add Your First Branch
-          </Link>
+          </button>
+        </div>
+      )}
+      
+      {/* Add Branch Modal */}
+      {isModalOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl mx-4">
+            <div className="flex justify-between items-center p-6 border-b">
+              <h2 className="text-xl font-semibold text-gray-800">Add New Branch</h2>
+              <button 
+                onClick={closeModal}
+                className="text-gray-500 hover:text-gray-700 focus:outline-none"
+              >
+                <FiX className="w-5 h-5" />
+              </button>
+            </div>
+            
+            {formError && (
+              <div className="bg-red-100 text-red-700 p-3 mx-6 mt-4 rounded">
+                {formError}
+              </div>
+            )}
+            
+            <div className="p-6">
+              <form onSubmit={handleFormSubmit}>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-gray-700 mb-2" htmlFor="name">
+                      Branch Name*
+                    </label>
+                    <input
+                      id="name"
+                      name="name"
+                      type="text"
+                      value={formData.name}
+                      onChange={handleFormChange}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                      placeholder="Enter branch name"
+                      required
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-gray-700 mb-2" htmlFor="location">
+                      Location*
+                    </label>
+                    <input
+                      id="location"
+                      name="location"
+                      type="text"
+                      value={formData.location}
+                      onChange={handleFormChange}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                      placeholder="Enter location"
+                      required
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-gray-700 mb-2" htmlFor="address">
+                      Address
+                    </label>
+                    <textarea
+                      id="address"
+                      name="address"
+                      value={formData.address}
+                      onChange={handleFormChange}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                      placeholder="Enter complete address"
+                      rows="3"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-gray-700 mb-2" htmlFor="phone">
+                      Phone Number
+                    </label>
+                    <input
+                      id="phone"
+                      name="phone"
+                      type="text"
+                      value={formData.phone}
+                      onChange={handleFormChange}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                      placeholder="Enter phone number"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-gray-700 mb-2" htmlFor="status">
+                      Status
+                    </label>
+                    <select
+                      id="status"
+                      name="status"
+                      value={formData.status}
+                      onChange={handleFormChange}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                    >
+                      <option value="active">Active</option>
+                      <option value="inactive">Inactive</option>
+                    </select>
+                  </div>
+                </div>
+                
+                <div className="mt-6 flex justify-end">
+                  <button
+                    type="button"
+                    onClick={closeModal}
+                    className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 mr-2 hover:bg-gray-50"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={formLoading}
+                    className={`px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 flex items-center ${
+                      formLoading ? 'opacity-70 cursor-not-allowed' : ''
+                    }`}
+                  >
+                    {formLoading ? (
+                      <>
+                        <FiSave className="mr-2" /> Saving...
+                      </>
+                    ) : (
+                      <>
+                        <FiSave className="mr-2" /> Save Branch
+                      </>
+                    )}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
         </div>
       )}
     </div>

@@ -30,6 +30,7 @@ const AddManagerModal = ({ isOpen, onClose, onSuccess }) => {
   }, [isOpen]);
   
   const resetForm = () => {
+    // Clear the form completely to prevent auto-fill issues
     setFormData({
       firstName: '',
       lastName: '',
@@ -42,10 +43,39 @@ const AddManagerModal = ({ isOpen, onClose, onSuccess }) => {
       status: 'active'
     });
     setError(null);
+    
+    // Add a slight delay before clearing any browser auto-fills
+    setTimeout(() => {
+      const usernameInput = document.getElementById('username');
+      const passwordInput = document.getElementById('password');
+      const confirmPasswordInput = document.getElementById('confirmPassword');
+      
+      // Clear any auto-filled values
+      if (usernameInput) usernameInput.value = '';
+      if (passwordInput) passwordInput.value = '';
+      if (confirmPasswordInput) confirmPasswordInput.value = '';
+      
+      // Update form state with empty values
+      setFormData(prev => ({
+        ...prev,
+        username: '',
+        password: '',
+        confirmPassword: ''
+      }));
+    }, 100);
   };
   
   const fetchBranches = async () => {
     try {
+      // Check for cached branch data
+      const cachedBranchData = localStorage.getItem('managerBranchesData');
+      
+      if (cachedBranchData) {
+        setBranches(JSON.parse(cachedBranchData));
+        return;
+      }
+      
+      // If no cache, fetch from API
       const response = await fetch(SummaryApi.getBranches.url, {
         method: SummaryApi.getBranches.method,
         credentials: 'include',
@@ -58,6 +88,9 @@ const AddManagerModal = ({ isOpen, onClose, onSuccess }) => {
       
       if (data.success) {
         setBranches(data.data || []);
+        
+        // Cache the branch data
+        localStorage.setItem('managerBranchesData', JSON.stringify(data.data || []));
       } else {
         setError('Failed to fetch branches. Please try again.');
       }
@@ -127,6 +160,11 @@ const AddManagerModal = ({ isOpen, onClose, onSuccess }) => {
       
       if (data.success) {
         showNotification('success', 'Manager added successfully');
+        
+        // Clear manager users cache to force refresh
+        localStorage.removeItem('managerUsersData');
+        localStorage.removeItem('managerUsersDataTimestamp');
+        
         onSuccess && onSuccess();
         onClose();
       } else {
@@ -162,7 +200,11 @@ const AddManagerModal = ({ isOpen, onClose, onSuccess }) => {
             </div>
           )}
           
-          <form onSubmit={handleSubmit}>
+          <form onSubmit={handleSubmit} autoComplete="off">
+            {/* Add this hidden field to disable autofill */}
+            <input type="text" style={{ display: 'none' }} />
+            <input type="password" style={{ display: 'none' }} />
+            
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <label className="block text-gray-700 mb-2" htmlFor="firstName">
@@ -176,6 +218,7 @@ const AddManagerModal = ({ isOpen, onClose, onSuccess }) => {
                   onChange={handleChange}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                   placeholder="Enter first name"
+                  autoComplete="off"
                   required
                 />
               </div>
@@ -192,6 +235,7 @@ const AddManagerModal = ({ isOpen, onClose, onSuccess }) => {
                   onChange={handleChange}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                   placeholder="Enter last name"
+                  autoComplete="off"
                   required
                 />
               </div>
@@ -208,6 +252,7 @@ const AddManagerModal = ({ isOpen, onClose, onSuccess }) => {
                   onChange={handleChange}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                   placeholder="Enter username"
+                  autoComplete="new-username"
                   required
                 />
               </div>
@@ -224,6 +269,7 @@ const AddManagerModal = ({ isOpen, onClose, onSuccess }) => {
                   onChange={handleChange}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                   placeholder="Enter email"
+                  autoComplete="new-email"
                   required
                 />
               </div>
@@ -240,6 +286,7 @@ const AddManagerModal = ({ isOpen, onClose, onSuccess }) => {
                   onChange={handleChange}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                   placeholder="Enter password"
+                  autoComplete="new-password"
                   required
                 />
               </div>
@@ -256,6 +303,7 @@ const AddManagerModal = ({ isOpen, onClose, onSuccess }) => {
                   onChange={handleChange}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                   placeholder="Confirm password"
+                  autoComplete="new-password"
                   required
                 />
               </div>
@@ -272,6 +320,7 @@ const AddManagerModal = ({ isOpen, onClose, onSuccess }) => {
                   onChange={handleChange}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                   placeholder="Enter phone number"
+                  autoComplete="off"
                 />
               </div>
               

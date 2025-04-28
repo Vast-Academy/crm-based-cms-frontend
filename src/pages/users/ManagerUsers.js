@@ -18,15 +18,77 @@ const ManagerUsers = () => {
   // New state for edit modal
   const [showEditModal, setShowEditModal] = useState(false);
   const [selectedManagerId, setSelectedManagerId] = useState(null);
+  const [lastRefreshTime, setLastRefreshTime] = useState(0);
   const navigate = useNavigate();
+  
+  // Cache staleness time - 15 minutes
+  const CACHE_STALENESS_TIME = 15 * 60 * 1000;
   
   useEffect(() => {
     fetchData();
   }, []);
   
-  const fetchData = async () => {
+  const fetchData = async (forceFresh = false) => {
     try {
+      // Check for cached data
+      const cachedManagerData = localStorage.getItem('managerUsersData');
+      const cachedBranchData = localStorage.getItem('managerBranchesData');
+      const cachedTimestamp = localStorage.getItem('managerUsersDataTimestamp');
+      const currentTime = new Date().getTime();
+      
+      // Use cached data if it's valid and not forcing fresh data
+      if (!forceFresh && cachedManagerData && cachedBranchData && cachedTimestamp && 
+          (currentTime - parseInt(cachedTimestamp) < CACHE_STALENESS_TIME)) {
+        
+        setManagers(JSON.parse(cachedManagerData));
+        setBranches(JSON.parse(cachedBranchData));
+        
+        console.log("Using cached manager data");
+        
+        // Fetch fresh data in background
+        fetchFreshDataInBackground();
+        setLoading(false);
+        return;
+      }
+      
+      // If no valid cache or force fresh, fetch new data
       setLoading(true);
+      await fetchFreshData();
+    } catch (err) {
+      // Try to use cached data as fallback if API fails
+      const cachedManagerData = localStorage.getItem('managerUsersData');
+      const cachedBranchData = localStorage.getItem('managerBranchesData');
+      
+      if (cachedManagerData && cachedBranchData) {
+        setManagers(JSON.parse(cachedManagerData));
+        setBranches(JSON.parse(cachedBranchData));
+        console.log("Using cached manager data after fetch error");
+      } else {
+        setError('Server error. Please try again later.');
+        console.error('Error fetching data:', err);
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  // Function to fetch fresh data in background
+  const fetchFreshDataInBackground = async () => {
+    try {
+      await fetchFreshData(true);
+      console.log("Manager data updated in background");
+    } catch (err) {
+      console.error('Error fetching manager data in background:', err);
+    }
+  };
+  
+  // Function to fetch fresh data directly from API
+  const fetchFreshData = async (isBackground = false) => {
+    if (!isBackground) {
+      setLoading(true);
+    }
+    
+    try {
       // Fetch branches first to populate dropdown
       const branchResponse = await fetch(SummaryApi.getBranches.url, {
         method: SummaryApi.getBranches.method,
@@ -39,7 +101,11 @@ const ManagerUsers = () => {
       const branchData = await branchResponse.json();
       
       if (branchData.success) {
-        setBranches(branchData.data || []);
+        const branchesData = branchData.data || [];
+        setBranches(branchesData);
+        
+        // Cache the branches data
+        localStorage.setItem('managerBranchesData', JSON.stringify(branchesData));
       }
       
       // Fetch managers
@@ -54,15 +120,28 @@ const ManagerUsers = () => {
       const managerData = await managerResponse.json();
       
       if (managerData.success) {
-        setManagers(managerData.data || []);
+        const managersData = managerData.data || [];
+        setManagers(managersData);
+        
+        // Cache the managers data
+        localStorage.setItem('managerUsersData', JSON.stringify(managersData));
+        localStorage.setItem('managerUsersDataTimestamp', new Date().getTime().toString());
+        
+        // Update last refresh time
+        setLastRefreshTime(new Date().getTime());
       } else {
         setError(managerData.message || 'Failed to fetch manager users');
       }
     } catch (err) {
-      setError('Server error. Please try again later.');
-      console.error('Error fetching data:', err);
+      if (!isBackground) {
+        setError('Server error. Please try again later.');
+        console.error('Error fetching data:', err);
+      }
+      throw err;
     } finally {
-      setLoading(false);
+      if (!isBackground) {
+        setLoading(false);
+      }
     }
   };
   
@@ -127,9 +206,15 @@ const ManagerUsers = () => {
       
       if (data.success) {
         // Update the local state to reflect the change
-        setManagers(managers.map(manager => 
+        const updatedManagers = managers.map(manager => 
           manager._id === userId ? { ...manager, status: newStatus } : manager
-        ));
+        );
+        
+        setManagers(updatedManagers);
+        
+        // Update cache with new manager data
+        localStorage.setItem('managerUsersData', JSON.stringify(updatedManagers));
+        localStorage.setItem('managerUsersDataTimestamp', new Date().getTime().toString());
       } else {
         setError(data.message || 'Failed to update user status');
       }
@@ -139,18 +224,43 @@ const ManagerUsers = () => {
     }
   };
   
+  // Handle successful manager addition or update
+  const handleManagerSuccess = () => {
+    // Clear the cache to force a fresh fetch
+    localStorage.removeItem('managerUsersData');
+    localStorage.removeItem('managerUsersDataTimestamp');
+    
+    // Fetch fresh data
+    fetchFreshData();
+  };
+  
   return (
     <div>
       <div className="p-6 bg-white rounded-lg shadow-md max-w-[1300px]">
       <div className="mb-4">
-        <h1 className="text-2xl font-semibold text-gray-800 mb-4">Manager Users</h1>
+        <div className="flex justify-between items-center mb-4">
+          <h1 className="text-2xl font-semibold text-gray-800">Manager Users</h1>
+          
+          <div className="flex items-center">
+            <button 
+              onClick={() => fetchFreshData()}
+              className="p-2 rounded-full bg-gray-200 hover:bg-gray-300 text-gray-700 mr-3"
+              title="Refresh Managers"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/>
+              </svg>
+            </button>
+
+          </div>
+        </div>
 
         <button
-          onClick={() => setShowAddModal(true)}
-          className="bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded-full flex items-center"
-        >
-          <FiPlus className="mr-2" /> Add Manager
-        </button>
+              onClick={() => setShowAddModal(true)}
+              className="bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded-full flex items-center"
+            >
+              <FiPlus className="mr-2" /> Add Manager
+            </button>
 
         <div className="flex flex-col md:flex-row gap-4 mt-4">
           <div className="relative flex-1">
@@ -287,12 +397,12 @@ const ManagerUsers = () => {
         ) : (
           <div className="text-center py-8">
             <p className="text-gray-500">No manager users found.</p>
-            <Link
-              to="/users/managers/add"
-              className="mt-4 inline-block bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-md"
+            <button
+              onClick={() => setShowAddModal(true)}
+              className="mt-4 inline-block bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded-full"
             >
               Add Your First Manager
-            </Link>
+            </button>
           </div>
         )}
       </div>
@@ -303,7 +413,7 @@ const ManagerUsers = () => {
        <AddManagerModal 
         isOpen={showAddModal}
         onClose={() => setShowAddModal(false)}
-        onSuccess={fetchData}
+        onSuccess={handleManagerSuccess}
       />
 
        {/* New Edit Manager Modal */}
@@ -311,7 +421,7 @@ const ManagerUsers = () => {
         isOpen={showEditModal}
         onClose={() => setShowEditModal(false)}
         managerId={selectedManagerId}
-        onSuccess={fetchData}
+        onSuccess={handleManagerSuccess}
       />
     </div>
   );

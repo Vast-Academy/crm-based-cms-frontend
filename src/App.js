@@ -17,11 +17,9 @@ import ManagerUsers from './pages/users/ManagerUsers';
 
 // Technician Users Management
 import TechnicianUsers from './pages/users/TechnicianUsers';
-import AddTechnician from './pages/users/AddTechnician';
 
 // Branch Management
 import BranchList from './pages/branches/BranchList';
-import AddBranch from './pages/branches/AddBranch';
 
 import OwnershipTransferPage from './pages/users/OwnershipTransferPage';
 import ContactsPage from './pages/leads/ContactsPage';
@@ -133,15 +131,7 @@ function App() {
     </ProtectedRoute>
   } 
 />
-{/* Only admin can access the dedicated add technician page */}
-<Route 
-  path="users/technicians/add" 
-  element={
-    <ProtectedRoute allowedRoles={['admin']}>
-      <AddTechnician />
-    </ProtectedRoute>
-  } 
-/>
+
             
             {/* Branch Management Routes */}
             <Route 
@@ -162,14 +152,6 @@ function App() {
               } 
             />
 
-            <Route 
-              path="branches/add" 
-              element={
-                <ProtectedRoute allowedRoles={['admin']}>
-                  <AddBranch />
-                </ProtectedRoute>
-              } 
-            />
 
               <Route 
                 path="contacts" 

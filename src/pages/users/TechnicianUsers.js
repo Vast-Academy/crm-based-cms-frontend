@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { FiEdit, FiTrash2, FiPlus, FiSearch, FiUser, FiPackage, FiList } from 'react-icons/fi';
 import SummaryApi from '../../common';
 import { useAuth } from '../../context/AuthContext';
-import AddTechnicianModal from '../../components/AddTechnicianModal';
+import AddTechnicianModal from '../../components/AddTechnicianModal'; // Updated import path
 import AssignInventoryModal from '../inventory/AssignInventoryModal';
 import UnifiedInventoryAssignmentModal from '../inventory/UnifiedInventoryAssignmentModal';
 import TechnicianDetailModal from '../technician/TechnicianDetailModal';
@@ -28,15 +28,73 @@ const TechnicianUsers = () => {
   // New state for technician inventory modal
   const [showInventoryModal, setShowInventoryModal] = useState(false);
   const [selectedTechnicianForInventory, setSelectedTechnicianForInventory] = useState(null);
+  
+  // Last refresh time tracking
+  const [lastRefreshTime, setLastRefreshTime] = useState(0);
+  
+  // Cache staleness time - 15 minutes
+  const CACHE_STALENESS_TIME = 15 * 60 * 1000;
 
   const handleRowClick = (technicianId) => {
     setExpandedTechnician(expandedTechnician === technicianId ? null : technicianId);
   };
   
-  const fetchTechnicians = async () => {
+  const fetchTechnicians = async (forceFresh = false) => {
     try {
-      setLoading(true);
+      // Check for cached data
+      const cachedTechnicians = localStorage.getItem('technicianUsersData');
+      const cachedTimestamp = localStorage.getItem('technicianUsersDataTimestamp');
+      const currentTime = new Date().getTime();
       
+      // Use cached data if it's valid and not forcing fresh data
+      if (!forceFresh && cachedTechnicians && cachedTimestamp && 
+          (currentTime - parseInt(cachedTimestamp) < CACHE_STALENESS_TIME)) {
+        
+        setTechnicians(JSON.parse(cachedTechnicians));
+        console.log("Using cached technician data");
+        
+        // Fetch fresh data in background
+        fetchFreshTechniciansInBackground();
+        setLoading(false);
+        return;
+      }
+      
+      // If no valid cache or force fresh, fetch new data
+      setLoading(true);
+      await fetchFreshTechnicians();
+    } catch (err) {
+      // Try to use cached data as fallback if API fails
+      const cachedTechnicians = localStorage.getItem('technicianUsersData');
+      
+      if (cachedTechnicians) {
+        setTechnicians(JSON.parse(cachedTechnicians));
+        console.log("Using cached technician data after fetch error");
+      } else {
+        setError('Server error. Please try again later.');
+        console.error('Error fetching technicians:', err);
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  // Function to fetch fresh data in background
+  const fetchFreshTechniciansInBackground = async () => {
+    try {
+      await fetchFreshTechnicians(true);
+      console.log("Technician data updated in background");
+    } catch (err) {
+      console.error('Error fetching technician data in background:', err);
+    }
+  };
+  
+  // Function to fetch fresh data directly from API
+  const fetchFreshTechnicians = async (isBackground = false) => {
+    if (!isBackground) {
+      setLoading(true);
+    }
+    
+    try {
       // We'll use different endpoints based on user role
       const endpoint = user.role === 'admin' 
         ? SummaryApi.getTechnicianUsers.url 
@@ -53,15 +111,28 @@ const TechnicianUsers = () => {
       const data = await response.json();
       
       if (data.success) {
-        setTechnicians(data.data || []);
+        const techniciansData = data.data || [];
+        setTechnicians(techniciansData);
+        
+        // Cache the technicians data
+        localStorage.setItem('technicianUsersData', JSON.stringify(techniciansData));
+        localStorage.setItem('technicianUsersDataTimestamp', new Date().getTime().toString());
+        
+        // Update last refresh time
+        setLastRefreshTime(new Date().getTime());
       } else {
         setError('Failed to fetch technicians');
       }
     } catch (err) {
-      setError('Server error. Please try again later.');
-      console.error('Error fetching technicians:', err);
+      if (!isBackground) {
+        setError('Server error. Please try again later.');
+        console.error('Error fetching technicians:', err);
+      }
+      throw err;
     } finally {
-      setLoading(false);
+      if (!isBackground) {
+        setLoading(false);
+      }
     }
   };
   
@@ -102,8 +173,12 @@ const TechnicianUsers = () => {
       const data = await response.json();
       
       if (data.success) {
+        // Invalidate cache
+        localStorage.removeItem('technicianUsersData');
+        localStorage.removeItem('technicianUsersDataTimestamp');
+        
         // Update technicians list
-        fetchTechnicians();
+        fetchFreshTechnicians();
       } else {
         setError(data.message || 'Failed to delete technician');
       }
@@ -129,35 +204,48 @@ const TechnicianUsers = () => {
     setShowInventoryModal(true);
   };
   
+  // Handle successful technician addition
+  const handleTechnicianSuccess = () => {
+    // Clear the cache to force a fresh fetch
+    localStorage.removeItem('technicianUsersData');
+    localStorage.removeItem('technicianUsersDataTimestamp');
+    
+    // Fetch fresh data
+    fetchFreshTechnicians();
+  };
+  
   return (
     <div className="">
       {/* Main Container with White Box */}
       <div className="p-6 bg-white rounded-lg shadow-md max-w-[1300px]">
         {/* Header */}
         <div className="mb-4">
-          <h1 className="text-2xl font-semibold text-gray-800 mb-4">User Management</h1>
-          
-          {/* बटन और सर्च बार एक लाइन में */}
-          <div className="flex items-center gap-2">
-            {/* Add Technician बटन */}
-            {user.role === 'admin' ? (
-              <Link
-                to="/users/technicians/add"
-                className="px-4 py-2 bg-pink-600 text-white rounded-full hover:bg-pink-700 flex items-center whitespace-nowrap"
+          <div className="flex justify-between items-center mb-4">
+            <h1 className="text-2xl font-semibold text-gray-800">User Management</h1>
+            
+            <div className="flex items-center">
+              <button 
+                onClick={() => fetchFreshTechnicians()}
+                className="p-2 rounded-full bg-gray-200 hover:bg-gray-300 text-gray-700 mr-3"
+                title="Refresh Technicians"
               >
-                <FiPlus className="mr-2" /> Add Technician
-              </Link>
-            ) : (
-              <button
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/>
+                </svg>
+              </button>
+          
+            </div>
+          </div>
+
+          {/* Add Technician button - uses modal for both admin and manager */}
+          <button
                 onClick={() => setModalOpen(true)}
                 className="px-4 py-2 bg-pink-600 text-white rounded-full hover:bg-pink-700 flex items-center whitespace-nowrap"
               >
                 <FiPlus className="mr-2" /> Add Technician
               </button>
-            )}
-          </div>
           
-          {/* फुल विड्थ सर्च बार */}
+          {/* Search bar */}
           <div className="relative flex-grow mt-4">
             <input
               type="text"
@@ -283,7 +371,7 @@ const TechnicianUsers = () => {
                                     Assign Inventory
                                   </button>
                                   
-                                  {/* New View Inventory button */}
+                                  {/* View Inventory button */}
                                   <button 
                                     className="px-4 py-1.5 bg-purple-500 text-white rounded-md hover:bg-purple-600 flex items-center text-sm"
                                     onClick={(e) => {
@@ -314,14 +402,19 @@ const TechnicianUsers = () => {
         isOpen={showDetailModal}
         onClose={() => setShowDetailModal(false)}
         technicianId={selectedTechnicianId}
-        onTechnicianUpdated={() => fetchTechnicians()}
+        onTechnicianUpdated={() => {
+          // Invalidate cache
+          localStorage.removeItem('technicianUsersData');
+          localStorage.removeItem('technicianUsersDataTimestamp');
+          fetchFreshTechnicians();
+        }}
       />
       
-      {/* Add Technician Modal for managers */}
+      {/* Add Technician Modal for both admin and managers */}
       <AddTechnicianModal 
         isOpen={modalOpen} 
         onClose={() => setModalOpen(false)} 
-        onSuccess={fetchTechnicians}
+        onSuccess={handleTechnicianSuccess}
       />
       
       {/* Assign Inventory Modal */}
@@ -332,7 +425,7 @@ const TechnicianUsers = () => {
           technician={selectedTechnician}
           onSuccess={() => {
             // Refresh the technicians list after successful assignment
-            fetchTechnicians();
+            fetchFreshTechnicians();
           }}
         />
       )}
