@@ -966,28 +966,50 @@ const renderProjectContent = () => {
         }
         
         // If project is started, load inventory
-        if (newStatus === 'in-progress') {
-          fetchTechnicianInventory();
-          // Close the modal
-        onClose();
-        // Call the onProjectStarted function if it exists
-    if (onProjectStarted) {
-      onProjectStarted();
-    }
-      }
+       // If project is started, load inventory
+      if (newStatus === 'in-progress') {
+        fetchTechnicianInventory();
         
-        // Reset remark field
-        setRemark('');
-      } else {
-        setError(data.message || 'Failed to update status');
+        // Check if it's a complaint/repair project
+        const isComplaint = workOrder.projectCategory === 'Repair' || 
+                           workOrder.projectType?.toLowerCase().includes('repair') ||
+                           workOrder.projectType?.toLowerCase().includes('complaint');
+        
+        // Set a flag in session storage to indicate new complaint was started
+        if (isComplaint) {
+          sessionStorage.setItem('newComplaintInitiated', 'true');
+          
+          // Dispatch a custom event for handling in TechnicianDashboard
+          window.dispatchEvent(new CustomEvent('complaintInitiated', {
+            detail: {
+              orderId: workOrder.orderId,
+              projectType: workOrder.projectType,
+              projectCategory: 'Repair' // Ensure category is set
+            }
+          }));
+        }
+        
+        // Close the modal
+        onClose();
+        
+        // Call the onProjectStarted function if it exists
+        if (onProjectStarted) {
+          onProjectStarted();
+        }
       }
-    } catch (err) {
-      setError('Server error. Please try again.');
-      console.error('Error updating work order status:', err);
-    } finally {
-      setLoading(false);
+      
+      // Reset remark field
+      setRemark('');
+    } else {
+      setError(data.message || 'Failed to update status');
     }
-  };
+  } catch (err) {
+    setError('Server error. Please try again.');
+    console.error('Error updating work order status:', err);
+  } finally {
+    setLoading(false);
+  }
+};
 
   // Search inventory based on serial number or name
   const handleSearch = () => {

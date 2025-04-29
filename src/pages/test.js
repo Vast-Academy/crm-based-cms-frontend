@@ -1,723 +1,518 @@
-import { useState } from 'react';
-import { Home, Briefcase, Users, Layers, PieChart, Package, Settings, Search } from 'lucide-react';
+import React, { useState } from 'react';
+import { Check, Shield, ChevronRight, Star, Globe } from 'lucide-react';
 
-// Mock data
-const mockData = {
-  branches: [
-    {
-      id: 1,
-      name: 'Amritsar',
-      manager: { id: 1, name: 'Rajesh Kumar', email: 'rajesh@example.com', phone: '9876543210', active: true },
-      technicians: [
-        { id: 1, name: 'Amit Singh', email: 'amit@example.com', phone: '9876543211', tasksCompleted: 45, tasksInProgress: 5 },
-        { id: 2, name: 'Sunita Verma', email: 'sunita@example.com', phone: '9876543212', tasksCompleted: 38, tasksInProgress: 7 },
-        { id: 3, name: 'Prakash Joshi', email: 'prakash@example.com', phone: '9876543213', tasksCompleted: 42, tasksInProgress: 3 }
+const ModernBusinessLandingPage = () => {
+  // Add language state
+  const [language, setLanguage] = useState('hinglish'); // Default is hinglish
+
+  // Content translations
+  const content = {
+    hinglish: {
+      // Hero section
+      heroText: "Modern solution for business owners who want better control, security, and efficiency",
+      problemTitle: "Kya Aap Apne Business Mein In Problems Se Pareshan Hain?",
+      problems: [
+        "Staff ko manage karna mushkil ho raha hai?",
+        "Samaan ki chori ka dar hai?",
+        "Staff ke kaaran customers cheat ho rahe hain aur ilzaam aap par lag raha hai?",
+        "Har baar stock checking mein samaan kam milta hai?",
+        "Warranty replacement apni jeb se karni padti hai?",
+        "Computer kharab hone par data loss ka dar lagta hai?"
       ],
-      customers: 85,
-      completedProjects: 125,
-      ongoingProjects: 15,
-      inventory: 250
+      dashboardDesc: "Hamara software aapko apne business ko secure aur efficient banane mein madad karega. Real-time monitoring, security features, aur easy management.",
+      ctaText: "Agar aapke paas sirf 2 problems hain, to yeh solution aapka business badal dega",
+      
+      // Features section
+      solutionTitle: "MeraSoftware Business Management Kit mein milega:",
+      solutionDesc: "Hamara comprehensive solution aapke business ko secure aur efficient banayega",
+      featureCard1Title: "Powerful Cloud Software",
+      featureCard1Desc: "Kabhi bhi, kahin se bhi apne business ko monitor karen aur manage karen",
+      featureCard2Title: "Lifetime Support",
+      featureCard2Desc: "Kabhi bhi technical help chahiye? Hum hamesha available hain",
+      featureCard3Title: "One-time Fees",
+      featureCard3Desc: "No monthly charges, No yearly maintenance fees",
+      
+      // Benefits section
+      benefitsTitle: "Aur Bhi Benefits:",
+      benefits: [
+        "Full Ownership after one-time purchase",
+        "1 Week ki training aur full implementation support",
+        "Regular updates for better security and features"
+      ],
+      demoButton: "Free Demo Scheduler",
+      
+      // Stats section
+      impactTitle: "📈 Ab Tak Itne Logon Ne Hamare System Ka Fayda Uthaya Hai:",
+      
+      // CTA section
+      decisionTitle: "🎯 Ab Decision Aapka Hai!",
+      decisionDesc: "Apne business ki security aur growth ke liye aaj hi demo book karein",
+      placeholderText: "Mobile Number",
+      bookDemoButton: "Book Demo",
+      freeText: "100% free consultation. No hidden charges."
     },
-    {
-      id: 2,
-      name: 'Himachal',
-      manager: { id: 2, name: 'Meena Sharma', email: 'meena@example.com', phone: '9876543220', active: true },
-      technicians: [
-        { id: 4, name: 'Vikram Thakur', email: 'vikram@example.com', phone: '9876543221', tasksCompleted: 39, tasksInProgress: 6 },
-        { id: 5, name: 'Neha Kapoor', email: 'neha@example.com', phone: '9876543222', tasksCompleted: 41, tasksInProgress: 4 },
-        { id: 6, name: 'Ravi Kumar', email: 'ravi@example.com', phone: '9876543223', tasksCompleted: 33, tasksInProgress: 8 },
-        { id: 7, name: 'Anjali Gupta', email: 'anjali@example.com', phone: '9876543224', tasksCompleted: 37, tasksInProgress: 5 }
+    english: {
+      // Hero section
+      heroText: "Modern solution for business owners who want better control, security, and efficiency",
+      problemTitle: "Are You Facing These Problems in Your Business?",
+      problems: [
+        "Difficulty in managing staff?",
+        "Fear of inventory theft?",
+        "Customers being cheated by staff and you getting blamed?",
+        "Finding less inventory during stock checking?",
+        "Paying for warranty replacements from your pocket?",
+        "Fear of data loss when computer malfunctions?"
       ],
-      customers: 92,
-      completedProjects: 138,
-      ongoingProjects: 18,
-      inventory: 320
-    }
-  ],
-  inactiveManagers: [
-    { id: 3, name: 'Vijay Malhotra', email: 'vijay@example.com', phone: '9876543225', active: false },
-    { id: 4, name: 'Priya Patel', email: 'priya@example.com', phone: '9876543226', active: false }
-  ]
-};
-
-// Combine active and inactive managers
-const allManagers = [
-  ...mockData.branches.map(branch => branch.manager),
-  ...mockData.inactiveManagers
-];
-
-// Get all technicians from all branches
-const allTechnicians = mockData.branches.flatMap(branch => 
-  branch.technicians.map(tech => ({...tech, branchName: branch.name}))
-);
-
-export default function AdminPanel() {
-  const [selectedView, setSelectedView] = useState('dashboard');
-  const [selectedBranch, setSelectedBranch] = useState(null);
-  const [selectedManager, setSelectedManager] = useState(null);
-  const [selectedTechnician, setSelectedTechnician] = useState(null);
-
-  const handleViewChange = (view) => {
-    setSelectedView(view);
-    setSelectedBranch(null);
-    setSelectedManager(null);
-    setSelectedTechnician(null);
-  };
-
-  const handleBranchSelect = (branch) => {
-    setSelectedBranch(branch);
-    setSelectedView('branch');
-    setSelectedManager(null);
-    setSelectedTechnician(null);
-  };
-
-  const handleManagerSelect = (manager) => {
-    setSelectedManager(manager);
-    setSelectedView('manager');
-    setSelectedBranch(null);
-    setSelectedTechnician(null);
-  };
-
-  const handleTechnicianSelect = (tech) => {
-    setSelectedTechnician(tech);
-    setSelectedView('technician');
-    setSelectedBranch(null);
-  };
-
-  const renderContent = () => {
-    switch (selectedView) {
-      case 'dashboard':
-        return <Dashboard branches={mockData.branches} />;
-      case 'branches':
-        return <BranchesView branches={mockData.branches} onBranchSelect={handleBranchSelect} />;
-      case 'branch':
-        return selectedBranch ? <BranchDetails branch={selectedBranch} /> : <div>Please select a branch</div>;
-      case 'managers':
-        return <ManagersView managers={allManagers} onManagerSelect={handleManagerSelect} />;
-      case 'manager':
-        return selectedManager ? <ManagerDetails manager={selectedManager} /> : <div>Please select a manager</div>;
-      case 'technicians':
-        return <TechniciansView technicians={allTechnicians} onTechnicianSelect={handleTechnicianSelect} />;
-      case 'technician':
-        return selectedTechnician ? <TechnicianDetails technician={selectedTechnician} /> : <div>Please select a technician</div>;
-      default:
-        return <Dashboard branches={mockData.branches} />;
+      dashboardDesc: "Our software will help you make your business secure and efficient. Real-time monitoring, security features, and easy management.",
+      ctaText: "If you have even 2 of these problems, this solution will transform your business",
+      
+      // Features section
+      solutionTitle: "MeraSoftware Business Management Kit includes:",
+      solutionDesc: "Our comprehensive solution will make your business secure and efficient",
+      featureCard1Title: "Powerful Cloud Software",
+      featureCard1Desc: "Monitor and manage your business anytime, from anywhere",
+      featureCard2Title: "Lifetime Support",
+      featureCard2Desc: "Need technical help anytime? We are always available",
+      featureCard3Title: "One-time Fees",
+      featureCard3Desc: "No monthly charges, No yearly maintenance fees",
+      
+      // Benefits section
+      benefitsTitle: "Additional Benefits:",
+      benefits: [
+        "Full Ownership after one-time purchase",
+        "1 Week of training and full implementation support",
+        "Regular updates for better security and features"
+      ],
+      demoButton: "Free Demo Scheduler",
+      
+      // Stats section
+      impactTitle: "📈 So Many People Have Benefited From Our System:",
+      
+      // CTA section
+      decisionTitle: "🎯 Now It's Your Decision!",
+      decisionDesc: "Book a demo today for the security and growth of your business",
+      placeholderText: "Mobile Number",
+      bookDemoButton: "Book Demo",
+      freeText: "100% free consultation. No hidden charges."
     }
   };
 
-  return (
-    <div className="flex h-screen bg-gray-100">
-      {/* Sidebar */}
-      <div className="w-64 bg-gray-800 text-white">
-        <div className="p-4">
-          <h1 className="text-2xl font-bold">Admin Panel</h1>
-        </div>
-        <nav className="mt-6">
-          <button 
-            onClick={() => handleViewChange('dashboard')} 
-            className={`flex items-center px-4 py-3 w-full text-left ${selectedView === 'dashboard' ? 'bg-blue-600' : 'hover:bg-gray-700'}`}
-          >
-            <Home size={20} className="mr-3" />
-            <span>Dashboard</span>
-          </button>
+  // Toggle language function
+  const toggleLanguage = () => {
+    setLanguage(language === 'hinglish' ? 'english' : 'hinglish');
+  };
 
-          <button 
-            onClick={() => handleViewChange('branches')} 
-            className={`flex items-center px-4 py-3 w-full text-left ${selectedView === 'branches' || selectedView === 'branch' ? 'bg-blue-600' : 'hover:bg-gray-700'}`}
-          >
-            <Briefcase size={20} className="mr-3" />
-            <span>Branches</span>
-          </button>
-
-          <button 
-            onClick={() => handleViewChange('managers')} 
-            className={`flex items-center px-4 py-3 w-full text-left ${selectedView === 'managers' || selectedView === 'manager' ? 'bg-blue-600' : 'hover:bg-gray-700'}`}
-          >
-            <Users size={20} className="mr-3" />
-            <span>Managers</span>
-          </button>
-
-          <button 
-            onClick={() => handleViewChange('technicians')} 
-            className={`flex items-center px-4 py-3 w-full text-left ${selectedView === 'technicians' || selectedView === 'technician' ? 'bg-blue-600' : 'hover:bg-gray-700'}`}
-          >
-            <Layers size={20} className="mr-3" />
-            <span>Technicians</span>
-          </button>
-
-          <button className="flex items-center px-4 py-3 w-full text-left hover:bg-gray-700">
-            <PieChart size={20} className="mr-3" />
-            <span>Reports</span>
-          </button>
-          
-          <button className="flex items-center px-4 py-3 w-full text-left hover:bg-gray-700">
-            <Package size={20} className="mr-3" />
-            <span>Inventory</span>
-          </button>
-          
-          <button className="flex items-center px-4 py-3 w-full text-left hover:bg-gray-700">
-            <Settings size={20} className="mr-3" />
-            <span>Settings</span>
-          </button>
-        </nav>
-      </div>
-
-      {/* Main Content */}
-      <div className="flex-1 overflow-auto">
-        {/* Top bar */}
-        <div className="bg-white shadow p-4 flex justify-between items-center">
-          <div className="flex items-center bg-gray-100 px-4 py-2 rounded-md w-64">
-            <Search size={18} className="text-gray-500 mr-2" />
-            <input type="text" placeholder="Search..." className="bg-transparent border-none outline-none w-full" />
-          </div>
-          <div className="flex items-center">
-            <div className="mr-2 text-right">
-              <div className="text-sm font-medium">Admin User</div>
-              <div className="text-xs text-gray-500">admin@example.com</div>
-            </div>
-            <div className="h-8 w-8 rounded-full bg-blue-500 flex items-center justify-center text-white font-bold">
-              A
-            </div>
-          </div>
-        </div>
-
-        {/* Content Area */}
-        <div className="p-6">
-          {renderContent()}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// Dashboard Component (Unchanged)
-function Dashboard({ branches }) {
-  const totalCustomers = branches.reduce((sum, branch) => sum + branch.customers, 0);
-  const totalCompletedProjects = branches.reduce((sum, branch) => sum + branch.completedProjects, 0);
-  const totalOngoingProjects = branches.reduce((sum, branch) => sum + branch.ongoingProjects, 0);
-  const totalInventory = branches.reduce((sum, branch) => sum + branch.inventory, 0);
-  const totalTechnicians = branches.reduce((sum, branch) => sum + branch.technicians.length, 0);
+  // Get current language content
+  const currentContent = content[language];
 
   return (
-    <div>
-      <h2 className="text-2xl font-bold mb-6">Dashboard Overview</h2>
-      
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-        <div className="bg-white p-6 rounded-lg shadow">
-          <h3 className="text-gray-500 text-sm mb-1">Total Branches</h3>
-          <p className="text-3xl font-bold">{branches.length}</p>
-        </div>
-        <div className="bg-white p-6 rounded-lg shadow">
-          <h3 className="text-gray-500 text-sm mb-1">Total Managers</h3>
-          <p className="text-3xl font-bold">{branches.length}</p>
-        </div>
-        <div className="bg-white p-6 rounded-lg shadow">
-          <h3 className="text-gray-500 text-sm mb-1">Total Technicians</h3>
-          <p className="text-3xl font-bold">{totalTechnicians}</p>
-        </div>
-        <div className="bg-white p-6 rounded-lg shadow">
-          <h3 className="text-gray-500 text-sm mb-1">Total Customers</h3>
-          <p className="text-3xl font-bold">{totalCustomers}</p>
-        </div>
-        <div className="bg-white p-6 rounded-lg shadow">
-          <h3 className="text-gray-500 text-sm mb-1">Completed Projects</h3>
-          <p className="text-3xl font-bold">{totalCompletedProjects}</p>
-        </div>
-        <div className="bg-white p-6 rounded-lg shadow">
-          <h3 className="text-gray-500 text-sm mb-1">Ongoing Projects</h3>
-          <p className="text-3xl font-bold">{totalOngoingProjects}</p>
-        </div>
-      </div>
-
-      {/* Branch Comparison */}
-      <div className="bg-white p-6 rounded-lg shadow mb-8">
-        <h3 className="text-lg font-semibold mb-4">Branch Performance</h3>
-        <div className="overflow-x-auto">
-          <table className="min-w-full bg-white">
-            <thead>
-              <tr className="bg-gray-100">
-                <th className="py-2 px-4 text-left">Branch</th>
-                <th className="py-2 px-4 text-left">Customers</th>
-                <th className="py-2 px-4 text-left">Completed Projects</th>
-                <th className="py-2 px-4 text-left">Ongoing Projects</th>
-                <th className="py-2 px-4 text-left">Technicians</th>
-                <th className="py-2 px-4 text-left">Inventory Items</th>
-              </tr>
-            </thead>
-            <tbody>
-              {branches.map(branch => (
-                <tr key={branch.id} className="border-t hover:bg-gray-50">
-                  <td className="py-2 px-4">{branch.name}</td>
-                  <td className="py-2 px-4">{branch.customers}</td>
-                  <td className="py-2 px-4">{branch.completedProjects}</td>
-                  <td className="py-2 px-4">{branch.ongoingProjects}</td>
-                  <td className="py-2 px-4">{branch.technicians.length}</td>
-                  <td className="py-2 px-4">{branch.inventory}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// Branches View Component (New)
-function BranchesView({ branches, onBranchSelect }) {
-  return (
-    <div>
-      <h2 className="text-2xl font-bold mb-6">Branches</h2>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {branches.map(branch => (
-          <div 
-            key={branch.id} 
-            className="bg-white p-6 rounded-lg shadow cursor-pointer hover:shadow-md transition-shadow"
-            onClick={() => onBranchSelect(branch)}
-          >
-            <h3 className="text-xl font-semibold mb-3">{branch.name}</h3>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <p className="text-gray-500 text-sm">Manager</p>
-                <p className="font-medium">{branch.manager.name}</p>
-              </div>
-              <div>
-                <p className="text-gray-500 text-sm">Technicians</p>
-                <p className="font-medium">{branch.technicians.length}</p>
-              </div>
-              <div>
-                <p className="text-gray-500 text-sm">Customers</p>
-                <p className="font-medium">{branch.customers}</p>
-              </div>
-              <div>
-                <p className="text-gray-500 text-sm">Projects</p>
-                <p className="font-medium">{branch.completedProjects + branch.ongoingProjects}</p>
-              </div>
-            </div>
-            <div className="mt-4 text-blue-600 text-sm">Click to view details</div>
+    <div className="min-h-screen bg-gray-50 font-sans">
+      {/* Navigation - Updated with red, black, light blue color scheme */}
+      <nav className="bg-black py-4 sticky top-0 z-10 shadow-sm">
+        <div className="container mx-auto px-4 flex justify-between items-center">
+          <div className="font-bold text-xl text-red-600">MeraSoftware</div>
+          <div className="hidden md:flex space-x-8">
+            <a href="#features" className="text-gray-300 hover:text-red-500 transition-colors">Features</a>
+            <a href="#testimonials" className="text-gray-300 hover:text-red-500 transition-colors">Testimonials</a>
+            <a href="#stats" className="text-gray-300 hover:text-red-500 transition-colors">Results</a>
+            <a href="#contact" className="text-gray-300 hover:text-red-500 transition-colors">Contact</a>
           </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-// Managers View Component (New)
-function ManagersView({ managers, onManagerSelect }) {
-  return (
-    <div>
-      <h2 className="text-2xl font-bold mb-6">Managers</h2>
-      <div className="bg-white rounded-lg shadow overflow-hidden">
-        <table className="min-w-full">
-          <thead>
-            <tr className="bg-gray-100">
-              <th className="py-3 px-4 text-left">Name</th>
-              <th className="py-3 px-4 text-left">Email</th>
-              <th className="py-3 px-4 text-left">Phone</th>
-              <th className="py-3 px-4 text-left">Status</th>
-              <th className="py-3 px-4 text-left">Action</th>
-            </tr>
-          </thead>
-          <tbody>
-            {managers.map(manager => (
-              <tr key={manager.id} className="border-t hover:bg-gray-50">
-                <td className="py-3 px-4">{manager.name}</td>
-                <td className="py-3 px-4">{manager.email}</td>
-                <td className="py-3 px-4">{manager.phone}</td>
-                <td className="py-3 px-4">
-                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${manager.active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-                    {manager.active ? 'Active' : 'Inactive'}
-                  </span>
-                </td>
-                <td className="py-3 px-4">
-                  <button 
-                    className="text-blue-600 hover:text-blue-800"
-                    onClick={() => onManagerSelect(manager)}
-                  >
-                    View Details
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  );
-}
-
-// Technicians View Component (New)
-function TechniciansView({ technicians, onTechnicianSelect }) {
-  return (
-    <div>
-      <h2 className="text-2xl font-bold mb-6">Technicians</h2>
-      <div className="bg-white rounded-lg shadow overflow-hidden">
-        <table className="min-w-full">
-          <thead>
-            <tr className="bg-gray-100">
-              <th className="py-3 px-4 text-left">Name</th>
-              <th className="py-3 px-4 text-left">Branch</th>
-              <th className="py-3 px-4 text-left">Email</th>
-              <th className="py-3 px-4 text-left">Phone</th>
-              <th className="py-3 px-4 text-left">Tasks</th>
-              <th className="py-3 px-4 text-left">Action</th>
-            </tr>
-          </thead>
-          <tbody>
-            {technicians.map(tech => (
-              <tr key={tech.id} className="border-t hover:bg-gray-50">
-                <td className="py-3 px-4">{tech.name}</td>
-                <td className="py-3 px-4">{tech.branchName}</td>
-                <td className="py-3 px-4">{tech.email}</td>
-                <td className="py-3 px-4">{tech.phone}</td>
-                <td className="py-3 px-4">{tech.tasksCompleted} completed, {tech.tasksInProgress} in progress</td>
-                <td className="py-3 px-4">
-                  <button 
-                    className="text-blue-600 hover:text-blue-800"
-                    onClick={() => onTechnicianSelect(tech)}
-                  >
-                    View Details
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  );
-}
-
-// Branch Details Component (Modified - removed percentages)
-function BranchDetails({ branch }) {
-  return (
-    <div>
-      <h2 className="text-2xl font-bold mb-6">{branch.name} Branch Details</h2>
-      
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        <div className="bg-white p-6 rounded-lg shadow">
-          <h3 className="text-gray-500 text-sm mb-1">Customers</h3>
-          <p className="text-3xl font-bold">{branch.customers}</p>
-        </div>
-        <div className="bg-white p-6 rounded-lg shadow">
-          <h3 className="text-gray-500 text-sm mb-1">Completed Projects</h3>
-          <p className="text-3xl font-bold">{branch.completedProjects}</p>
-        </div>
-        <div className="bg-white p-6 rounded-lg shadow">
-          <h3 className="text-gray-500 text-sm mb-1">Ongoing Projects</h3>
-          <p className="text-3xl font-bold">{branch.ongoingProjects}</p>
-        </div>
-        <div className="bg-white p-6 rounded-lg shadow">
-          <h3 className="text-gray-500 text-sm mb-1">Total Projects</h3>
-          <p className="text-3xl font-bold">{branch.completedProjects + branch.ongoingProjects}</p>
-        </div>
-      </div>
-
-      {/* Manager Section */}
-      <div className="bg-white p-6 rounded-lg shadow mb-8">
-        <h3 className="text-lg font-semibold mb-4">Branch Manager</h3>
-        <div className="flex items-center">
-          <div className="h-12 w-12 rounded-full bg-blue-500 flex items-center justify-center text-white font-bold mr-4">
-            {branch.manager.name.charAt(0)}
-          </div>
-          <div>
-            <p className="font-medium">{branch.manager.name}</p>
-            <p className="text-sm text-gray-600">{branch.manager.email}</p>
-            <p className="text-sm text-gray-600">{branch.manager.phone}</p>
-          </div>
-        </div>
-      </div>
-
-      {/* Technicians Section */}
-      <div className="bg-white p-6 rounded-lg shadow mb-8">
-        <h3 className="text-lg font-semibold mb-4">Technicians ({branch.technicians.length})</h3>
-        <div className="overflow-x-auto">
-          <table className="min-w-full bg-white">
-            <thead>
-              <tr className="bg-gray-100">
-                <th className="py-2 px-4 text-left">Name</th>
-                <th className="py-2 px-4 text-left">Email</th>
-                <th className="py-2 px-4 text-left">Phone</th>
-                <th className="py-2 px-4 text-left">Tasks Completed</th>
-                <th className="py-2 px-4 text-left">Tasks In Progress</th>
-                <th className="py-2 px-4 text-left">Total Tasks</th>
-              </tr>
-            </thead>
-            <tbody>
-              {branch.technicians.map(tech => (
-                <tr key={tech.id} className="border-t hover:bg-gray-50">
-                  <td className="py-2 px-4">{tech.name}</td>
-                  <td className="py-2 px-4">{tech.email}</td>
-                  <td className="py-2 px-4">{tech.phone}</td>
-                  <td className="py-2 px-4">{tech.tasksCompleted}</td>
-                  <td className="py-2 px-4">{tech.tasksInProgress}</td>
-                  <td className="py-2 px-4">{tech.tasksCompleted + tech.tasksInProgress}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {/* Inventory Section */}
-      <div className="bg-white p-6 rounded-lg shadow">
-        <div className="flex justify-between items-center mb-4">
-          <h3 className="text-lg font-semibold">Inventory</h3>
-          <span className="bg-green-100 text-green-800 text-xs font-medium px-2.5 py-0.5 rounded">
-            {branch.inventory} items
-          </span>
-        </div>
-        <p className="text-gray-600 text-sm">
-          Click on "Inventory" in the sidebar to view detailed inventory reports for this branch.
-        </p>
-      </div>
-    </div>
-  );
-}
-
-// Manager Details Component (Updated - removed percentages)
-function ManagerDetails({ manager }) {
-  // Find the branch for active managers
-  const branch = manager.active 
-    ? mockData.branches.find(b => b.manager.id === manager.id) 
-    : null;
-  
-  return (
-    <div>
-      <h2 className="text-2xl font-bold mb-6">Manager Details</h2>
-      
-      <div className="bg-white p-6 rounded-lg shadow mb-8">
-        <div className="flex items-center mb-6">
-          <div className="h-16 w-16 rounded-full bg-blue-500 flex items-center justify-center text-white text-xl font-bold mr-4">
-            {manager.name.charAt(0)}
-          </div>
-          <div>
-            <h3 className="text-xl font-semibold">{manager.name}</h3>
-            {branch ? (
-              <p className="text-gray-600">Manager at {branch.name} Branch</p>
-            ) : (
-              <p className="text-gray-600">Inactive Manager</p>
-            )}
-            <span className={`mt-2 inline-block px-2 py-1 rounded-full text-xs font-medium ${manager.active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-              {manager.active ? 'Active' : 'Inactive'}
-            </span>
-          </div>
-        </div>
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <h4 className="font-medium text-gray-700 mb-1">Contact Information</h4>
-            <p className="text-gray-600">Email: {manager.email}</p>
-            <p className="text-gray-600">Phone: {manager.phone}</p>
-          </div>
-          
-          {branch && (
-            <div>
-              <h4 className="font-medium text-gray-700 mb-1">Branch Performance</h4>
-              <p className="text-gray-600">Team Size: {branch.technicians.length} technicians</p>
-              <p className="text-gray-600">Completed Projects: {branch.completedProjects}</p>
-              <p className="text-gray-600">Ongoing Projects: {branch.ongoingProjects}</p>
-            </div>
-          )}
-        </div>
-      </div>
-      
-      {/* Team Overview - only show if manager is active */}
-      {branch && (
-        <div className="bg-white p-6 rounded-lg shadow mb-8">
-          <h3 className="text-lg font-semibold mb-4">Team Overview</h3>
-          <div className="overflow-x-auto">
-            <table className="min-w-full bg-white">
-              <thead>
-                <tr className="bg-gray-100">
-                  <th className="py-2 px-4 text-left">Name</th>
-                  <th className="py-2 px-4 text-left">Tasks Completed</th>
-                  <th className="py-2 px-4 text-left">Tasks In Progress</th>
-                  <th className="py-2 px-4 text-left">Total Tasks</th>
-                </tr>
-              </thead>
-              <tbody>
-                {branch.technicians.map(tech => (
-                  <tr key={tech.id} className="border-t hover:bg-gray-50">
-                    <td className="py-2 px-4">{tech.name}</td>
-                    <td className="py-2 px-4">{tech.tasksCompleted}</td>
-                    <td className="py-2 px-4">{tech.tasksInProgress}</td>
-                    <td className="py-2 px-4">{tech.tasksCompleted + tech.tasksInProgress}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
-      
-      {/* Branch Summary - only show if manager is active */}
-      {branch && (
-        <div className="bg-white p-6 rounded-lg shadow">
-          <h3 className="text-lg font-semibold mb-4">Branch Summary</h3>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="p-4 border rounded-lg">
-              <h4 className="text-sm text-gray-500">Total Customers</h4>
-              <div className="mt-2 text-2xl font-bold">{branch.customers}</div>
-            </div>
-            <div className="p-4 border rounded-lg">
-              <h4 className="text-sm text-gray-500">Total Inventory</h4>
-              <div className="mt-2 text-2xl font-bold">{branch.inventory} items</div>
-            </div>
-            <div className="p-4 border rounded-lg">
-              <h4 className="text-sm text-gray-500">Total Projects</h4>
-              <div className="mt-2 text-2xl font-bold">{branch.completedProjects + branch.ongoingProjects}</div>
-            </div>
-          </div>
-        </div>
-      )}
-      
-      {/* For inactive managers */}
-      {!manager.active && (
-        <div className="bg-white p-6 rounded-lg shadow">
-          <h3 className="text-lg font-semibold mb-4">Manager Status</h3>
-          <p className="text-gray-600">This manager is currently inactive and not assigned to any branch.</p>
-          <div className="mt-4 p-4 bg-yellow-50 border border-yellow-100 rounded-lg">
-            <h4 className="font-medium text-yellow-800 mb-2">Inactive Manager Information</h4>
-            <p className="text-yellow-700">This manager is currently not assigned to any active branch. They may be on leave, between assignments, or no longer with the company.</p>
-            <button className="mt-3 bg-yellow-100 text-yellow-800 px-4 py-2 rounded hover:bg-yellow-200">
-              Reactivate Manager
+          <div className="flex items-center space-x-4">
+            {/* Language toggle button */}
+            <button 
+              onClick={toggleLanguage} 
+              className="flex items-center bg-gray-800 text-gray-200 px-4 py-2 rounded-full hover:bg-gray-700 transition duration-300 text-sm font-medium"
+            >
+              <Globe size={16} className="mr-2" />
+              {language === 'hinglish' ? 'English' : 'हिंग्लिश'}
+            </button>
+            <button className="bg-red-600 text-white px-5 py-2 rounded-full hover:bg-red-700 transition duration-300 text-sm font-medium">
+              Book Demo
             </button>
           </div>
         </div>
-      )}
-    </div>
-  );
-}
+      </nav>
 
-// Technician Details Component (Modified - removed percentages)
-function TechnicianDetails({ technician }) {
-  return (
-    <div>
-      <h2 className="text-2xl font-bold mb-6">Technician Details</h2>
-      
-      <div className="bg-white p-6 rounded-lg shadow mb-8">
-        <div className="flex items-center mb-6">
-          <div className="h-16 w-16 rounded-full bg-blue-500 flex items-center justify-center text-white text-xl font-bold mr-4">
-            {technician.name.charAt(0)}
-          </div>
-          <div>
-            <h3 className="text-xl font-semibold">{technician.name}</h3>
-            <p className="text-gray-600">Technician at {technician.branchName} Branch</p>
-          </div>
-        </div>
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <h4 className="font-medium text-gray-700 mb-1">Contact Information</h4>
-            <p className="text-gray-600">Email: {technician.email}</p>
-            <p className="text-gray-600">Phone: {technician.phone}</p>
-          </div>
-          <div>
-            <h4 className="font-medium text-gray-700 mb-1">Performance Summary</h4>
-            <p className="text-gray-600">Tasks Completed: {technician.tasksCompleted}</p>
-            <p className="text-gray-600">Tasks In Progress: {technician.tasksInProgress}</p>
-            <p className="text-gray-600">Total Tasks: {technician.tasksCompleted + technician.tasksInProgress}</p>
-          </div>
-        </div>
-      </div>
-      
-      {/* Task Summary */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
-        <div className="bg-white p-6 rounded-lg shadow">
-          <h3 className="text-lg font-semibold mb-4">Task Summary</h3>
-          <div className="mt-2">
-            <div className="flex justify-between text-gray-600 mb-3 text-lg">
-              <span>Completed Tasks</span>
-              <span className="font-bold">{technician.tasksCompleted}</span>
+      {/* Hero Section - Updated with red, black, light blue color scheme */}
+      <section className="py-20 bg-gradient-to-br from-blue-50 via-gray-50 to-white text-gray-800">
+        <div className="container mx-auto px-4 md:px-8">
+          {/* Main Heading - Updated Style */}
+          <div className="text-center mb-12">
+            <div className="flex items-center justify-center mb-4">
+              <div className="h-10 w-10 bg-red-100 rounded-full flex items-center justify-center mr-2">
+                <Shield size={20} className="text-red-600" />
+              </div>
+              <h2 className="text-2xl font-bold text-red-600">MeraSoftware</h2>
             </div>
-            <div className="flex justify-between text-gray-600 mb-3 text-lg">
-              <span>Tasks In Progress</span>
-              <span className="font-bold">{technician.tasksInProgress}</span>
-            </div>
-            <div className="flex justify-between text-gray-600 mb-3 text-lg border-t pt-3">
-              <span>Total Tasks</span>
-              <span className="font-bold">{technician.tasksCompleted + technician.tasksInProgress}</span>
-            </div>
+            <p className="text-gray-700 text-lg max-w-2xl mx-auto">
+              {currentContent.heroText}
+            </p>
           </div>
-        </div>
-        
-        <div className="bg-white p-6 rounded-lg shadow">
-          <h3 className="text-lg font-semibold mb-4">Current Workload</h3>
-          <div className="space-y-4">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-lg">Active Tasks</span>
-              <span className="text-lg font-bold">{technician.tasksInProgress}</span>
+          
+          <div className="flex flex-col md:flex-row items-stretch md:space-x-8 mt-10">
+            {/* Left Side with Questions - Updated Card Style */}
+            <div className="w-full md:w-1/2 mb-8 md:mb-0">
+              <div className="bg-white p-8 rounded-2xl shadow-sm h-full border border-gray-100">
+                <h2 className="text-2xl font-bold text-gray-900 mb-6">{currentContent.problemTitle}</h2>
+                <ul className="space-y-5">
+                  {currentContent.problems.map((problem, index) => (
+                    <li key={index} className="flex items-start">
+                      <div className="flex-shrink-0 h-7 w-7 rounded-full bg-red-100 flex items-center justify-center mr-3 mt-1">
+                        <Check size={16} className="text-red-600" />
+                      </div>
+                      <span className="text-gray-800 text-lg font-medium">{problem}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
             </div>
-            <div className="p-4 bg-gray-50 rounded">
-              <h4 className="font-medium text-gray-700 mb-2">Recent Activity</h4>
-              <ul className="space-y-2">
-                <li className="text-gray-600">Last task completed: Apr 18, 2025</li>
-                <li className="text-gray-600">Next scheduled visit: Apr 24, 2025</li>
-                <li className="text-gray-600">Assigned to {technician.branchName} branch</li>
-              </ul>
+            
+            {/* Right Side with Image - Updated Style */}
+            <div className="w-full md:w-1/2">
+              <div className="bg-white p-8 rounded-2xl shadow-sm h-full border border-gray-100">
+                <div className="relative aspect-video mb-6 overflow-hidden rounded-xl">
+                  <div className="absolute inset-0 bg-gradient-to-br from-red-600 to-blue-400 flex items-center justify-center">
+                    <div className="text-center p-6">
+                      <div className="w-16 h-16 bg-black/20 backdrop-blur-sm rounded-full mx-auto mb-4 flex items-center justify-center">
+                        <Shield size={24} className="text-white" />
+                      </div>
+                      <h3 className="text-xl font-bold text-white">MeraSoftware Dashboard</h3>
+                    </div>
+                  </div>
+                </div>
+                <p className="text-gray-700 mb-6">{currentContent.dashboardDesc}</p>
+                <div className="border-t border-gray-100 pt-4 flex justify-between items-center text-sm text-gray-500">
+                  <span className="font-medium text-red-600">Latest Version: 2.1</span>
+                  <span>Updated: April 2025</span>
+                </div>
+              </div>
             </div>
           </div>
+          
+          {/* Call to Action - English version with color combination */}
+          <div className="mt-12 text-center">
+            {language === 'hinglish' ? (
+              <h2 className="text-3xl font-bold">
+                Agar aapke paas <span className="text-red-600">inmein se 2 problems bhi</span> hain, to yeh <span className="text-red-600">solution</span> aapka <span className="text-red-600">business badal dega</span>
+              </h2>
+            ) : (
+              <h2 className="text-3xl font-bold">
+                If you have <span className="text-red-600">just 2 of these problems</span>, this <span className="text-red-600">solution</span> will <span className="text-red-600">transform your business</span>
+              </h2>
+            )}
+          </div>
         </div>
-      </div>
-      
-      {/* Recent Tasks */}
-      <div className="bg-white p-6 rounded-lg shadow">
-        <h3 className="text-lg font-semibold mb-4">Recent Tasks</h3>
-        <div className="overflow-x-auto">
-          <table className="min-w-full bg-white">
-            <thead>
-              <tr className="bg-gray-100">
-                <th className="py-2 px-4 text-left">Task ID</th>
-                <th className="py-2 px-4 text-left">Customer</th>
-                <th className="py-2 px-4 text-left">Description</th>
-                <th className="py-2 px-4 text-left">Status</th>
-                <th className="py-2 px-4 text-left">Date</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr className="border-t hover:bg-gray-50">
-                <td className="py-2 px-4">T-{technician.id}001</td>
-                <td className="py-2 px-4">Sharma Electronics</td>
-                <td className="py-2 px-4">Equipment installation</td>
-                <td className="py-2 px-4">
-                  <span className="bg-green-100 text-green-800 text-xs font-medium px-2.5 py-0.5 rounded">Completed</span>
-                </td>
-                <td className="py-2 px-4">Apr 18, 2025</td>
-              </tr>
-              <tr className="border-t hover:bg-gray-50">
-                <td className="py-2 px-4">T-{technician.id}002</td>
-                <td className="py-2 px-4">Gupta Stores</td>
-                <td className="py-2 px-4">System maintenance</td>
-                <td className="py-2 px-4">
-                  <span className="bg-green-100 text-green-800 text-xs font-medium px-2.5 py-0.5 rounded">Completed</span>
-                </td>
-                <td className="py-2 px-4">Apr 15, 2025</td>
-              </tr>
-              <tr className="border-t hover:bg-gray-50">
-                <td className="py-2 px-4">T-{technician.id}003</td>
-                <td className="py-2 px-4">Patel Industries</td>
-                <td className="py-2 px-4">Network troubleshooting</td>
-                <td className="py-2 px-4">
-                  <span className="bg-yellow-100 text-yellow-800 text-xs font-medium px-2.5 py-0.5 rounded">In Progress</span>
-                </td>
-                <td className="py-2 px-4">Apr 20, 2025</td>
-              </tr>
-              <tr className="border-t hover:bg-gray-50">
-                <td className="py-2 px-4">T-{technician.id}004</td>
-                <td className="py-2 px-4">Singh Enterprises</td>
-                <td className="py-2 px-4">Software update</td>
-                <td className="py-2 px-4">
-                  <span className="bg-yellow-100 text-yellow-800 text-xs font-medium px-2.5 py-0.5 rounded">In Progress</span>
-                </td>
-                <td className="py-2 px-4">Apr 21, 2025</td>
-              </tr>
-            </tbody>
-          </table>
+      </section>
+
+      {/* Product Info Section - Updated Card Style */}
+      <section className="py-20 bg-white" id="features">
+        <div className="container mx-auto px-4 md:px-8">
+          <div className="text-center mb-16">
+            <span className="px-4 py-1 bg-red-100 text-red-600 rounded-full text-sm font-medium mb-4 inline-block">Our Solution</span>
+            <h2 className="text-3xl font-bold text-gray-900 mb-4">
+              <span className="text-red-600">{currentContent.solutionTitle}</span>
+            </h2>
+            <p className="text-gray-700 max-w-2xl mx-auto">
+              {currentContent.solutionDesc}
+            </p>
+          </div>
+
+          <div className="grid md:grid-cols-3 gap-8">
+            {/* Feature Card 1 - Updated Style */}
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden transition duration-300 hover:shadow-md">
+              <div className="h-2 bg-red-600"></div>
+              <div className="p-8">
+                <div className="w-12 h-12 bg-blue-100 text-red-600 rounded-lg flex items-center justify-center mb-6">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 15a4 4 0 004 4h9a5 5 0 10-4.5-8.5" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 8.5V4a1 1 0 00-1-1H9a1 1 0 00-1 1v4.5" />
+                  </svg>
+                </div>
+                <h3 className="text-xl font-bold text-gray-900 mb-3">{currentContent.featureCard1Title}</h3>
+                <p className="text-gray-700 mb-6">
+                  {currentContent.featureCard1Desc}
+                </p>
+                <ul className="space-y-2 text-gray-700">
+                  <li className="flex items-center">
+                    <Check size={16} className="text-red-600 mr-2" />
+                    <span>Real-time monitoring</span>
+                  </li>
+                  <li className="flex items-center">
+                    <Check size={16} className="text-red-600 mr-2" />
+                    <span>Mobile access</span>
+                  </li>
+                  <li className="flex items-center">
+                    <Check size={16} className="text-red-600 mr-2" />
+                    <span>Automatic backups</span>
+                  </li>
+                </ul>
+              </div>
+            </div>
+            
+            {/* Feature Card 2 - Updated Style */}
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden transition duration-300 hover:shadow-md">
+              <div className="h-2 bg-red-600"></div>
+              <div className="p-8">
+                <div className="w-12 h-12 bg-blue-100 text-red-600 rounded-lg flex items-center justify-center mb-6">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                  </svg>
+                </div>
+                <h3 className="text-xl font-bold text-gray-900 mb-3">{currentContent.featureCard2Title}</h3>
+                <p className="text-gray-700 mb-6">
+                  {currentContent.featureCard2Desc}
+                </p>
+                <ul className="space-y-2 text-gray-700">
+                  <li className="flex items-center">
+                    <Check size={16} className="text-red-600 mr-2" />
+                    <span>24/7 technical support</span>
+                  </li>
+                  <li className="flex items-center">
+                    <Check size={16} className="text-red-600 mr-2" />
+                    <span>Regular updates</span>
+                  </li>
+                  <li className="flex items-center">
+                    <Check size={16} className="text-red-600 mr-2" />
+                    <span>Training materials</span>
+                  </li>
+                </ul>
+              </div>
+            </div>
+            
+            {/* Feature Card 3 - Updated Style */}
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden transition duration-300 hover:shadow-md">
+              <div className="h-2 bg-red-600"></div>
+              <div className="p-8">
+                <div className="w-12 h-12 bg-blue-100 text-red-600 rounded-lg flex items-center justify-center mb-6">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2z" />
+                  </svg>
+                </div>
+                <h3 className="text-xl font-bold text-gray-900 mb-3">{currentContent.featureCard3Title}</h3>
+                <p className="text-gray-700 mb-6">
+                  {currentContent.featureCard3Desc}
+                </p>
+                <ul className="space-y-2 text-gray-700">
+                  <li className="flex items-center">
+                    <Check size={16} className="text-red-600 mr-2" />
+                    <span>Full ownership</span>
+                  </li>
+                  <li className="flex items-center">
+                    <Check size={16} className="text-red-600 mr-2" />
+                    <span>No hidden costs</span>
+                  </li>
+                  <li className="flex items-center">
+                    <Check size={16} className="text-red-600 mr-2" />
+                    <span>Lifetime access</span>
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          {/* Additional Benefits - Updated Style */}
+          <div className="mt-16 bg-blue-50 p-8 rounded-2xl border border-blue-100 shadow-sm">
+            <div className="grid md:grid-cols-2 gap-6 items-center">
+              <div>
+                <h3 className="text-2xl font-bold text-gray-900 mb-6">{currentContent.benefitsTitle}</h3>
+                <ul className="space-y-4">
+                  {currentContent.benefits.map((benefit, index) => (
+                    <li key={index} className="flex items-center">
+                      <div className="h-6 w-6 rounded-full bg-red-100 flex items-center justify-center mr-3">
+                        <Check size={14} className="text-red-600" />
+                      </div>
+                      <span className="text-gray-700">{benefit}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+              <div className="flex items-center justify-center">
+                <button className="bg-red-600 text-white text-lg px-8 py-3 rounded-full hover:bg-red-700 transition duration-300 flex items-center shadow-md hover:shadow-lg transform hover:-translate-y-1">
+                  <span>{currentContent.demoButton}</span>
+                  <ChevronRight size={20} className="ml-2" />
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
-      </div>
+      </section>
+
+      {/* Rest of the component remains unchanged */}
+      {/* Statistics Section */}
+      <section className="py-20 bg-gradient-to-br from-blue-50 via-gray-50 to-white" id="stats">
+        <div className="container mx-auto px-4 md:px-8 text-center">
+          <span className="px-4 py-1 bg-red-100 text-red-600 rounded-full text-sm font-medium mb-4 inline-block">Our Impact</span>
+          <h2 className="text-3xl font-bold text-gray-900 mb-12">
+            {currentContent.impactTitle}
+          </h2>
+
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-6 max-w-4xl mx-auto">
+            <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+              <div className="text-4xl font-bold text-red-600 mb-2">500+</div>
+              <div className="text-gray-700">Businesses Transformed</div>
+            </div>
+            <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+              <div className="text-4xl font-bold text-red-600 mb-2">95%</div>
+              <div className="text-gray-700">Inventory Loss Reduction</div>
+            </div>
+            <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+              <div className="text-4xl font-bold text-red-600 mb-2">40%</div>
+              <div className="text-gray-700">Average Sales Growth</div>
+            </div>
+            <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+              <div className="text-4xl font-bold text-red-600 mb-2">24/7</div>
+              <div className="text-gray-700">Customer Support</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Testimonials Section */}
+      <section className="py-20 bg-white" id="testimonials">
+        <div className="container mx-auto px-4 md:px-8">
+          <div className="text-center mb-16">
+            <span className="px-4 py-1 bg-red-100 text-red-600 rounded-full text-sm font-medium mb-4 inline-block">Testimonials</span>
+            <h2 className="text-3xl font-bold text-gray-900 mb-4">
+              💬 Real Customers, Real Results
+            </h2>
+            <p className="text-gray-700 max-w-2xl mx-auto">
+              Here's what our customers are saying about their experience with MeraSoftware
+            </p>
+          </div>
+
+          <div className="grid md:grid-cols-3 gap-8">
+            {/* Testimonial 1 */}
+            <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 transition duration-300 hover:shadow-md">
+              <div className="flex mb-4">
+                {[1, 2, 3, 4, 5].map((star) => (
+                  <Star key={star} size={16} className="text-yellow-400 fill-current" />
+                ))}
+              </div>
+              <p className="text-gray-700 mb-6">
+                "Is software ke baad mere business mein chori 95% kam ho gayi hai! Staff ka management bhi aasan ho gaya hai."
+              </p>
+              <div className="flex items-center">
+                <div className="h-12 w-12 rounded-full bg-blue-100 flex items-center justify-center mr-3">
+                  <span className="text-red-600 font-bold">RS</span>
+                </div>
+                <div>
+                  <div className="font-semibold text-gray-900">Rajesh Sharma</div>
+                  <div className="text-gray-500 text-sm">Delhi Electronics</div>
+                </div>
+              </div>
+            </div>
+
+            {/* Testimonial 2 */}
+            <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 transition duration-300 hover:shadow-md">
+              <div className="flex mb-4">
+                {[1, 2, 3, 4, 5].map((star) => (
+                  <Star key={star} size={16} className="text-yellow-400 fill-current" />
+                ))}
+              </div>
+              <p className="text-gray-700 mb-6">
+                "Staff management aasan ho gaya aur bikri 40% badh gayi! Cloud system hone ke karan kabhi bhi business check kar sakti hoon."
+              </p>
+              <div className="flex items-center">
+                <div className="h-12 w-12 rounded-full bg-blue-100 flex items-center justify-center mr-3">
+                  <span className="text-red-600 font-bold">AP</span>
+                </div>
+                <div>
+                  <div className="font-semibold text-gray-900">Anita Patel</div>
+                  <div className="text-gray-500 text-sm">Mumbai Retail</div>
+                </div>
+              </div>
+            </div>
+
+            {/* Testimonial 3 */}
+            <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 transition duration-300 hover:shadow-md">
+              <div className="flex mb-4">
+                {[1, 2, 3, 4, 5].map((star) => (
+                  <Star key={star} size={16} className="text-yellow-400 fill-current" />
+                ))}
+              </div>
+              <p className="text-gray-700 mb-6">
+                "Data loss ka dar khatam ho gaya hai aur inventory tracking automated ho gayi hai. Best investment mere business ke liye!"
+              </p>
+              <div className="flex items-center">
+                <div className="h-12 w-12 rounded-full bg-blue-100 flex items-center justify-center mr-3">
+                  <span className="text-red-600 font-bold">VK</span>
+                </div>
+                <div>
+                  <div className="font-semibold text-gray-900">Vijay Kumar</div>
+                  <div className="text-gray-500 text-sm">Pune Hardware</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Call To Action */}
+      <section className="py-20 bg-black" id="contact">
+        <div className="container mx-auto px-4 md:px-8">
+          <div className="max-w-4xl mx-auto bg-white p-8 rounded-2xl shadow-sm border border-gray-100">
+            <div className="flex flex-col md:flex-row items-center justify-between">
+              <div className="md:w-2/3 text-left mb-6 md:mb-0">
+                <span className="px-4 py-1 bg-red-100 text-red-600 rounded-full text-sm font-medium mb-4 inline-block">Ready?</span>
+                <h2 className="text-2xl font-bold mb-2 text-gray-900">
+                  {currentContent.decisionTitle}
+                </h2>
+                <p className="text-gray-700">
+                  {currentContent.decisionDesc}
+                </p>
+              </div>
+              <div className="md:w-1/3">
+                <div className="flex flex-col space-y-3">
+                  <input 
+                    type="text" 
+                    placeholder={currentContent.placeholderText} 
+                    className="w-full px-4 py-3 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                  />
+                  <button className="w-full bg-red-600 hover:bg-red-700 text-white px-4 py-3 rounded-lg font-medium transition duration-300">
+                    {currentContent.bookDemoButton}
+                  </button>
+                  <p className="text-xs text-gray-500 text-center">
+                    {currentContent.freeText}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Footer */}
+      <footer className="bg-black py-12 border-t border-gray-800 text-white">
+        <div className="container mx-auto px-4 md:px-8">
+          <div className="grid md:grid-cols-2 gap-8">
+            <div>
+              <h3 className="text-xl font-bold mb-4 text-white">MeraSoftware</h3>
+              <p className="text-gray-300 mb-6">
+                Business solution that protects your business and helps it grow.
+              </p>
+              <div className="flex space-x-4">
+                <a href="#" className="text-blue-300 hover:text-blue-400 transition-colors">Facebook</a>
+                <a href="#" className="text-blue-300 hover:text-blue-400 transition-colors">Twitter</a>
+                <a href="#" className="text-blue-300 hover:text-blue-400 transition-colors">LinkedIn</a>
+                <a href="#" className="text-blue-300 hover:text-blue-400 transition-colors">YouTube</a>
+              </div>
+            </div>
+            <div>
+              <h3 className="text-xl font-bold mb-4 text-white">Contact Us</h3>
+              <p className="text-gray-300">
+                Email: contact@merasoftware.com<br />
+                Phone: +91 98765 43210<br />
+                Address: Tech Hub, Sector 62, Noida, UP
+              </p>
+            </div>
+          </div>
+          <div className="mt-8 pt-8 text-center text-gray-400 text-sm border-t border-gray-800">
+            <p>© {new Date().getFullYear()} MeraSoftware. All rights reserved.</p>
+          </div>
+        </div>
+      </footer>
     </div>
   );
-}
+};
+
+export default ModernBusinessLandingPage;

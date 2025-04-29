@@ -6,7 +6,7 @@ import { useAuth } from '../../context/AuthContext';
 import ConfirmationDialog from '../../components/ConfirmationDialog';
 import Modal from '../../components/Modal';
 
-const AllInventoryItems = ({ searchTerm = '' }) => {
+const AllInventoryItems = ({ searchTerm = '', refreshTrigger = 0 }) => {
   const { user } = useAuth();
   const { showNotification } = useNotification();
   const [items, setItems] = useState([]);
@@ -37,7 +37,7 @@ const [saveLoading, setSaveLoading] = useState(false);
   // Fetch all inventory items
   useEffect(() => {
     fetchAllItems();
-  }, []);
+  }, [refreshTrigger]);
   
   const fetchAllItems = async () => {
     try {

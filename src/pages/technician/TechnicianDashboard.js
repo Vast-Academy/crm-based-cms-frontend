@@ -115,7 +115,7 @@ const handleMessageCustomer = (project) => {
 const handleCallOriginalTechnician = (project) => {
   if (project.originalTechnician && project.originalTechnician.phoneNumber) {
     // Record this action in status history
-    addActivityToHistory(project, `Call initiated to original technician (${project.originalTechnician.firstName} ${project.originalTechnician.lastName})`);
+    addActivityToHistory(project, `Call initiated to setup technician (${project.originalTechnician.firstName} ${project.originalTechnician.lastName})`);
     
     // Actually make the call
     window.location.href = `tel:${project.originalTechnician.phoneNumber}`;
@@ -331,6 +331,9 @@ const handleBillGenerated = async (selectedItems, paymentCompleted = false) => {
     
     // Refresh work orders data to get the updated state with payment info
     fetchWorkOrders();
+
+    // Add this line to refresh the inventory data
+    fetchInventory(true); 
   }
 };
 
@@ -476,6 +479,13 @@ const filteredInventoryItems = getFilteredInventoryItems();
   const fetchInventory = async (forceFresh = false) => {
     try {
       setLoading(true);
+
+      // If forceFresh is true, clear any cached inventory data
+    if (forceFresh) {
+      localStorage.removeItem('technicianInventory');
+      // The timestamp can also be removed or reset
+      setLastRefreshTime(prev => ({...prev, inventory: 0}));
+    }
       
       // चेक करें अगर कैश डेटा है और स्टेल नहीं है
       const cachedInventory = localStorage.getItem('technicianInventory');
@@ -677,6 +687,75 @@ const fetchFreshWorkOrdersInBackground = async () => {
   }
 };
 
+// Then add this function to your TechnicianDashboard component
+const handleProjectStarted = () => {
+  console.log("Project started callback received");
+  
+  // Dispatch event to ensure all components are updated
+  if (selectedWorkOrder) {
+    const isComplaint = selectedWorkOrder.projectCategory === 'Repair' || 
+                       selectedWorkOrder.projectType?.toLowerCase().includes('repair') ||
+                       selectedWorkOrder.projectType?.toLowerCase().includes('complaint');
+    
+    if (isComplaint) {
+      // Set the flag for complaint initiated
+      sessionStorage.setItem('newComplaintInitiated', 'true');
+      
+      // Force refresh of work orders
+      fetchWorkOrders(true);
+      
+      // Navigate to current-project tab
+      handleTabChange('current-project');
+    }
+  }
+};
+
+// Add this to handle complaint initialization event
+useEffect(() => {
+  const handleComplaintInitiated = (event) => {
+    console.log("Complaint initiated event received:", event.detail);
+    
+    // Force a refresh of work orders data
+    fetchWorkOrders(true);
+    
+    // For immediate UI update, we can also directly update the state
+    // This way we don't need to wait for fetchWorkOrders to complete
+    if (event.detail) {
+      const { orderId, projectType } = event.detail;
+      
+      // Update any matching work order in the state
+      setWorkOrders(prevOrders => {
+        return prevOrders.map(order => {
+          if (order.orderId === orderId) {
+            return {
+              ...order,
+              projectCategory: 'Repair', // Ensure this is set correctly
+              status: 'in-progress',
+              // Add placeholder for originalTechnician until full refresh happens
+              originalTechnician: order.originalTechnician || {
+                firstName: 'Loading...',
+                lastName: ''
+              }
+            };
+          }
+          return order;
+        });
+      });
+      
+      // Navigate to current-project tab
+      handleTabChange('current-project');
+    }
+  };
+  
+  // Add event listener
+  window.addEventListener('complaintInitiated', handleComplaintInitiated);
+  
+  // Cleanup
+  return () => {
+    window.removeEventListener('complaintInitiated', handleComplaintInitiated);
+  };
+}, []);
+
 // नया फंक्शन जो सीधे API से ताज़ा डेटा प्राप्त करता है
 const fetchFreshWorkOrders = async () => {
   try {
@@ -688,12 +767,34 @@ const fetchFreshWorkOrders = async () => {
     const data = await response.json();
     
     if (data.success) {
-      // सक्रिय और पूरे किए गए वर्क ऑर्डर्स को अलग करें
+      // Process the data to ensure project categories are properly set
+      const processedData = data.data.map(order => {
+        let updatedOrder = { ...order };
+        
+        // If projectType contains repair-related keywords but category is not set
+        if ((order.projectType?.toLowerCase().includes('repair') || 
+             order.projectType?.toLowerCase().includes('complaint')) && 
+            !order.projectCategory) {
+          updatedOrder.projectCategory = 'Repair';
+        }
+        
+        // Ensure we keep any originalTechnician data if it was already in state
+        if (!updatedOrder.originalTechnician) {
+          const existingOrder = workOrders.find(o => o.orderId === order.orderId);
+          if (existingOrder && existingOrder.originalTechnician) {
+            updatedOrder.originalTechnician = existingOrder.originalTechnician;
+          }
+        }
+        
+        return updatedOrder;
+      });
+      
+      // Split active and completed work orders
       const active = [];
       const completed = [];
       const transferred = [];
       
-      data.data.forEach(order => {
+      processedData.forEach(order => {
         if (order.status === 'completed') {
           completed.push(order);
         } else if (order.status === 'transferring' || order.status === 'transferred') {
@@ -707,10 +808,10 @@ const fetchFreshWorkOrders = async () => {
       setCompletedOrders(completed);
       setTransferredProjects(transferred);
       
-      // कैश अपडेट करें
-      localStorage.setItem('technicianWorkOrders', JSON.stringify(data.data));
+      // Update cache
+      localStorage.setItem('technicianWorkOrders', JSON.stringify(processedData));
       
-      // रिफ्रेश टाइम अपडेट करें
+      // Update refresh time
       setLastRefreshTime(prev => ({...prev, workOrders: new Date().getTime()}));
     } else {
       setError('Failed to load work orders: ' + data.message);
@@ -1419,25 +1520,46 @@ const fetchFreshWorkOrders = async () => {
           </div>
 
           {/* Original Technician Card - Only show for Repair/Complaint projects */}
-{activeProject.projectCategory === 'Repair' && activeProject.originalTechnician && (
+          {(activeProject.projectCategory === 'Repair' || 
+  activeProject.projectType?.toLowerCase().includes('repair') || 
+  activeProject.projectType?.toLowerCase().includes('complaint')) && (
   <div className={`${darkMode ? 'bg-gray-800/50' : 'bg-white'} rounded-xl shadow-lg p-4`}>
-    <h3 className="text-lg font-semibold text-purple-800">Original Technician</h3>
-    <p className={`text-sm font-medium ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-      {activeProject.originalTechnician.firstName} {activeProject.originalTechnician.lastName}
-    </p>
-    <p className={`text-xs ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-      Installation date: {activeProject.projectCreatedAt ? formatDate(activeProject.projectCreatedAt) : 'N/A'}
-    </p>
-    
-    {/* Call Original Technician Button */}
-    <div className="mt-3">
-      <button
-        onClick={() => handleCallOriginalTechnician(activeProject)}
-        className="bg-purple-500 text-white rounded-lg py-2 w-full flex items-center justify-center"
-      >
-        <Phone size={18} className="mr-2" /> Call Original Technician
-      </button>
-    </div>
+    <h3 className="text-lg font-semibold text-purple-800">Setup Technician</h3>
+    {activeProject.originalTechnician ? (
+      <>
+        <p className={`text-sm font-medium ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+          {activeProject.originalTechnician.firstName} {activeProject.originalTechnician.lastName}
+        </p>
+        <p className={`text-xs ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+          Installation date: {activeProject.projectCreatedAt ? formatDate(activeProject.projectCreatedAt) : 'N/A'}
+        </p>
+        
+        {/* Call Original Technician Button */}
+        <div className="mt-3">
+          <button
+            onClick={() => handleCallOriginalTechnician(activeProject)}
+            className="bg-purple-500 text-white rounded-lg py-2 w-full flex items-center justify-center"
+          >
+            <Phone size={18} className="mr-2" /> Call Original Technician
+          </button>
+        </div>
+      </>
+    ) : (
+      // Loading state or placeholder when originalTechnician data is not yet available
+      <div className="py-2">
+        <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-500'} mt-2`}>
+          Original technician details loading...
+        </p>
+        <div className="mt-3">
+          <button
+            disabled
+            className="bg-purple-300 text-white rounded-lg py-2 w-full flex items-center justify-center"
+          >
+            <Phone size={18} className="mr-2" /> Call Original Technician
+          </button>
+        </div>
+      </div>
+    )}
   </div>
 )}
           
@@ -2333,6 +2455,7 @@ const fetchFreshWorkOrders = async () => {
           }}
           workOrder={selectedWorkOrder}
           onStatusUpdate={handleWorkOrderStatusUpdate}
+          onProjectStarted={handleProjectStarted}
           darkMode={darkMode}
         />
       )}

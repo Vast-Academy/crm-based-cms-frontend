@@ -18,6 +18,7 @@ const InventoryManagement = () => {
   const [isTechnicianModalOpen, setIsTechnicianModalOpen] = useState(false);
   const [isAssignInventoryModalOpen, setIsAssignInventoryModalOpen] = useState(false);
   const [selectedTechnician, setSelectedTechnician] = useState(null);
+  const [refreshCount, setRefreshCount] = useState(0);
 
   // Function to handle filter button clicks
   const handleFilterChange = (filter) => {
@@ -40,19 +41,20 @@ const InventoryManagement = () => {
     showNotification('success', `Inventory successfully assigned to ${selectedTechnician.firstName} ${selectedTechnician.lastName}`);
     setIsAssignInventoryModalOpen(false);
     setSelectedTechnician(null);
+    setRefreshCount(prev => prev + 1);
   };
 
   // Render the appropriate component based on activeFilter
   const renderContent = () => {
     switch (activeFilter) {
       case 'serialized':
-        return <SerializedProductsList searchTerm={searchTerm} />;
+        return <SerializedProductsList searchTerm={searchTerm} refreshTrigger={refreshCount}/>;
       case 'generic':
-        return <GenericProductsList searchTerm={searchTerm} />;
+        return <GenericProductsList searchTerm={searchTerm} refreshTrigger={refreshCount} />;
       case 'services':
-        return <ServicesList searchTerm={searchTerm} />;
+        return <ServicesList searchTerm={searchTerm} refreshTrigger={refreshCount} />;
       default:
-        return <AllInventoryItems searchTerm={searchTerm} />;
+        return <AllInventoryItems searchTerm={searchTerm} refreshTrigger={refreshCount}/>;
     }
   };
 

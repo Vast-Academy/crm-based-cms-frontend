@@ -10,7 +10,7 @@ import {
   FiArrowLeft,
   FiRepeat, FiShield 
 } from 'react-icons/fi';
-import { Replace, Layers, Users, Building, X } from 'lucide-react';
+import { Replace, Layers, Users, Building, X, User } from 'lucide-react';
 import ManagerStatusChecker from './ManagerStatusChecker';
 import UserSettingsModal from '../pages/users/UserSettingsModal';
 // import GlobalSearch from './GlobalSearch';
@@ -226,7 +226,7 @@ const DashboardLayout = () => {
         } md:translate-x-0 md:static md:inset-0`}
       >
         <div className="flex p-4 h-16 border-b">
-          <h1 className="text-2xl font-bold text-white">CRM Panel</h1>
+          <h1 className="text-2xl font-bold text-white">CMS Panel</h1>
         </div>
         
         <nav className="mt-5">
@@ -290,35 +290,23 @@ const DashboardLayout = () => {
           >
             <FiMenu className="w-6 h-6" />
           </button>
-          
-          <div className="flex-1 px-2 flex items-center">
-          <p className="text-md font-medium capitalize">{user?.firstName} {user?.lastName} ({user?.role || 'User'}) </p>
-          </div>
-          
-          <div className="flex items-center">
-            {/* <button className="p-1 mr-4 text-gray-500 hover:text-gray-600 relative">
-              <FiBell className="w-6 h-6" />
-              <span className="absolute top-0 right-0 bg-red-500 rounded-full w-4 h-4 text-white text-xs flex items-center justify-center">
-                0
-              </span>
-            </button> */}
-            
-            <div className="relative flex items-center">
+
+          <div className="relative flex items-center">
   <button 
     onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
     className="flex items-center focus:outline-none"
     aria-haspopup="true"
     aria-expanded={profileDropdownOpen}
   >
-    <div className="w-10 h-10 text-3xl cursor-pointer">
-    🧑
+    <div className="cursor-pointer">
+    <User size={26}/>
     </div>
   </button>
   
   {/* Profile Dropdown */}
   {profileDropdownOpen && (
     <div 
-      className="absolute right-0 top-12 w-48 bg-white rounded-md shadow-lg py-1 z-50 border border-gray-200"
+      className="absolute left-0 right-0 top-8 w-48 bg-white rounded-md shadow-lg py-1 z-50 border border-gray-200"
     >
       <div className="px-4 py-2 border-b border-gray-100">
         <p className="text-sm font-medium capitalize">{user?.firstName} {user?.lastName}</p>
@@ -348,7 +336,21 @@ const DashboardLayout = () => {
       </button>
     </div>
   )}
-</div>
+        </div>
+          
+          <div className="flex-1 px-2 flex items-center">
+          <p className="text-xl font-semibold text-gray-800 capitalize">{user?.firstName} {user?.lastName} ({user?.role || 'User'}) </p>
+          </div>
+          
+          <div className="flex items-center">
+            {/* <button className="p-1 mr-4 text-gray-500 hover:text-gray-600 relative">
+              <FiBell className="w-6 h-6" />
+              <span className="absolute top-0 right-0 bg-red-500 rounded-full w-4 h-4 text-white text-xs flex items-center justify-center">
+                0
+              </span>
+            </button> */}
+            
+      
 
      {/* Logout Confirmation Popup */}
 {showLogoutPopup && (

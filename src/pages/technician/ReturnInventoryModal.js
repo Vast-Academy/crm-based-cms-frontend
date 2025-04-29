@@ -2,7 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { 
   X, 
   Package, 
-  ChevronDown 
+  ChevronDown,
+  AlertCircle,
+  Check
 } from 'lucide-react';
 import SummaryApi from '../../common';
 
@@ -13,6 +15,8 @@ const ReturnInventoryModal = ({ isOpen, onClose, onInventoryReturned, darkMode =
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [expandedItems, setExpandedItems] = useState([]);
+  // Add new state for confirmation modal
+  const [showConfirmation, setShowConfirmation] = useState(false);
   
   // Fetch technician's inventory
   useEffect(() => {
@@ -90,6 +94,7 @@ const ReturnInventoryModal = ({ isOpen, onClose, onInventoryReturned, darkMode =
         ...selectedItems,
         {
           itemId: itemKey,
+          itemName: item.itemName, // Add item name for display in confirmation
           type: 'serialized-product',
           serialNumber
         }
@@ -122,6 +127,7 @@ const ReturnInventoryModal = ({ isOpen, onClose, onInventoryReturned, darkMode =
           ...selectedItems,
           {
             itemId: itemKey,
+            itemName: item.itemName, // Add item name for display in confirmation
             type: 'generic-product',
             quantity
           }
@@ -152,15 +158,32 @@ const ReturnInventoryModal = ({ isOpen, onClose, onInventoryReturned, darkMode =
     return item ? item.quantity : 0;
   };
   
-  // Submit selected items to return
-  const handleReturnItems = async () => {
+  // Show confirmation dialog before returning items
+  const showReturnConfirmation = () => {
     if (selectedItems.length === 0) {
       setError('No items selected for return');
       return;
     }
     
+    setShowConfirmation(true);
+  };
+  
+  // Get total number of items being returned
+  const getTotalItemsCount = () => {
+    return selectedItems.reduce((total, item) => {
+      if (item.type === 'serialized-product') {
+        return total + 1; // Each serialized item counts as 1
+      } else {
+        return total + item.quantity; // Add quantity for generic items
+      }
+    }, 0);
+  };
+  
+  // Submit selected items to return
+  const handleReturnItems = async () => {
     try {
       setLoading(true);
+      setShowConfirmation(false); // Hide confirmation
       
       // Process each item separately
       for (const item of selectedItems) {
@@ -193,9 +216,6 @@ const ReturnInventoryModal = ({ isOpen, onClose, onInventoryReturned, darkMode =
       // Reset selections
       setSelectedItems([]);
       
-      // Show success message
-      // alert('Selected items have been returned to manager successfully!');
-      
       // Close modal
       onClose();
     } catch (err) {
@@ -204,6 +224,17 @@ const ReturnInventoryModal = ({ isOpen, onClose, onInventoryReturned, darkMode =
     } finally {
       setLoading(false);
     }
+  };
+  
+  // Cancel the confirmation
+  const cancelConfirmation = () => {
+    setShowConfirmation(false);
+  };
+  
+  // Find item details by ID
+  const getItemNameById = (itemId) => {
+    const item = inventory.find(i => (i.id === itemId || i.itemId === itemId || i._id === itemId));
+    return item ? item.itemName : 'Unknown Item';
   };
   
   if (!isOpen) return null;
@@ -366,7 +397,7 @@ const ReturnInventoryModal = ({ isOpen, onClose, onInventoryReturned, darkMode =
             Cancel
           </button>
           <button 
-            onClick={handleReturnItems}
+            onClick={showReturnConfirmation} // Changed to show confirmation first
             disabled={selectedItems.length === 0 || loading}
             className={`px-4 py-2 rounded-lg flex-1 flex items-center justify-center ${
               selectedItems.length === 0 || loading 
@@ -377,6 +408,66 @@ const ReturnInventoryModal = ({ isOpen, onClose, onInventoryReturned, darkMode =
             {loading ? 'Processing...' : 'Return Selected'}
           </button>
         </div>
+        
+        {/* Confirmation Modal */}
+        {showConfirmation && (
+          <div className="fixed inset-0 bg-black/70 flex justify-center items-center z-50 p-4">
+            <div className={`w-full max-w-md ${darkMode ? 'bg-gray-800' : 'bg-white'} rounded-xl shadow-2xl overflow-hidden`}>
+              <div className={`p-4 ${darkMode ? 'border-b border-gray-700' : 'border-b'} flex items-center`}>
+                <div className={`w-10 h-10 flex items-center justify-center rounded-full ${darkMode ? 'bg-amber-600/20' : 'bg-amber-100'} mr-3`}>
+                  <AlertCircle size={24} className="text-amber-600" />
+                </div>
+                <h3 className={`text-lg font-bold ${darkMode ? 'text-white' : 'text-gray-800'}`}>
+                  Confirm Return
+                </h3>
+              </div>
+              
+              <div className="p-4">
+                <p className={`mb-4 ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                  Are you sure you want to return {getTotalItemsCount()} item{getTotalItemsCount() !== 1 ? 's' : ''}? 
+                  Please confirm once:
+                </p>
+                
+                <div className={`mb-4 ${darkMode ? 'bg-gray-700' : 'bg-gray-50'} p-3 rounded-md max-h-48 overflow-y-auto`}>
+                  {/* List all items being returned */}
+                  <ul className="space-y-2">
+                    {selectedItems.map((item, index) => (
+                      <li key={index} className={`flex justify-between items-center ${darkMode ? 'text-gray-200' : 'text-gray-700'}`}>
+                        <span className="font-medium">
+                          {item.itemName || getItemNameById(item.itemId)}
+                        </span>
+                        {item.type === 'serialized-product' ? (
+                          <span className={`text-xs ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                            S/N: {item.serialNumber}
+                          </span>
+                        ) : (
+                          <span className={`${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                            {item.quantity} {item.quantity > 1 ? 'pcs' : 'pc'}
+                          </span>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+                
+                <div className="flex space-x-3">
+                  <button
+                    onClick={cancelConfirmation}
+                    className={`flex-1 py-2 rounded-lg ${darkMode ? 'bg-gray-700 hover:bg-gray-600 text-white' : 'bg-gray-200 hover:bg-gray-300 text-gray-800'}`}
+                  >
+                    No, Cancel
+                  </button>
+                  <button
+                    onClick={handleReturnItems}
+                    className={`flex-1 py-2 rounded-lg ${darkMode ? 'bg-green-600 hover:bg-green-700' : 'bg-green-500 hover:bg-green-600'} text-white flex items-center justify-center`}
+                  >
+                    <Check size={18} className="mr-2" /> Yes, Return Items
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
