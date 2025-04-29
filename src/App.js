@@ -35,6 +35,7 @@ import Test from './pages/test';
 import ManagerDetail from './pages/users/ManagerDetail';
 import BranchDetails from './pages/branches/BranchDetails';
 import InventoryPage from './pages/inventory/InventoryPage';
+import ResetDefaultPage from './pages/ResetDefaultPage';
 
 // Protected route component
 const ProtectedRoute = ({ children, allowedRoles = [] }) => {
@@ -131,6 +132,15 @@ function App() {
     </ProtectedRoute>
   } 
 />
+
+          <Route 
+              path="reset-system" 
+              element={
+                <ProtectedRoute >
+                  <ResetDefaultPage />
+                </ProtectedRoute>
+              } 
+            />
 
             
             {/* Branch Management Routes */}

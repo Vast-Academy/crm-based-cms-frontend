@@ -300,6 +300,10 @@ const SummaryApi = {
       updateWarrantyClaim: {
         url : `${backendDomain}/api/warranty-claim`,
         method: "post"
+      },
+      resetSystem: {
+        url: `${backendDomain}/api/reset-system`,
+        method: "post"
       }
 }
 
