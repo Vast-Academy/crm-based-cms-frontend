@@ -449,26 +449,44 @@ const handleItemExpand = (itemKey, item) => {
 // Filter and sort inventory items
 const getFilteredInventoryItems = () => {
   // First filter based on active items
-  let filteredItems = inventoryItems.filter(item => {
-    if (item.type === 'serialized-product') {
-      return item.serializedItems && item.serializedItems.some(si => si.status === 'active');
-    } else {
-      return item.genericQuantity > 0;
-    }
-  });
+  let filteredItems = inventoryItems;
   
   // Then apply type filter
   if (inventoryFilter === 'Serialized') {
     filteredItems = filteredItems.filter(item => item.type === 'serialized-product');
   } else if (inventoryFilter === 'Generic') {
     filteredItems = filteredItems.filter(item => item.type === 'generic-product');
+  } else if (inventoryFilter === 'Services') {
+    filteredItems = filteredItems.filter(item => item.type === 'service');
+  } else {
+    // For 'All' filter, keep only items with quantity or service items
+    filteredItems = filteredItems.filter(item => {
+      if (item.type === 'service') return true;
+      if (item.type === 'serialized-product') {
+        return item.serializedItems && item.serializedItems.some(si => si.status === 'active');
+      } else {
+        return item.genericQuantity > 0;
+      }
+    });
   }
   
-  // Sort by quantity (highest to lowest)
+  // Sort by quantity (highest to lowest) for products, by name for services
   return filteredItems.sort((a, b) => {
-    const quantityA = getItemQuantity(a);
-    const quantityB = getItemQuantity(b);
-    return quantityB - quantityA;
+    if (a.type === 'service' && b.type === 'service') {
+      // Sort services by name
+      return a.itemName.localeCompare(b.itemName);
+    } else if (a.type === 'service') {
+      // Services come after products
+      return 1;
+    } else if (b.type === 'service') {
+      // Products come before services
+      return -1;
+    } else {
+      // Sort products by quantity
+      const quantityA = getItemQuantity(a);
+      const quantityB = getItemQuantity(b);
+      return quantityB - quantityA;
+    }
   });
 };
 
@@ -1313,7 +1331,7 @@ const fetchFreshWorkOrders = async () => {
         </div>
         
         {/* Filter buttons (horizontal) */}
-        <div className="mt-3 flex space-x-2">
+        <div className="mt-3 flex space-x-1">
           <button 
             onClick={() => setInventoryFilter('All')}
             className={`px-4 py-1.5 rounded-full text-sm ${
@@ -1344,92 +1362,112 @@ const fetchFreshWorkOrders = async () => {
           >
             Generic
           </button>
+          <button 
+    onClick={() => setInventoryFilter('Services')}
+    className={`px-4 py-1.5 rounded-full text-sm ${
+      inventoryFilter === 'Services' 
+        ? `${darkMode ? 'bg-teal-600' : 'bg-teal-500'} text-white` 
+        : `${darkMode ? 'bg-gray-700' : 'bg-gray-200'} ${darkMode ? 'text-gray-300' : 'text-gray-700'}`
+    }`}
+  >
+    Services
+  </button>
         </div>
       </div>
       
       <div className="space-y-1">
-        {filteredInventoryItems.length > 0 ? (
-          filteredInventoryItems.map((item, index) => {
-            const itemKey = item._id || item.id || item.itemId || `item-${item.itemName}-${Date.now()}`;
-            const itemCount = getItemQuantity(item);
-            const isExpanded = expandedItems.includes(itemKey);
-            
-            return (
-              <div key={itemKey}>
+      {filteredInventoryItems.length > 0 ? (
+  filteredInventoryItems.map((item, index) => {
+    const itemKey = item._id || item.id || item.itemId || `item-${item.itemName}-${Date.now()}`;
+    const itemCount = item.type === 'service' ? 'N/A' : getItemQuantity(item);
+    const isExpanded = expandedItems.includes(itemKey);
+    
+    return (
+      <div key={itemKey}>
+        <div 
+          className={`p-4 ${darkMode ? 'hover:bg-gray-700/50' : 'hover:bg-gray-100/50'} cursor-pointer transition-colors`}
+          onClick={() => handleItemExpand(itemKey, item)}
+        >
+          <div className="flex items-center">
+            <div className={`w-8 h-8 rounded-full ${
+              item.type === 'service' 
+                ? (darkMode ? 'bg-teal-600' : 'bg-teal-500') 
+                : (darkMode ? 'bg-teal-600' : 'bg-teal-500')
+            } flex items-center justify-center mr-3 text-white font-bold`}>
+              {index + 1}
+            </div>
+            <div className="flex-1">
+              <div className="flex justify-between items-center">
+                <p className={`font-medium ${darkMode ? 'text-white' : 'text-gray-800'}`}>{item.itemName}</p>
+                <div className="flex items-center">
+                  {item.type === 'serialized-product' && (
+                    <svg 
+                      xmlns="http://www.w3.org/2000/svg" 
+                      viewBox="0 0 24 24" 
+                      width="18" 
+                      height="18" 
+                      fill="none" 
+                      stroke="currentColor" 
+                      strokeWidth="2" 
+                      strokeLinecap="round" 
+                      strokeLinejoin="round" 
+                      className={`mr-2 transition-transform duration-200 ${isExpanded ? 'transform rotate-180' : ''} ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}
+                    >
+                      <polyline points="6 9 12 15 18 9"></polyline>
+                    </svg>
+                  )}
+                  {item.type === 'service' ? (
+                    <div className={`px-3 py-1 rounded-full ${darkMode ? 'bg-purple-600/30 text-purple-200' : 'bg-teal-100 text-teal-800'}`}>
+                      ₹{item.salePrice}
+                    </div>
+                  ) : (
+                    <div className={`px-3 py-1 rounded-full ${darkMode ? 'bg-teal-600/30 text-teal-200' : 'bg-teal-100 text-teal-800'}`}>
+                      {itemCount} {item.unit || 'Pcs'}
+                    </div>
+                  )}
+                </div>
+              </div>
+              <p className={`text-xs ${darkMode ? 'text-gray-400' : 'text-gray-500'} capitalize`}>
+                {item.type === 'service' ? 'Service' : item.type.replace('-product', '')}
+              </p>
+            </div>
+          </div>
+        </div>
+        
+        {/* Expanded view for serialized items - keep this unchanged */}
+        {item.type === 'serialized-product' && isExpanded && (
+          <div className={`px-4 pb-4 ${darkMode ? 'bg-gray-700/30' : 'bg-gray-50'}`}>
+            <div className="ml-11 border-l-2 border-teal-500 pl-4 space-y-2">
+              {item.serializedItems.filter(serial => serial.status === 'active').map((serial, idx) => (
                 <div 
-                  className={`p-4 ${darkMode ? 'hover:bg-gray-700/50' : 'hover:bg-gray-100/50'} cursor-pointer transition-colors`}
-                  onClick={() => handleItemExpand(itemKey, item)}
+                  key={serial.serialNumber || idx} 
+                  className={`p-2 rounded ${darkMode ? 'bg-gray-700/50' : 'bg-white'} text-sm`}
                 >
-                  <div className="flex items-center">
-                    <div className={`w-8 h-8 rounded-full ${darkMode ? 'bg-teal-600' : 'bg-teal-500'} flex items-center justify-center mr-3 text-white font-bold`}>
-                      {index + 1}
-                    </div>
-                    <div className="flex-1">
-                      <div className="flex justify-between items-center">
-                        <p className={`font-medium ${darkMode ? 'text-white' : 'text-gray-800'}`}>{item.itemName}</p>
-                        <div className="flex items-center">
-                          {item.type === 'serialized-product' && (
-                            <svg 
-                              xmlns="http://www.w3.org/2000/svg" 
-                              viewBox="0 0 24 24" 
-                              width="18" 
-                              height="18" 
-                              fill="none" 
-                              stroke="currentColor" 
-                              strokeWidth="2" 
-                              strokeLinecap="round" 
-                              strokeLinejoin="round" 
-                              className={`mr-2 transition-transform duration-200 ${isExpanded ? 'transform rotate-180' : ''} ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}
-                            >
-                              <polyline points="6 9 12 15 18 9"></polyline>
-                            </svg>
-                          )}
-                          <div className={`px-3 py-1 rounded-full ${darkMode ? 'bg-teal-600/30 text-teal-200' : 'bg-teal-100 text-teal-800'}`}>
-                            {itemCount} Pcs
-                          </div>
-                        </div>
-                      </div>
-                      <p className={`text-xs ${darkMode ? 'text-gray-400' : 'text-gray-500'} capitalize`}>
-                        {item.type.replace('-product', '')}
-                      </p>
-                    </div>
+                  <div className="flex justify-between">
+                    <span className={`font-medium ${darkMode ? 'text-gray-200' : 'text-gray-700'}`}>
+                      Serial Number:
+                    </span>
+                    <span className={darkMode ? 'text-gray-300' : 'text-gray-600'}>
+                      {serial.serialNumber}
+                    </span>
                   </div>
                 </div>
-                
-                {/* Expanded view for serialized items */}
-                {item.type === 'serialized-product' && isExpanded && (
-                  <div className={`px-4 pb-4 ${darkMode ? 'bg-gray-700/30' : 'bg-gray-50'}`}>
-                    <div className="ml-11 border-l-2 border-teal-500 pl-4 space-y-2">
-                      {item.serializedItems.filter(serial => serial.status === 'active').map((serial, idx) => (
-                        <div 
-                          key={serial.serialNumber || idx} 
-                          className={`p-2 rounded ${darkMode ? 'bg-gray-700/50' : 'bg-white'} text-sm`}
-                        >
-                          <div className="flex justify-between">
-                            <span className={`font-medium ${darkMode ? 'text-gray-200' : 'text-gray-700'}`}>
-                              Serial Number:
-                            </span>
-                            <span className={darkMode ? 'text-gray-300' : 'text-gray-600'}>
-                              {serial.serialNumber}
-                            </span>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            );
-          })
-        ) : (
-          <div className="p-8 text-center">
-            <p className={`${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-              {inventoryFilter === 'All' 
-                ? 'No inventory items assigned yet' 
-                : `No ${inventoryFilter.toLowerCase()} items found`}
-            </p>
+              ))}
+            </div>
           </div>
         )}
+      </div>
+    );
+  })
+) : (
+  <div className="p-8 text-center">
+    <p className={`${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+      {inventoryFilter === 'All' 
+        ? 'No inventory items assigned yet' 
+        : `No ${inventoryFilter.toLowerCase()} items found`}
+    </p>
+  </div>
+)}
       </div>
     </div>
   </div>
