@@ -28,72 +28,107 @@ const ManagerProjectDashboard = () => {
   
   // Selected tab
   const [activeTab, setActiveTab] = useState('all');
+  const PROJECTS_CACHE_KEY = 'managerProjectsData';
+
+  const categorizeProjects = (projects) => {
+    const pending = projects.filter(p => p.status === 'pending-approval');
+    const inProgress = projects.filter(p => 
+      ['assigned', 'in-progress', 'paused'].includes(p.status)
+    );
+    const transferred = projects.filter(p => 
+      ['transferring', 'transferred'].includes(p.status)
+    );
+    const completed = projects.filter(p => p.status === 'completed');
+  
+    setPendingApprovals(pending);
+    setInProgressProjects(inProgress);
+    setTransferredProjects(transferred);
+    setCompletedProjects(completed);
+  };
+  
   
   // Fetch projects data
-  const fetchProjects = async () => {
+  const fetchProjects = async (forceFresh = false) => {
     try {
       setLoading(true);
       setError(null);
-
-       // Get branch parameter if needed
-       let branchParam = '';
-       if (user.selectedBranch) {
-         branchParam = `?branch=${user.selectedBranch}`;
-       }
-      
-      const response = await fetch(`${SummaryApi.getManagerProjects.url}${branchParam}`, {
-        method: 'GET',
-        credentials: 'include'
-      });
-      
-      // Check if response is ok before parsing
-      if (!response.ok) {
-        const errorData = await response.json();
-        
-        // Special handling for no branch assigned
-        if (response.status === 400 && errorData.message && 
-            errorData.message.includes('no assigned branch')) {
-          setError('Manager has no assigned branch. Please contact an administrator.');
-          setLoading(false);
-          return;
-        }
-        
-        throw new Error(errorData.message || 'Failed to fetch projects');
+  
+      // Step 1: Try to get cached data
+      const cachedData = localStorage.getItem(PROJECTS_CACHE_KEY);
+  
+      if (!forceFresh && cachedData) {
+        const parsedData = JSON.parse(cachedData);
+  
+        setAllProjects(parsedData);
+        categorizeProjects(parsedData); // ✅ Add this line
+        applyTabFilter(activeTab, parsedData, searchQuery);
+  
+        // Fetch fresh data in background
+        fetchFreshProjectsInBackground();
+        setLoading(false);
+        return;
       }
-      
-      const data = await response.json();
-      
-      if (data.success) {
-        // Store all projects
-        setAllProjects(data.data);
-        
-        // Separate projects by status
-        const pending = data.data.filter(project => project.status === 'pending-approval');
-        const inProgress = data.data.filter(project => 
-          ['assigned', 'in-progress', 'paused'].includes(project.status)
-        );
-        const transferred = data.data.filter(project => 
-          ['transferring', 'transferred'].includes(project.status)
-        );
-        const completed = data.data.filter(project => project.status === 'completed');
-        
-        setPendingApprovals(pending);
-        setInProgressProjects(inProgress);
-        setTransferredProjects(transferred);
-        setCompletedProjects(completed);
-        
-        // Set initial filtered projects based on active tab
-        applyTabFilter(activeTab, data.data, searchQuery);
-      } else {
-        setError(data.message || 'Failed to fetch projects');
-      }
+  
+      // Step 2: If no cache or forceFresh is true, fetch fresh data
+      await fetchFreshProjects();
+  
     } catch (err) {
-      setError('Server error. Please try again later.');
-      console.error('Error fetching projects:', err);
+      // Step 3: On error, fallback to cache
+      const cachedData = localStorage.getItem(PROJECTS_CACHE_KEY);
+  
+      if (cachedData) {
+        const parsedData = JSON.parse(cachedData);
+        setAllProjects(parsedData);
+        applyTabFilter(activeTab, parsedData, searchQuery);
+        console.warn("Using cached projects data after fetch error");
+      } else {
+        setError('Server error. Please try again later.');
+        console.error('Error fetching projects:', err);
+      }
     } finally {
       setLoading(false);
     }
   };
+
+  const fetchFreshProjects = async () => {
+    try {
+      let branchParam = '';
+      if (user.selectedBranch) {
+        branchParam = `?branch=${user.selectedBranch}`;
+      }
+  
+      const response = await fetch(`${SummaryApi.getManagerProjects.url}${branchParam}`, {
+        method: 'GET',
+        credentials: 'include'
+      });
+  
+      if (!response.ok) throw new Error('Failed to fetch projects');
+      const data = await response.json();
+  
+      if (!data.success) throw new Error(data.message || 'Unknown error');
+  
+      // Save to state
+      setAllProjects(data.data);
+  
+      // Apply filtering
+      applyTabFilter(activeTab, data.data, searchQuery);
+  
+      // Save to cache
+      localStorage.setItem(PROJECTS_CACHE_KEY, JSON.stringify(data.data));
+  
+    } catch (err) {
+      throw err; // This is handled by the caller
+    }
+  };
+
+  const fetchFreshProjectsInBackground = async () => {
+    try {
+      await fetchFreshProjects();
+    } catch (err) {
+      console.error('Background fetch failed:', err);
+    }
+  };
+  
   
   // Apply tab filter
   const applyTabFilter = (tab, projects = allProjects, query = searchQuery) => {

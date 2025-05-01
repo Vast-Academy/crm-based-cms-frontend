@@ -43,39 +43,29 @@ const [saveLoading, setSaveLoading] = useState(false);
   
   const fetchAllItems = async (forceFresh = false) => {
     try {
-      setLoading(true);
-      
-      // अगर forceFresh true है, तो कैश को हटा दें
-      if (forceFresh) {
-        localStorage.removeItem('inventoryItems');
-        localStorage.removeItem('inventoryItemsTimestamp');
-      }
-      
-      // localStorage से कैश्ड डेटा चेक करें
+      // Check for cached data
       const cachedItems = localStorage.getItem('inventoryItems');
-      const cachedTimestamp = localStorage.getItem('inventoryItemsTimestamp');
-      const currentTime = new Date().getTime();
       
-      // कैश की स्टेलनेस चेक करें
-      const isStale = !cachedTimestamp || (currentTime - parseInt(cachedTimestamp, 10)) > CACHE_STALENESS_TIME;
-      
-      // अगर कैश्ड डेटा है और forceFresh नहीं है और कैश स्टेल नहीं है
-      if (cachedItems && !forceFresh && !isStale) {
-        // कैश्ड डेटा का उपयोग करें
+      // Use cached data if available and not forcing fresh data
+      if (cachedItems && !forceFresh) {
         setItems(JSON.parse(cachedItems));
-        setLastRefreshTime(parseInt(cachedTimestamp, 10));
         
-        // बैकग्राउंड में ताज़ा डेटा फेच करें
+        // Fetch fresh data in background
         fetchFreshItemsInBackground();
-      } else {
-        // ताज़ा डेटा फेच करें
-        await fetchFreshItems();
+        setLoading(false);
+        return;
       }
+      
+      // If no valid cache or force fresh, fetch new data
+      setLoading(true);
+      await fetchFreshItems();
     } catch (err) {
-      // अगर एरर है और कैश्ड डेटा उपलब्ध है, तो कैश्ड डेटा का उपयोग करें
+      // Try to use cached data as fallback if API fails
       const cachedItems = localStorage.getItem('inventoryItems');
+      
       if (cachedItems) {
         setItems(JSON.parse(cachedItems));
+        console.log("Using cached inventory items after fetch error");
       } else {
         setError('Server error. Please try again later.');
       }
@@ -84,56 +74,54 @@ const [saveLoading, setSaveLoading] = useState(false);
     }
   };
 
-  // बैकग्राउंड में ताज़ा डेटा फेच करने का फंक्शन
-  const fetchFreshItemsInBackground = async () => {
-    try {
-      // तीनों प्रकार के इन्वेंटरी आइटम्स को पैरेलल में फेच करें
-      const [serializedResponse, genericResponse, servicesResponse] = await Promise.all([
-        fetch(`${SummaryApi.getInventoryByType.url}/serialized-product`, {
-          method: SummaryApi.getInventoryByType.method,
-          credentials: 'include'
-        }),
-        fetch(`${SummaryApi.getInventoryByType.url}/generic-product`, {
-          method: SummaryApi.getInventoryByType.method,
-          credentials: 'include'
-        }),
-        fetch(`${SummaryApi.getInventoryByType.url}/service`, {
-          method: SummaryApi.getInventoryByType.method,
-          credentials: 'include'
-        })
-      ]);
-      
-      // सभी रिस्पांस को पार्स करें
-      const [serializedData, genericData, servicesData] = await Promise.all([
-        serializedResponse.json(),
-        genericResponse.json(),
-        servicesResponse.json()
-      ]);
-      
-      // सभी आइटम्स को कम्बाइन करें और टाइप प्रॉपर्टी जोड़ें
-      const combinedItems = [
-        ...(serializedData.success ? serializedData.items.map(item => ({ ...item, itemType: 'serialized' })) : []),
-        ...(genericData.success ? genericData.items.map(item => ({ ...item, itemType: 'generic' })) : []),
-        ...(servicesData.success ? servicesData.items.map(item => ({ ...item, itemType: 'service' })) : [])
-      ];
-      
-      // नया टाइमस्टैम्प सेट करें
-      const newTimestamp = new Date().getTime();
-      
-      // डेटा को localStorage में सेव करें
-      localStorage.setItem('inventoryItems', JSON.stringify(combinedItems));
-      localStorage.setItem('inventoryItemsTimestamp', newTimestamp.toString());
-      
-      // अगर नया डेटा पुराने से अलग है, तो UI अपडेट करें
-      if (JSON.stringify(combinedItems) !== JSON.stringify(items)) {
-        setItems(combinedItems);
-        setLastRefreshTime(newTimestamp);
-        console.log("Inventory items updated in background");
-      }
-    } catch (err) {
-      console.error('Error fetching inventory items in background:', err);
+ // बैकग्राउंड में ताज़ा डेटा फेच करने का फंक्शन
+const fetchFreshItemsInBackground = async () => {
+  try {
+    // तीनों प्रकार के इन्वेंटरी आइटम्स को पैरेलल में फेच करें
+    const [serializedResponse, genericResponse, servicesResponse] = await Promise.all([
+      fetch(`${SummaryApi.getInventoryByType.url}/serialized-product`, {
+        method: SummaryApi.getInventoryByType.method,
+        credentials: 'include'
+      }),
+      fetch(`${SummaryApi.getInventoryByType.url}/generic-product`, {
+        method: SummaryApi.getInventoryByType.method,
+        credentials: 'include'
+      }),
+      fetch(`${SummaryApi.getInventoryByType.url}/service`, {
+        method: SummaryApi.getInventoryByType.method,
+        credentials: 'include'
+      })
+    ]);
+    
+    // सभी रिस्पांस को पार्स करें
+    const [serializedData, genericData, servicesData] = await Promise.all([
+      serializedResponse.json(),
+      genericResponse.json(),
+      servicesResponse.json()
+    ]);
+    
+    // सभी आइटम्स को कम्बाइन करें और टाइप प्रॉपर्टी जोड़ें
+    const combinedItems = [
+      ...(serializedData.success ? serializedData.items.map(item => ({ ...item, itemType: 'serialized' })) : []),
+      ...(genericData.success ? genericData.items.map(item => ({ ...item, itemType: 'generic' })) : []),
+      ...(servicesData.success ? servicesData.items.map(item => ({ ...item, itemType: 'service' })) : [])
+    ];
+    
+    // नया टाइमस्टैम्प सेट करें
+    const newTimestamp = new Date().getTime();
+    
+    // डेटा को localStorage में सेव करें
+    localStorage.setItem('inventoryItems', JSON.stringify(combinedItems));
+    
+    // अगर नया डेटा पुराने से अलग है, तो UI अपडेट करें
+    if (JSON.stringify(combinedItems) !== JSON.stringify(items)) {
+      setItems(combinedItems);
+      setLastRefreshTime(newTimestamp);
     }
-  };
+  } catch (err) {
+    console.error('Error fetching inventory items in background:', err);
+  }
+};
 
 // ताज़ा डेटा फेच करने का मुख्य फंक्शन
 const fetchFreshItems = async () => {
@@ -175,7 +163,6 @@ const fetchFreshItems = async () => {
     setItems(combinedItems);
     setLastRefreshTime(newTimestamp);
     localStorage.setItem('inventoryItems', JSON.stringify(combinedItems));
-    localStorage.setItem('inventoryItemsTimestamp', newTimestamp.toString());
   } catch (err) {
     throw err; // पेरेंट try-catch ब्लॉक में एरर को हैंडल करने दें
   }
@@ -224,7 +211,6 @@ const handleRefresh = () => {
 
       // localStorage से कैश को हटा दें
       localStorage.removeItem('inventoryItems');
-      localStorage.removeItem('inventoryItemsTimestamp');
       fetchAllItems(); // Refresh the data
       setIsAddStockModalOpen(false);
     } catch (err) {
@@ -281,7 +267,6 @@ const handleRefresh = () => {
             
             // localStorage में भी अपडेट करें
             localStorage.setItem('inventoryItems', JSON.stringify(updatedItems));
-            localStorage.setItem('inventoryItemsTimestamp', new Date().getTime().toString());
             
             showNotification('success', 'Item deleted successfully');
           } else {

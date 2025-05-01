@@ -8,34 +8,95 @@ const TransferHistoryTable = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [filterType, setFilterType] = useState('all');
+  const [lastRefreshTime, setLastRefreshTime] = useState(0);
   
   // Fetch transfer history
   useEffect(() => {
     fetchTransferHistory();
   }, []);
   
-  const fetchTransferHistory = async () => {
+  const fetchTransferHistory = async (forceFresh = false) => {
     try {
-      setLoading(true);
-      const response = await fetch(SummaryApi.getTransferHistory.url, {
-        method: SummaryApi.getTransferHistory.method,
-        credentials: 'include'
-      });
+      // Check for cached data
+      const cachedTransfers = localStorage.getItem('transferHistoryData');
       
-      const data = await response.json();
-      
-      if (data.success) {
-        setTransfers(data.data);
-      } else {
-        setError(data.message || 'Failed to load transfer history');
+      // Use cached data if available and not forcing fresh data
+      if (!forceFresh && cachedTransfers) {
+        setTransfers(JSON.parse(cachedTransfers));
+        
+        // Fetch fresh data in background
+        fetchFreshTransferHistoryInBackground();
+        setLoading(false);
+        return;
       }
+      
+      // If no valid cache or force fresh, fetch new data
+      setLoading(true);
+      await fetchFreshTransferHistory();
     } catch (err) {
-      setError('Error loading transfer history. Please try again.');
-      console.error('Error fetching transfer history:', err);
+      // Try to use cached data as fallback if API fails
+      const cachedTransfers = localStorage.getItem('transferHistoryData');
+      
+      if (cachedTransfers) {
+        setTransfers(JSON.parse(cachedTransfers));
+        console.log("Using cached transfer history data after fetch error");
+      } else {
+        setError('Error loading transfer history. Please try again.');
+        console.error('Error fetching transfer history:', err);
+      }
     } finally {
       setLoading(false);
     }
   };
+
+  // Function to fetch fresh data in background
+const fetchFreshTransferHistoryInBackground = async () => {
+  try {
+    await fetchFreshTransferHistory(true);
+  } catch (err) {
+    console.error('Error fetching transfer history in background:', err);
+  }
+};
+
+// Function to fetch fresh data directly from API
+const fetchFreshTransferHistory = async (isBackground = false) => {
+  if (!isBackground) {
+    setLoading(true);
+  }
+  
+  try {
+    const response = await fetch(SummaryApi.getTransferHistory.url, {
+      method: SummaryApi.getTransferHistory.method,
+      credentials: 'include'
+    });
+    
+    const data = await response.json();
+    
+    if (data.success) {
+      setTransfers(data.data);
+      
+      // Cache the transfer history data
+      localStorage.setItem('transferHistoryData', JSON.stringify(data.data));
+      
+      // Update last refresh time for UI
+      setLastRefreshTime(new Date().getTime());
+    } else {
+      if (!isBackground) {
+        setError(data.message || 'Failed to load transfer history');
+      }
+    }
+  } catch (err) {
+    if (!isBackground) {
+      setError('Error loading transfer history. Please try again.');
+      console.error('Error fetching transfer history:', err);
+    }
+    throw err;
+  } finally {
+    if (!isBackground) {
+      setLoading(false);
+    }
+  }
+};
   
   // Format date
   const formatDate = (dateString) => {

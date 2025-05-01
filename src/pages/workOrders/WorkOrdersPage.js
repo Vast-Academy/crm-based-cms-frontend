@@ -28,48 +28,115 @@ const WorkOrdersPage = () => {
   const [showAssignModal, setShowAssignModal] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [expandedRow, setExpandedRow] = useState(null);
+  const [lastRefreshTime, setLastRefreshTime] = useState(0);
   
-  const fetchWorkOrders = async () => {
+  const fetchWorkOrders = async (forceFresh = false) => {
     try {
+      // Check for cached data
+      const cachedWorkOrders = localStorage.getItem('workOrdersData');
+      
+      // Use cached data if available and not forcing fresh data
+      if (!forceFresh && cachedWorkOrders) {
+        const parsedWorkOrders = JSON.parse(cachedWorkOrders);
+        setWorkOrders(parsedWorkOrders);
+        applyFilters(parsedWorkOrders, categoryFilter);
+        // console.log("Using cached work orders data");
+        
+        // Fetch fresh data in background
+        fetchFreshWorkOrdersInBackground();
+        setLoading(false);
+        return;
+      }
+      
+      // If no valid cache or force fresh, fetch new data
       setLoading(true);
-      setError(null);
-      
-      // Include branch parameter if admin has selected a branch
-      let branchParam = '';
-      if (user.role === 'admin' && user.selectedBranch) {
-        branchParam = `?branch=${user.selectedBranch}`;
-      }
-      
-      // Always filter for pending status only
-      const statusParam = branchParam ? '&' : '?';
-      branchParam += `${statusParam}status=pending`;
-      
-      const response = await fetch(`${SummaryApi.getWorkOrders.url}${branchParam}`, {
-        method: SummaryApi.getWorkOrders.method,
-        credentials: 'include'
-      });
-      
-      const data = await response.json();
-      console.log('Work orders from API:', data.data);
-      
-      if (data.success) {
-        // Only keep pending orders
-        const pendingOrders = data.data.filter(order => 
-          order.status === 'pending' || 
-          order.status === 'Pending'
-        );
-        setWorkOrders(pendingOrders);
-        applyFilters(pendingOrders, categoryFilter);
-      } else {
-        setError(data.message || 'Failed to fetch work orders');
-      }
+      await fetchFreshWorkOrders();
     } catch (err) {
-      setError('Server error. Please try again later.');
-      console.error('Error fetching work orders:', err);
+      // Try to use cached data as fallback if API fails
+      const cachedWorkOrders = localStorage.getItem('workOrdersData');
+      
+      if (cachedWorkOrders) {
+        const parsedWorkOrders = JSON.parse(cachedWorkOrders);
+        setWorkOrders(parsedWorkOrders);
+        applyFilters(parsedWorkOrders, categoryFilter);
+        console.log("Using cached work orders data after fetch error");
+      } else {
+        setError('Server error. Please try again later.');
+        console.error('Error fetching work orders:', err);
+      }
     } finally {
       setLoading(false);
     }
   };
+
+  // Function to fetch fresh data in background
+const fetchFreshWorkOrdersInBackground = async () => {
+  try {
+    await fetchFreshWorkOrders(true);
+  } catch (err) {
+    console.error('Error fetching work orders in background:', err);
+  }
+};
+
+// Function to fetch fresh data directly from API
+const fetchFreshWorkOrders = async (isBackground = false) => {
+  if (!isBackground) {
+    setLoading(true);
+    setError(null);
+  }
+  
+  try {
+    // Include branch parameter if admin has selected a branch
+    let branchParam = '';
+    if (user.role === 'admin' && user.selectedBranch) {
+      branchParam = `?branch=${user.selectedBranch}`;
+    }
+    
+    // Always filter for pending status only
+    const statusParam = branchParam ? '&' : '?';
+    branchParam += `${statusParam}status=pending`;
+    
+    const response = await fetch(`${SummaryApi.getWorkOrders.url}${branchParam}`, {
+      method: SummaryApi.getWorkOrders.method,
+      credentials: 'include'
+    });
+    
+    const data = await response.json();
+    
+    if (data.success) {
+      // Only keep pending orders
+      const pendingOrders = data.data.filter(order => 
+        order.status === 'pending' || 
+        order.status === 'Pending'
+      );
+      
+      setWorkOrders(pendingOrders);
+      if (!isBackground) {
+        applyFilters(pendingOrders, categoryFilter);
+      }
+      
+      // Cache the work orders
+      localStorage.setItem('workOrdersData', JSON.stringify(pendingOrders));
+      
+      // Update last refresh time
+      setLastRefreshTime(new Date().getTime());
+    } else {
+      if (!isBackground) {
+        setError(data.message || 'Failed to fetch work orders');
+      }
+    }
+  } catch (err) {
+    if (!isBackground) {
+      setError('Server error. Please try again later.');
+      console.error('Error fetching work orders:', err);
+    }
+    throw err;
+  } finally {
+    if (!isBackground) {
+      setLoading(false);
+    }
+  }
+};
   
   useEffect(() => {
     fetchWorkOrders();
@@ -87,22 +154,23 @@ const WorkOrdersPage = () => {
   
   const handleAssignmentSuccess = (updatedOrder) => {
     // Remove the assigned order from the current list
-    setWorkOrders(prevOrders => {
-      return prevOrders.filter(order => 
-        !(order.orderId === updatedOrder.orderId && order.customerId === updatedOrder.customerId)
-      );
-    });
+    const updatedOrders = workOrders.filter(order => 
+      !(order.orderId === updatedOrder.orderId && order.customerId === updatedOrder.customerId)
+    );
+    
+    setWorkOrders(updatedOrders);
     
     // Apply filters again to update the filtered list
-    applyFilters(workOrders.filter(order => 
-      !(order.orderId === updatedOrder.orderId && order.customerId === updatedOrder.customerId)
-    ), categoryFilter);
+    applyFilters(updatedOrders, categoryFilter);
+    
+    // Update localStorage with the new orders list
+    localStorage.setItem('workOrdersData', JSON.stringify(updatedOrders));
     
     // Close modal
     setShowAssignModal(false);
     
     // Fetch fresh data to ensure everything is up-to-date
-    fetchWorkOrders();
+    fetchFreshWorkOrders();
   };
   
   // Apply filters and search to the work orders

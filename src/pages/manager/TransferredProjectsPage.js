@@ -5,6 +5,8 @@ import LoadingSpinner from '../../components/LoadingSpinner';
 import { useAuth } from '../../context/AuthContext';
 import TransferProjectModal from './TransferProjectModal';
 
+const TRANSFERRED_PROJECTS_CACHE_KEY = 'transferredProjectsData';
+
 const TransferredProjectsPage = () => {
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
@@ -16,44 +18,58 @@ const TransferredProjectsPage = () => {
   const [selectedProject, setSelectedProject] = useState(null);
   const [expandedProject, setExpandedProject] = useState(null);
   const [approvedProjects, setApprovedProjects] = useState([]);
-  
+
   // Fetch transferred projects
-  const fetchTransferredProjects = async () => {
-    try {
-      setLoading(true);
-      setError(null);
+  const fetchTransferredProjects = async (forceFresh = false) => {
+  try {
+    setLoading(true);
+    setError(null);
+    
+    // Check if cached data exists and forceFresh is not true
+    const cachedData = localStorage.getItem(TRANSFERRED_PROJECTS_CACHE_KEY);
+    
+    if (!forceFresh && cachedData) {
+      const parsedData = JSON.parse(cachedData);
       
-      // Get branch parameter if needed
-      let branchParam = '';
-      if (user.selectedBranch) {
-        branchParam = `?branch=${user.selectedBranch}`;
-      }
-      
-      // Add status parameter for transferring
-      const statusParam = branchParam ? '&status=transferring' : '?status=transferring';
-      
-      // Fetch manager projects with transferring status
-      const response = await fetch(`${SummaryApi.getManagerProjects.url}${branchParam}${statusParam}`, {
-        method: 'GET',
-        credentials: 'include'
-      });
-      
-      const data = await response.json();
-      
-      if (data.success) {
-        // Store transferred projects
-        setTransferredProjects(data.data);
-        setFilteredProjects(data.data);
-      } else {
-        setError(data.message || 'Failed to fetch transferred projects');
-      }
-    } catch (err) {
-      setError('Server error. Please try again later.');
-      console.error('Error fetching transferred projects:', err);
-    } finally {
-      setLoading(false);
+      setTransferredProjects(parsedData); // Set the cached projects
+      setFilteredProjects(parsedData); // Set the filtered projects
+      setLoading(false); // End loading
+      return; // No need to fetch from API
     }
-  };
+
+    // Fetch fresh data from API if no cache or forceFresh is true
+    let branchParam = '';
+    if (user.selectedBranch) {
+      branchParam = `?branch=${user.selectedBranch}`;
+    }
+    
+    const statusParam = branchParam ? '&status=transferring' : '?status=transferring';
+    
+    const response = await fetch(`${SummaryApi.getManagerProjects.url}${branchParam}${statusParam}`, {
+      method: 'GET',
+      credentials: 'include'
+    });
+
+    const data = await response.json();
+
+    if (data.success) {
+      // Save the fetched data to state
+      setTransferredProjects(data.data);
+      setFilteredProjects(data.data);
+
+      // Cache the fetched data in localStorage
+      localStorage.setItem(TRANSFERRED_PROJECTS_CACHE_KEY, JSON.stringify(data.data));
+    } else {
+      setError(data.message || 'Failed to fetch transferred projects');
+    }
+  } catch (err) {
+    setError('Server error. Please try again later.');
+    console.error('Error fetching transferred projects:', err);
+  } finally {
+    setLoading(false);
+  }
+};
+
   
   // Initial data fetch
   useEffect(() => {

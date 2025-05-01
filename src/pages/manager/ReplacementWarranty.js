@@ -14,6 +14,7 @@ const ReplacementWarranty = () => {
   const [replacements, setReplacements] = useState([]);
   const [loadingReplacements, setLoadingReplacements] = useState(false);
   const [expandedRowId, setExpandedRowId] = useState(null);
+  const [lastRefreshTime, setLastRefreshTime] = useState(0);
 
   // Fetch warranty replacements on component mount
   useEffect(() => {
@@ -140,29 +141,86 @@ const ReplacementWarranty = () => {
   };
   
   // Fetch warranty replacements
-  const fetchWarrantyReplacements = async () => {
+  const fetchWarrantyReplacements = async (forceFresh = false) => {
     try {
-      setLoadingReplacements(true);
+      // Check for cached data
+      const cachedReplacements = localStorage.getItem('warrantyReplacementsData');
       
-      const response = await fetch(SummaryApi.getAllWarrantyReplacements.url, {
-        method: 'GET',
-        credentials: 'include'
-      });
-      
-      const data = await response.json();
-      
-      if (data.success) {
-        setReplacements(data.data);
-      } else {
-        console.error('Failed to fetch warranty replacements:', data.message);
+      // Use cached data if available and not forcing fresh data
+      if (!forceFresh && cachedReplacements) {
+        setReplacements(JSON.parse(cachedReplacements));
+        
+        // Fetch fresh data in background
+        fetchFreshReplacementsInBackground();
+        setLoadingReplacements(false);
+        return;
       }
+      
+      // If no valid cache or force fresh, fetch new data
+      setLoadingReplacements(true);
+      await fetchFreshReplacements();
     } catch (err) {
-      console.error('Error fetching warranty replacements:', err);
+      // Try to use cached data as fallback if API fails
+      const cachedReplacements = localStorage.getItem('warrantyReplacementsData');
+      
+      if (cachedReplacements) {
+        setReplacements(JSON.parse(cachedReplacements));
+        console.log("Using cached warranty replacements data after fetch error");
+      } else {
+        console.error('Error fetching warranty replacements:', err);
+      }
     } finally {
       setLoadingReplacements(false);
     }
   };
 
+  // Function to fetch fresh data in background
+const fetchFreshReplacementsInBackground = async () => {
+  try {
+    await fetchFreshReplacements(true);
+  } catch (err) {
+    console.error('Error fetching warranty replacements in background:', err);
+  }
+};
+
+// Function to fetch fresh data directly from API
+const fetchFreshReplacements = async (isBackground = false) => {
+  if (!isBackground) {
+    setLoadingReplacements(true);
+  }
+  
+  try {
+    const response = await fetch(SummaryApi.getAllWarrantyReplacements.url, {
+      method: 'GET',
+      credentials: 'include'
+    });
+    
+    const data = await response.json();
+    
+    if (data.success) {
+      setReplacements(data.data);
+      
+      // Cache the replacements data
+      localStorage.setItem('warrantyReplacementsData', JSON.stringify(data.data));
+      
+      // Update last refresh time for UI
+      setLastRefreshTime(new Date().getTime());
+    } else {
+      if (!isBackground) {
+        console.error('Failed to fetch warranty replacements:', data.message);
+      }
+    }
+  } catch (err) {
+    if (!isBackground) {
+      console.error('Error fetching warranty replacements:', err);
+    }
+    throw err;
+  } finally {
+    if (!isBackground) {
+      setLoadingReplacements(false);
+    }
+  }
+};
   // Handle viewing details for a replacement
   const handleViewDetails = async (replacement) => {
     try {
@@ -222,8 +280,11 @@ const ReplacementWarranty = () => {
         setReplacementData(null);
         setProductDetails(null);
         
+         // Clear cache since data has changed
+        localStorage.removeItem('warrantyReplacementsData');
+        
         // Refresh the replacements list
-        fetchWarrantyReplacements();
+        fetchFreshReplacements();
         
         // Show success message
         alert('Product replacement completed successfully!');
@@ -260,8 +321,11 @@ const handleUpdateWarranty = async (updateData) => {
       setProductDetails(null);
       setReplacementData(null);
       
+      // Clear cache since data has changed
+      localStorage.removeItem('warrantyReplacementsData');
+
       // Refresh the replacements list
-      fetchWarrantyReplacements();
+      fetchFreshReplacements();
       
       // Clear the search
       setSearchQuery('');
@@ -306,9 +370,12 @@ const handleUpdateWarranty = async (updateData) => {
         // Reset states
         setProductDetails(null);
         setReplacementData(null);
+
+        // Clear cache since data has changed
+      localStorage.removeItem('warrantyReplacementsData');
         
         // Refresh the replacements list
-        fetchWarrantyReplacements();
+        fetchFreshReplacements();
         
         // Clear the search
         setSearchQuery('');
@@ -340,7 +407,7 @@ const handleUpdateWarranty = async (updateData) => {
     setError('');
     setProductDetails(null);
     setReplacementData(null);
-    fetchWarrantyReplacements();
+    fetchWarrantyReplacements(true);
   };
   
   // Handle modal close

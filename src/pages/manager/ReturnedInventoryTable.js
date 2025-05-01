@@ -12,34 +12,98 @@ const ReturnedInventoryTable = () => {
   const [expandedRowId, setExpandedRowId] = useState(null);
   const [confirmModalOpen, setConfirmModalOpen] = useState(false);
   const [selectedReturn, setSelectedReturn] = useState(null);
+  const [lastRefreshTime, setLastRefreshTime] = useState(0);
 
   // Fetch returned inventory
   useEffect(() => {
     fetchReturnedInventory();
   }, []);
 
-  const fetchReturnedInventory = async () => {
+  const fetchReturnedInventory = async (forceFresh = false) => {
     try {
-      setLoading(true);
-      const response = await fetch(SummaryApi.getReturnedInventory.url, {
-        method: SummaryApi.getReturnedInventory.method,
-        credentials: 'include'
-      });
+      // Check for cached data
+      const cachedReturnedItems = localStorage.getItem('returnedInventoryData');
       
-      const data = await response.json();
-      
-      if (data.success) {
-        setReturnedItems(data.data);
-      } else {
-        setError(data.message || 'Failed to load returned inventory');
+      // Use cached data if available and not forcing fresh data
+      if (!forceFresh && cachedReturnedItems) {
+        const parsedReturnedItems = JSON.parse(cachedReturnedItems);
+        setReturnedItems(parsedReturnedItems);
+        
+        // Fetch fresh data in background
+        fetchFreshReturnedInventoryInBackground();
+        setLoading(false);
+        return;
       }
+      
+      // If no valid cache or force fresh, fetch new data
+      setLoading(true);
+      await fetchFreshReturnedInventory();
     } catch (err) {
-      setError('Error loading returned inventory. Please try again.');
-      console.error('Error fetching returned inventory:', err);
+      // Try to use cached data as fallback if API fails
+      const cachedReturnedItems = localStorage.getItem('returnedInventoryData');
+      
+      if (cachedReturnedItems) {
+        const parsedReturnedItems = JSON.parse(cachedReturnedItems);
+        setReturnedItems(parsedReturnedItems);
+        console.log("Using cached returned inventory data after fetch error");
+      } else {
+        setError('Error loading returned inventory. Please try again.');
+        console.error('Error fetching returned inventory:', err);
+      }
     } finally {
       setLoading(false);
     }
   };
+
+  // Function to fetch fresh data in background
+const fetchFreshReturnedInventoryInBackground = async () => {
+  try {
+    await fetchFreshReturnedInventory(true);
+  } catch (err) {
+    console.error('Error fetching returned inventory in background:', err);
+  }
+};
+
+// Function to fetch fresh data directly from API
+const fetchFreshReturnedInventory = async (isBackground = false) => {
+  if (!isBackground) {
+    setLoading(true);
+    setError(null);
+  }
+  
+  try {
+    const response = await fetch(SummaryApi.getReturnedInventory.url, {
+      method: SummaryApi.getReturnedInventory.method,
+      credentials: 'include'
+    });
+    
+    const data = await response.json();
+    
+    if (data.success) {
+      setReturnedItems(data.data);
+      
+      // Cache the returned inventory data
+      localStorage.setItem('returnedInventoryData', JSON.stringify(data.data));
+      
+      // Update last refresh time for UI
+      setLastRefreshTime(new Date().getTime());
+    } else {
+      if (!isBackground) {
+        setError(data.message || 'Failed to load returned inventory');
+      }
+    }
+  } catch (err) {
+    if (!isBackground) {
+      setError('Error loading returned inventory. Please try again.');
+      console.error('Error fetching returned inventory:', err);
+    }
+    throw err;
+  } finally {
+    if (!isBackground) {
+      setLoading(false);
+    }
+  }
+};
 
   // Format date
   const formatDate = (dateString) => {

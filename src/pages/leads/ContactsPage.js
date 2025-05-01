@@ -41,7 +41,6 @@ const ContactsPage = () => {
   const [openInConvertMode, setOpenInConvertMode] = useState(false);
   const [showComplaintModal, setShowComplaintModal] = useState(false);
   const [lastRefreshTime, setLastRefreshTime] = useState(0);
-const CACHE_STALENESS_TIME = 15 * 60 * 1000; // 15 मिनट
 
   // Add a handler function for complaint success
 const handleComplaintSuccess = (data) => {
@@ -56,54 +55,50 @@ const handleComplaintSuccess = (data) => {
   };
   
   // Fetch contacts function
-  const fetchContacts = async (forceFresh = false) => {
-    try {
-      // कैश्ड डेटा चेक करें
-      const cachedContacts = localStorage.getItem('contactsData');
-      const cachedTimestamp = localStorage.getItem('contactsDataTimestamp');
-      const currentTime = new Date().getTime();
+const fetchContacts = async (forceFresh = false) => {
+  try {
+    // कैश्ड डेटा चेक करें
+    const cachedContacts = localStorage.getItem('contactsData');
+    
+    // कैश उपलब्ध है और फ्रेश डेटा फोर्स नहीं किया गया है तो कैश उपयोग करें
+    // (timestamp check हटा दें)
+    if (!forceFresh && cachedContacts) {
+      const parsedContacts = JSON.parse(cachedContacts);
+      setContacts(parsedContacts);
+      applyFilters(parsedContacts);
+      // console.log("Using cached contacts data");
       
-      // वैलिड कैश है और फ्रेश डेटा फोर्स नहीं किया गया है तो कैश उपयोग करें
-      if (!forceFresh && cachedContacts && cachedTimestamp && 
-          (currentTime - parseInt(cachedTimestamp) < CACHE_STALENESS_TIME)) {
-        
-        const parsedContacts = JSON.parse(cachedContacts);
-        setContacts(parsedContacts);
-        applyFilters(parsedContacts);
-        console.log("Using cached contacts data");
-        
-        // बैकग्राउंड में फ्रेश डेटा फेच करें
-        fetchFreshContactsInBackground();
-        setLoading(false);
-        return;
-      }
-      
-      // अगर कैश नहीं है या एक्सपायर हो गया है तो फ्रेश डेटा फेच करें
-      setLoading(true);
-      await fetchFreshContacts();
-    } catch (err) {
-      // एरर होने पर कैश डेटा का उपयोग करें
-      const cachedContacts = localStorage.getItem('contactsData');
-      
-      if (cachedContacts) {
-        const parsedContacts = JSON.parse(cachedContacts);
-        setContacts(parsedContacts);
-        applyFilters(parsedContacts);
-        console.log("Using cached contacts data after fetch error");
-      } else {
-        setError('Server error. Please try again later.');
-        console.error('Error fetching contacts:', err);
-      }
-    } finally {
+      // बैकग्राउंड में फ्रेश डेटा फेच करें
+      fetchFreshContactsInBackground();
       setLoading(false);
+      return;
     }
-  };
+    
+    // अगर कैश नहीं है या फ्रेश डेटा फोर्स किया गया है तो फ्रेश डेटा फेच करें
+    setLoading(true);
+    await fetchFreshContacts();
+  } catch (err) {
+    // एरर होने पर कैश डेटा का उपयोग करें
+    const cachedContacts = localStorage.getItem('contactsData');
+    
+    if (cachedContacts) {
+      const parsedContacts = JSON.parse(cachedContacts);
+      setContacts(parsedContacts);
+      applyFilters(parsedContacts);
+      console.log("Using cached contacts data after fetch error");
+    } else {
+      setError('Server error. Please try again later.');
+      console.error('Error fetching contacts:', err);
+    }
+  } finally {
+    setLoading(false);
+  }
+};
   
   // बैकग्राउंड फेचिंग फंक्शन
   const fetchFreshContactsInBackground = async () => {
     try {
       await fetchFreshContacts(true);
-      console.log("Contacts data updated in background");
     } catch (err) {
       console.error('Error fetching contacts in background:', err);
     }
@@ -165,7 +160,6 @@ const handleComplaintSuccess = (data) => {
       
       // कॉन्टैक्ट्स डेटा कैश करें
       localStorage.setItem('contactsData', JSON.stringify(combinedContacts));
-      localStorage.setItem('contactsDataTimestamp', new Date().getTime().toString());
       
       // रिफ्रेश टाइम अपडेट करें
       setLastRefreshTime(new Date().getTime());
@@ -318,7 +312,6 @@ const handleFilterChange = (type, status = 'all') => {
   
   // कैश अपडेट करें
   localStorage.setItem('contactsData', JSON.stringify(updatedContacts));
-  localStorage.setItem('contactsDataTimestamp', new Date().getTime().toString());
 }
 
   // LeadDetailModal से लीड अपडेट हैंडलिंग
