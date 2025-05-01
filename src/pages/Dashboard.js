@@ -61,13 +61,9 @@ const Dashboard = () => {
       
       // Check for cached data
       const cachedDashboardData = localStorage.getItem('dashboardData');
-      const cachedTimestamp = localStorage.getItem('dashboardDataTimestamp');
-      const currentTime = new Date().getTime();
       
-      // Use cached data if it's valid and not forcing fresh data
-      if (!forceFresh && cachedDashboardData && cachedTimestamp && 
-          (currentTime - parseInt(cachedTimestamp) < CACHE_STALENESS_TIME)) {
-        
+      // Use cached data if available and not forcing fresh data
+      if (!forceFresh && cachedDashboardData) {
         const parsedData = JSON.parse(cachedDashboardData);
         
         // Set all the states from cache
@@ -78,7 +74,7 @@ const Dashboard = () => {
         
         console.log("Using cached dashboard data");
         
-        // Fetch fresh data in background
+        // Fetch fresh data in background without updating loading state
         fetchFreshDashboardDataInBackground();
         
         setLoading(false);
@@ -111,7 +107,7 @@ const Dashboard = () => {
   const fetchFreshDashboardDataInBackground = async () => {
     try {
       // Perform all API calls but don't update loading state
-      await fetchFreshDashboardData(true);
+      await fetchFreshDashboardData(true); // true means this is a background fetch
       
       console.log("Dashboard data updated in background");
     } catch (err) {
@@ -540,7 +536,7 @@ const Dashboard = () => {
       };
       
       localStorage.setItem('dashboardData', JSON.stringify(dashboardDataToCache));
-      localStorage.setItem('dashboardDataTimestamp', new Date().getTime().toString());
+      // localStorage.setItem('dashboardDataTimestamp', new Date().getTime().toString());
       
     } catch (err) {
       console.error('Error fetching fresh dashboard data:', err);
