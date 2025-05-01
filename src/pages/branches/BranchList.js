@@ -22,7 +22,7 @@ const BranchList = () => {
   const [lastRefreshTime, setLastRefreshTime] = useState(0);
   
   // Cache staleness time - 15 minutes
-  const CACHE_STALENESS_TIME = 15 * 60 * 1000;
+  // const CACHE_STALENESS_TIME = 15 * 60 * 1000;
   
   useEffect(() => {
     fetchBranchesWithData();
@@ -32,21 +32,18 @@ const BranchList = () => {
     try {
       // Check for cached data
       const cachedBranchesData = localStorage.getItem('branchesWithData');
-      const cachedTimestamp = localStorage.getItem('branchesWithDataTimestamp');
-      const currentTime = new Date().getTime();
       
       // Use cached data if it's valid and not forcing fresh data
-      if (!forceFresh && cachedBranchesData && cachedTimestamp && 
-          (currentTime - parseInt(cachedTimestamp) < CACHE_STALENESS_TIME)) {
-        
+      if (!forceFresh && cachedBranchesData) {
         const parsedData = JSON.parse(cachedBranchesData);
         setBranches(parsedData.branches || []);
         setBranchData(parsedData.branchData || {});
         
-        console.log("Using cached branches data");
+        // console.log("Using cached branches data");
         
         // Fetch fresh data in background
         fetchFreshBranchesInBackground();
+        setLoading(false);
         return;
       }
       
@@ -75,7 +72,7 @@ const BranchList = () => {
   const fetchFreshBranchesInBackground = async () => {
     try {
       await fetchFreshBranchesData(true);
-      console.log("Branches data updated in background");
+      // console.log("Branches data updated in background");
     } catch (err) {
       console.error('Error fetching branches data in background:', err);
     }
@@ -267,7 +264,7 @@ const BranchList = () => {
       };
       
       localStorage.setItem('branchesWithData', JSON.stringify(branchesWithData));
-      localStorage.setItem('branchesWithDataTimestamp', new Date().getTime().toString());
+      // localStorage.setItem('branchesWithDataTimestamp', new Date().getTime().toString());
       
       // Update last refresh time
       setLastRefreshTime(new Date().getTime());

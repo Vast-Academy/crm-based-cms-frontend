@@ -72,7 +72,6 @@ const Dashboard = () => {
         setBranchStats(parsedData.branchStats || []);
         setTechnicianStats(parsedData.technicianStats || []);
         
-        console.log("Using cached dashboard data");
         
         // Fetch fresh data in background without updating loading state
         fetchFreshDashboardDataInBackground();
@@ -109,7 +108,6 @@ const Dashboard = () => {
       // Perform all API calls but don't update loading state
       await fetchFreshDashboardData(true); // true means this is a background fetch
       
-      console.log("Dashboard data updated in background");
     } catch (err) {
       console.error('Error fetching dashboard data in background:', err);
     }
@@ -134,7 +132,7 @@ const Dashboard = () => {
           const branchData = await branchResponse.json();
           if (branchData.success) {
             allBranches = branchData.data || [];
-            console.log("Fetched branches:", allBranches);
+            // console.log("Fetched branches:", allBranches);
           }
         } catch (err) {
           console.error('Error fetching branches:', err);
@@ -339,7 +337,7 @@ const Dashboard = () => {
             };
           });
           
-          console.log("Projects data:", projectsData.data.length);
+          // console.log("Projects data:", projectsData.data.length);
           
           // Loop through all projects and count them by branch and status
           projectsData.data.forEach(project => {
@@ -347,7 +345,7 @@ const Dashboard = () => {
             const branchId = project.branch && project.branch._id;
             
             if (branchId && branchStatsMap[branchId]) {
-              console.log(`Found project for branch ${branchId}, status: ${project.status}`);
+              // console.log(`Found project for branch ${branchId}, status: ${project.status}`);
               
               // Update the appropriate counter based on project status
               if (project.status === 'assigned') {
@@ -370,7 +368,7 @@ const Dashboard = () => {
           
           // Convert the map to an array for rendering
           branchStatsArray = Object.values(branchStatsMap);
-          console.log("Branch stats array:", branchStatsArray);
+          // console.log("Branch stats array:", branchStatsArray);
           setBranchStats(branchStatsArray);
         }
       } else {

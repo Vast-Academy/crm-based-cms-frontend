@@ -43,15 +43,11 @@ const TechnicianUsers = () => {
     try {
       // Check for cached data
       const cachedTechnicians = localStorage.getItem('technicianUsersData');
-      const cachedTimestamp = localStorage.getItem('technicianUsersDataTimestamp');
-      const currentTime = new Date().getTime();
       
-      // Use cached data if it's valid and not forcing fresh data
-      if (!forceFresh && cachedTechnicians && cachedTimestamp && 
-          (currentTime - parseInt(cachedTimestamp) < CACHE_STALENESS_TIME)) {
-        
+      // Use cached data if available and not forcing fresh data
+      // (timestamp check को हटा दें)
+      if (!forceFresh && cachedTechnicians) {
         setTechnicians(JSON.parse(cachedTechnicians));
-        console.log("Using cached technician data");
         
         // Fetch fresh data in background
         fetchFreshTechniciansInBackground();
@@ -82,7 +78,6 @@ const TechnicianUsers = () => {
   const fetchFreshTechniciansInBackground = async () => {
     try {
       await fetchFreshTechnicians(true);
-      console.log("Technician data updated in background");
     } catch (err) {
       console.error('Error fetching technician data in background:', err);
     }
@@ -116,7 +111,6 @@ const TechnicianUsers = () => {
         
         // Cache the technicians data
         localStorage.setItem('technicianUsersData', JSON.stringify(techniciansData));
-        localStorage.setItem('technicianUsersDataTimestamp', new Date().getTime().toString());
         
         // Update last refresh time
         setLastRefreshTime(new Date().getTime());
@@ -175,7 +169,6 @@ const TechnicianUsers = () => {
       if (data.success) {
         // Invalidate cache
         localStorage.removeItem('technicianUsersData');
-        localStorage.removeItem('technicianUsersDataTimestamp');
         
         // Update technicians list
         fetchFreshTechnicians();
@@ -208,7 +201,6 @@ const TechnicianUsers = () => {
   const handleTechnicianSuccess = () => {
     // Clear the cache to force a fresh fetch
     localStorage.removeItem('technicianUsersData');
-    localStorage.removeItem('technicianUsersDataTimestamp');
     
     // Fetch fresh data
     fetchFreshTechnicians();
@@ -405,7 +397,6 @@ const TechnicianUsers = () => {
         onTechnicianUpdated={() => {
           // Invalidate cache
           localStorage.removeItem('technicianUsersData');
-          localStorage.removeItem('technicianUsersDataTimestamp');
           fetchFreshTechnicians();
         }}
       />

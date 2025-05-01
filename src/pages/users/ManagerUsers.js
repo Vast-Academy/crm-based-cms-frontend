@@ -33,17 +33,13 @@ const ManagerUsers = () => {
       // Check for cached data
       const cachedManagerData = localStorage.getItem('managerUsersData');
       const cachedBranchData = localStorage.getItem('managerBranchesData');
-      const cachedTimestamp = localStorage.getItem('managerUsersDataTimestamp');
-      const currentTime = new Date().getTime();
       
-      // Use cached data if it's valid and not forcing fresh data
-      if (!forceFresh && cachedManagerData && cachedBranchData && cachedTimestamp && 
-          (currentTime - parseInt(cachedTimestamp) < CACHE_STALENESS_TIME)) {
-        
+      // Use cached data if available and not forcing fresh data
+      // (timestamp check को हटा दें)
+      if (!forceFresh && cachedManagerData && cachedBranchData) {
         setManagers(JSON.parse(cachedManagerData));
         setBranches(JSON.parse(cachedBranchData));
         
-        console.log("Using cached manager data");
         
         // Fetch fresh data in background
         fetchFreshDataInBackground();
@@ -76,7 +72,6 @@ const ManagerUsers = () => {
   const fetchFreshDataInBackground = async () => {
     try {
       await fetchFreshData(true);
-      console.log("Manager data updated in background");
     } catch (err) {
       console.error('Error fetching manager data in background:', err);
     }
@@ -125,7 +120,7 @@ const ManagerUsers = () => {
         
         // Cache the managers data
         localStorage.setItem('managerUsersData', JSON.stringify(managersData));
-        localStorage.setItem('managerUsersDataTimestamp', new Date().getTime().toString());
+        // localStorage.setItem('managerUsersDataTimestamp', new Date().getTime().toString());
         
         // Update last refresh time
         setLastRefreshTime(new Date().getTime());
@@ -214,7 +209,6 @@ const ManagerUsers = () => {
         
         // Update cache with new manager data
         localStorage.setItem('managerUsersData', JSON.stringify(updatedManagers));
-        localStorage.setItem('managerUsersDataTimestamp', new Date().getTime().toString());
       } else {
         setError(data.message || 'Failed to update user status');
       }
@@ -228,7 +222,6 @@ const ManagerUsers = () => {
   const handleManagerSuccess = () => {
     // Clear the cache to force a fresh fetch
     localStorage.removeItem('managerUsersData');
-    localStorage.removeItem('managerUsersDataTimestamp');
     
     // Fetch fresh data
     fetchFreshData();

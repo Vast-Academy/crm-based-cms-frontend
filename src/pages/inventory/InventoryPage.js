@@ -24,6 +24,7 @@ const InventoryPage = () => {
   const [expandedRowId, setExpandedRowId] = useState(null);
 const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 const [selectedItem, setSelectedItem] = useState(null);
+const [lastRefreshTime, setLastRefreshTime] = useState(0);
 
   // New item form state
   const [newItem, setNewItem] = useState({
@@ -42,48 +43,103 @@ const [selectedItem, setSelectedItem] = useState(null);
   }, []);
 
   // Fetch all inventory items from API
-const fetchInventoryItems = async () => {
-  try {
-    setLoading(true);
+  const fetchInventoryItems = async (forceFresh = false) => {
+    try {
+      // Check for cached data
+      const cachedInventoryItems = localStorage.getItem('inventoryItems');
+      
+      // Use cached data if available and not forcing fresh data
+      if (!forceFresh && cachedInventoryItems) {
+        setInventoryItems(JSON.parse(cachedInventoryItems));
+        // console.log("Using cached inventory data");
+        
+        // Fetch fresh data in background
+        fetchFreshInventoryInBackground();
+        setLoading(false);
+        return;
+      }
+      
+      // If no valid cache or force fresh, fetch new data
+      setLoading(true);
+      await fetchFreshInventoryData();
+    } catch (err) {
+      // Try to use cached data as fallback if API fails
+      const cachedInventoryItems = localStorage.getItem('inventoryItems');
+      if (cachedInventoryItems) {
+        setInventoryItems(JSON.parse(cachedInventoryItems));
+        console.log("Using cached inventory data after fetch error");
+      } else {
+        showNotification('error', 'Server error. Failed to fetch inventory items.');
+        console.error('Error fetching inventory items:', err);
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchFreshInventoryInBackground = async () => {
+    try {
+      await fetchFreshInventoryData(true);
+    } catch (err) {
+      console.error('Error fetching inventory data in background:', err);
+    }
+  };
+
+  const fetchFreshInventoryData = async (isBackground = false) => {
+    if (!isBackground) {
+      setLoading(true);
+    }
     
-    // सभी तीन प्रकार के इंवेंटरी आइटम्स को पैरेलल में फेच करें
-    const [serializedResponse, genericResponse, servicesResponse] = await Promise.all([
-      fetch(`${SummaryApi.getInventoryByType.url}/serialized-product`, {
-        method: SummaryApi.getInventoryByType.method,
-        credentials: 'include'
-      }),
-      fetch(`${SummaryApi.getInventoryByType.url}/generic-product`, {
-        method: SummaryApi.getInventoryByType.method,
-        credentials: 'include'
-      }),
-      fetch(`${SummaryApi.getInventoryByType.url}/service`, {
-        method: SummaryApi.getInventoryByType.method,
-        credentials: 'include'
-      })
-    ]);
-    
-    // सभी रिस्पॉन्स पार्स करें
-    const [serializedData, genericData, servicesData] = await Promise.all([
-      serializedResponse.json(),
-      genericResponse.json(),
-      servicesResponse.json()
-    ]);
-    
-    // सभी आइटम्स को कम्बाइन करें और टाइप प्रॉपर्टी जोड़ें
-    const combinedItems = [
-      ...(serializedData.success ? serializedData.items : []),
-      ...(genericData.success ? genericData.items : []),
-      ...(servicesData.success ? servicesData.items : [])
-    ];
-    
-    setInventoryItems(combinedItems);
-  } catch (err) {
-    showNotification('error', 'Server error. Failed to fetch inventory items.');
-    console.error('Error fetching inventory items:', err);
-  } finally {
-    setLoading(false);
-  }
-};
+    try {
+      // सभी तीन प्रकार के इंवेंटरी आइटम्स को पैरेलल में फेच करें
+      const [serializedResponse, genericResponse, servicesResponse] = await Promise.all([
+        fetch(`${SummaryApi.getInventoryByType.url}/serialized-product`, {
+          method: SummaryApi.getInventoryByType.method,
+          credentials: 'include'
+        }),
+        fetch(`${SummaryApi.getInventoryByType.url}/generic-product`, {
+          method: SummaryApi.getInventoryByType.method,
+          credentials: 'include'
+        }),
+        fetch(`${SummaryApi.getInventoryByType.url}/service`, {
+          method: SummaryApi.getInventoryByType.method,
+          credentials: 'include'
+        })
+      ]);
+      
+      // सभी रिस्पॉन्स पार्स करें
+      const [serializedData, genericData, servicesData] = await Promise.all([
+        serializedResponse.json(),
+        genericResponse.json(),
+        servicesResponse.json()
+      ]);
+      
+      // सभी आइटम्स को कम्बाइन करें और टाइप प्रॉपर्टी जोड़ें
+      const combinedItems = [
+        ...(serializedData.success ? serializedData.items : []),
+        ...(genericData.success ? genericData.items : []),
+        ...(servicesData.success ? servicesData.items : [])
+      ];
+      
+      setInventoryItems(combinedItems);
+      
+      // Cache the inventory data
+      localStorage.setItem('inventoryItems', JSON.stringify(combinedItems));
+      
+      // Update last refresh time for UI
+      setLastRefreshTime(new Date().getTime());
+    } catch (err) {
+      if (!isBackground) {
+        showNotification('error', 'Server error. Failed to fetch inventory items.');
+        console.error('Error fetching inventory items:', err);
+      }
+      throw err;
+    } finally {
+      if (!isBackground) {
+        setLoading(false);
+      }
+    }
+  };
 
 // Function to toggle expanded row
 const toggleRowExpansion = (itemId) => {
@@ -123,13 +179,17 @@ const handleUpdateItem = async () => {
     if (data.success) {
       showNotification('success', 'Item updated successfully');
       setIsEditModalOpen(false);
+
+      // Clear the inventory cache
+      localStorage.removeItem('inventoryItems');
+
       // Update the local state immediately with the new values
       setInventoryItems(prevItems => 
         prevItems.map(item => 
           item.id === selectedItem.id ? {...item, ...selectedItem} : item
         )
       );
-      fetchInventoryItems(); // Refresh the list
+      fetchFreshInventoryData(); // Refresh the list
     } else {
       showNotification('error', data.message || 'Failed to update item');
       setError(data.message || 'Failed to update item');
@@ -263,9 +323,12 @@ const getStockDisplay = (item) => {
           salePrice: ''
         });
         setIsModalOpen(false);
+
+         // Clear the inventory cache
+      localStorage.removeItem('inventoryItems');
         
         // Refresh inventory items
-        fetchInventoryItems();
+        fetchFreshInventoryData();
       } else {
         showNotification('error', data.message || 'Failed to add inventory item');
         setError(data.message || 'Failed to add inventory item');
@@ -323,14 +386,27 @@ const getStockDisplay = (item) => {
         <h1 className="text-2xl font-bold mb-6">Inventory</h1>
         
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
-          {/* Add Inventory Button */}
-          <button 
-            onClick={() => setIsModalOpen(true)}
-            className="flex items-center px-4 py-2 bg-teal-500 text-white rounded-md hover:bg-teal-600 transition-colors"
-          >
-            <FiBox className="mr-2" />
-            Add Inventory
-          </button>
+        <div className="flex items-center gap-2">
+    {/* Add Inventory Button */}
+    <button 
+      onClick={() => setIsModalOpen(true)}
+      className="flex items-center px-4 py-2 bg-teal-500 text-white rounded-md hover:bg-teal-600 transition-colors"
+    >
+      <FiBox className="mr-2" />
+      Add Inventory
+    </button>
+    
+    {/* Add Refresh Button */}
+    <button 
+      onClick={() => fetchFreshInventoryData()}
+      className="p-2 rounded-full bg-gray-200 hover:bg-gray-300 text-gray-700"
+      title="Refresh Inventory"
+    >
+      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/>
+      </svg>
+    </button>
+  </div>
           
           {/* Filter Buttons */}
           <div className="flex flex-wrap gap-2">
@@ -380,15 +456,15 @@ const getStockDisplay = (item) => {
           <table className="min-w-full bg-white">
             <thead>
               <tr className="text-left bg-gray-100">
-                <th className="px-4 py-3 text-gray-600 font-semibold">S.NO</th>
-                <th className="px-4 py-3 text-gray-600 font-semibold">NAME</th>
-                <th className="px-4 py-3 text-gray-600 font-semibold">TYPE</th>
-                <th className="px-4 py-3 text-gray-600 font-semibold">UNIT</th>
-                <th className="px-4 py-3 text-gray-600 font-semibold">WARRANTY</th>
-                <th className="px-4 py-3 text-gray-600 font-semibold">MRP</th>
-                <th className="px-4 py-3 text-gray-600 font-semibold">PURCHASE PRICE</th>
-                <th className="px-4 py-3 text-gray-600 font-semibold">SALE PRICE</th>
-                <th className="px-4 py-3 text-gray-600 font-semibold">STOCK</th>
+                <th className="px-4 py-3 text-xs text-gray-600 font-medium">S.NO</th>
+                <th className="px-4 py-3 text-xs text-gray-600 font-medium">NAME</th>
+                <th className="px-4 py-3 text-xs text-gray-600 font-medium">TYPE</th>
+                <th className="px-4 py-3 text-xs text-gray-600 font-medium">UNIT</th>
+                <th className="px-4 py-3 text-xs text-gray-600 font-medium">WARRANTY</th>
+                <th className="px-4 py-3 text-xs text-gray-600 font-medium">MRP</th>
+                <th className="px-4 py-3 text-xs text-gray-600 font-medium">PURCHASE PRICE</th>
+                <th className="px-4 py-3 text-xs text-gray-600 font-medium">SALE PRICE</th>
+                <th className="px-4 py-3 text-xs text-gray-600 font-medium">STOCK</th>
               </tr>
             </thead>
             <tbody>
