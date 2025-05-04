@@ -7,6 +7,7 @@ import {
 import SummaryApi from '../common';
 import { useAuth } from '../context/AuthContext';
 import LoadingSpinner from '../components/LoadingSpinner';
+import MarkUpdateForm from '../components/MarkUpdateForm';
 
 const Dashboard = () => {
   const { user } = useAuth();
@@ -705,6 +706,10 @@ const Dashboard = () => {
           </table>
         </div>
       </div>
+
+      {user.role !== 'admin' && (
+        <MarkUpdateForm />
+      )}
     </div>
   );
 };
