@@ -10,14 +10,12 @@ const MarkUpdateForm = () => {
     e.preventDefault();
     setSuccess("");
     setError("");
-
     try {
       const res = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/ota/mark-update-available`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ customerId, message }),
       });
-
       const data = await res.json();
       if (data.success) {
         setSuccess("Update marked as available!");
@@ -32,37 +30,54 @@ const MarkUpdateForm = () => {
   };
 
   return (
-    <div className="p-6 max-w-md bg-white rounded shadow">
-      <h2 className="text-xl font-bold mb-4">Mark Update as Available</h2>
+    <div className="bg-white rounded-lg shadow-md p-6 mb-8">
+      <h2 className="text-lg font-semibold text-gray-800 mb-4">
+        Mark Update as Available
+      </h2>
+
       <form onSubmit={handleSubmit} className="space-y-4">
-        <div>
-          <label className="block font-semibold">Customer ID</label>
+        <div className="flex flex-col">
+          <label className="mb-2 text-sm font-medium text-gray-700">
+            Customer ID
+          </label>
           <input
             type="text"
-            className="w-full border rounded px-3 py-2"
+            className="border border-gray-300 rounded-md p-2"
             value={customerId}
             onChange={(e) => setCustomerId(e.target.value)}
             required
           />
         </div>
-        <div>
-          <label className="block font-semibold">Update Message (optional)</label>
-          <input
-            type="text"
-            className="w-full border rounded px-3 py-2"
+
+        <div className="flex flex-col">
+          <label className="mb-2 text-sm font-medium text-gray-700">
+            Update Message (optional)
+          </label>
+          <textarea
+            className="border border-gray-300 rounded-md p-2"
             value={message}
             onChange={(e) => setMessage(e.target.value)}
           />
         </div>
+
         <button
           type="submit"
-          className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+          className="bg-blue-500 text-white py-2 px-4 rounded-md hover:bg-blue-600"
         >
           Mark Update Available
         </button>
       </form>
-      {success && <p className="mt-4 text-green-600">{success}</p>}
-      {error && <p className="mt-4 text-red-600">{error}</p>}
+
+      {success && (
+        <div className="mt-4 p-2 bg-green-100 text-green-700 rounded-md">
+          {success}
+        </div>
+      )}
+      {error && (
+        <div className="mt-4 p-2 bg-red-100 text-red-700 rounded-md">
+          {error}
+        </div>
+      )}
     </div>
   );
 };
