@@ -2,6 +2,7 @@ import React, { useState } from "react";
 
 const MarkUpdateForm = () => {
   const [customerId, setCustomerId] = useState("");
+  const [updateType, setUpdateType] = useState("frontend"); // डिफॉल्ट frontend
   const [message, setMessage] = useState("");
   const [success, setSuccess] = useState("");
   const [error, setError] = useState("");
@@ -11,11 +12,14 @@ const MarkUpdateForm = () => {
     setSuccess("");
     setError("");
     try {
-      const res = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/ota/mark-update-available`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ customerId, message }),
-      });
+      const res = await fetch(
+        `${process.env.REACT_APP_BACKEND_URL}/api/ota/mark-update-available`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ customerId, message, updateType }),
+        }
+      );
       const data = await res.json();
       if (data.success) {
         setSuccess("Update marked as available!");
@@ -47,6 +51,21 @@ const MarkUpdateForm = () => {
             onChange={(e) => setCustomerId(e.target.value)}
             required
           />
+        </div>
+
+        <div className="flex flex-col">
+          <label className="mb-2 text-sm font-medium text-gray-700">
+            Update Type
+          </label>
+          <select
+            className="border border-gray-300 rounded-md p-2"
+            value={updateType}
+            onChange={(e) => setUpdateType(e.target.value)}
+            required
+          >
+            <option value="frontend">Frontend</option>
+            <option value="backend">Backend</option>
+          </select>
         </div>
 
         <div className="flex flex-col">
