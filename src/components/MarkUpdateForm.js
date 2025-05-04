@@ -2,81 +2,67 @@ import React, { useState } from "react";
 
 const MarkUpdateForm = () => {
   const [customerId, setCustomerId] = useState("");
-  const [projectType, setProjectType] = useState("frontend");
   const [message, setMessage] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [response, setResponse] = useState(null);
+  const [success, setSuccess] = useState("");
+  const [error, setError] = useState("");
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setLoading(true);
-    setResponse(null);
+    setSuccess("");
+    setError("");
 
     try {
       const res = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/ota/mark-update-available`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ customerId, projectType, message }),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ customerId, message }),
       });
 
       const data = await res.json();
-      setResponse(data);
-    } catch (error) {
-      setResponse({ success: false, error: "Request failed" });
+      if (data.success) {
+        setSuccess("Update marked as available!");
+        setCustomerId("");
+        setMessage("");
+      } else {
+        setError(data.error || "Something went wrong.");
+      }
+    } catch (err) {
+      setError("Server error.");
     }
-
-    setLoading(false);
   };
 
   return (
-    <div className="p-4 bg-white rounded-lg shadow max-w-md mx-auto">
+    <div className="p-6 max-w-md bg-white rounded shadow">
       <h2 className="text-xl font-bold mb-4">Mark Update as Available</h2>
-      <form onSubmit={handleSubmit}>
-        <label className="block mb-2">
-          Customer ID:
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div>
+          <label className="block font-semibold">Customer ID</label>
           <input
             type="text"
+            className="w-full border rounded px-3 py-2"
             value={customerId}
             onChange={(e) => setCustomerId(e.target.value)}
             required
-            className="w-full border p-2 mt-1 rounded"
           />
-        </label>
-        <label className="block mb-2">
-          Project Type:
-          <select
-            value={projectType}
-            onChange={(e) => setProjectType(e.target.value)}
-            className="w-full border p-2 mt-1 rounded"
-          >
-            <option value="frontend">Frontend</option>
-            <option value="backend">Backend</option>
-          </select>
-        </label>
-        <label className="block mb-4">
-          Update Message (optional):
-          <textarea
+        </div>
+        <div>
+          <label className="block font-semibold">Update Message (optional)</label>
+          <input
+            type="text"
+            className="w-full border rounded px-3 py-2"
             value={message}
             onChange={(e) => setMessage(e.target.value)}
-            className="w-full border p-2 mt-1 rounded"
           />
-        </label>
+        </div>
         <button
           type="submit"
-          disabled={loading}
           className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
         >
-          {loading ? "Marking..." : "Mark Update"}
+          Mark Update Available
         </button>
       </form>
-
-      {response && (
-        <div className={`mt-4 p-3 rounded ${response.success ? "bg-green-100" : "bg-red-100"}`}>
-          {response.success ? "Update marked successfully." : `Error: ${response.error}`}
-        </div>
-      )}
+      {success && <p className="mt-4 text-green-600">{success}</p>}
+      {error && <p className="mt-4 text-red-600">{error}</p>}
     </div>
   );
 };

@@ -15,6 +15,8 @@ const Dashboard = () => {
   const [error, setError] = useState(null);
   const [technicianStats, setTechnicianStats] = useState([]);
   const [branchStats, setBranchStats] = useState([]);
+  const [showUpdateForm, setShowUpdateForm] = useState(false);
+
 
   // Stats state with initial values
   const [stats, setStats] = useState({
@@ -587,6 +589,9 @@ const Dashboard = () => {
           <p className="text-gray-600">Welcome back to your CRM dashboard</p>
         </div>
         
+        <div className='flex space-x-2'>
+        <button onClick={() => setShowUpdateForm(true)}>Mark Update Available</button>
+
         {/* Refresh button */}
         <button 
           onClick={() => fetchFreshDashboardData()}
@@ -597,6 +602,7 @@ const Dashboard = () => {
             <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/>
           </svg>
         </button>
+        </div>
       </div>
       
       {/* Stats Grid */}
@@ -708,7 +714,10 @@ const Dashboard = () => {
       </div>
 
       {user.role !== 'admin' && (
-        <MarkUpdateForm />
+        <>
+        {showUpdateForm &&
+         <MarkUpdateForm />}
+        </>
       )}
     </div>
   );
