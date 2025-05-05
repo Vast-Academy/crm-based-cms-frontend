@@ -24,6 +24,7 @@ const MarkUpdateForm = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
+    console.log("Selected Customer ID:", customerId);
     
     try {
       const response = await fetch(
@@ -50,6 +51,7 @@ const MarkUpdateForm = () => {
       console.log("checking data:", data);
       
       setMessage("Update marked as available successfully!");
+      
     } catch (err) {
       setMessage(`Error: ${err.message}`);
       console.error("Error:", err);
@@ -67,7 +69,10 @@ const MarkUpdateForm = () => {
           <select
             id="customer"
             value={customerId}
-            onChange={(e) => setCustomerId(e.target.value)}
+            onChange={(e) => {
+              console.log("Customer selected:", e.target.value); // यहाँ लॉग करें
+              setCustomerId(e.target.value);
+            }}
             required
           >
             <option value="">Select a customer</option>
