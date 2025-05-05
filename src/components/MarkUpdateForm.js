@@ -34,10 +34,10 @@ const MarkUpdateForm = () => {
   };
 
   return (
-    <div className="bg-white rounded-lg shadow-md p-6 mb-8">
-      <h2 className="text-lg font-semibold text-gray-800 mb-4">
+    <div className="bg-white rounded-lg p-6 mb-8 z-50">
+      {/* <h2 className="text-lg font-semibold text-gray-800 mb-4">
         Mark Update as Available
-      </h2>
+      </h2> */}
 
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="flex flex-col">

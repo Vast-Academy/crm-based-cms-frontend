@@ -23,7 +23,7 @@ const Dashboard = () => {
   const [error, setError] = useState(null);
   const [technicianStats, setTechnicianStats] = useState([]);
   const [branchStats, setBranchStats] = useState([]);
-  const [showUpdateForm, setShowUpdateForm] = useState(false);
+  const [showModal, setShowModal] = useState(false);
 
   // Stats state with initial values
   const [stats, setStats] = useState({
@@ -727,12 +727,28 @@ const Dashboard = () => {
         </div>
 
         <div className="flex space-x-2">
-          <button
-            onClick={() => setShowUpdateForm(!showUpdateForm)}
-            className="bg-blue-500 text-white py-2 px-4 rounded-md hover:bg-blue-600"
-          >
-            {showUpdateForm ? "Hide Update Form" : "Mark Update Available"}
-          </button>
+        <button
+        onClick={() => {
+          console.log("Button clicked");
+          setShowModal(true);
+        }}
+        className="bg-blue-500 text-white py-2 px-4 rounded-md hover:bg-blue-600"
+      >
+        Mark Update Available
+      </button>
+      
+      {/* Modal as a portal */}
+      {showModal && (
+        <div className="fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-50">
+          <div className="bg-white p-6 rounded-lg max-w-md w-full">
+            <div className="flex justify-between">
+              <h2 className="text-lg font-bold">Mark Update Available</h2>
+              <button onClick={() => setShowModal(false)}>✕</button>
+            </div>
+            <MarkUpdateForm />
+          </div>
+        </div>
+      )}
 
           {/* Refresh button */}
           <button
@@ -943,7 +959,6 @@ const Dashboard = () => {
         </div>
       </div>
 
-      {user.role !== "admin" && <>{showUpdateForm && <MarkUpdateForm />}</>}
     </div>
   );
 };
