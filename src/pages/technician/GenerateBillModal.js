@@ -108,75 +108,66 @@ const fetchAvailableServices = async () => {
   }, [searchQuery]);
   
   // Search inventory based on serial number or name
-  const handleSearch = () => {
-    if (!searchQuery.trim()) {
-      setSearchResults([]);
-      return;
-    }
-    
-    const results = [];
-    const query = searchQuery.toLowerCase();
-    const addedSerialNumbers = new Set(); // Track added serial numbers
-    const addedServiceIds = new Set();
-
-   // First, collect all already selected serial numbers and service IDs
+const handleSearch = () => {
+  if (!searchQuery.trim()) {
+    setSearchResults([]);
+    return;
+  }
+  
+  const results = [];
+  const query = searchQuery.toLowerCase();
+  const addedSerialNumbers = new Set(); // Track added serial numbers
+  
+  // First, collect all already selected serial numbers
   selectedItems.forEach(item => {
     if (item.type === 'serialized-product' && item.selectedSerialNumber) {
       addedSerialNumbers.add(item.selectedSerialNumber);
-    } else if (item.type === 'service') {
-      addedServiceIds.add(item.itemId || item._id);
     }
   });
+  
+  // Search in inventory items - EXCLUDE SERVICES
+  technicianInventory.forEach(item => {
+    // Skip services completely - they should not appear in search results
+    if (item.type === 'service') {
+      return; // Skip this iteration
+    }
     
-    // Search in inventory items
-    technicianInventory.forEach(item => {
-      if (item.type === 'serialized-product') {
-        // For serialized items, ONLY search by serial number (not by name)
-        const activeSerials = item.serializedItems?.filter(
-          serial => (
-            serial.status === 'active' && 
-            serial.serialNumber.toLowerCase().includes(query) &&
-            !addedSerialNumbers.has(serial.serialNumber) // Prevent duplicates
-          )
-        );
-        
-        if (activeSerials && activeSerials.length > 0) {
-          activeSerials.forEach(serialItem => {
-            results.push({
-              ...item,
-              selectedSerialNumber: serialItem.serialNumber,
-              quantity: 1,
-              unit: item.unit || 'Piece'
-            });
-          });
-        }
-      } else if (item.type === 'generic-product') {
-        // For generic items, search by name and only show if quantity > 0
-        const nameMatch = item.itemName.toLowerCase().includes(query);
-        if (nameMatch && item.genericQuantity > 0) {
+    if (item.type === 'serialized-product') {
+      // For serialized items, ONLY search by serial number (not by name)
+      const activeSerials = item.serializedItems?.filter(
+        serial => (
+          serial.status === 'active' && 
+          serial.serialNumber.toLowerCase().includes(query) &&
+          !addedSerialNumbers.has(serial.serialNumber) // Prevent duplicates
+        )
+      );
+      
+      if (activeSerials && activeSerials.length > 0) {
+        activeSerials.forEach(serialItem => {
           results.push({
             ...item,
+            selectedSerialNumber: serialItem.serialNumber,
             quantity: 1,
             unit: item.unit || 'Piece'
           });
-        }
-      }else if (item.type === 'service') {
-        // For services, search by name
-        const nameMatch = item.itemName.toLowerCase().includes(query);
-        const serviceId = item.itemId || item._id;
-        
-        if (nameMatch && !addedServiceIds.has(serviceId)) {
-          results.push({
-            ...item,
-            quantity: 1
-          });
-        }
+        });
       }
-
-    });
-    
-    setSearchResults(results);
-  };
+    } else if (item.type === 'generic-product') {
+      // For generic items, search by name and only show if quantity > 0
+      const nameMatch = item.itemName.toLowerCase().includes(query);
+      if (nameMatch && item.genericQuantity > 0) {
+        results.push({
+          ...item,
+          quantity: 1,
+          unit: item.unit || 'Piece'
+        });
+      }
+    }
+    // Note: Removed the service search logic completely
+  });
+  
+  setSearchResults(results);
+};
 
   // Show payment confirmation screen
 const showPaymentConfirmation = () => {
