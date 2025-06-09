@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { FiEdit, FiTrash2, FiPlus, FiSearch, FiUser, FiPackage, FiList } from 'react-icons/fi';
 import SummaryApi from '../../common';
 import { useAuth } from '../../context/AuthContext';
@@ -41,11 +41,15 @@ const TechnicianUsers = () => {
   
   const fetchTechnicians = async (forceFresh = false) => {
     try {
+      // Get branch from URL params first, then fallback to user.selectedBranch
+      const urlParams = new URLSearchParams(window.location.search);
+      const urlBranch = urlParams.get('branch') || (user.role === 'admin' ? user.selectedBranch : '');
+      const cacheKey = `technicianUsersData_${urlBranch || 'all'}`;
+
       // Check for cached data
-      const cachedTechnicians = localStorage.getItem('technicianUsersData');
+      const cachedTechnicians = localStorage.getItem(cacheKey);
       
       // Use cached data if available and not forcing fresh data
-      // (timestamp check को हटा दें)
       if (!forceFresh && cachedTechnicians) {
         setTechnicians(JSON.parse(cachedTechnicians));
         
@@ -60,7 +64,11 @@ const TechnicianUsers = () => {
       await fetchFreshTechnicians();
     } catch (err) {
       // Try to use cached data as fallback if API fails
-      const cachedTechnicians = localStorage.getItem('technicianUsersData');
+      const urlParams = new URLSearchParams(window.location.search);
+      const urlBranch = urlParams.get('branch') || (user.role === 'admin' ? user.selectedBranch : '');
+      const cacheKey = `technicianUsersData_${urlBranch || 'all'}`;
+
+      const cachedTechnicians = localStorage.getItem(cacheKey);
       
       if (cachedTechnicians) {
         setTechnicians(JSON.parse(cachedTechnicians));
@@ -90,10 +98,22 @@ const TechnicianUsers = () => {
     }
     
     try {
+      // Get branch from URL params first, then fallback to user.selectedBranch
+      const urlParams = new URLSearchParams(window.location.search);
+      const urlBranch = urlParams.get('branch') || (user.role === 'admin' ? user.selectedBranch : '');
+      console.log('Fetching technicians for branch:', urlBranch);
+      let branchParam = '';
+      if (urlBranch) {
+        branchParam = `?branch=${urlBranch}`;
+      }
+      
       // We'll use different endpoints based on user role
-      const endpoint = user.role === 'admin' 
+      const baseEndpoint = user.role === 'admin' 
         ? SummaryApi.getTechnicianUsers.url 
         : SummaryApi.getManagerTechnician.url;
+      
+      const endpoint = baseEndpoint + branchParam;
+      console.log('Fetch endpoint:', endpoint);
       
       const response = await fetch(endpoint, {
         method: 'GET',
@@ -109,8 +129,9 @@ const TechnicianUsers = () => {
         const techniciansData = data.data || [];
         setTechnicians(techniciansData);
         
-        // Cache the technicians data
-        localStorage.setItem('technicianUsersData', JSON.stringify(techniciansData));
+        // Cache the technicians data with branch-specific key
+        const cacheKey = `technicianUsersData_${urlBranch || 'all'}`;
+        localStorage.setItem(cacheKey, JSON.stringify(techniciansData));
         
         // Update last refresh time
         setLastRefreshTime(new Date().getTime());
@@ -129,10 +150,21 @@ const TechnicianUsers = () => {
       }
     }
   };
+
+  useEffect(() => {
+    // Clear all cached technician data on mount to avoid stale cache issues
+    Object.keys(localStorage).forEach(key => {
+      if (key.startsWith('technicianUsersData_')) {
+        localStorage.removeItem(key);
+      }
+    });
+    fetchTechnicians();
+  }, [user.role, user.selectedBranch, window.location.search]);
   
   useEffect(() => {
+    // Include branch param from URL search params in dependency array
     fetchTechnicians();
-  }, [user.role]);
+  }, [user.role, user.selectedBranch, window.location.search]);
   
   const handleSearch = (e) => {
     setSearchTerm(e.target.value);

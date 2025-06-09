@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { FiTrash, FiSearch } from 'react-icons/fi';
+import { LuArrowUpDown } from "react-icons/lu";
+import { LuArrowDownUp } from "react-icons/lu";
 import SummaryApi from '../../common';
 import ConfirmationDialog from '../../components/ConfirmationDialog';
 import { useNotification } from '../../context/NotificationContext';
@@ -20,12 +22,16 @@ const ServicesList = ({ searchTerm = '' }) => {
     confirmText: 'Confirm',
     onConfirm: () => {}
   });
-  
+
+  // Sorting state
+  const [sortOrder, setSortOrder] = useState('asc'); // 'asc' or 'desc'
+  const [sortField, setSortField] = useState('name'); // 'name' or 'price'
+
   // Fetch services
   useEffect(() => {
     fetchServices();
   }, []);
-  
+
   const fetchServices = async () => {
     try {
       setLoading(true);
@@ -33,9 +39,9 @@ const ServicesList = ({ searchTerm = '' }) => {
         method: SummaryApi.getInventoryByType.method,
         credentials: 'include'
       });
-      
+
       const data = await response.json();
-      
+
       if (data.success) {
         setServices(data.items);
       } else {
@@ -48,7 +54,7 @@ const ServicesList = ({ searchTerm = '' }) => {
       setLoading(false);
     }
   };
-  
+
   // Show confirmation dialog helper function
   const showConfirmation = (title, message, type, confirmText, onConfirm) => {
     setConfirmData({
@@ -74,9 +80,9 @@ const ServicesList = ({ searchTerm = '' }) => {
             method: SummaryApi.deleteInventoryItem.method,
             credentials: 'include'
           });
-          
+
           const data = await response.json();
-          
+
           if (data.success) {
             setServices(services.filter(service => service.id !== id));
             showNotification('success', 'Service deleted successfully');
@@ -93,10 +99,34 @@ const ServicesList = ({ searchTerm = '' }) => {
     );
   };
   
-  // Filter services based on search term
-  const filteredServices = services.filter(
-    service => service.name.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // Sorting functions
+  const sortByName = (a, b) => {
+    if (a.name.toLowerCase() < b.name.toLowerCase()) return sortOrder === 'asc' ? -1 : 1;
+    if (a.name.toLowerCase() > b.name.toLowerCase()) return sortOrder === 'asc' ? 1 : -1;
+    return 0;
+  };
+
+  const sortByPrice = (a, b) => {
+    if (a.salePrice < b.salePrice) return sortOrder === 'asc' ? -1 : 1;
+    if (a.salePrice > b.salePrice) return sortOrder === 'asc' ? 1 : -1;
+    return 0;
+  };
+
+  // Filter and sort services based on search term and sort order
+  const filteredServices = React.useMemo(() => {
+    const filtered = services.filter(
+      service => service.name.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+
+    let sorted = [...filtered];
+    if (sortField === 'name') {
+      sorted.sort(sortByName);
+    } else if (sortField === 'price') {
+      sorted.sort(sortByPrice);
+    }
+
+    return sorted;
+  }, [services, searchTerm, sortField, sortOrder]);
   
   return (
     <div>
@@ -143,11 +173,59 @@ const ServicesList = ({ searchTerm = '' }) => {
               <thead className="bg-gray-50">
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">S.No</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                  <th
+                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer select-none"
+                    onClick={() => {
+                      if (sortField === 'name') {
+                        setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+                      } else {
+                        setSortField('name');
+                        setSortOrder('asc');
+                      }
+                    }}
+                    title="Sort by Name"
+                  >
+                    Name
+                    <span className="inline-block ml-1">
+                      {sortField === 'name' ? (
+                        sortOrder === 'asc' ? (
+                          <LuArrowDownUp className="inline h-4 w-4 text-gray-600" />
+                        ) : (
+                          <LuArrowUpDown className="inline h-4 w-4 text-gray-600" />
+                        )
+                      ) : (
+                        <LuArrowDownUp className="inline h-4 w-4 text-gray-400" />
+                      )}
+                    </span>
+                  </th>
                   {user.role === 'admin' && (
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Purchase Price</th>
                   )}
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Sale Price</th>
+                  <th
+                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer select-none"
+                    onClick={() => {
+                      if (sortField === 'price') {
+                        setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+                      } else {
+                        setSortField('price');
+                        setSortOrder('asc');
+                      }
+                    }}
+                    title="Sort by Price"
+                  >
+                    Price
+                    <span className="inline-block ml-1">
+                      {sortField === 'price' ? (
+                        sortOrder === 'asc' ? (
+                          <LuArrowDownUp className="inline h-4 w-4 text-gray-600" />
+                        ) : (
+                          <LuArrowUpDown className="inline h-4 w-4 text-gray-600" />
+                        )
+                      ) : (
+                        <LuArrowDownUp className="inline h-4 w-4 text-gray-400" />
+                      )}
+                    </span>
+                  </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                 </tr>
               </thead>
@@ -155,7 +233,7 @@ const ServicesList = ({ searchTerm = '' }) => {
                 {filteredServices.map((service, index) => (
                   <tr key={service.id} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap">
-          <div className="w-8 h-8 rounded-full bg-teal-500 flex items-center justify-center text-white font-medium">
+          <div className="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center text-purple-800 font-medium">
             {index + 1}
           </div>
         </td>

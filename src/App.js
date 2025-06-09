@@ -247,7 +247,7 @@ function App() {
         <Route 
           path="manager-dashboard" 
           element={
-            <ProtectedRoute allowedRoles={['manager']}>
+            <ProtectedRoute>
               <ManagerProjectDashboard/>
             </ProtectedRoute>
           }

@@ -55,6 +55,23 @@ const WorkOrderDetailsModal = (props) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const { user } = useAuth();
+
+  // Helper function to get reject reason from workOrder or fallback to statusHistory
+  const getRejectReason = () => {
+    if (workOrder?.rejectReason && workOrder.rejectReason.trim() !== '') {
+      return workOrder.rejectReason;
+    }
+    if (workOrder?.statusHistory && workOrder.statusHistory.length > 0) {
+      // Find the latest rejected status with a remark
+      const rejectedHistory = [...workOrder.statusHistory]
+        .reverse()
+        .find(history => history.status.toLowerCase() === 'rejected' && history.remark && history.remark.trim() !== '');
+      if (rejectedHistory) {
+        return rejectedHistory.remark;
+      }
+    }
+    return 'No reason provided.';
+  };
   
   // States for inventory management
   const [searchQuery, setSearchQuery] = useState('');
@@ -75,6 +92,12 @@ const WorkOrderDetailsModal = (props) => {
   const [billId, setBillId] = useState(null);
   const [paymentCompleted, setPaymentCompleted] = useState(false);
   const [complaintDetails, setComplaintDetails] = useState(null);
+
+  // Reject transfer modal states
+  const [showRejectModal, setShowRejectModal] = useState(false);
+  const [rejectReason, setRejectReason] = useState('');
+  const [rejectError, setRejectError] = useState(null);
+  const [rejectLoading, setRejectLoading] = useState(false);
   
   // Reset states when modal opens with a different work order
   useEffect(() => {
@@ -92,6 +115,9 @@ const WorkOrderDetailsModal = (props) => {
     setShowQRCode(false);
     setShowPaymentSuccess(false);
     setBillId(null);
+    setRejectReason('');
+    setRejectError(null);
+    setRejectLoading(false);
     
     // Check if work order has payment info
     const hasPayment = 
@@ -351,7 +377,7 @@ const renderProjectContent = () => {
             <p><span className="font-medium">Type:</span> {workOrder.projectType}</p>
             <p><span className="font-medium">Category:</span> {workOrder.projectCategory || 'New Installation'}</p>
 
-             {/* Show Project ID only for Repair/Complaint */}
+             {/* Show Project ID only for Repair/Complaint */} 
       {/* {workOrder.projectCategory === 'Repair' && (
         <>
           <p><span className="text-gray-500">Project ID:</span> {workOrder.projectId}</p>
@@ -438,6 +464,188 @@ const renderProjectContent = () => {
   </div>
 )}
       </div>
+    );
+  } else if (workOrder.status === 'rejected') {
+    // Refactored rejected project view to show full details plus reject reason and history
+    return (
+      <>
+        {/* Rejected badge and date */}
+        <div className="mb-4 flex justify-between items-center">
+          <span className="px-3 py-1 rounded-full text-sm capitalize bg-red-100 text-red-800">
+            Rejected
+          </span>
+          <div className="text-sm text-gray-500">
+            {workOrder.rejectDate ? new Date(workOrder.rejectDate).toLocaleDateString() : ''}
+          </div>
+        </div>
+
+        {/* Reject Reason */}
+        <div className="mb-4">
+          <h3 className="text-md font-medium mb-2">Reject Reason</h3>
+          <p className="text-sm text-red-700">{getRejectReason()}</p>
+        </div>
+
+        {/* Reject History */}
+        {workOrder.rejectHistory && workOrder.rejectHistory.length > 0 && (
+          <div className="mb-4 max-h-40 overflow-y-auto border rounded p-3 bg-red-50">
+            <h3 className="text-md font-medium mb-2">Reject History</h3>
+            <ul className="list-disc list-inside text-sm space-y-1">
+              {workOrder.rejectHistory.map((item, index) => (
+                <li key={index}>
+                  <p>{item.remark || `Status changed to ${item.status}`}</p>
+                  <p className="text-xs text-gray-500">{new Date(item.updatedAt).toLocaleString()}</p>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        {/* Full project details same as other statuses */}
+        <>
+          {/* Status Badge */}
+          <div className="mb-4 flex justify-between items-center">
+            <span className={`px-3 py-1 rounded-full text-sm capitalize ${
+              workOrder.status === 'assigned' ? 'bg-blue-100 text-blue-800' :
+              workOrder.status === 'in-progress' ? 'bg-purple-100 text-purple-800' :
+              workOrder.status === 'paused' ? 'bg-orange-100 text-orange-800' :
+              'bg-green-100 text-green-800'
+            }`}>
+              {workOrder.status}
+            </span>
+            
+            <div className="text-sm text-gray-500">
+              <FiCalendar className="inline mr-1" />
+              {formatDate(workOrder.createdAt)}
+            </div>
+          </div>
+          
+          {/* Basic Work Order Info */}
+          <div>
+            <h3 className="text-md font-medium flex items-center mb-3">
+              <Clipboard size={18} className="mr-2" />
+              Project Information
+            </h3>
+            <div className="bg-gray-50 p-4 rounded-lg mb-4">
+              <div className="space-y-2 text-sm">
+                <p><span className="text-gray-500">Project Type:</span> {workOrder.projectCategory || 'New Installation'}</p>
+                <p><span className="text-gray-500">Project Category:</span> {workOrder.projectType}</p>
+                <p><span className="text-gray-500">Project ID:</span> {workOrder.projectId}</p>
+                <p>
+                  <span className="text-gray-500">Project Date:</span> {
+                    workOrder.projectCreatedAt 
+                      ? formatDate(workOrder.projectCreatedAt) 
+                      : formatDate(workOrder.createdAt)
+                  }
+                </p>
+              </div>
+            </div>
+          </div>
+          
+          {/* Customer Information */}
+          <div className="mb-4">
+            <h3 className="text-md font-medium flex items-center mb-3">
+              <FiUser className="mr-2" />
+              Customer Information
+            </h3>
+            <div className="bg-white border rounded-lg p-3 space-y-2">
+              <p className="font-medium">{workOrder.customerName}</p>
+              {workOrder.customerAddress && (
+                <p className="flex items-start text-sm">
+                  <FiMapPin className="mr-2 text-gray-500 mt-1" />
+                  <span>{workOrder.customerAddress}</span>
+                </p>
+              )}
+            </div>
+          </div>
+
+          {/* Project Requirements */}
+          {workOrder.initialRemark && (
+            <div className="mb-4">
+              <h3 className="text-md font-medium flex items-center mb-3">
+                <FiInfo className="mr-2" />
+                Project Requirements
+              </h3>
+              <div className="bg-white border rounded-lg p-3">
+                <p className="text-sm">{workOrder.initialRemark}</p>
+              </div>
+            </div>
+          )}
+
+          {/* Special Instructions */}
+          {workOrder.instructions && (
+            <div className="mb-4">
+              <h3 className="text-md font-medium flex items-center mb-3">
+                <FiInfo className="mr-2" />
+                Special Instructions
+              </h3>
+              <div className="bg-white border rounded-lg p-3">
+                <p className="text-sm">{workOrder.instructions}</p>
+              </div>
+            </div>
+          )}
+
+          {/* Status History */}
+          {workOrder.statusHistory && workOrder.statusHistory.length > 0 && (
+            <div className="mb-4">
+              <h3 className="text-md font-medium mb-3">Status History</h3>
+              <div className="bg-white border rounded-lg p-3">
+                <div className="space-y-3">
+                  {workOrder.statusHistory.map((history, index) => (
+                    <div key={index} className="text-sm border-b pb-2 last:border-b-0 last:pb-0">
+                      <div className="flex justify-between">
+                        <span className="font-medium capitalize">
+                          {history.status === 'remark' ? 'Remark Added' : 
+                          history.status === 'communication' ? 'Communication' :
+                          history.status}
+                        </span>
+                        <span className="text-gray-500">{formatDate(history.updatedAt)}</span>
+                      </div>
+                      {history.remark && <p className="mt-1 text-gray-600">{history.remark}</p>}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Payment History */}
+          {workOrder.billingInfo && workOrder.billingInfo.length > 0 && (
+            <div className="mb-4">
+              <h3 className="text-md font-medium mb-3">Payment History</h3>
+              <div className="bg-white border rounded-lg p-3">
+                <div className="space-y-3">
+                  {workOrder.billingInfo.map((payment, index) => (
+                    <div key={index} className="text-sm border-b pb-2 last:border-b-0 last:pb-0">
+                      <div className="flex justify-between">
+                        <span className="font-medium">Bill #{payment.billNumber}</span>
+                        <span className="text-gray-500">{formatDate(payment.paidAt)}</span>
+                      </div>
+                      <div className="mt-1">
+                        <p><span className="text-gray-600">Amount:</span> ₹{payment.amount.toFixed(2)}</p>
+                        <p><span className="text-gray-600">Method:</span> {payment.paymentMethod === 'online' ? 'Online Payment' : 'Cash Payment'}</p>
+                        {payment.transactionId && (
+                          <p><span className="text-gray-600">Transaction ID:</span> {payment.transactionId}</p>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Action Buttons */}
+          <div className="mt-6 space-y-2">
+            <button
+              onClick={() => updateStatus('in-progress')}
+              disabled={loading}
+              className="w-full py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50"
+            >
+              Start Project
+            </button>
+          </div>
+        </>
+      </>
     );
   } else {
     // अन्य स्टेट्स के लिए रेगुलर व्यू

@@ -86,10 +86,12 @@ const fetchFreshWorkOrders = async (isBackground = false) => {
   }
   
   try {
-    // Include branch parameter if admin has selected a branch
+    // Get branch from URL params first, then fallback to user.selectedBranch
+    const urlParams = new URLSearchParams(window.location.search);
+    const urlBranch = urlParams.get('branch') || (user.role === 'admin' ? user.selectedBranch : '');
     let branchParam = '';
-    if (user.role === 'admin' && user.selectedBranch) {
-      branchParam = `?branch=${user.selectedBranch}`;
+    if (urlBranch) {
+      branchParam = `?branch=${urlBranch}`;
     }
     
     // Always filter for pending status only
@@ -140,7 +142,7 @@ const fetchFreshWorkOrders = async (isBackground = false) => {
   
   useEffect(() => {
     fetchWorkOrders();
-  }, [user.selectedBranch]);
+  }, [user.selectedBranch, window.location.search]);
   
   const handleRowClick = (orderId) => {
     setExpandedRow(expandedRow === orderId ? null : orderId);

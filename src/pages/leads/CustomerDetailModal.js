@@ -7,6 +7,7 @@ import Modal from '../../components/Modal';
 import WorkOrderModal from '../customers/WorkOrderModal';
 import ComplaintModal from '../customers/ComplaintModal';
 import ProjectDetailsModal from '../manager/ProjectDetailsModal';
+import EditCustomerModal from './EditCustomerModal';
 
 const CustomerDetailModal = ({ isOpen, onClose, customerId, onCustomerUpdated }) => {
   const { user } = useAuth();
@@ -19,6 +20,7 @@ const CustomerDetailModal = ({ isOpen, onClose, customerId, onCustomerUpdated })
   const [showProjectDetailsModal, setShowProjectDetailsModal] = useState(false);
 const [selectedProject, setSelectedProject] = useState(null);
 const [expandedRow, setExpandedRow] = useState(null);
+const [showEditModal, setShowEditModal] = useState(false);
   
   const fetchCustomer = async () => {
     if (!customerId) return;
@@ -241,10 +243,7 @@ const handleViewProjectDetails = async (project) => {
               <div className="mt-8 space-y-3">
               {user.role !== 'admin' && (
                 <button
-                  onClick={() => {
-                    // Edit logic to be implemented
-                    alert('Edit functionality will be implemented in the future');
-                  }}
+                  onClick={() => setShowEditModal(true)}
                   className="w-full py-2 px-4 border border-gray-300 rounded-md flex items-center justify-center text-gray-700 hover:bg-gray-50"
                 >
                   <FiEdit2 className="mr-2" />
@@ -452,6 +451,19 @@ const handleViewProjectDetails = async (project) => {
             // If project is approved, refresh customer data
             fetchCustomer();
             setShowProjectDetailsModal(false);
+          }}
+        />
+      )}
+
+      {showEditModal && (
+        <EditCustomerModal
+          isOpen={showEditModal}
+          onClose={() => setShowEditModal(false)}
+          customerId={customerId}
+          onSuccess={(updatedCustomer) => {
+            fetchCustomer();
+            setShowEditModal(false);
+            onCustomerUpdated && onCustomerUpdated(updatedCustomer);
           }}
         />
       )}

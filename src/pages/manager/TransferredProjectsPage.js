@@ -54,11 +54,14 @@ const TransferredProjectsPage = () => {
 
     if (data.success) {
       // Save the fetched data to state
-      setTransferredProjects(data.data);
-      setFilteredProjects(data.data);
+      // Sort data by updatedAt ascending (oldest first)
+      const sortedData = data.data.slice().sort((a, b) => new Date(a.updatedAt) - new Date(b.updatedAt));
+
+      setTransferredProjects(sortedData);
+      setFilteredProjects(sortedData);
 
       // Cache the fetched data in localStorage
-      localStorage.setItem(TRANSFERRED_PROJECTS_CACHE_KEY, JSON.stringify(data.data));
+      localStorage.setItem(TRANSFERRED_PROJECTS_CACHE_KEY, JSON.stringify(sortedData));
     } else {
       setError(data.message || 'Failed to fetch transferred projects');
     }
@@ -73,7 +76,7 @@ const TransferredProjectsPage = () => {
   
   // Initial data fetch
   useEffect(() => {
-    fetchTransferredProjects();
+    fetchTransferredProjects(true);
   }, [user.selectedBranch]);
   
   // Filter projects when search query changes
@@ -187,7 +190,7 @@ const TransferredProjectsPage = () => {
           <h1 className="text-2xl font-semibold text-gray-800">Transferred Projects</h1>
           
           <button
-            onClick={fetchTransferredProjects}
+            onClick={() => fetchTransferredProjects(true)}
             className="flex items-center px-3 py-1.5 text-sm bg-gray-100 rounded-md hover:bg-gray-200"
           >
             <FiRefreshCw className="mr-2" /> Refresh

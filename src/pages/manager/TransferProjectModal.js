@@ -12,6 +12,12 @@ const TransferProjectModal = ({ isOpen, onClose, project, onProjectTransferred }
   const [error, setError] = useState(null);
   const [transferRemark, setTransferRemark] = useState('');
   const [remarkError, setRemarkError] = useState('');
+
+  const [showReasonPopup, setShowReasonPopup] = useState(false);
+  const [reasonType, setReasonType] = useState(''); // 'accept' or 'reject'
+  const [reasonText, setReasonText] = useState('');
+  const [showConfirmAccept, setShowConfirmAccept] = useState(false);
+  const [showConfirmReject, setShowConfirmReject] = useState(false);
   
   const modalContentRef = useRef(null);
   
@@ -50,6 +56,116 @@ const TransferProjectModal = ({ isOpen, onClose, project, onProjectTransferred }
       document.removeEventListener('keydown', handleEscapeKey);
     };
   }, [isOpen, onClose]);
+
+  // Handlers for reason popup
+  const openReasonPopup = (type) => {
+    setReasonType(type);
+    setReasonText('');
+    setShowReasonPopup(true);
+  };
+
+  const closeReasonPopup = () => {
+    setShowReasonPopup(false);
+    setReasonText('');
+    setReasonType('');
+  };
+
+  const handleConfirmReason = () => {
+    if (!reasonText.trim()) {
+      setError('Reject reason cannot be empty');
+      return;
+    }
+    // Show confirmation popup before API call
+    setShowConfirmReject(true);
+  };
+
+  const handleRejectTransfer = async () => {
+    if (!project?.customerId || !project?.orderId) {
+      setError('Invalid project data');
+      setShowConfirmReject(false);
+      return;
+    }
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await fetch(SummaryApi.rejectTechnicianProjectTransfer.url, {
+        method: SummaryApi.rejectTechnicianProjectTransfer.method,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          customerId: project.customerId,
+          orderId: project.orderId,
+          rejectReason: reasonText
+        })
+      });
+      const data = await response.json();
+      if (data.success) {
+        if (onProjectTransferred) {
+          const updatedProject = {
+            ...project,
+            status: 'rejected'
+          };
+          onProjectTransferred(updatedProject);
+        }
+        setShowConfirmReject(false);
+        closeReasonPopup();
+        onClose();
+      } else {
+        setError(data.message || 'Failed to reject transfer request');
+        setShowConfirmReject(false);
+      }
+    } catch (err) {
+      setError('Server error. Please try again.');
+      setShowConfirmReject(false);
+      console.error('Error rejecting transfer:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // New handler for accept transfer with default remark
+  const handleAcceptTransferWithDefaultRemark = async () => {
+    setShowConfirmAccept(false);
+    setLoading(true);
+    setError(null);
+
+    try {
+      const response = await fetch(SummaryApi.acceptTechnicianProjectTransfer.url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          customerId: project.customerId,
+          orderId: project.orderId,
+          remark: `Project transferred by ${user.firstName} ${user.lastName}`
+        })
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        if (onProjectTransferred) {
+          const updatedProject = {
+            ...project,
+            status: 'transferred'
+          };
+          onProjectTransferred(updatedProject);
+        }
+        navigate('/work-orders');
+      } else {
+        setError(data.message || 'Failed to accept transfer request');
+      }
+    } catch (err) {
+      setError('Server error. Please try again.');
+      console.error('Error accepting transfer:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Validate remark
   const validateRemark = (text) => {
@@ -283,72 +399,153 @@ const TransferProjectModal = ({ isOpen, onClose, project, onProjectTransferred }
           
           {/* Transfer Acceptance Section */}
           {project.status === 'transferring' ? (
-          <div className="mt-8 border-t pt-6">
-            <h3 className="text-lg font-medium mb-4">Accept Transfer Request</h3>
-            
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Transfer Acceptance Note* <span className="text-xs text-gray-500">(minimum 5 words required)</span>
-              </label>
-              <textarea
-                value={transferRemark}
-                onChange={(e) => setTransferRemark(e.target.value)}
-                className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 ${
-                  remarkError ? 'border-red-300 focus:ring-red-300' : 'focus:ring-blue-500'
-                }`}
-                rows="3"
-                placeholder="Enter your notes for accepting this transfer request (min 5 words)..."
-              ></textarea>
-              
-              {/* Show word count */}
-              <div className="mt-1 flex justify-between">
-                <div className="text-xs text-gray-500">
-                  Word Count: {countWords(transferRemark)}
-                </div>
-                
-                {remarkError && (
-                  <div className="text-xs text-red-500 flex items-center">
-                    <FiAlertCircle className="mr-1" /> {remarkError}
-                  </div>
-                )}
+            <>
+              {/* Buttons for Reject and Accept Transfer Request */}
+              <div className="mt-8 border-t pt-6 flex space-x-4 justify-end">
+                <button
+                  onClick={() => openReasonPopup('reject')}
+                  className="px-6 py-2 bg-red-500 text-white rounded-md hover:bg-red-600"
+                >
+                  Reject Transfer Request
+                </button>
+                <button
+                  onClick={() => setShowConfirmAccept(true)}
+                  className="px-6 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
+                >
+                  Accept Transfer Request
+                </button>
               </div>
-            </div>
-            
-            <div className="flex justify-end">
+
+              {/* Reject Reason Popup Modal */}
+              {showReasonPopup && reasonType === 'reject' && (
+                <div className="fixed inset-0 bg-gray-600 bg-opacity-75 flex justify-center items-center z-60 p-2 overflow-auto">
+                  <div className="bg-white rounded-lg shadow-xl w-full max-w-md max-h-[80vh] overflow-hidden">
+                    <div className="sticky top-0 bg-white p-4 border-b flex justify-between items-center">
+                      <h2 className="text-xl font-semibold">
+                        Reject Reason
+                      </h2>
+                      <button
+                        onClick={closeReasonPopup}
+                        className="p-1 rounded-full hover:bg-gray-100"
+                      >
+                        <FiX size={24} />
+                      </button>
+                    </div>
+                    <div className="p-6 overflow-y-auto" style={{ maxHeight: 'calc(80vh - 70px)' }}>
+                      <textarea
+                        value={reasonText}
+                        onChange={(e) => setReasonText(e.target.value)}
+                        className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        rows="5"
+                        placeholder="Enter your reject reason here..."
+                      ></textarea>
+                      <div className="mt-4 flex justify-end space-x-4">
+                        <button
+                          onClick={closeReasonPopup}
+                          className="px-4 py-2 bg-gray-300 rounded-md hover:bg-gray-400"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          onClick={handleConfirmReason}
+                          className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
+                        >
+                          Confirm
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Accept Confirmation Popup */}
+              {showConfirmAccept && (
+                <div className="fixed inset-0 bg-gray-600 bg-opacity-75 flex justify-center items-center z-60 p-2 overflow-auto">
+                  <div className="bg-white rounded-lg shadow-xl w-full max-w-md max-h-[30vh] overflow-hidden">
+                    <div className="sticky top-0 bg-white p-4 border-b flex justify-between items-center">
+                      <h2 className="text-xl font-semibold">
+                        Confirm Accept Transfer
+                      </h2>
+                      <button
+                        onClick={() => setShowConfirmAccept(false)}
+                        className="p-1 rounded-full hover:bg-gray-100"
+                      >
+                        <FiX size={24} />
+                      </button>
+                    </div>
+                    <div className="p-6">
+                      <p className="mb-4">{user.firstName} {user.lastName}, are you sure you want to approve this project?</p>
+                      <div className="flex justify-end space-x-4">
+                        <button
+                          onClick={() => setShowConfirmAccept(false)}
+                          className="px-4 py-2 bg-gray-300 rounded-md hover:bg-gray-400"
+                        >
+                          No
+                        </button>
+                        <button
+                          onClick={handleAcceptTransferWithDefaultRemark}
+                          className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
+                        >
+                          Yes
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+          {/* Reject Confirmation Popup */}
+              {showConfirmReject && (
+                <div className="fixed inset-0 bg-gray-600 bg-opacity-75 flex justify-center items-center z-60 p-2 overflow-auto">
+                  <div className="bg-white rounded-lg shadow-xl w-full max-w-md max-h-[30vh] overflow-hidden">
+                    <div className="sticky top-0 bg-white p-4 border-b flex justify-between items-center">
+                      <h2 className="text-xl font-semibold">
+                        Confirm Reject Transfer
+                      </h2>
+                      <button
+                        onClick={() => setShowConfirmReject(false)}
+                        className="p-1 rounded-full hover:bg-gray-100"
+                      >
+                        <FiX size={24} />
+                      </button>
+                    </div>
+                    <div className="p-6">
+                      <p className="mb-4">{user.firstName} {user.lastName}, are you sure you want to reject this project?</p>
+                      <div className="flex justify-end space-x-4">
+                        <button
+                          onClick={() => setShowConfirmReject(false)}
+                          className="px-4 py-2 bg-gray-300 rounded-md hover:bg-gray-400"
+                        >
+                          No
+                        </button>
+                        <button
+                          onClick={handleRejectTransfer}
+                          className="px-4 py-2 bg-red-500 text-white rounded-md hover:bg-red-600"
+                        >
+                          Yes
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </>
+          ) : (
+            // For already transferred projects, just show a close button
+            <div className="mt-8 border-t pt-6 flex justify-end">
               <button
-                onClick={handleAcceptTransfer}
-                disabled={loading || remarkError || countWords(transferRemark) < 5}
-                className={`px-6 py-2 text-white rounded-md flex items-center ${
-                  loading || remarkError || countWords(transferRemark) < 5
-                    ? 'bg-gray-400 cursor-not-allowed'
-                    : 'bg-blue-500 hover:bg-blue-600'
-                }`}
+                onClick={onClose}
+                className="px-6 py-2 bg-gray-200 text-gray-800 rounded-md"
               >
-                {loading ? (
-                  <>Processing...</>
-                ) : (
-                  <>
-                    <FiArrowLeft className="mr-2" /> Accept Transfer Request
-                  </>
-                )}
+                Close
               </button>
             </div>
-          </div>
-) : (
-  // For already transferred projects, just show a close button
-  <div className="mt-8 border-t pt-6 flex justify-end">
-    <button
-      onClick={onClose}
-      className="px-6 py-2 bg-gray-200 text-gray-800 rounded-md"
-    >
-      Close
-    </button>
-  </div>
-)}
+          )}
         </div>
       </div>
     </div>
   );
 };
+
 
 export default TransferProjectModal;

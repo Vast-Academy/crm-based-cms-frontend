@@ -60,7 +60,7 @@ const TechnicianDashboard = () => {
   const [selectedWorkOrder, setSelectedWorkOrder] = useState(null);
   const [showReturnModal, setShowReturnModal] = useState(false);
   const [showFilterDropdown, setShowFilterDropdown] = useState(false);
-  const [inventoryFilter, setInventoryFilter] = useState('All');
+const [inventoryFilter, setInventoryFilter] = useState('Serialized');
   const [expandedItems, setExpandedItems] = useState([]);
   // Add these state variables
   const [showFullHistory, setShowFullHistory] = useState(false);
@@ -400,22 +400,23 @@ const formatDate = (dateString) => {
     localStorage.setItem('technicianDashboardTheme', newThemeValue ? 'dark' : 'light');
   };
   
-  // Filter work orders to show only those from the last 2 days
-  const getActiveWorkOrders = () => {
-    // Filter by required statuses
-    return workOrders.filter(order => 
-      order.status === 'assigned' || 
-      order.status === 'in-progress' || 
-      order.status === 'paused' ||
-      order.status === 'transferring'
-    ).sort((a, b) => {
-      // Sort by most recently updated
-      if (a.updatedAt && b.updatedAt) {
-        return new Date(b.updatedAt) - new Date(a.updatedAt);
-      }
-      return 0;
-    });
-  };
+const getActiveWorkOrders = () => {
+  // Filter by required statuses including 'rejected' and 'pending-approval'
+  return workOrders.filter(order => 
+    order.status === 'assigned' || 
+    order.status === 'in-progress' || 
+    order.status === 'paused' ||
+    order.status === 'transferring' ||
+    order.status === 'rejected' ||
+    order.status === 'pending-approval'
+  ).sort((a, b) => {
+    // Sort by most recently updated
+    if (a.updatedAt && b.updatedAt) {
+      return new Date(b.updatedAt) - new Date(a.updatedAt);
+    }
+    return 0;
+  });
+};
 
   // Add a helper function to check status text
 const getStatusDisplayText = (status) => {
@@ -454,40 +455,19 @@ const getFilteredInventoryItems = () => {
   // Then apply type filter
   if (inventoryFilter === 'Serialized') {
     filteredItems = filteredItems.filter(item => item.type === 'serialized-product');
+    // Sort by quantity descending to ascending
+    filteredItems = filteredItems.sort((a, b) => getItemQuantity(b) - getItemQuantity(a));
   } else if (inventoryFilter === 'Generic') {
     filteredItems = filteredItems.filter(item => item.type === 'generic-product');
+    // Sort by quantity descending to ascending
+    filteredItems = filteredItems.sort((a, b) => getItemQuantity(b) - getItemQuantity(a));
   } else if (inventoryFilter === 'Services') {
     filteredItems = filteredItems.filter(item => item.type === 'service');
-  } else {
-    // For 'All' filter, keep only items with quantity or service items
-    filteredItems = filteredItems.filter(item => {
-      if (item.type === 'service') return true;
-      if (item.type === 'serialized-product') {
-        return item.serializedItems && item.serializedItems.some(si => si.status === 'active');
-      } else {
-        return item.genericQuantity > 0;
-      }
-    });
+    // Sort services by name ascending
+    filteredItems = filteredItems.sort((a, b) => a.itemName.localeCompare(b.itemName));
   }
   
-  // Sort by quantity (highest to lowest) for products, by name for services
-  return filteredItems.sort((a, b) => {
-    if (a.type === 'service' && b.type === 'service') {
-      // Sort services by name
-      return a.itemName.localeCompare(b.itemName);
-    } else if (a.type === 'service') {
-      // Services come after products
-      return 1;
-    } else if (b.type === 'service') {
-      // Products come before services
-      return -1;
-    } else {
-      // Sort products by quantity
-      const quantityA = getItemQuantity(a);
-      const quantityB = getItemQuantity(b);
-      return quantityB - quantityA;
-    }
-  });
+  return filteredItems;
 };
 
 // Computed property for filtered items
@@ -1333,20 +1313,10 @@ const fetchFreshWorkOrders = async () => {
         {/* Filter buttons (horizontal) */}
         <div className="mt-3 flex space-x-1">
           <button 
-            onClick={() => setInventoryFilter('All')}
-            className={`px-4 py-1.5 rounded-full text-sm ${
-              inventoryFilter === 'All' 
-                ? `${darkMode ? 'bg-teal-600' : 'bg-teal-500'} text-white` 
-                : `${darkMode ? 'bg-gray-700' : 'bg-gray-200'} ${darkMode ? 'text-gray-300' : 'text-gray-700'}`
-            }`}
-          >
-            All
-          </button>
-          <button 
             onClick={() => setInventoryFilter('Serialized')}
             className={`px-4 py-1.5 rounded-full text-sm ${
               inventoryFilter === 'Serialized' 
-                ? `${darkMode ? 'bg-teal-600' : 'bg-teal-500'} text-white` 
+                ? `${darkMode ? 'bg-blue-600/30 text-blue-200' : 'bg-blue-200 text-blue-800'}` 
                 : `${darkMode ? 'bg-gray-700' : 'bg-gray-200'} ${darkMode ? 'text-gray-300' : 'text-gray-700'}`
             }`}
           >
@@ -1356,22 +1326,22 @@ const fetchFreshWorkOrders = async () => {
             onClick={() => setInventoryFilter('Generic')}
             className={`px-4 py-1.5 rounded-full text-sm ${
               inventoryFilter === 'Generic' 
-                ? `${darkMode ? 'bg-teal-600' : 'bg-teal-500'} text-white` 
+                ? `${darkMode ? 'bg-emerald-600/30 text-emerald-200' : 'bg-emerald-200 text-emerald-800'}` 
                 : `${darkMode ? 'bg-gray-700' : 'bg-gray-200'} ${darkMode ? 'text-gray-300' : 'text-gray-700'}`
             }`}
           >
             Generic
           </button>
           <button 
-    onClick={() => setInventoryFilter('Services')}
-    className={`px-4 py-1.5 rounded-full text-sm ${
-      inventoryFilter === 'Services' 
-        ? `${darkMode ? 'bg-teal-600' : 'bg-teal-500'} text-white` 
-        : `${darkMode ? 'bg-gray-700' : 'bg-gray-200'} ${darkMode ? 'text-gray-300' : 'text-gray-700'}`
-    }`}
-  >
-    Services
-  </button>
+            onClick={() => setInventoryFilter('Services')}
+            className={`px-4 py-1.5 rounded-full text-sm ${
+              inventoryFilter === 'Services' 
+                ? `${darkMode ? 'bg-purple-600/30 text-purple-200' : 'bg-purple-100 text-purple-800'}` 
+                : `${darkMode ? 'bg-gray-700' : 'bg-gray-200'} ${darkMode ? 'text-gray-300' : 'text-gray-700'}`
+            }`}
+          >
+            Services
+          </button>
         </div>
       </div>
       
@@ -1390,10 +1360,12 @@ const fetchFreshWorkOrders = async () => {
         >
           <div className="flex items-center">
             <div className={`w-8 h-8 rounded-full ${
-              item.type === 'service' 
-                ? (darkMode ? 'bg-teal-600' : 'bg-teal-500') 
-                : (darkMode ? 'bg-teal-600' : 'bg-teal-500')
-            } flex items-center justify-center mr-3 text-white font-bold`}>
+              item.type === 'serialized-product' 
+                ? (darkMode ? 'bg-blue-600/30 text-blue-200' : 'bg-blue-200 text-blue-800')
+                : item.type === 'generic-product'
+                ? (darkMode ? 'bg-emerald-600/30 text-emerald-200' : 'bg-emerald-200 text-emerald-800')
+                : (darkMode ? 'bg-purple-600/30 text-purple-200' : 'bg-purple-100 text-purple-800')
+            } flex items-center justify-center mr-3 font-medium`}>
               {index + 1}
             </div>
             <div className="flex-1">
@@ -1417,13 +1389,19 @@ const fetchFreshWorkOrders = async () => {
                     </svg>
                   )}
                   {item.type === 'service' ? (
-                    <div className={`px-3 py-1 rounded-full ${darkMode ? 'bg-purple-600/30 text-purple-200' : 'bg-teal-100 text-teal-800'}`}>
+                    <div className={`px-3 py-1 rounded-full ${darkMode ? 'bg-purple-600/30 text-purple-200' : 'bg-purple-100 text-purple-800'}`}>
                       ₹{item.salePrice}
                     </div>
                   ) : (
-                    <div className={`px-3 py-1 rounded-full ${darkMode ? 'bg-teal-600/30 text-teal-200' : 'bg-teal-100 text-teal-800'}`}>
-                      {itemCount} {item.unit || 'Pcs'}
-                    </div>
+            <div className={`px-3 py-1 rounded-full ${
+              item.type === 'serialized-product' 
+                ? (darkMode ? 'bg-blue-600/30 text-blue-200' : 'bg-blue-200 text-blue-800')
+                : item.type === 'generic-product'
+                ? (darkMode ? 'bg-emerald-600/30 text-emerald-200' : 'bg-emerald-200 text-emerald-800')
+                : (darkMode ? 'bg-purple-600/30 text-purple-200' : 'bg-purple-100 text-purple-800')
+            }`}>
+              {itemCount} {item.unit || 'Pcs'}
+            </div>
                   )}
                 </div>
               </div>
@@ -2481,22 +2459,22 @@ const fetchFreshWorkOrders = async () => {
         />
       )}
       
-      {showWorkOrderModal && (
-        <WorkOrderDetailsModal 
-          isOpen={showWorkOrderModal}
-          onClose={() => {
-            setShowWorkOrderModal(false);
-            if (selectedWorkOrder && selectedWorkOrder.billingInfo && selectedWorkOrder.billingInfo.length > 0) {
-              fetchWorkOrders();
-            }
-            setSelectedWorkOrder(null);
-          }}
-          workOrder={selectedWorkOrder}
-          onStatusUpdate={handleWorkOrderStatusUpdate}
-          onProjectStarted={handleProjectStarted}
-          darkMode={darkMode}
-        />
-      )}
+{showWorkOrderModal && (
+  <WorkOrderDetailsModal 
+    isOpen={showWorkOrderModal}
+    onClose={() => {
+      setShowWorkOrderModal(false);
+      if (selectedWorkOrder && selectedWorkOrder.billingInfo && selectedWorkOrder.billingInfo.length > 0) {
+        fetchWorkOrders();
+      }
+      setSelectedWorkOrder(null);
+    }}
+    workOrder={selectedWorkOrder}
+    onStatusUpdate={handleWorkOrderStatusUpdate}
+    onProjectStarted={handleProjectStarted}
+    darkMode={darkMode}
+  />
+)}
 
       {showReturnModal && (
         <ReturnInventoryModal 

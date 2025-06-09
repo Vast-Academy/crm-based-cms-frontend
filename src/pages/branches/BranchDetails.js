@@ -7,6 +7,7 @@ import { FiEye } from 'react-icons/fi';
 import SummaryApi from '../../common';
 import LeadDetailModal from '../leads/LeadDetail';
 import CustomerDetailModal from '../leads/CustomerDetailModal';
+import { useAuth } from '../../context/AuthContext';
 
 const BranchDetails = () => {
   const { branchId } = useParams();
@@ -579,7 +580,10 @@ const handleLeadUpdated = (updatedLead) => {
             <h3 className="font-medium text-gray-700 mb-4">Branch Performance</h3>
             
             <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-4">
-              <div className="bg-blue-50 p-3 rounded-md">
+              <div
+                className="bg-blue-50 p-3 rounded-md cursor-pointer hover:bg-blue-100"
+                onClick={() => navigate(`/contacts?branch=${branchId}`)}
+              >
                 <div className="text-sm text-gray-600 mb-1">Leads</div>
                 <div className="flex items-center">
                   <Users className="w-5 h-5 mr-2 text-blue-600" />
@@ -587,7 +591,10 @@ const handleLeadUpdated = (updatedLead) => {
                 </div>
               </div>
               
-              <div className="bg-green-50 p-3 rounded-md">
+              <div
+                className="bg-green-50 p-3 rounded-md cursor-pointer hover:bg-green-100"
+                onClick={() => navigate(`/contacts?branch=${branchId}`)}
+              >
                 <div className="text-sm text-gray-600 mb-1">Customers</div>
                 <div className="flex items-center">
                   <Users className="w-5 h-5 mr-2 text-green-600" />
@@ -595,7 +602,10 @@ const handleLeadUpdated = (updatedLead) => {
                 </div>
               </div>
               
-              <div className="bg-purple-50 p-3 rounded-md">
+              <div
+                className="bg-purple-50 p-3 rounded-md cursor-pointer hover:bg-purple-100"
+                onClick={() => navigate(`/inventory?branch=${branchId}`)}
+              >
                 <div className="text-sm text-gray-600 mb-1">Stock</div>
                 <div className="flex items-center">
                   <Package className="w-5 h-5 mr-2 text-purple-600" />
@@ -603,7 +613,10 @@ const handleLeadUpdated = (updatedLead) => {
                 </div>
               </div>
               
-              <div className="bg-orange-50 p-3 rounded-md">
+              <div
+                className="bg-orange-50 p-3 rounded-md hover:bg-orange-100"
+
+              >
                 <div className="text-sm text-gray-600 mb-1">Technicians</div>
                 <div className="flex items-center">
                   <FiUserCheck className="w-5 h-5 mr-2 text-orange-600" />
@@ -611,7 +624,10 @@ const handleLeadUpdated = (updatedLead) => {
                 </div>
               </div>
               
-              <div className="bg-yellow-50 p-3 rounded-md">
+              <div
+                className="bg-yellow-50 p-3 rounded-md cursor-pointer hover:bg-yellow-100"
+                onClick={() => navigate(`/work-orders?branch=${branchId}`)}
+              >
                 <div className="text-sm text-gray-600 mb-1">Work Orders</div>
                 <div className="flex items-center">
                   <Clipboard className="w-5 h-5 mr-2 text-yellow-600" />
@@ -619,7 +635,10 @@ const handleLeadUpdated = (updatedLead) => {
                 </div>
               </div>
               
-              <div className="bg-indigo-50 p-3 rounded-md">
+              <div
+                className="bg-indigo-50 p-3 rounded-md cursor-pointer hover:bg-indigo-100"
+                onClick={() => navigate(`/manager-dashboard?branch=${branchId}`)}
+              >
                 <div className="text-sm text-gray-600 mb-1">Assigned</div>
                 <div className="flex items-center">
                   <ClipboardCheck className="w-5 h-5 mr-2 text-indigo-600" />
@@ -733,7 +752,7 @@ const handleLeadUpdated = (updatedLead) => {
   <div className="flex justify-between items-center mb-4">
     <h2 className="text-xl font-semibold text-gray-800">Technicians Overview</h2>
     <Link 
-      to="/users/technicians" 
+      to={`/users/technicians?branch=${branchId}`} 
       className="text-blue-600 hover:text-blue-800 font-medium flex items-center"
     >
       View All

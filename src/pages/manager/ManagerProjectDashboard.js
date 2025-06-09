@@ -92,9 +92,12 @@ const ManagerProjectDashboard = () => {
 
   const fetchFreshProjects = async () => {
     try {
+      // Get branch from URL params first, then fallback to user.selectedBranch
+      const urlParams = new URLSearchParams(window.location.search);
+      const urlBranch = urlParams.get('branch') || user.selectedBranch || '';
       let branchParam = '';
-      if (user.selectedBranch) {
-        branchParam = `?branch=${user.selectedBranch}`;
+      if (urlBranch) {
+        branchParam = `?branch=${urlBranch}`;
       }
   
       const response = await fetch(`${SummaryApi.getManagerProjects.url}${branchParam}`, {
@@ -215,7 +218,7 @@ const ManagerProjectDashboard = () => {
   // Initial data fetch
   useEffect(() => {
     fetchProjects();
-  }, [user.selectedBranch]);
+  }, [user.selectedBranch, window.location.search]);
   
   // Handle tab change
   const handleTabChange = (tab) => {

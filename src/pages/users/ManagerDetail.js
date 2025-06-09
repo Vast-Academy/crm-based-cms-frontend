@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { useAuth } from '../../context/AuthContext';
 import { FiArrowLeft, FiLoader, FiMail, FiPhone, FiUserCheck, FiClock, FiCheck, FiShield, FiRefreshCw } from 'react-icons/fi';
 import { Building } from 'lucide-react';
 import SummaryApi from '../../common';
@@ -409,17 +410,23 @@ const fetchBranchSummary = async (branchId) => {
   <h3 className="font-medium text-gray-700 mb-4">Branch Performance</h3>
   
   <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-    <div className="bg-gray-100 p-3 rounded-md">
-      <div className="text-sm text-gray-600 mb-1">Team Size</div>
-      <div className="flex items-center">
-        <svg className="w-5 h-5 mr-2 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-        </svg>
-        <span className="text-xl font-bold">{branchPerformance.teamSize}</span>
-      </div>
+
+  <div 
+    className="bg-gray-100 p-3 rounded-md hover:bg-gray-200"
+  >
+    <div className="text-sm text-gray-600 mb-1">Team Size</div>
+    <div className="flex items-center">
+      <svg className="w-5 h-5 mr-2 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+      </svg>
+      <span className="text-xl font-bold">{branchPerformance.teamSize}</span>
     </div>
+  </div>
     
-    <div className="bg-gray-100 p-3 rounded-md">
+    <div 
+      className="bg-gray-100 p-3 rounded-md cursor-pointer hover:bg-gray-200"
+      onClick={() => navigate(`/work-orders?branch=${manager.branch._id}`)}
+    >
       <div className="text-sm text-gray-600 mb-1">Work Orders</div>
       <div className="flex items-center">
         <svg className="w-5 h-5 mr-2 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
@@ -429,7 +436,10 @@ const fetchBranchSummary = async (branchId) => {
       </div>
     </div>
     
-    <div className="bg-blue-50 p-3 rounded-md">
+    <div 
+      className="bg-blue-50 p-3 rounded-md cursor-pointer hover:bg-blue-100"
+      onClick={() => navigate(`/manager-dashboard?branch=${manager.branch._id}`)}
+    >
       <div className="text-sm text-gray-600 mb-1">Assigned</div>
       <div className="flex items-center">
         <FiUserCheck className="w-5 h-5 mr-2 text-blue-600" />
@@ -437,7 +447,10 @@ const fetchBranchSummary = async (branchId) => {
       </div>
     </div>
     
-    <div className="bg-yellow-50 p-3 rounded-md">
+    <div 
+      className="bg-yellow-50 p-3 rounded-md cursor-pointer hover:bg-yellow-100"
+      onClick={() => navigate(`/manager-dashboard?branch=${manager.branch._id}`)}
+    >
       <div className="text-sm text-gray-600 mb-1">Pending Approval</div>
       <div className="flex items-center">
         <FiClock className="w-5 h-5 mr-2 text-yellow-600" />
@@ -445,7 +458,10 @@ const fetchBranchSummary = async (branchId) => {
       </div>
     </div>
   
-    <div className="bg-green-50 p-3 rounded-md">
+    <div 
+      className="bg-green-50 p-3 rounded-md cursor-pointer hover:bg-green-100"
+      onClick={() => navigate(`/manager-dashboard?branch=${manager.branch._id}`)}
+    >
       <div className="text-sm text-gray-600 mb-1">Completed</div>
       <div className="flex items-center">
         <FiCheck className="w-5 h-5 mr-2 text-green-600" />
@@ -453,7 +469,10 @@ const fetchBranchSummary = async (branchId) => {
       </div>
     </div>
     
-    <div className="bg-orange-50 p-3 rounded-md">
+    <div 
+      className="bg-orange-50 p-3 rounded-md cursor-pointer hover:bg-orange-100"
+      onClick={() => navigate(`/manager-dashboard?branch=${manager.branch._id}`)}
+    >
       <div className="text-sm text-gray-600 mb-1">Transferring</div>
       <div className="flex items-center">
         <FiRefreshCw className="w-5 h-5 mr-2 text-orange-600" />
@@ -461,7 +480,10 @@ const fetchBranchSummary = async (branchId) => {
       </div>
     </div>
     
-    <div className="bg-purple-50 p-3 rounded-md">
+    <div 
+      className="bg-purple-50 p-3 rounded-md cursor-pointer hover:bg-purple-100"
+      onClick={() => navigate(`/manager-dashboard?branch=${manager.branch._id}`)}
+    >
       <div className="text-sm text-gray-600 mb-1">Transferred</div>
       <div className="flex items-center">
         <FiShield className="w-5 h-5 mr-2 text-purple-600" />

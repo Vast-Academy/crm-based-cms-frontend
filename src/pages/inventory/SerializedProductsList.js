@@ -1,19 +1,25 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { FiPlus, FiTrash, FiSearch, FiCamera, FiSave } from 'react-icons/fi';
+import { LuArrowUpDown } from "react-icons/lu";
+import { LuArrowDownUp } from "react-icons/lu";
 import Modal from '../../components/Modal';
 import SummaryApi from '../../common';
 import ConfirmationDialog from '../../components/ConfirmationDialog';
 import { useNotification } from '../../context/NotificationContext';
 import { useAuth } from '../../context/AuthContext';
 
-const SerializedProductsList = ({ searchTerm = '' }) => {
+const SerializedProductsList = ({ searchTerm = '', branch = '' }) => {
   const { user } = useAuth();
   const { showNotification } = useNotification();
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   // const [searchTerm, setSearchTerm] = useState('');
-  
+
+  // Sorting state
+  const [sortOrder, setSortOrder] = useState('asc'); // 'asc' or 'desc'
+  const [sortField, setSortField] = useState('name'); // 'name', 'price', 'stock'
+
   // Modal states
   const [isAddStockModalOpen, setIsAddStockModalOpen] = useState(false);
   const [selectedItem, setSelectedItem] = useState(null);
@@ -30,7 +36,7 @@ const SerializedProductsList = ({ searchTerm = '' }) => {
     confirmText: 'Confirm',
     onConfirm: () => {}
   });
-  
+
    // State to track which row is expanded
     const [expandedRowId, setExpandedRowId] = useState(null);
     const [showSaveConfirmation, setShowSaveConfirmation] = useState(false);
@@ -56,12 +62,12 @@ const SerializedProductsList = ({ searchTerm = '' }) => {
     }
   ]);
   const barcodeInputRef = useRef(null);
-  
+
   // Fetch serialized products
   useEffect(() => {
     fetchItems();
-  }, []);
-  
+  }, [branch]);
+
   // Focus on barcode input when stock modal opens
   useEffect(() => {
     if (!isAddStockModalOpen) {
@@ -70,21 +76,22 @@ const SerializedProductsList = ({ searchTerm = '' }) => {
         setSerialNumberStatus({});
         setStockEntriesToSave([]);
       }, 300);
-      
+
       return () => clearTimeout(timer);
     }
   }, [isAddStockModalOpen]);
-  
+
   const fetchItems = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`${SummaryApi.getInventoryByType.url}/serialized-product`, {
+      const branchQuery = branch ? `?branch=${branch}` : '';
+      const response = await fetch(`${SummaryApi.getInventoryByType.url}/serialized-product${branchQuery}`, {
         method: SummaryApi.getInventoryByType.method,
         credentials: 'include'
       });
-      
+
       const data = await response.json();
-      
+
       if (data.success) {
         setItems(data.items);
       } else {
@@ -97,6 +104,45 @@ const SerializedProductsList = ({ searchTerm = '' }) => {
       setLoading(false);
     }
   };
+
+  // Sorting functions
+  const sortByName = (a, b) => {
+    if (a.name.toLowerCase() < b.name.toLowerCase()) return sortOrder === 'asc' ? -1 : 1;
+    if (a.name.toLowerCase() > b.name.toLowerCase()) return sortOrder === 'asc' ? 1 : -1;
+    return 0;
+  };
+
+  const sortByPrice = (a, b) => {
+    if (a.salePrice < b.salePrice) return sortOrder === 'asc' ? -1 : 1;
+    if (a.salePrice > b.salePrice) return sortOrder === 'asc' ? 1 : -1;
+    return 0;
+  };
+
+  const sortByStock = (a, b) => {
+    const stockA = a.stock ? a.stock.length : 0;
+    const stockB = b.stock ? b.stock.length : 0;
+    if (stockA < stockB) return sortOrder === 'asc' ? -1 : 1;
+    if (stockA > stockB) return sortOrder === 'asc' ? 1 : -1;
+    return 0;
+  };
+
+  // Filter and sort items based on search term and sort order
+  const filteredItems = React.useMemo(() => {
+    const filtered = items.filter(
+      item => item.name.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+
+    let sorted = [...filtered];
+    if (sortField === 'name') {
+      sorted.sort(sortByName);
+    } else if (sortField === 'price') {
+      sorted.sort(sortByPrice);
+    } else if (sortField === 'stock') {
+      sorted.sort(sortByStock);
+    }
+
+    return sorted;
+  }, [items, searchTerm, sortField, sortOrder]);
 
   const openViewStockModal = (item) => {
     setSelectedStockItem(item);
@@ -415,9 +461,9 @@ const handleCancelSave = () => {
   };
   
   // Filter items based on search term
-  const filteredItems = items.filter(
-    item => item.name.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // const filteredItems = items.filter(
+  //   item => item.name.toLowerCase().includes(searchTerm.toLowerCase())
+  // );
   
   return (
     <div>
@@ -464,13 +510,84 @@ const handleCancelSave = () => {
     <thead className="bg-gray-50">
       <tr>
         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">S.NO</th>
-        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">NAME</th>
-        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">BRANCH</th>
+        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer select-none"
+        onClick={() => {
+                  if (sortField === 'name') {
+                    setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+                  } else {
+                    setSortField('name');
+                    setSortOrder('asc');
+                  }
+                }}
+                title="Sort by Name"
+                >
+                NAME
+                <span className="inline-block ml-1">
+                              {sortField === 'name' ? (
+                                sortOrder === 'asc' ? (
+                                  <LuArrowDownUp className="inline h-4 w-4 text-gray-600" />
+                                ) : (
+                                  <LuArrowUpDown className="inline h-4 w-4 text-gray-600" />
+                                )
+                              ) : (
+                                <LuArrowDownUp className="inline h-4 w-4 text-gray-400" />
+                              )}
+                                </span>
+                </th>
+        {/* <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">BRANCH</th>
         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">UNIT</th>
         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">WARRANTY</th>
-        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">MRP</th>
-        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">SALE PRICE</th>
-        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">STOCK</th>
+        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">MRP</th> */}
+       <th
+                           className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer select-none"
+                           onClick={() => {
+                             if (sortField === 'price') {
+                               setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+                             } else {
+                               setSortField('price');
+                               setSortOrder('asc');
+                             }
+                           }}
+                           title="Sort by Price"
+                         >
+                           PRICE
+                           <span className="inline-block ml-1">
+                             {sortField === 'price' ? (
+                               sortOrder === 'asc' ? (
+                                 <LuArrowDownUp className="inline h-4 w-4 text-gray-600" />
+                               ) : (
+                                 <LuArrowUpDown className="inline h-4 w-4 text-gray-600" />
+                               )
+                             ) : (
+                               <LuArrowDownUp className="inline h-4 w-4 text-gray-400" />
+                             )}
+                           </span>
+                         </th>
+        <th
+                            className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer select-none"
+                            onClick={() => {
+                              if (sortField === 'stock') {
+                                setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+                              } else {
+                                setSortField('stock');
+                                setSortOrder('asc');
+                              }
+                            }}
+                            title="Sort by Stock"
+                          >
+                            STOCK
+                            <span className="inline-block ml-1">
+                              {sortField === 'stock' ? (
+                                sortOrder === 'asc' ? (
+                                  <LuArrowDownUp className="inline h-4 w-4 text-gray-600" />
+                                ) : (
+                                  <LuArrowUpDown className="inline h-4 w-4 text-gray-600" />
+                                )
+                              ) : (
+                                <LuArrowDownUp className="inline h-4 w-4 text-gray-400" />
+                              )}
+                            </span>
+                          </th>
         {/* <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ACTIONS</th> */}
       </tr>
     </thead>
@@ -574,6 +691,7 @@ const handleCancelSave = () => {
                           placeholder="Scan or type serial number"
                           ref={index === 0 ? barcodeInputRef : null}
                           autoFocus={index > 0 && index === stockEntries.length - 1}
+                          autoComplete="off"
                           required
                         />
                         {checkingSerial && entry.serialNumber.trim() && (
@@ -827,20 +945,20 @@ const ClickableTableRow = ({ item, index, user, openViewStockModal, openAddStock
         onClick={toggleExpanded}
       >
         <td className="px-6 py-4 whitespace-nowrap">
-          <div className="w-8 h-8 rounded-full bg-teal-500 flex items-center justify-center text-white font-medium">
+          <div className="w-8 h-8 rounded-full text-blue-800 bg-blue-200 flex items-center justify-center font-medium">
             {index + 1}
           </div>
         </td>
         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{item.name}</td>
-        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+        {/* <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
           {item.branch?.name || '-'}
         </td>
         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{item.unit}</td>
         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{item.warranty || 'No Warranty'}</td>
-        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">₹{item.mrp}</td>
+        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">₹{item.mrp}</td> */}
         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">₹{item.salePrice}</td>
         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium text-blue-800 bg-blue-200">
             {item.stock ? item.stock.length : 0} {item.unit}
           </span>
         </td>

@@ -263,28 +263,18 @@ const Dashboard = () => {
             ).length;
           }
 
-          totalStaff = managersCount + techniciansCount;
+          totalStaff = techniciansCount;
         } catch (err) {
           console.error("Error fetching staff data:", err);
         }
 
-        // Calculate inventory total
+        // Calculate inventory total as total number of serialized and generic items (not stock)
         if (serializedData.success) {
-          serializedData.items.forEach((item) => {
-            if (item.stock) {
-              inventoryTotal += item.stock.length;
-            }
-          });
+          inventoryTotal += serializedData.items.length;
         }
 
         if (genericData.success) {
-          genericData.items.forEach((item) => {
-            if (item.stock) {
-              item.stock.forEach((stock) => {
-                inventoryTotal += parseInt(stock.quantity || 0, 10);
-              });
-            }
-          });
+          inventoryTotal += genericData.items.length;
         }
 
         // Calculate customer count
@@ -605,11 +595,11 @@ const Dashboard = () => {
             path: "/branches",
           },
           {
-            name: "Total Staff",
+            name: "Total Technicians",
             value: stats.staff,
             icon: FiUsers,
             bgColor: "bg-blue-500",
-            path: "/users/managers",
+            path: "/users/technicians",
           },
           {
             name: "Inventory Items",
@@ -619,39 +609,39 @@ const Dashboard = () => {
             path: "/inventory",
           },
           {
-            name: "Customers",
+            name: "Total Customers",
             value: stats.customers,
             icon: FiUsers,
             bgColor: "bg-green-500",
-            path: "/contacts",
+            path: "/branches",
           },
           {
             name: "Work Orders",
             value: stats.workOrders,
             icon: FiTool,
             bgColor: "bg-red-500",
-            path: "/work-orders",
+            path: "/branches",
           },
           {
             name: "Assigned Projects",
             value: stats.assignedProjects,
             icon: FiActivity,
             bgColor: "bg-purple-500",
-            path: "/manager-dashboard",
+            path: "/branches",
           },
           {
             name: "Pending Approvals",
             value: stats.pendingApprovals,
             icon: FiClock,
             bgColor: "bg-amber-500",
-            path: "/manager-dashboard",
+            path: "/branches",
           },
           {
             name: "Completed Projects",
             value: stats.completedProjects,
             icon: FiCheckCircle,
             bgColor: "bg-emerald-500",
-            path: "/manager-dashboard",
+            path: "/branches",
           },
         ]
       : [

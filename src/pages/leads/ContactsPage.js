@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { FiSearch, FiPlusCircle, FiFilter, FiRefreshCw, FiUserPlus } from 'react-icons/fi';
+import { useSearchParams } from 'react-router-dom';
 import SummaryApi from '../../common';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import { useAuth } from '../../context/AuthContext';
@@ -18,6 +19,7 @@ const statusColors = {
 
 const ContactsPage = () => {
   const { user } = useAuth();
+  const [searchParams] = useSearchParams();
   const [contacts, setContacts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -112,9 +114,13 @@ const fetchContacts = async (forceFresh = false) => {
     }
     
     try {
-      // Include branch parameter if admin has selected a branch
+      // Get branch from URL params first, then fallback to user.selectedBranch
+      const urlBranch = searchParams.get('branch');
       let branchParam = '';
-      if (user.role === 'admin' && user.selectedBranch) {
+      
+      if (urlBranch) {
+        branchParam = `?branch=${urlBranch}`;
+      } else if (user.role === 'admin' && user.selectedBranch) {
         branchParam = `?branch=${user.selectedBranch}`;
       }
       
@@ -178,7 +184,7 @@ const fetchContacts = async (forceFresh = false) => {
   
   useEffect(() => {
     fetchContacts();
-  }, [user.selectedBranch]);
+  }, [user.selectedBranch, searchParams]);
   
 // फ़िल्टर टैब्स का हैंडलर
 const handleFilterChange = (type, status = 'all') => {

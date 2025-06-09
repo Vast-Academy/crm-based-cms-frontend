@@ -17,6 +17,8 @@ const GenerateBillModal = ({ isOpen, onClose, workOrder, onBillGenerated }) => {
   const [paymentMethod, setPaymentMethod] = useState('');
   const [transactionId, setTransactionId] = useState('');
   const [cashAmount, setCashAmount] = useState(0);
+  const [paidAmount, setPaidAmount] = useState(0);
+  const [dueAmount, setDueAmount] = useState(0);
   const [showServicesModal, setShowServicesModal] = useState(false);
 const [availableServices, setAvailableServices] = useState([]);
 const [selectedServices, setSelectedServices] = useState([]);
@@ -107,7 +109,6 @@ const fetchAvailableServices = async () => {
     }
   }, [searchQuery]);
   
-  // Search inventory based on serial number or name
 const handleSearch = () => {
   if (!searchQuery.trim()) {
     setSearchResults([]);
@@ -133,16 +134,30 @@ const handleSearch = () => {
     }
     
     if (item.type === 'serialized-product') {
-      // For serialized items, ONLY search by serial number (not by name)
+      // For serialized items, search by serial number or by product name
       const activeSerials = item.serializedItems?.filter(
         serial => (
           serial.status === 'active' && 
-          serial.serialNumber.toLowerCase().includes(query) &&
           !addedSerialNumbers.has(serial.serialNumber) // Prevent duplicates
         )
       );
       
-      if (activeSerials && activeSerials.length > 0) {
+      const serialMatches = activeSerials?.filter(serial => serial.serialNumber.toLowerCase().includes(query)) || [];
+      const nameMatch = item.itemName.toLowerCase().includes(query);
+      
+      if (serialMatches.length > 0) {
+        serialMatches.forEach(serialItem => {
+          results.push({
+            ...item,
+            selectedSerialNumber: serialItem.serialNumber,
+            quantity: 1,
+            unit: item.unit || 'Piece'
+          });
+        });
+      } 
+      
+      if (nameMatch) {
+        // Add all active serials for this product when name matches
         activeSerials.forEach(serialItem => {
           results.push({
             ...item,
@@ -278,25 +293,25 @@ const addItemToSelection = (item) => {
 };
   
   // Update item quantity
-  const updateItemQuantity = (index, newQuantity) => {
-    const item = selectedItems[index];
-    
-    // Validate that the new quantity is valid
-    if (newQuantity < 1) {
-      setError('Quantity cannot be less than 1');
-      return;
-    }
-    
-    if (item.type === 'generic-product' && newQuantity > item.availableQuantity) {
-      setError(`Maximum available quantity (${item.availableQuantity}) reached for this item`);
-      return;
-    }
-    
-    // Update the quantity
-    const updatedItems = [...selectedItems];
-    updatedItems[index].quantity = newQuantity;
-    setSelectedItems(updatedItems);
-  };
+const updateItemQuantity = (index, newQuantity) => {
+  const item = selectedItems[index];
+
+  // Allow 0 quantity internally to enable clearing input, but do not set error
+  if (newQuantity < 0) {
+    setError('Quantity cannot be less than 0');
+    return;
+  }
+
+  if (item.type === 'generic-product' && newQuantity > item.availableQuantity) {
+    setError(`Maximum available quantity (${item.availableQuantity}) reached for this item`);
+    return;
+  }
+
+  // Update the quantity
+  const updatedItems = [...selectedItems];
+  updatedItems[index].quantity = newQuantity;
+  setSelectedItems(updatedItems);
+};
   
   // Remove item from selection
   const removeItem = (index) => {
@@ -462,7 +477,8 @@ const getGroupedItems = () => {
         body: JSON.stringify({
           billId,
           paymentMethod,
-          transactionId: paymentMethod === 'online' ? transactionId : null
+          transactionId: paymentMethod === 'online' ? transactionId : null,
+          paidAmount: paymentMethod === 'cash' ? paidAmount : null
         })
       });
       
@@ -823,27 +839,41 @@ const addServicesToBill = () => {
                             </div>
                             
                             {/* Quantity controls for generic products */}
-                            {item.type === 'generic-product' && (
-                              <div className="flex items-center mr-2">
-                                <button 
-                                  onClick={() => updateItemQuantity(index, item.quantity - 1)}
-                                  className="w-8 h-8 flex items-center justify-center border rounded-l-md"
-                                  disabled={item.quantity <= 1}
-                                >
-                                  -
-                                </button>
-                                <span className="w-10 h-8 flex items-center justify-center border-t border-b">
-                                  {item.quantity}
-                                </span>
-                                <button 
-                                  onClick={() => updateItemQuantity(index, item.quantity + 1)}
-                                  className="w-8 h-8 flex items-center justify-center border rounded-r-md"
-                                  disabled={item.quantity >= item.availableQuantity}
-                                >
-                                  +
-                                </button>
-                              </div>
-                            )}
+{item.type === 'generic-product' && (
+  <div className="flex items-center mr-2">
+    <button 
+      onClick={() => updateItemQuantity(index, item.quantity - 1)}
+      className="w-8 h-8 flex items-center justify-center border rounded-l-md"
+      disabled={item.quantity <= 0}
+    >
+      -
+    </button>
+    <input
+      type="number"
+      min={0}
+      max={item.availableQuantity}
+      value={item.quantity}
+      onChange={(e) => {
+        const val = e.target.value;
+        const numVal = Number(val);
+        if (val === '') {
+          // Allow empty input temporarily
+          updateItemQuantity(index, 0);
+        } else if (!isNaN(numVal)) {
+          updateItemQuantity(index, numVal);
+        }
+      }}
+      className="w-12 h-8 text-center border-t border-b outline-none"
+    />
+    <button 
+      onClick={() => updateItemQuantity(index, item.quantity + 1)}
+      className="w-8 h-8 flex items-center justify-center border rounded-r-md"
+      disabled={item.quantity >= item.availableQuantity}
+    >
+      +
+    </button>
+  </div>
+)}
                             
                             <button 
                               onClick={() => removeItem(index)}
@@ -988,14 +1018,38 @@ const addServicesToBill = () => {
               {paymentMethod === 'cash' && (
                 <div className="mb-4">
                   <p className="font-medium mb-3">Cash Payment</p>
-                  <div className="flex items-center bg-gray-50 p-3 rounded-md mb-3">
-                    <span className="text-gray-700">Amount:</span>
+                  <div className="mb-3">
+                    <label className="block text-gray-700 font-medium mb-1">Total Amount</label>
                     <input
                       type="number"
-                      className="w-full ml-2 px-3 py-2 border rounded-md"
-                      value={cashAmount}
-                      onChange={(e) => setCashAmount(parseFloat(e.target.value))}
+                      className="w-full px-3 py-2 border rounded-md bg-gray-100 cursor-not-allowed"
+                      value={calculateTotal().toFixed(2)}
+                      readOnly
+                    />
+                  </div>
+                  <div className="mb-3">
+                    <label className="block text-gray-700 font-medium mb-1">Paid Amount</label>
+                    <input
+                      type="number"
+                      className="w-full px-3 py-2 border rounded-md"
+                      value={paidAmount}
+                      onChange={(e) => {
+                        const val = parseFloat(e.target.value);
+                        if (!isNaN(val) && val >= 0 && val <= calculateTotal()) {
+                          setPaidAmount(val);
+                          setDueAmount(calculateTotal() - val);
+                        }
+                      }}
                       min={0}
+                      max={calculateTotal()}
+                    />
+                  </div>
+                  <div className="mb-3">
+                    <label className="block text-gray-700 font-medium mb-1">Due Amount</label>
+                    <input
+                      type="number"
+                      className="w-full px-3 py-2 border rounded-md bg-gray-100 cursor-not-allowed"
+                      value={dueAmount.toFixed(2)}
                       readOnly
                     />
                   </div>
@@ -1010,42 +1064,42 @@ const addServicesToBill = () => {
             </div>
           )}
 
-           {/* Step 3.5: Payment Confirmation */}
-           {currentStep === 'payment-confirmation' && (
-                <div className="p-4">
-                    <div className="mb-6 flex items-center justify-center">
-                    <div className="h-16 w-16 bg-yellow-100 rounded-full flex items-center justify-center">
-                        <AlertCircle size={32} className="text-yellow-500" />
-                    </div>
-                    </div>
-                    
-                    <h3 className="text-xl font-medium text-center mb-4">Please Verify Payment Details</h3>
-                    
-                    <div className="bg-gray-50 p-4 rounded-lg mb-6">
-                    <div className="mb-3">
-                        <p className="text-sm text-gray-600">Payment Method:</p>
-                        <p className="font-medium">{paymentMethod === 'online' ? 'Online Payment' : 'Cash Payment'}</p>
-                    </div>
-                    
-                    <div className="mb-3">
-                        <p className="text-sm text-gray-600">Total Amount:</p>
-                        <p className="font-medium">₹{calculateTotal().toFixed(2)}</p>
-                    </div>
-                    
-                    {paymentMethod === 'online' && (
-                        <div>
-                        <p className="text-sm text-gray-600">Transaction ID:</p>
-                        <p className="font-medium break-all">{transactionId}</p>
-                        </div>
-                    )}
-                    </div>
-                    
-                    <p className="text-center text-sm text-gray-600 mb-4">
-                    Please confirm that all payment details are correct before proceeding.
-                    {paymentMethod === 'online' && " Verify that the transaction ID is accurate."}
-                    </p>
-                </div>
-                )}
+{/* Step 3.5: Payment Confirmation */}
+{currentStep === 'payment-confirmation' && (
+  <div className="p-4">
+    <div className="mb-6 flex items-center justify-center">
+      <div className="h-16 w-16 bg-yellow-100 rounded-full flex items-center justify-center">
+        <AlertCircle size={32} className="text-yellow-500" />
+      </div>
+    </div>
+    
+    <h3 className="text-xl font-medium text-center mb-4">Please Verify Payment Details</h3>
+    
+    <div className="bg-gray-50 p-4 rounded-lg mb-6">
+      <div className="mb-3">
+        <p className="text-sm text-gray-600">Payment Method:</p>
+        <p className="font-medium">{paymentMethod === 'online' ? 'Online Payment' : 'Cash Payment'}</p>
+      </div>
+      
+      <div className="mb-3">
+        <p className="text-sm text-gray-600">Paid Amount:</p>
+        <p className="font-medium">₹{paidAmount.toFixed(2)}</p>
+      </div>
+      
+      {paymentMethod === 'online' && (
+        <div>
+          <p className="text-sm text-gray-600">Transaction ID:</p>
+          <p className="font-medium break-all">{transactionId}</p>
+        </div>
+      )}
+    </div>
+    
+    <p className="text-center text-sm text-gray-600 mb-4">
+      Please confirm that all payment details are correct before proceeding.
+      {paymentMethod === 'online' && " Verify that the transaction ID is accurate."}
+    </p>
+  </div>
+)}
           
           {/* Step 4: Payment Success*/}
           {currentStep === 'payment-success' && (

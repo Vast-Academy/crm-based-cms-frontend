@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { FiBox, FiX, FiSave, FiSearch } from 'react-icons/fi';
+import { FiBox, FiX, FiSave, FiSearch, FiTrash2 } from 'react-icons/fi';
 import SummaryApi from '../../common';
 import { useNotification } from '../../context/NotificationContext';
+import { useAuth } from '../../context/AuthContext';
+import ConfirmationDialog from '../../components/ConfirmationDialog';
 
 // Sample product units for selection
 const productUnits = [
-  'Piece', 'Kg', 'Meter', 'Liter', 'Box', 'Carton', 'Dozen', 'Pair'
+  'Piece', 'Kg', 'Meter', 'Liter', 'Box', 'Carton', 'Dozen', 'Pair', 'Roll'
 ];
 
 // Warranty options
@@ -15,6 +17,7 @@ const warrantyOptions = [
 
 const InventoryPage = () => {
   const { showNotification } = useNotification();
+  const { user } = useAuth();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -25,6 +28,8 @@ const InventoryPage = () => {
 const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 const [selectedItem, setSelectedItem] = useState(null);
 const [lastRefreshTime, setLastRefreshTime] = useState(0);
+const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+const [itemToDelete, setItemToDelete] = useState(null);
 
   // New item form state
   const [newItem, setNewItem] = useState({
@@ -312,9 +317,12 @@ const getStockDisplay = (item) => {
       if (data.success) {
         showNotification('success', 'Item added successfully');
         
-        // Reset form and close modal
+        // Store current type
+        const currentType = newItem.type;
+        
+        // Reset form but keep the selected type
         setNewItem({
-          type: 'serialized-product',
+          type: currentType,
           name: '',
           unit: 'Piece',
           warranty: '1 year',
@@ -322,8 +330,8 @@ const getStockDisplay = (item) => {
           purchasePrice: '',
           salePrice: ''
         });
-        setIsModalOpen(false);
-
+        // Do not close the modal automatically
+        
          // Clear the inventory cache
       localStorage.removeItem('inventoryItems');
         
@@ -518,16 +526,71 @@ const getStockDisplay = (item) => {
                 Edit Item
               </button>
               <button
-                onClick={() => openEditModal(item)}
-                className="inline-flex items-center px-4 py-2 border border-teal-500 rounded-md shadow-sm text-sm font-medium text-teal-500 bg-white hover:bg-teal-500 hover:text-white"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setItemToDelete(item);
+                  setIsDeleteDialogOpen(true);
+                }}
+                className="inline-flex items-center px-4 py-2 border border-red-500 rounded-md shadow-sm text-sm font-medium text-red-500 bg-white hover:bg-red-500 hover:text-white"
               >
-                <FiSave className="mr-2" />
-                Add Stock
+                <FiTrash2 className="mr-2" />
+                Delete Item
               </button>
             </div>
           </td>
         </tr>
       )}
+      {/* Confirmation Dialog for Delete */}
+      <ConfirmationDialog
+        isOpen={isDeleteDialogOpen}
+        title="Confirm Delete"
+        message={`${user.firstName} ${user.lastName || ''}, are you sure you want to delete the item "${itemToDelete ? itemToDelete.name : ''}"?`}
+        confirmText="Yes, Delete"
+        cancelText="No"
+        onConfirm={async () => {
+          if (!itemToDelete) {
+            setIsDeleteDialogOpen(false);
+            return;
+          }
+          const stock = itemToDelete.type === 'serialized-product'
+            ? (itemToDelete.stock ? itemToDelete.stock.length : 0)
+            : itemToDelete.type === 'generic-product'
+              ? (itemToDelete.stock ? itemToDelete.stock.reduce((total, stock) => total + parseInt(stock.quantity, 10), 0) : 0)
+              : 0;
+          if (stock > 0) {
+            showNotification('error', 'Item cannot be deleted because it has stock.');
+            setIsDeleteDialogOpen(false);
+            return;
+          }
+          try {
+            setLoading(true);
+            const response = await fetch(`${SummaryApi.deleteInventoryItem.url}/${itemToDelete.id}`, {
+              method: SummaryApi.deleteInventoryItem.method,
+              credentials: 'include',
+            });
+            const data = await response.json();
+            if (data.success) {
+              showNotification('success', 'Item deleted successfully.');
+              setInventoryItems(prevItems => prevItems.filter(item => item.id !== itemToDelete.id));
+              localStorage.removeItem('inventoryItems');
+              fetchFreshInventoryData();
+            } else {
+              showNotification('error', data.message || 'Failed to delete item.');
+            }
+          } catch (err) {
+            showNotification('error', 'Server error. Please try again later.');
+            console.error('Error deleting item:', err);
+          } finally {
+            setLoading(false);
+            setIsDeleteDialogOpen(false);
+            setItemToDelete(null);
+          }
+        }}
+        onCancel={() => {
+          setIsDeleteDialogOpen(false);
+          setItemToDelete(null);
+        }}
+      />
     </React.Fragment>
   ))}
   {filteredItems.length === 0 && (
@@ -617,6 +680,7 @@ const getStockDisplay = (item) => {
                     className="w-full p-2 border rounded-md"
                     placeholder="Item name"
                     required
+                    autoComplete="off"
                   />
                 </div>
                 

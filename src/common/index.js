@@ -201,6 +201,14 @@ const SummaryApi = {
         url : `${backendDomain}/api/confirm-order-bill`,
         method: "post"
       },
+      getBillHistory: {
+        url : `${backendDomain}/api/history`,
+        method: "get"
+      },
+      getBillsByWorkOrder: {
+        url : `${backendDomain}/api/workorder`,
+        method: "get"
+      },
       completeWorkOrder : {
         url : `${backendDomain}/api/complete-work-order`,
         method: "post"
@@ -225,6 +233,10 @@ const SummaryApi = {
         url : `${backendDomain}/api/approve-order`,
         method: "post"
       },
+      rejectBill: {
+        url : `${backendDomain}/api/reject-bill`,
+        method: "post"
+      },
       getBillDetails:{
         url : `${backendDomain}/api/get-bill-details`,
         method: "get"
@@ -239,6 +251,10 @@ const SummaryApi = {
       },
       acceptTechnicianProjectTransfer: {
         url : `${backendDomain}/api/accept-technician-project-transfer`,
+        method: "post"
+      },
+      rejectTechnicianProjectTransfer: {
+        url : `${backendDomain}/api/reject-technician-project-transfer`,
         method: "post"
       },
       getReturnedInventory: {

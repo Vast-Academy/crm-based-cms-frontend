@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import SerializedProductsList from './SerializedProductsList';
 import GenericProductsList from './GenericProductsList';
 import ServicesList from './ServicesList';
@@ -9,6 +10,9 @@ import { FiSearch, FiPackage } from 'react-icons/fi';
 import { useNotification } from '../../context/NotificationContext';
 
 const InventoryManagement = () => {
+  const [searchParams] = useSearchParams();
+  const branch = searchParams.get('branch') || '';
+
   // State to track which filter is currently selected
   const [activeFilter, setActiveFilter] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
@@ -48,13 +52,13 @@ const InventoryManagement = () => {
   const renderContent = () => {
     switch (activeFilter) {
       case 'serialized':
-        return <SerializedProductsList searchTerm={searchTerm} refreshTrigger={refreshCount}/>;
+        return <SerializedProductsList searchTerm={searchTerm} refreshTrigger={refreshCount} branch={branch} />;
       case 'generic':
-        return <GenericProductsList searchTerm={searchTerm} refreshTrigger={refreshCount} />;
+        return <GenericProductsList searchTerm={searchTerm} refreshTrigger={refreshCount} branch={branch} />;
       case 'services':
-        return <ServicesList searchTerm={searchTerm} refreshTrigger={refreshCount} />;
+        return <ServicesList searchTerm={searchTerm} refreshTrigger={refreshCount} branch={branch} />;
       default:
-        return <AllInventoryItems searchTerm={searchTerm} refreshTrigger={refreshCount}/>;
+        return <AllInventoryItems searchTerm={searchTerm} refreshTrigger={refreshCount} branch={branch} />;
     }
   };
 
