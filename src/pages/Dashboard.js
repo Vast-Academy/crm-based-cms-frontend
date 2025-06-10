@@ -606,7 +606,7 @@ const Dashboard = () => {
             value: stats.inventory,
             icon: FiPackage,
             bgColor: "bg-yellow-500",
-            path: "/inventory",
+            path: "/inventory-items",
           },
           {
             name: "Total Customers",
@@ -768,8 +768,8 @@ const Dashboard = () => {
         {dashboardStats.map((stat, index) => (
           <div
             key={index}
-            className={`${stat.bgColor} text-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow duration-300 cursor-pointer`}
-            onClick={() => (window.location.href = stat.path)}
+            className={`${stat.bgColor} text-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow duration-300 ${user.role === "admin" ? "cursor-pointer" : ""}`}
+            onClick={() => user.role === "admin" && (window.location.href = stat.path)}
           >
             <div className="flex justify-between items-center">
               <div>
