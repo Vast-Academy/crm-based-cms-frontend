@@ -555,6 +555,7 @@ const handleRefresh = () => {
                       )}
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Quantity</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date Added</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Remark</th>
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
@@ -567,6 +568,11 @@ const handleRefresh = () => {
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{stockItem.quantity}</td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                           {new Date(stockItem.date).toLocaleDateString()}
+                        </td>
+                        <td className="px-6 py-4 text-sm text-gray-500 max-w-xs">
+                          <div className="truncate" title={stockItem.remark || 'No remark'}>
+                            {stockItem.remark || '-'}
+                          </div>
                         </td>
                       </tr>
                     ))}
@@ -713,6 +719,7 @@ const handleRefresh = () => {
 // Form for adding serialized product stock
 const SerializedStockForm = ({ item, onClose, showNotification, onSuccess, onPrepareForSaving }) => {
     const [error, setError] = useState(null);
+    const [remark, setRemark] = useState('');
     const [stockEntries, setStockEntries] = useState([
       {
         serialNumber: '',
@@ -743,6 +750,7 @@ const SerializedStockForm = ({ item, onClose, showNotification, onSuccess, onPre
           date: new Date().toISOString().split('T')[0]
         }
       ]);
+      setRemark(''); // Reset single remark
       setError(null);
       setSerialNumberStatus({});
       setStockEntriesToSave([]);
@@ -782,14 +790,14 @@ const SerializedStockForm = ({ item, onClose, showNotification, onSuccess, onPre
     const handleAddStockEntry = () => {
       const newEntryIndex = stockEntries.length;
       
-      setStockEntries([
-        ...stockEntries,
-        {
-          serialNumber: '',
-          quantity: 1,
-          date: new Date().toISOString().split('T')[0]
-        }
-      ]);
+        setStockEntries([
+          ...stockEntries,
+          {
+            serialNumber: '',
+            quantity: 1,
+            date: new Date().toISOString().split('T')[0]
+          }
+        ]);
       
       setTimeout(() => {
         const newInput = document.getElementById(`barcode-input-${newEntryIndex}`);
@@ -885,6 +893,13 @@ const SerializedStockForm = ({ item, onClose, showNotification, onSuccess, onPre
     };
   
     const prepareForSaving = () => {
+      // Check if remark is provided
+      if (!remark.trim()) {
+        setError('Please provide a remark');
+        showNotification('error', 'Please provide a remark');
+        return;
+      }
+
       // For serial products, filter valid entries with serial numbers
       const validEntries = stockEntries
         .filter(entry => 
@@ -897,7 +912,8 @@ const SerializedStockForm = ({ item, onClose, showNotification, onSuccess, onPre
         )
         .map(entry => ({
           ...entry,
-          quantity: 1 // Always 1 for serial products
+          quantity: 1, // Always 1 for serial products
+          remark: remark // Add the single remark to each entry
         }));
       
       if (validEntries.length === 0) {
@@ -913,7 +929,7 @@ const SerializedStockForm = ({ item, onClose, showNotification, onSuccess, onPre
   
     // Discard and close button handler
     const handleDiscardAndClose = () => {
-      if (stockEntries.some(entry => entry.serialNumber.trim() !== '')) {
+      if (stockEntries.some(entry => entry.serialNumber.trim() !== '') || remark.trim() !== '') {
         // Confirm before discarding
         if (window.confirm('All unsaved changes will be lost. Are you sure you want to discard them?')) {
           resetStockEntriesForm();
@@ -1060,7 +1076,7 @@ const SerializedStockForm = ({ item, onClose, showNotification, onSuccess, onPre
                   </p>
                 </div>
                 
-                <div className="md:col-span-3">
+              <div className="md:col-span-3">
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Date
                   </label>
@@ -1072,6 +1088,7 @@ const SerializedStockForm = ({ item, onClose, showNotification, onSuccess, onPre
                     required
                   />
                 </div>
+                
               </div>
             </div>
           ))}
@@ -1088,6 +1105,23 @@ const SerializedStockForm = ({ item, onClose, showNotification, onSuccess, onPre
             </svg>
             Add Another Serial Number
           </button>
+        </div>
+
+        {/* Single Remark Section */}
+        <div className="mt-6 p-4 border rounded-md bg-blue-50">
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Remark for All Serial Numbers *
+          </label>
+          <textarea
+            value={remark}
+            onChange={(e) => setRemark(e.target.value)}
+            className="w-full p-3 border rounded-md bg-white h-24 resize-none"
+            placeholder="Enter a common remark for all serial numbers above"
+            required
+          />
+          <p className="mt-1 text-xs text-gray-500">
+            This remark will be applied to all serial numbers entered above.
+          </p>
         </div>
         
         <div className="mt-6 pt-4 border-t flex justify-between">
@@ -1108,7 +1142,7 @@ const SerializedStockForm = ({ item, onClose, showNotification, onSuccess, onPre
             <button
       type="button"
       onClick={prepareForSaving}
-      disabled={loading || stockEntries.every(e => !e.serialNumber.trim() || serialNumberStatus[stockEntries.indexOf(e)]?.valid === false)}
+      disabled={loading || stockEntries.every(e => !e.serialNumber.trim() || serialNumberStatus[stockEntries.indexOf(e)]?.valid === false) || !remark.trim()}
       className="inline-flex justify-center items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-teal-500 hover:bg-teal-600 focus:outline-none disabled:opacity-50"
     >
       <span className="flex items-center">
@@ -1132,7 +1166,8 @@ const GenericStockForm = ({ item, onClose, showNotification, onSuccess, onPrepar
     const [stockEntries, setStockEntries] = useState([
       {
         quantity: 1,
-        date: new Date().toISOString().split('T')[0]
+        date: new Date().toISOString().split('T')[0],
+        remark: ''
       }
     ]);
     const [stockEntriesToSave, setStockEntriesToSave] = useState([]);
@@ -1279,6 +1314,19 @@ const GenericStockForm = ({ item, onClose, showNotification, onSuccess, onPrepar
                   required
                 />
               </div>
+
+              <div className="md:col-span-2">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Remark *
+                </label>
+                <textarea
+                  value={entry.remark}
+                  onChange={(e) => handleStockEntryChange(index, 'remark', e.target.value)}
+                  className="w-full p-2 border rounded-md bg-white h-20 resize-none"
+                  placeholder="Enter remark for this stock entry"
+                  required
+                />
+              </div>
             </div>
           </div>
         ))}
@@ -1315,7 +1363,7 @@ const GenericStockForm = ({ item, onClose, showNotification, onSuccess, onPrepar
     <button
       type="button"
       onClick={prepareForSaving}
-      disabled={loading || stockEntries.every(e => !e.quantity || e.quantity <= 0)}
+      disabled={loading || stockEntries.every(e => !e.quantity || e.quantity <= 0 || !e.remark.trim())}
       className="inline-flex justify-center items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-teal-500 hover:bg-teal-600 focus:outline-none disabled:opacity-50"
     >
       <span className="flex items-center">

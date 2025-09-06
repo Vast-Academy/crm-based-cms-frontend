@@ -61,6 +61,7 @@ const SerializedProductsList = ({ searchTerm = '', branch = '' }) => {
       date: new Date().toISOString().split('T')[0]
     }
   ]);
+  const [globalRemark, setGlobalRemark] = useState('');
   const barcodeInputRef = useRef(null);
 
   // Fetch serialized products
@@ -158,6 +159,7 @@ const SerializedProductsList = ({ searchTerm = '', branch = '' }) => {
         date: new Date().toISOString().split('T')[0]
       }
     ]);
+    setGlobalRemark('');
     setError(null);
     setSerialNumberStatus({});
     setStockEntriesToSave([]);
@@ -188,6 +190,7 @@ const SerializedProductsList = ({ searchTerm = '', branch = '' }) => {
           setSerialNumberStatus({});
           setStockEntriesToSave([]);
           setIsAddStockModalOpen(false);
+          setConfirmDialogOpen(false);
         }
       );
     } else {
@@ -395,7 +398,8 @@ const SerializedProductsList = ({ searchTerm = '', branch = '' }) => {
       )
       .map(entry => ({
         ...entry,
-        quantity: 1 // Always 1 for serial products
+        quantity: 1, // Always 1 for serial products
+        remark: globalRemark // Add global remark to each entry
       }));
     
     if (validEntries.length === 0) {
@@ -431,7 +435,8 @@ const handleCancelSave = () => {
           },
           body: JSON.stringify({
             itemId: selectedItem.id,
-            ...entry
+            ...entry,
+            remark: entry.remark || globalRemark // Use entry-specific remark if exists, otherwise use global
           })
         });
         
@@ -748,7 +753,7 @@ const handleCancelSave = () => {
                       </p>
                     </div>
                     
-                    <div className="md:col-span-3">
+                    <div className="md:col-span-2">
                       <label className="block text-sm font-medium text-gray-700 mb-1">
                         Date
                       </label>
@@ -760,6 +765,7 @@ const handleCancelSave = () => {
                         required
                       />
                     </div>
+                    
                   </div>
                 </div>
               ))}
@@ -775,8 +781,20 @@ const handleCancelSave = () => {
                 Add Another Serial Number
               </button>
             </div>
+
+            <div className="mt-6 mb-6">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Remark for all entries
+              </label>
+              <textarea
+                value={globalRemark}
+                onChange={(e) => setGlobalRemark(e.target.value)}
+                className="w-full p-2 border rounded-md bg-white h-24 resize-none"
+                placeholder="Add a remark that will apply to all serial numbers..."
+              />
+            </div>
             
-            <div className="mt-6 pt-4 border-t flex justify-between">
+            <div className="pt-4 border-t flex justify-between">
               <div>
                 <span className="text-sm text-gray-500">
                   {stockEntries.filter(e => serialNumberStatus[stockEntries.indexOf(e)]?.valid).length} valid serial numbers
@@ -811,6 +829,7 @@ const handleCancelSave = () => {
       {/* Confirmation Dialog */}
       <ConfirmationDialog
         isOpen={confirmDialogOpen}
+        onCancel={() => setConfirmDialogOpen(false)}
         onClose={() => setConfirmDialogOpen(false)}
         title={confirmData.title}
         message={confirmData.message}
@@ -844,6 +863,7 @@ const handleCancelSave = () => {
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Serial Number</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Quantity</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date Added</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Remark</th>
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
@@ -854,6 +874,11 @@ const handleCancelSave = () => {
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{stockItem.quantity}</td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                           {new Date(stockItem.date).toLocaleDateString()}
+                        </td>
+                        <td className="px-6 py-4 text-sm text-gray-500">
+                          <div className="max-w-xs truncate" title={stockItem.remark || '-'}>
+                            {stockItem.remark || '-'}
+                          </div>
                         </td>
                       </tr>
                     ))}

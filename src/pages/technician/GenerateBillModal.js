@@ -184,18 +184,12 @@ const handleSearch = () => {
   setSearchResults(results);
 };
 
-  // Show payment confirmation screen
+// Show payment confirmation screen
 const showPaymentConfirmation = () => {
-    // Validate transaction ID for online payments
-    if (paymentMethod === 'online' && (!transactionId || transactionId.length < 12)) {
-      setError('Please enter a valid UPI transaction ID (min 12 characters)');
-      return;
-    }
-    
-    // Move to confirmation step
-    setCurrentStep('payment-confirmation');
-    setError(null);
-  };
+  // Just move to confirmation step without creating bill
+  setCurrentStep('payment-confirmation');
+  setError(null);
+};
 
   // Update work order status to pending-approval after payment
 const updateWorkOrderStatus = async () => {
@@ -386,50 +380,9 @@ const getGroupedItems = () => {
     try {
       setLoading(true);
       setError(null);
-      
-      // Create bill items array for API
-      const billItems = selectedItems.map(item => {
-        return {
-          itemId: item.itemId || item.id || item._id,
-          name: item.itemName || item.name, // Send name for fallback matching
-          quantity: item.quantity,
-          serialNumber: item.selectedSerialNumber || null,
-          price: item.salePrice || 0,
-          amount: (item.salePrice || 0) * item.quantity,
-          type: item.type
-        };
-      });
 
-      console.log("Sending bill items:", billItems); 
-      
-      // Create the bill in the database
-      const response = await fetch(SummaryApi.createWorkOrderBill.url, {
-        method: SummaryApi.createWorkOrderBill.method,
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        credentials: 'include',
-        body: JSON.stringify({
-          customerId: workOrder.customerId,
-          orderId: workOrder.orderId,
-          items: billItems
-        })
-      });
-      
-      const data = await response.json();
-      
-      if (data.success) {
-        // Set the bill ID for later use
-        setBillId(data.data.billId || data.data._id);
-        
-        // Set cash amount to the total
-        setCashAmount(calculateTotal());
-        
-        // Move to payment options step
-        setCurrentStep('payment-options');
-      } else {
-        setError(data.message || 'Failed to create bill');
-      }
+      // Just move to payment options step without creating bill
+      setCurrentStep('payment-options');
     } catch (err) {
       setError('Server error. Please try again.');
       console.error('Error creating bill:', err);
@@ -447,7 +400,7 @@ const getGroupedItems = () => {
   // Generate UPI payment string for QR code
   const generateUpiString = () => {
     // This is a simplified example - in production, you'd use your company's UPI ID
-    const upiId = 'yourcompany@ybl';
+    const upiId = 'itindia.asr@okicici';
     const amount = calculateTotal();
     const purpose = `Bill-${workOrder.orderId}`;
     
@@ -459,38 +412,77 @@ const getGroupedItems = () => {
     try {
       setLoading(true);
       setError(null);
-      
+
       // Validate transaction ID for online payments
       if (paymentMethod === 'online' && (!transactionId || transactionId.length < 12)) {
         setError('Please enter a valid UPI transaction ID (min 12 characters)');
         setLoading(false);
         return;
       }
-      
+
+      // Create bill items array for API
+      const billItems = selectedItems.map(item => {
+        return {
+          itemId: item.itemId || item.id || item._id,
+          name: item.itemName || item.name, // Send name for fallback matching
+          quantity: item.quantity,
+          serialNumber: item.selectedSerialNumber || null,
+          price: item.salePrice || 0,
+          amount: (item.salePrice || 0) * item.quantity,
+          type: item.type
+        };
+      });
+
+      // Create the bill in the database
+      const createResponse = await fetch(SummaryApi.createWorkOrderBill.url, {
+        method: SummaryApi.createWorkOrderBill.method,
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          customerId: workOrder.customerId,
+          orderId: workOrder.orderId,
+          items: billItems
+        })
+      });
+
+      const createData = await createResponse.json();
+
+      if (!createData.success) {
+        setError(createData.message || 'Failed to create bill');
+        setLoading(false);
+        return;
+      }
+
+      // Set the bill ID for later use
+      const newBillId = createData.data.billId || createData.data._id;
+      setBillId(newBillId);
+
       // API call to confirm payment
-      const response = await fetch(SummaryApi.confirmWorkOrderBill.url, {
+      const confirmResponse = await fetch(SummaryApi.confirmWorkOrderBill.url, {
         method: SummaryApi.confirmWorkOrderBill.method,
         headers: {
           'Content-Type': 'application/json'
         },
         credentials: 'include',
         body: JSON.stringify({
-          billId,
+          billId: newBillId,
           paymentMethod,
           transactionId: paymentMethod === 'online' ? transactionId : null,
           paidAmount: paymentMethod === 'cash' ? paidAmount : null
         })
       });
-      
-      const data = await response.json();
-      
-      if (data.success) {
+
+      const confirmData = await confirmResponse.json();
+
+      if (confirmData.success) {
         await updateSerializedItems();
         await updateWorkOrderStatus();
         // Move to payment success step
         setCurrentStep('payment-success');
       } else {
-        setError(data.message || 'Failed to process payment');
+        setError(confirmData.message || 'Failed to process payment');
       }
     } catch (err) {
       setError('Server error. Please try again.');
@@ -565,17 +557,9 @@ const addServicesToBill = () => {
 };
   
   // Handle closing the modal with different behaviors based on current step
-  const handleModalClose = () => {
-    // If we've completed payment, notify parent component before closing
-    if (currentStep === 'payment-success') {
-      if (onBillGenerated) {
-        onBillGenerated(selectedItems, true); // Pass true to indicate payment completed
-      }
-      onClose();
-    } else {
-      // Just close the modal without additional actions
-      onClose();
-    }
+  const handleModalClose = async () => {
+    // Just close the modal without additional actions
+    onClose();
   };
   
   // Handle going back to previous step

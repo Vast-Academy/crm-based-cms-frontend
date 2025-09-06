@@ -25,18 +25,25 @@ const GenericProductsList = ({ searchTerm = '', branch = '' }) => {
     const [isViewStockModalOpen, setIsViewStockModalOpen] = useState(false);
     const [selectedStockItem, setSelectedStockItem] = useState(null);
     const [stockEntriesToSave, setStockEntriesToSave] = useState([]);
+    // State to track which row is expanded
+      const [expandedRowId, setExpandedRowId] = useState(null);
+      const [showSaveConfirmation, setShowSaveConfirmation] = useState(false);
+
+    // Confirmation dialog state and data
     const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
     const [confirmData, setConfirmData] = useState({
       title: '',
       message: '',
-      type: 'warning',
-      confirmText: 'Confirm',
+      type: 'info',
+      confirmText: 'OK',
       onConfirm: () => {}
     });
-    
-    // State to track which row is expanded
-      const [expandedRowId, setExpandedRowId] = useState(null);
-      const [showSaveConfirmation, setShowSaveConfirmation] = useState(false);
+
+    // Helper function to show confirmation dialog
+    const showConfirmation = (title, message, type, confirmText, onConfirm) => {
+      setConfirmData({ title, message, type, confirmText, onConfirm });
+      setConfirmDialogOpen(true);
+    };
 
       // Function to toggle expanded row
     const toggleRowExpansion = (itemId) => {
@@ -53,9 +60,11 @@ const GenericProductsList = ({ searchTerm = '', branch = '' }) => {
     const [stockEntries, setStockEntries] = useState([
       {
         quantity: 1,
-        date: new Date().toISOString().split('T')[0]
+        date: new Date().toISOString().split('T')[0],
+        remark: ''
       }
     ]);
+    const [globalRemark, setGlobalRemark] = useState('');
     
     // Fetch generic products
     useEffect(() => {
@@ -96,28 +105,18 @@ const GenericProductsList = ({ searchTerm = '', branch = '' }) => {
       setStockEntries([
         {
           quantity: 1,
-          date: new Date().toISOString().split('T')[0]
+          date: new Date().toISOString().split('T')[0],
+          remark: ''
         }
       ]);
+      setGlobalRemark('');
       setError(null);
       setStockEntriesToSave([]);
     };
 
-    // Show confirmation dialog helper function
-    const showConfirmation = (title, message, type, confirmText, onConfirm) => {
-      setConfirmData({
-        title,
-        message,
-        type,
-        confirmText,
-        onConfirm
-      });
-      setConfirmDialogOpen(true);
-    };
-
     // Discard and close button handler
     const handleDiscardAndClose = () => {
-      if (stockEntries.some(entry => entry.quantity > 1)) {
+      if (stockEntries.some(entry => entry.quantity > 0)) {
         showConfirmation(
           'Discard Changes?',
           'All unsaved changes will be lost. Are you sure you want to discard them?',
@@ -127,6 +126,7 @@ const GenericProductsList = ({ searchTerm = '', branch = '' }) => {
             resetStockEntriesForm();
             setStockEntriesToSave([]);
             setIsAddStockModalOpen(false);
+            setConfirmDialogOpen(false);
           }
         );
       } else {
@@ -183,7 +183,8 @@ const GenericProductsList = ({ searchTerm = '', branch = '' }) => {
         ...stockEntries,
         {
           quantity: 1,
-          date: new Date().toISOString().split('T')[0]
+          date: new Date().toISOString().split('T')[0],
+          remark: ''
         }
       ]);
     };
@@ -505,35 +506,50 @@ const handleCancelSave = () => {
                       )}
                     </div>
                     
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Quantity *
-                        </label>
-                        <input
-                          type="number"
-                          value={entry.quantity}
-                          onChange={(e) => handleStockEntryChange(index, 'quantity', e.target.value)}
-                          className="w-full p-2 border rounded-md"
-                          placeholder="Enter quantity"
-                          min="1"
-                          required
-                        />
-                        <p className="mt-1 text-xs text-gray-500">
-                          Enter the number of {selectedItem.unit.toLowerCase()} to add
-                        </p>
+                    <div className="space-y-4">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Quantity *
+                          </label>
+                          <input
+                            type="number"
+                            value={entry.quantity}
+                            onChange={(e) => handleStockEntryChange(index, 'quantity', e.target.value)}
+                            className="w-full p-2 border rounded-md"
+                            placeholder="Enter quantity"
+                            min="1"
+                            required
+                          />
+                          <p className="mt-1 text-xs text-gray-500">
+                            Enter the number of {selectedItem.unit.toLowerCase()} to add
+                          </p>
+                        </div>
+                        
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Date
+                          </label>
+                          <input
+                            type="date"
+                            value={entry.date}
+                            onChange={(e) => handleStockEntryChange(index, 'date', e.target.value)}
+                            className="w-full p-2 border rounded-md bg-white"
+                            required
+                          />
+                        </div>
                       </div>
-                      
+
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Date
+                          Remark
                         </label>
                         <input
-                          type="date"
-                          value={entry.date}
-                          onChange={(e) => handleStockEntryChange(index, 'date', e.target.value)}
-                          className="w-full p-2 border rounded-md bg-white"
-                          required
+                          type="text"
+                          value={entry.remark}
+                          onChange={(e) => handleStockEntryChange(index, 'remark', e.target.value)}
+                          className="w-full p-2 border rounded-md"
+                          placeholder="Add a remark (optional)"
                         />
                       </div>
                     </div>
@@ -587,7 +603,7 @@ const handleCancelSave = () => {
         {/* Confirmation Dialog */}
         <ConfirmationDialog
           isOpen={confirmDialogOpen}
-          onClose={() => setConfirmDialogOpen(false)}
+          onCancel={() => setConfirmDialogOpen(false)}
           title={confirmData.title}
           message={confirmData.message}
           confirmText={confirmData.confirmText}
@@ -619,6 +635,7 @@ const handleCancelSave = () => {
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Sr No.</th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Quantity</th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date Added</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Remark</th>
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
@@ -628,6 +645,9 @@ const handleCancelSave = () => {
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{stockItem.quantity}</td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                             {new Date(stockItem.date).toLocaleDateString()}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {stockItem.remark || '-'}
                           </td>
                         </tr>
                       ))}
