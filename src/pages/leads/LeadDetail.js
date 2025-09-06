@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { FiPhone, FiMail, FiMessageSquare, FiEdit2, FiUserPlus, FiCalendar } from 'react-icons/fi';
+import { FiPhone, FiMail, FiMessageSquare, FiEdit2, FiUserPlus, FiCalendar, FiHome } from 'react-icons/fi';
 import SummaryApi from '../../common';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import { useAuth } from '../../context/AuthContext';
@@ -306,12 +306,12 @@ const LeadDetailModal = ({ isOpen, onClose, leadId, onLeadUpdated, onConvertSucc
                   </div>
                 )}
                 
-                {lead.email && (
+                {lead.firmName && (
                   <div className="flex items-start">
-                    <FiMail className="mt-1 mr-3 text-gray-500" />
+                    <FiHome className="mt-1 mr-3 text-gray-500" />
                     <div>
-                      <div className="text-sm text-gray-500">Email</div>
-                      <div>{lead.email}</div>
+                      <div className="text-sm text-gray-500">Firm Name</div>
+                      <div>{lead.firmName}</div>
                     </div>
                   </div>
                 )}
@@ -326,7 +326,7 @@ const LeadDetailModal = ({ isOpen, onClose, leadId, onLeadUpdated, onConvertSucc
                   </div>
                 )}
                 
-                {lead.age && (
+                {/* {lead.age && (
                   <div className="flex items-start">
                     <FiCalendar className="mt-1 mr-3 text-gray-500" />
                     <div>
@@ -334,7 +334,7 @@ const LeadDetailModal = ({ isOpen, onClose, leadId, onLeadUpdated, onConvertSucc
                       <div>{lead.age} years</div>
                     </div>
                   </div>
-                )}
+                )} */}
                 
                 {lead.branch && (
                   <div className="flex items-start">

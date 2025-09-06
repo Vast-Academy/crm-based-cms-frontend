@@ -189,12 +189,12 @@ const handleViewProjectDetails = async (project) => {
                   </div>
                 )}
                 
-                {customer.email && (
+                {customer.firmName && (
                   <div className="flex items-start">
                     <FiMail className="mt-1 mr-3 text-gray-500" />
                     <div>
-                      <div className="text-sm text-gray-500">Email</div>
-                      <div>{customer.email}</div>
+                      <div className="text-sm text-gray-500">Firm Name</div>
+                      <div>{customer.firmName}</div>
                     </div>
                   </div>
                 )}
@@ -209,7 +209,7 @@ const handleViewProjectDetails = async (project) => {
                   </div>
                 )}
                 
-                {customer.age && (
+                {/* {customer.age && (
                   <div className="flex items-start">
                     <FiCalendar className="mt-1 mr-3 text-gray-500" />
                     <div>
@@ -217,7 +217,7 @@ const handleViewProjectDetails = async (project) => {
                       <div>{customer.age} years</div>
                     </div>
                   </div>
-                )}
+                )} */}
                 
                 {customer.branch && (
                   <div className="flex items-start">

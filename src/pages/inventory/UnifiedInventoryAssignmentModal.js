@@ -241,9 +241,23 @@ const handleKeyDown = (e) => {
 
   // Add generic product
   const addGenericProduct = (product) => {
+    // Calculate available stock
+    const availableStock = product.stock ? 
+      product.stock.reduce((total, item) => total + item.quantity, 0) : 0;
+
+    if (availableStock === 0) {
+      showNotification('error', 'This product is out of stock and cannot be added');
+      return;
+    }
+
     const existingItem = selectedItems.find(item => item.id === product.id);
     
     if (existingItem) {
+      // Check if we can add one more
+      if (existingItem.quantity >= availableStock) {
+        showNotification('warning', `Only ${availableStock} items available in stock`);
+        return;
+      }
       // Update quantity if item already exists
       setSelectedItems(selectedItems.map(item => 
         item.id === product.id 
@@ -265,6 +279,18 @@ const handleKeyDown = (e) => {
 
   // Handle product selection
   const handleSelectProduct = (product) => {
+    // Calculate available stock
+    const availableStock = product.stock ? 
+      (product.type === 'serialized-product' 
+        ? product.stock.length 
+        : product.stock.reduce((total, item) => total + item.quantity, 0)
+      ) : 0;
+
+    if (availableStock === 0) {
+      showNotification('error', 'This product is out of stock and cannot be added');
+      return;
+    }
+
     if (product.type === 'serialized-product') {
       // For serialized products, show notification to enter serial number
       showNotification('info', 'Please enter or scan a serial number for this product');

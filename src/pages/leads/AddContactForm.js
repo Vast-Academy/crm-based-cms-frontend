@@ -44,10 +44,9 @@ const AddContactForm = ({ initialPhone = '', initialType = 'lead', onSuccess, on
   const [formData, setFormData] = useState({
     name: '',
     phoneNumber: '+91',
-    email: '',
+    firmName: '',
     whatsappNumber: '+91',
     address: '',
-    age: '',
   });
   
   // Lead-specific fields
@@ -394,11 +393,11 @@ const AddContactForm = ({ initialPhone = '', initialType = 'lead', onSuccess, on
           </div>
           
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Firm Name</label>
             <input
-              type="email"
-              name="email"
-              value={formData.email}
+              type="firmName"
+              name="firmName"
+              value={formData.firmName}
               onChange={handleInputChange}
               className="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
@@ -440,7 +439,7 @@ const AddContactForm = ({ initialPhone = '', initialType = 'lead', onSuccess, on
             </div>
           </div>
           
-          <div>
+          {/* <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Age</label>
             <input 
               type="number"
@@ -450,7 +449,7 @@ const AddContactForm = ({ initialPhone = '', initialType = 'lead', onSuccess, on
               className="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
               min="1"
             />
-          </div>
+          </div> */}
           
           {user.role === 'admin' && (
             <div>

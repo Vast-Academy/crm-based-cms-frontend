@@ -559,7 +559,7 @@ const handleFilterChange = (type, status = 'all') => {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                           {contact.name}
-                          {contact.email && <div className="text-xs text-gray-500">{contact.email}</div>}
+                          {contact.firmName && <div className="text-xs text-gray-500">{contact.firmName}</div>}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{contact.phoneNumber}</td>
                         <td className="px-6 py-4 whitespace-nowrap">
