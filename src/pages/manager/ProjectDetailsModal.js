@@ -60,8 +60,8 @@ const ProjectDetailsModal = ({ isOpen, onClose, project, onProjectApproved }) =>
 
   const validateRemark = (text) => {
     const wordCount = text.trim().split(/\s+/).filter(word => word.length > 0).length;
-    if (wordCount < 5) {
-      setRemarkError(`You must write at least 5 words. Current word count: ${wordCount}`);
+    if (wordCount < 3) {
+      setRemarkError(`You must write at least 3 words. Current word count: ${wordCount}`);
       return false;
     } else {
       setRemarkError('');
@@ -206,6 +206,14 @@ const ProjectDetailsModal = ({ isOpen, onClose, project, onProjectApproved }) =>
 
   const countWords = (text) => {
     return text.trim().split(/\s+/).filter(word => word.length > 0).length;
+  };
+
+  // Check if any bill has rejected status
+  const hasRejectedBill = () => {
+    if (project.bills && project.bills.length > 0) {
+      return project.bills.some(bill => bill.status === 'rejected');
+    }
+    return false;
   };
   
   return (
@@ -614,7 +622,7 @@ const ProjectDetailsModal = ({ isOpen, onClose, project, onProjectApproved }) =>
               
               <div className="mb-4">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Approval Note* <span className="text-xs text-gray-500">(minimum 5 words required)</span>
+                  Approval Note* <span className="text-xs text-gray-500">(minimum 3 words required)</span>
                 </label>
                 <textarea
                   value={approvalRemark}
@@ -623,7 +631,7 @@ const ProjectDetailsModal = ({ isOpen, onClose, project, onProjectApproved }) =>
                     remarkError ? 'border-red-300 focus:ring-red-300' : 'focus:ring-blue-500'
                   }`}
                   rows="3"
-                  placeholder="Enter any notes for this approval (min 5 words)..."
+                  placeholder="Enter any notes for this approval (min 3 words)..."
                 ></textarea>
                 
                 <div className="mt-1 flex justify-between">
@@ -639,12 +647,24 @@ const ProjectDetailsModal = ({ isOpen, onClose, project, onProjectApproved }) =>
                 </div>
               </div>
               
+              {/* Show message if bill is already rejected */}
+              {hasRejectedBill() && (
+                <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-md">
+                  <div className="flex items-center text-red-800">
+                    <FiAlertCircle className="mr-2 flex-shrink-0" />
+                    <span className="text-sm">
+                      You have already rejected a bill once. You cannot reject it again.
+                    </span>
+                  </div>
+                </div>
+              )}
+
               <div className="flex justify-end space-x-3">
                 <button
                   onClick={handleApproveProject}
-                  disabled={loading || remarkError || countWords(approvalRemark) < 5}
+                  disabled={loading || remarkError || countWords(approvalRemark) < 3}
                   className={`px-6 py-2 text-white rounded-md flex items-center ${
-                    loading || remarkError || countWords(approvalRemark) < 5
+                    loading || remarkError || countWords(approvalRemark) < 3
                       ? 'bg-gray-400 cursor-not-allowed'
                       : 'bg-green-500 hover:bg-green-600'
                   }`}
@@ -658,14 +678,21 @@ const ProjectDetailsModal = ({ isOpen, onClose, project, onProjectApproved }) =>
                   )}
                 </button>
 
-                {/* Reject Project Button */}
+                {/* Reject Project Button - disabled if bill already rejected */}
                 <button
                   onClick={() => {
-                    setRejectReason('');
-                    setRejectError('');
-                    setShowRejectPopup(true);
+                    if (!hasRejectedBill()) {
+                      setRejectReason('');
+                      setRejectError('');
+                      setShowRejectPopup(true);
+                    }
                   }}
-                  className="px-6 py-2 bg-red-500 text-white rounded-md hover:bg-red-600"
+                  disabled={hasRejectedBill()}
+                  className={`px-6 py-2 rounded-md ${
+                    hasRejectedBill()
+                      ? 'bg-gray-400 text-gray-600 cursor-not-allowed'
+                      : 'bg-red-500 text-white hover:bg-red-600'
+                  }`}
                 >
                   Reject Project
                 </button>
@@ -679,7 +706,7 @@ const ProjectDetailsModal = ({ isOpen, onClose, project, onProjectApproved }) =>
                 <div className="bg-white rounded-lg shadow-lg w-full max-w-md p-6">
                   <h3 className="text-lg font-semibold mb-4">Reject Project</h3>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Reject Reason* <span className="text-xs text-gray-500">(minimum 5 words required)</span>
+                    Reject Reason* <span className="text-xs text-gray-500">(minimum 3 words required)</span>
                   </label>
                   <textarea
                     value={rejectReason}
@@ -687,8 +714,8 @@ const ProjectDetailsModal = ({ isOpen, onClose, project, onProjectApproved }) =>
                       const val = e.target.value;
                       setRejectReason(val);
                       const wordCount = val.trim().split(/\s+/).filter(word => word.length > 0).length;
-                      if (wordCount < 5) {
-                        setRejectError(`You must write at least 5 words. Current word count: ${wordCount}`);
+                      if (wordCount < 3) {
+                        setRejectError(`You must write at least 3 words. Current word count: ${wordCount}`);
                       } else {
                         setRejectError('');
                       }
@@ -713,15 +740,15 @@ const ProjectDetailsModal = ({ isOpen, onClose, project, onProjectApproved }) =>
                     </button>
                     <button
                       onClick={() => {
-                        if (!rejectError && rejectReason.trim().split(/\s+/).filter(word => word.length > 0).length >= 5) {
+                        if (!rejectError && rejectReason.trim().split(/\s+/).filter(word => word.length > 0).length >= 3) {
                           // For now, just close the popup. Backend integration will be done later.
                           setShowRejectPopup(false);
                           setShowRejectConfirmPopup(true);
                         }
                       }}
-                      disabled={rejectError || rejectReason.trim().split(/\s+/).filter(word => word.length > 0).length < 5}
+                      disabled={rejectError || rejectReason.trim().split(/\s+/).filter(word => word.length > 0).length < 3}
                       className={`px-4 py-2 text-white rounded-md ${
-                        rejectError || rejectReason.trim().split(/\s+/).filter(word => word.length > 0).length < 5
+                        rejectError || rejectReason.trim().split(/\s+/).filter(word => word.length > 0).length < 3
                           ? 'bg-gray-400 cursor-not-allowed'
                           : 'bg-red-500 hover:bg-red-600'
                       }`}

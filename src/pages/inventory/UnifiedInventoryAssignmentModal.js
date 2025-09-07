@@ -44,13 +44,22 @@ const UnifiedInventoryAssignmentModal = ({ isOpen, onClose, technician, onSucces
    // Filter serial numbers as user types
    useEffect(() => {
     if (serialNumber.trim().length > 0) {
+      // Get all already selected serial numbers
+      const selectedSerialNumbers = [];
+      selectedItems.forEach(item => {
+        if (item.type === 'serialized-product' && item.serialNumbers) {
+          selectedSerialNumbers.push(...item.serialNumbers);
+        }
+      });
+
       // Get all serial numbers from serialized products
       const allSerialNumbers = [];
       serializedProducts.forEach(product => {
         if (product.stock && Array.isArray(product.stock)) {
           product.stock.forEach(stockItem => {
             if (stockItem.serialNumber && 
-                stockItem.serialNumber.toLowerCase().includes(serialNumber.toLowerCase())) {
+                stockItem.serialNumber.toLowerCase().includes(serialNumber.toLowerCase()) &&
+                !selectedSerialNumbers.includes(stockItem.serialNumber)) { // Exclude already selected
               allSerialNumbers.push({
                 serialNumber: stockItem.serialNumber,
                 productId: product.id,
@@ -69,7 +78,7 @@ const UnifiedInventoryAssignmentModal = ({ isOpen, onClose, technician, onSucces
       setIsDropdownOpen(false);
       setHighlightedIndex(-1);
     }
-  }, [serialNumber, serializedProducts]);
+  }, [serialNumber, serializedProducts, selectedItems]);
 
   // Handle keyboard navigation for dropdown
 const handleKeyDown = (e) => {
