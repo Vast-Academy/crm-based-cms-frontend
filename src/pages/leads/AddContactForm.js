@@ -57,6 +57,11 @@ const AddContactForm = ({ initialPhone = '', initialType = 'lead', onSuccess, on
   const [projectType, setProjectType] = useState('');
   const [customerRemark, setCustomerRemark] = useState('');
   
+  // Existing customer fields
+  const [isExistingCustomer, setIsExistingCustomer] = useState(false);
+  const [completionDate, setCompletionDate] = useState('');
+  const [installedBy, setInstalledBy] = useState('');
+  
   // Handle branches for admin users
   const [branches, setBranches] = useState([]);
   const [selectedBranch, setSelectedBranch] = useState('');
@@ -186,6 +191,18 @@ const AddContactForm = ({ initialPhone = '', initialType = 'lead', onSuccess, on
       return;
     }
     
+    // Additional validation for existing customers
+    if (contactType === 'customer' && isExistingCustomer) {
+      if (!completionDate) {
+        setError("Please select completion date");
+        return;
+      }
+      if (!installedBy) {
+        setError("Please select who installed the project");
+        return;
+      }
+    }
+    
     // Prepare form data
     const dataToSubmit = {
       ...formData
@@ -240,6 +257,13 @@ const AddContactForm = ({ initialPhone = '', initialType = 'lead', onSuccess, on
         dataToSubmit.projectType = projectType;
         dataToSubmit.initialRemark = customerRemark;
         
+        // Add existing customer specific data
+        if (isExistingCustomer) {
+          dataToSubmit.isExistingCustomer = true;
+          dataToSubmit.completionDate = completionDate;
+          dataToSubmit.installedBy = installedBy;
+        }
+        
         // Create customer
         const response = await fetch(SummaryApi.createCustomer.url, {
           method: SummaryApi.createCustomer.method,
@@ -254,12 +278,16 @@ const AddContactForm = ({ initialPhone = '', initialType = 'lead', onSuccess, on
         
         if (data.success) {
           setSuccess(true);
-          // Notify parent component of success
-          // setTimeout(() => {
-          //   if (onSuccess) onSuccess(data.data);
-          // }, 1500);
-
-          navigate('/work-orders');
+          
+          if (isExistingCustomer) {
+            // For existing customers, don't navigate to work-orders, just notify parent
+            setTimeout(() => {
+              if (onSuccess) onSuccess(data.data);
+            }, 1500);
+          } else {
+            // For new customers, navigate to work-orders
+            navigate('/work-orders');
+          }
         } else {
           setError(data.message || 'Failed to add customer');
         }
@@ -282,7 +310,12 @@ const AddContactForm = ({ initialPhone = '', initialType = 'lead', onSuccess, on
       
       {success && (
         <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4">
-          {contactType === 'lead' ? 'Lead' : 'Customer'} added successfully!
+          {contactType === 'lead' 
+            ? 'Lead added successfully!' 
+            : isExistingCustomer 
+              ? 'Existing customer record added successfully!'
+              : 'Customer added successfully!'
+          }
         </div>
       )}
       
@@ -316,6 +349,22 @@ const AddContactForm = ({ initialPhone = '', initialType = 'lead', onSuccess, on
           </div>
         </div>
 
+         {/* Existing Customer Checkbox */}
+            <div className="mb-4">
+              <div className="flex items-center">
+                <input
+                  type="checkbox"
+                  id="existingCustomer"
+                  checked={isExistingCustomer}
+                  onChange={(e) => setIsExistingCustomer(e.target.checked)}
+                  className="mr-2 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                />
+                <label htmlFor="existingCustomer" className="text-sm font-medium text-gray-700">
+                  Existing Customer
+                </label>
+              </div>
+            </div>
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Name*</label>
@@ -323,6 +372,7 @@ const AddContactForm = ({ initialPhone = '', initialType = 'lead', onSuccess, on
               type="text"
               name="name"
               value={formData.name}
+              autoComplete='off'
               onChange={handleInputChange}
               className="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
               required
@@ -399,6 +449,7 @@ const AddContactForm = ({ initialPhone = '', initialType = 'lead', onSuccess, on
               name="firmName"
               value={formData.firmName}
               onChange={handleInputChange}
+              autoComplete='off'
               className="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
@@ -484,6 +535,7 @@ const AddContactForm = ({ initialPhone = '', initialType = 'lead', onSuccess, on
         {/* Customer-specific fields */}
         {contactType === 'customer' && (
           <div className="md:col-span-2 border-t mt-4 pt-4">
+
             <div className="mb-4">
               <label className="block text-sm font-medium text-gray-700 mb-2">Project Type*</label>
               <select
@@ -500,15 +552,47 @@ const AddContactForm = ({ initialPhone = '', initialType = 'lead', onSuccess, on
                 ))}
               </select>
             </div>
+
+            {/* Existing Customer Additional Fields */}
+            {isExistingCustomer && (
+              <>
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Completion Date*</label>
+                  <input
+                    type="date"
+                    value={completionDate}
+                    onChange={(e) => setCompletionDate(e.target.value)}
+                    className="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    required
+                  />
+                </div>
+
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Installed By*</label>
+                  <select
+                    value={installedBy}
+                    onChange={(e) => setInstalledBy(e.target.value)}
+                    className="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    required
+                  >
+                    <option value="">Select Project Type</option>
+                    <option value="Our Company">Our Company</option>
+                    <option value="Others">Others</option>
+                  </select>
+                </div>
+              </>
+            )}
             
             <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-2">Initial Remark</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                {isExistingCustomer ? 'Remark' : 'Initial Remark'}
+              </label>
               <textarea
                 value={customerRemark}
                 onChange={(e) => setCustomerRemark(e.target.value)}
                 className="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
                 rows="3"
-                placeholder="Enter initial customer remarks or notes..."
+                placeholder={isExistingCustomer ? "Enter remarks about the completed work..." : "Enter initial customer remarks or notes..."}
               ></textarea>
             </div>
           </div>
@@ -579,7 +663,7 @@ const AddContactForm = ({ initialPhone = '', initialType = 'lead', onSuccess, on
             className="px-4 py-2 bg-blue-500 text-white rounded-md flex items-center hover:bg-blue-600 disabled:opacity-50"
           >
             <FiSave className="mr-2" />
-            {loading ? 'Saving...' : `Save ${contactType === 'lead' ? 'Lead' : 'Customer'}`}
+            {loading ? 'Saving...' : `Save ${contactType === 'lead' ? 'Lead' : isExistingCustomer ? 'Existing Customer' : 'Customer'}`}
           </button>
         </div>
       </form>

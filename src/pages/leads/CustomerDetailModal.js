@@ -280,7 +280,41 @@ const handleViewProjectDetails = async (project) => {
               </div>
               
               {/* Work Order/Complaint Status */}
-              {customer.workOrders && customer.workOrders.length > 0 ? (
+              {(() => {
+                // Combine work orders and completed projects for display
+                const allItems = [];
+                
+                // Add work orders
+                if (customer.workOrders && customer.workOrders.length > 0) {
+                  customer.workOrders.forEach(order => {
+                    allItems.push({
+                      ...order,
+                      type: 'workOrder',
+                      displayType: order.projectCategory === 'Repair' ? 'Complaint' : 'New Installation'
+                    });
+                  });
+                }
+                
+                // Add completed projects that don't have work orders (existing customers)
+                if (customer.projects && customer.projects.length > 0) {
+                  customer.projects.forEach(project => {
+                    // Only add if this project doesn't already have a work order
+                    const hasWorkOrder = customer.workOrders && 
+                      customer.workOrders.some(wo => wo.projectId === project.projectId);
+                    
+                    if (!hasWorkOrder && project.status === 'completed') {
+                      allItems.push({
+                        ...project,
+                        type: 'completedProject',
+                        displayType: 'Completed Project',
+                        status: 'completed',
+                        orderId: null // No order ID for completed projects
+                      });
+                    }
+                  });
+                }
+                
+                return allItems.length > 0 ? (
   <div className="mb-6 max-h-[400px] overflow-y-auto">
     <div className="overflow-visible">
       <table className="min-w-full divide-y divide-gray-200 table-fixed">
@@ -304,14 +338,14 @@ const handleViewProjectDetails = async (project) => {
           </tr>
         </thead>
         <tbody className="bg-white divide-y divide-gray-200">
-        {[...customer.workOrders]
+        {allItems
             .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
-            .map((order, index) => (
+            .map((item, index) => (
               <React.Fragment key={index}>
             <tr 
-            onClick={() => setExpandedRow(expandedRow === order._id ? null : order._id)}
+            onClick={() => setExpandedRow(expandedRow === (item._id || item.projectId) ? null : (item._id || item.projectId))}
             className={`hover:bg-gray-50 cursor-pointer ${
-              expandedRow === order._id ? 'bg-gray-50' : ''
+              expandedRow === (item._id || item.projectId) ? 'bg-gray-50' : ''
             }`}
             >
               <td className="px-2 py-3 whitespace-nowrap">
@@ -321,48 +355,58 @@ const handleViewProjectDetails = async (project) => {
                         </td>
                         <td className="px-4 py-3 text-sm text-gray-700">
                 <div style={{ width: "120px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                  {order.projectType}
+                  {item.projectType}
                 </div>
               </td>
               <td className="px-4 py-4 whitespace-nowrap">
                           <span className={`px-2 py-1 rounded-full text-xs ${
-                            order.projectCategory === 'Repair' 
-                              ? 'bg-orange-100 text-orange-800' 
-                              : 'bg-green-100 text-green-800'
+                            item.type === 'completedProject'
+                              ? 'bg-purple-100 text-purple-800'
+                              : item.projectCategory === 'Repair' 
+                                ? 'bg-orange-100 text-orange-800' 
+                                : 'bg-green-100 text-green-800'
                           }`}>
-                            {order.projectCategory === 'Repair' ? 'Complaint' : 'New Installation'}
+                            {item.displayType}
                           </span>
                         </td>
               <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
               <div style={{ width: "120px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                {formatDate(order.createdAt)}
+                {formatDate(item.createdAt)}
                 </div>
               </td>
               <td className="px-4 py-3 whitespace-nowrap">
                 <span className={`px-2 py-0.5 rounded-full text-xs capitalize ${
-                  order.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                  order.status === 'assigned' ? 'bg-blue-100 text-blue-800' :
-                  order.status === 'completed' ? 'bg-green-100 text-green-800' :
+                  item.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                  item.status === 'assigned' ? 'bg-blue-100 text-blue-800' :
+                  item.status === 'completed' ? 'bg-green-100 text-green-800' :
                   'bg-gray-100 text-gray-800'
                 }`}>
-                  {order.status}
+                  {item.status}
                 </span>
               </td>
             </tr>
             {/* Expanded row with buttons */}
-            {expandedRow === order._id && (
+            {expandedRow === (item._id || item.projectId) && (
                 <tr>
                   <td colSpan="5" className="px-6 py-4 bg-gray-50 border-b">
                     <div className="flex space-x-3">
-                      <button 
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleViewProjectDetails(order);
-                        }}
-                        className="inline-flex items-center px-4 py-1.5 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-500 hover:bg-blue-600"
-                      >
-                        View Details
-                      </button>
+                      {item.type === 'workOrder' ? (
+                        <button 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleViewProjectDetails(item);
+                          }}
+                          className="inline-flex items-center px-4 py-1.5 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-500 hover:bg-blue-600"
+                        >
+                          View Details
+                        </button>
+                      ) : (
+                        <div className="text-sm text-gray-600">
+                          <p><strong>Installed by:</strong> {item.installedBy}</p>
+                          <p><strong>Completion Date:</strong> {item.completionDate ? formatDate(item.completionDate) : 'N/A'}</p>
+                          {item.initialRemark && <p><strong>Remarks:</strong> {item.initialRemark}</p>}
+                        </div>
+                      )}
                     </div>
                   </td>
                 </tr>
@@ -373,11 +417,12 @@ const handleViewProjectDetails = async (project) => {
       </table>
     </div>
   </div>
-): (
-  <div className="mb-6 p-6 text-center border rounded-md bg-gray-50">
-    <p className="text-gray-500">No Project and Complaints found for this customer.</p>
-  </div>
-)}
+                ) : (
+                  <div className="mb-6 p-6 text-center border rounded-md bg-gray-50">
+                    <p className="text-gray-500">No Project and Complaints found for this customer.</p>
+                  </div>
+                );
+              })()}
               
               {/* Lead History */}
               {customer.convertedFromLead && customer.leadId && (

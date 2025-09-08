@@ -30,19 +30,20 @@ const fetchCustomerProjects = async () => {
     const data = await response.json();
     
     if (data.success && data.data.projects && data.data.projects.length > 0) {
-      // Filter projects to include only those with completed work orders
       const completedProjects = [];
       
       // Loop through all projects
       for (const project of data.data.projects) {
-        // Find work orders for this project
+        // Check if this project has a completed work order
         const matchingWorkOrder = data.data.workOrders && 
           data.data.workOrders.find(wo => 
             wo.projectId === project.projectId && wo.status === 'completed'
           );
         
-        // If there's a completed work order for this project, add it to our list
-        if (matchingWorkOrder) {
+        // Include projects that either:
+        // 1. Have completed work orders, OR
+        // 2. Are completed projects themselves (for existing customers)
+        if (matchingWorkOrder || project.status === 'completed') {
           completedProjects.push(project);
         }
       }
@@ -178,6 +179,7 @@ const fetchCustomerProjects = async () => {
                   {customerProjects.map(project => (
                     <option key={project.projectId} value={project.projectId}>
                       {project.projectType} ({project.projectId}) - {new Date(project.createdAt).toLocaleDateString()}
+                      {project.installedBy && ` - ${project.installedBy}`}
                     </option>
                   ))}
                 </select>
