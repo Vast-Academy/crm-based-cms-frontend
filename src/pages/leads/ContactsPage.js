@@ -4,7 +4,6 @@ import { useSearchParams } from 'react-router-dom';
 import SummaryApi from '../../common';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import { useAuth } from '../../context/AuthContext';
-import Modal from '../../components/Modal';
 import AddContactForm from './AddContactForm';
 import LeadDetailModal from '../leads/LeadDetail';
 import CustomerDetailModal from './CustomerDetailModal';
@@ -719,20 +718,14 @@ const handleFilterChange = (type, status = 'all') => {
         </div>
       </div>
       
-      {/* All modals remain the same */}
-      <Modal 
-        isOpen={showAddModal} 
-        onClose={() => setShowAddModal(false)}
-        title="Add New Lead/Customer"
-        size="lg"
-      >
-        <AddContactForm 
-          initialPhone={initialPhone}
-          initialType={initialType}
-          onSuccess={handleContactAdded}
-          onCancel={() => setShowAddModal(false)}
-        />
-      </Modal>
+      {/* AddContactForm as direct popup */}
+      <AddContactForm 
+        isOpen={showAddModal}
+        initialPhone={initialPhone}
+        initialType={initialType}
+        onSuccess={handleContactAdded}
+        onCancel={() => setShowAddModal(false)}
+      />
       
       <LeadDetailModal
         isOpen={showLeadDetailModal}

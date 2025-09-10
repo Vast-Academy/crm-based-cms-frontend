@@ -173,29 +173,13 @@ const LeadDetailModal = ({ isOpen, onClose, leadId, onLeadUpdated, onConvertSucc
       const data = await response.json();
       
       if (data.success) {
-        // If conversion was successful, create a work order for the new customer
-        try {
-          // Note: assuming the conversion API returns the new customer data
-          const newCustomerId = data.data._id;
-          
-          // Create work order using the same project type and remark
-          await createWorkOrder(newCustomerId, projectType, conversionRemark);
-          
-          // Close modal and notify parent
-          if (onConvertSuccess) {
-            onConvertSuccess(leadId, data.data);
-          }
-          onClose();
-
-          navigate('/work-orders');
-        } catch (workOrderErr) {
-          console.error('Error creating work order after conversion:', workOrderErr);
-          // Still consider the conversion successful even if work order failed
-          if (onConvertSuccess) {
-            onConvertSuccess(leadId, data.data);
-          }
-          onClose();
+        // Close modal and notify parent
+        if (onConvertSuccess) {
+          onConvertSuccess(leadId, data.data);
         }
+        onClose();
+
+        navigate('/work-orders');
       } else {
         setError(data.message || 'Failed to convert lead to customer');
       }
@@ -207,30 +191,6 @@ const LeadDetailModal = ({ isOpen, onClose, leadId, onLeadUpdated, onConvertSucc
     }
   };
   
-  // Helper function to create a work order
-  const createWorkOrder = async (customerId, projectType, initialRemark) => {
-    const response = await fetch(SummaryApi.createWorkOrder.url, {
-      method: SummaryApi.createWorkOrder.method,
-      credentials: 'include',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        customerId,
-        projectType,
-        initialRemark
-      })
-    });
-    
-    const data = await response.json();
-    
-    if (!data.success) {
-      console.error('Work order creation failed:', data.message);
-      throw new Error(data.message);
-    }
-    
-    return data.data;
-  };
   
   const handleEdit = () => {
     // This will be handled by parent component

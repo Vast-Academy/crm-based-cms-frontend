@@ -1,71 +1,84 @@
-import React, { useState, useEffect } from 'react';
-import { FiSave, FiX } from 'react-icons/fi';
+import React, { useMemo, useState, useEffect } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { FiX } from 'react-icons/fi';
 import SummaryApi from '../../common';
 import { useAuth } from '../../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 
-// Country codes array
-const countryCodes = [
-  { code: '+91', country: 'India' },
-  { code: '+1', country: 'USA/Canada' },
-  { code: '+44', country: 'UK' },
-  { code: '+61', country: 'Australia' },
-  { code: '+971', country: 'UAE' },
-  { code: '+86', country: 'China' },
-  { code: '+49', country: 'Germany' },
-];
-
-// Project types for customers
-const projectTypes = [
-  'CCTV Camera',
-  'Attendance System',
-  'Safe and Locks',
-  'Home/Office Automation',
-  'IT & Networking Services',
-  'Software & Website Development',
-  'Custom'
-];
-
-const AddContactForm = ({ initialPhone = '', initialType = 'lead', onSuccess, onCancel }) => {
+export default function AddContactForm({ initialPhone = '', initialType = 'lead', onSuccess, onCancel, isOpen = false }) {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
-  const [success, setSuccess] = useState(false);
-  const [contactType, setContactType] = useState(initialType); // 'lead' or 'customer'
-  const [countryCode, setCountryCode] = useState('+91');
-  const [phoneWithoutCode, setPhoneWithoutCode] = useState('');
-  const [whatsappWithoutCode, setWhatsappWithoutCode] = useState('');
-  const [showCountryCodeDropdown, setShowCountryCodeDropdown] = useState(false);
-  const [searchResults, setSearchResults] = useState([]);
-  const [showSearchResults, setShowSearchResults] = useState(false);
   
-  // Common form fields
-  const [formData, setFormData] = useState({
-    name: '',
-    phoneNumber: '+91',
-    firmName: '',
-    whatsappNumber: '+91',
-    address: '',
+  const [form, setForm] = useState({
+    customerName: "",
+    companyName: "",
+    phone: initialPhone ? initialPhone.replace(/^\+91/, "") : "",
+    whatsapp: "",
+    sameAsPhone: false,
+    address: "",
+    leadType: initialType, // Lead | Customer
+    customerStatus: "", // New | Existing
+    installDate: "",
+    projectType: "",
+    installedBy: "", // only for Existing customers
+    remarks: "",
   });
-  
-  // Lead-specific fields
-  const [remarkText, setRemarkText] = useState('');
-  const [remarkStatus, setRemarkStatus] = useState('neutral');
-  
-  // Customer-specific fields
-  const [projectType, setProjectType] = useState('');
-  const [customerRemark, setCustomerRemark] = useState('');
-  
-  // Existing customer fields
-  const [isExistingCustomer, setIsExistingCustomer] = useState(false);
-  const [completionDate, setCompletionDate] = useState('');
-  const [installedBy, setInstalledBy] = useState('');
-  
+
+  // Country code states
+  const [countryCode, setCountryCode] = useState('+91');
+  const [whatsappCountryCode, setWhatsappCountryCode] = useState('+91');
+  const [showPhoneDropdown, setShowPhoneDropdown] = useState(false);
+  const [showWhatsappDropdown, setShowWhatsappDropdown] = useState(false);
+
+  const countryCodes = [
+    { code: '+91', country: 'India' },
+    { code: '+1', country: 'USA/Canada' },
+    { code: '+44', country: 'UK' },
+    { code: '+61', country: 'Australia' },
+    { code: '+971', country: 'UAE' },
+    { code: '+86', country: 'China' },
+    { code: '+49', country: 'Germany' },
+  ];
+
+  // Sync WhatsApp with phone if checkbox is ON
+  useEffect(() => {
+    if (form.sameAsPhone) {
+      setForm((f) => ({ ...f, whatsapp: f.phone }));
+      setWhatsappCountryCode(countryCode);
+    }
+  }, [form.sameAsPhone, form.phone, countryCode]);
+
+  const [submitted, setSubmitted] = useState(false);
+  const [errors, setErrors] = useState({});
+  const [loading, setLoading] = useState(false);
+
   // Handle branches for admin users
   const [branches, setBranches] = useState([]);
   const [selectedBranch, setSelectedBranch] = useState('');
   
+  // Search results for existing contacts
+  const [searchResults, setSearchResults] = useState([]);
+  const [showSearchResults, setShowSearchResults] = useState(false);
+
+  const services = useMemo(
+    () => [
+      { value: "CCTV Camera", label: "CCTV Camera" },
+      { value: "Attendance System", label: "Attendance System" },
+      { value: "Safe and Locks", label: "Safe and Locks" },
+      { value: "Home/Office Automation", label: "Home/Office Automation" },
+      { value: "IT & Networking Services", label: "IT & Networking Services" },
+      { value: "Software & Website Development", label: "Software & Website Development" },
+      { value: "Custom", label: "Custom" },
+    ],
+    []
+  );
+
+  const installedByOptions = [
+    { value: "", label: "Choose..." },
+    { value: "Our Company", label: "Our Company" },
+    { value: "Others", label: "Others" },
+  ];
+
   // For admin users, fetch branches
   useEffect(() => {
     if (user.role === 'admin') {
@@ -80,7 +93,6 @@ const AddContactForm = ({ initialPhone = '', initialType = 'lead', onSuccess, on
           
           if (data.success) {
             setBranches(data.data);
-            // If admin has a selected branch in context, use that
             if (user.selectedBranch) {
               setSelectedBranch(user.selectedBranch);
             }
@@ -93,57 +105,37 @@ const AddContactForm = ({ initialPhone = '', initialType = 'lead', onSuccess, on
       fetchBranches();
     }
   }, [user]);
-  
-  // Handle initialPhone when the component mounts
+
+  // Close dropdowns when clicking outside
   useEffect(() => {
-    if (initialPhone) {
-      // Check if initial phone has a country code
-      if (initialPhone.startsWith('+')) {
-        // Find the country code
-        const matchedCode = countryCodes.find(cc => initialPhone.startsWith(cc.code));
-        if (matchedCode) {
-          setCountryCode(matchedCode.code);
-          setPhoneWithoutCode(initialPhone.substring(matchedCode.code.length));
-        } else {
-          setPhoneWithoutCode(initialPhone);
-        }
-      } else {
-        setPhoneWithoutCode(initialPhone);
+    const handleClickOutside = (event) => {
+      if (!event.target.closest('.phone-dropdown')) {
+        setShowPhoneDropdown(false);
       }
-      
-      // If initialPhone is a valid 10-digit number, check if it exists
-      if (/^\d{10}$/.test(initialPhone)) {
-        checkPhoneNumber(countryCode + initialPhone);
+      if (!event.target.closest('.whatsapp-dropdown')) {
+        setShowWhatsappDropdown(false);
       }
-    }
-  }, [initialPhone]);
-  
-  // Update phone and whatsapp with country code
-  useEffect(() => {
-    setFormData(prev => ({
-      ...prev,
-      phoneNumber: countryCode + phoneWithoutCode,
-      whatsappNumber: countryCode + whatsappWithoutCode
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+
+  function update(key, value) {
+    setForm((f) => ({
+      ...f,
+      [key]: value,
+      ...(key === "leadType" ? { customerStatus: "", installDate: "", installedBy: "" } : {}),
+      ...(key === "customerStatus" && value !== "Existing" ? { installDate: "", installedBy: "" } : {}),
+      ...(key === "sameAsPhone" && value === true ? { whatsapp: f.phone } : {}),
     }));
-  }, [countryCode, phoneWithoutCode, whatsappWithoutCode]);
-  
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    
-    // Handle phone and whatsapp inputs separately
-    if (name === 'phoneNumber' || name === 'whatsappNumber') {
-      return; // These are handled by the country code inputs
-    }
-    
-    setFormData({
-      ...formData,
-      [name]: value,
-    });
-  };
-  
+  }
+
   // Check if phone number exists
   const checkPhoneNumber = async (phone) => {
-    if (phone.length < 8) return; // Don't search for very short numbers
+    if (phone.length < 8) return;
     
     try {
       const response = await fetch(`${SummaryApi.search.url}?query=${phone}`, {
@@ -162,513 +154,605 @@ const AddContactForm = ({ initialPhone = '', initialType = 'lead', onSuccess, on
       console.error('Error searching:', err);
     }
   };
-  
-  const handlePhoneChange = (e) => {
-    const value = e.target.value;
-    setPhoneWithoutCode(value);
+
+  const handlePhoneChange = (value) => {
+    update("phone", value);
     
-    // Check for existing leads/customers if number is long enough
     if (value.length >= 8) {
       checkPhoneNumber(countryCode + value);
     } else {
       setShowSearchResults(false);
     }
   };
-  
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setError(null);
-    
-    // Validate phone number
-    if (phoneWithoutCode.length < 8) {
-      setError("Phone number must be at least 8 digits");
-      return;
-    }
-    
-    // Validate required fields based on contact type
-    if (contactType === 'customer' && !projectType) {
-      setError("Please select a project type");
-      return;
-    }
-    
-    // Additional validation for existing customers
-    if (contactType === 'customer' && isExistingCustomer) {
-      if (!completionDate) {
-        setError("Please select completion date");
-        return;
+
+  const handleWhatsappChange = (value) => {
+    update("whatsapp", value);
+  };
+
+  // Close modal when Escape key is pressed
+  useEffect(() => {
+    const handleEsc = (event) => {
+      if (event.key === 'Escape' && isOpen) {
+        onCancel();
       }
-      if (!installedBy) {
-        setError("Please select who installed the project");
-        return;
-      }
-    }
-    
-    // Prepare form data
-    const dataToSubmit = {
-      ...formData
     };
     
-    // Add branch if admin and branch is selected
-    if (user.role === 'admin' && selectedBranch) {
-      dataToSubmit.branch = selectedBranch;
+    if (isOpen) {
+      document.addEventListener('keydown', handleEsc);
+      document.body.style.overflow = 'hidden';
     }
     
-    try {
+    return () => {
+      document.removeEventListener('keydown', handleEsc);
+      document.body.style.overflow = 'unset';
+    };
+  }, [isOpen, onCancel]);
+
+  function validate() {
+    const e = {};
+    if (!form.customerName.trim()) e.customerName = "Required";
+    if (!form.phone.trim()) e.phone = "Required";
+    if (form.phone && !/^\+?[0-9\s-]{7,15}$/.test(form.phone)) e.phone = "Invalid";
+    if (form.whatsapp && !/^\+?[0-9\s-]{7,15}$/.test(form.whatsapp)) e.whatsapp = "Invalid";
+
+    if (!form.leadType) e.leadType = "Select one";
+    if (form.leadType === "Customer" && !form.customerStatus) e.customerStatus = "Select one";
+    if (form.leadType === "Customer" && form.customerStatus === "Existing" && !form.installDate) e.installDate = "Required";
+
+    if (!form.projectType) e.projectType = "Select a project";
+    if (form.leadType === "Customer" && form.customerStatus === "Existing" && !form.installedBy) e.installedBy = "Select who installed";
+
+    return e;
+  }
+
+  async function onSubmit(e) {
+    e.preventDefault();
+    const v = validate();
+    setErrors(v);
+    
+    if (Object.keys(v).length === 0) {
       setLoading(true);
       
-      if (contactType === 'lead') {
-        // Add initial remark if provided
-        if (remarkText) {
-          dataToSubmit.initialRemark = {
-            text: remarkText,
-            status: remarkStatus
-          };
-          // Also set the initial status of the lead
-    dataToSubmit.status = remarkStatus;
+      try {
+        // Prepare form data based on type
+        const dataToSubmit = {
+          name: form.customerName,
+          phoneNumber: countryCode + form.phone,
+          firmName: form.companyName,
+          whatsappNumber: whatsappCountryCode + form.whatsapp,
+          address: form.address,
+        };
+
+        // Add branch if admin and branch is selected
+        if (user.role === 'admin' && selectedBranch) {
+          dataToSubmit.branch = selectedBranch;
         }
-        
-        // Create lead
-        const response = await fetch(SummaryApi.createLead.url, {
-          method: SummaryApi.createLead.method,
-          credentials: 'include',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(dataToSubmit)
-        });
-        
-        const data = await response.json();
-        
-        if (data.success) {
-          setSuccess(true);
-          // Notify parent component of success
-          setTimeout(() => {
-            if (onSuccess) onSuccess(data.data);
-          }, 1500);
-        } else {
-          if (data.isCustomer) {
-            setError("This phone number belongs to an existing customer");
-          } else {
-            setError(data.message || 'Failed to add lead');
+
+        if (form.leadType === 'Lead') {
+          // Lead creation
+          dataToSubmit.projectType = form.projectType; // Store inquiry project type
+          if (form.remarks) {
+            dataToSubmit.initialRemark = {
+              text: form.remarks,
+              status: 'neutral'
+            };
+            dataToSubmit.status = 'neutral';
           }
-        }
-      } else {
-        // Customer-specific data
-        dataToSubmit.projectType = projectType;
-        dataToSubmit.initialRemark = customerRemark;
-        
-        // Add existing customer specific data
-        if (isExistingCustomer) {
-          dataToSubmit.isExistingCustomer = true;
-          dataToSubmit.completionDate = completionDate;
-          dataToSubmit.installedBy = installedBy;
-        }
-        
-        // Create customer
-        const response = await fetch(SummaryApi.createCustomer.url, {
-          method: SummaryApi.createCustomer.method,
-          credentials: 'include',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(dataToSubmit)
-        });
-        
-        const data = await response.json();
-        
-        if (data.success) {
-          setSuccess(true);
+
+          const response = await fetch(SummaryApi.createLead.url, {
+            method: SummaryApi.createLead.method,
+            credentials: 'include',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(dataToSubmit)
+          });
           
-          if (isExistingCustomer) {
-            // For existing customers, don't navigate to work-orders, just notify parent
+          const data = await response.json();
+          
+          if (data.success) {
+            setSubmitted(true);
             setTimeout(() => {
               if (onSuccess) onSuccess(data.data);
             }, 1500);
           } else {
-            // For new customers, navigate to work-orders
-            navigate('/work-orders');
+            setErrors({ submit: data.message || 'Failed to add lead' });
           }
         } else {
-          setError(data.message || 'Failed to add customer');
+          // Customer creation
+          dataToSubmit.projectType = form.projectType;
+          dataToSubmit.initialRemark = form.remarks;
+          dataToSubmit.customerStatus = form.customerStatus;
+          
+          if (form.customerStatus === "Existing") {
+            dataToSubmit.isExistingCustomer = true;
+            dataToSubmit.completionDate = form.installDate;
+            dataToSubmit.installedBy = form.installedBy;
+          }
+
+          const response = await fetch(SummaryApi.createCustomer.url, {
+            method: SummaryApi.createCustomer.method,
+            credentials: 'include',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(dataToSubmit)
+          });
+          
+          const data = await response.json();
+          
+          if (data.success) {
+            setSubmitted(true);
+            
+            if (form.customerStatus === "Existing") {
+              setTimeout(() => {
+                if (onSuccess) onSuccess(data.data);
+              }, 1500);
+            } else {
+              setTimeout(() => {
+                navigate('/work-orders');
+              }, 1500);
+            }
+          } else {
+            setErrors({ submit: data.message || 'Failed to add customer' });
+          }
         }
+      } catch (err) {
+        setErrors({ submit: 'Server error. Please try again later.' });
+        console.error('Error adding contact:', err);
+      } finally {
+        setLoading(false);
       }
-    } catch (err) {
-      setError('Server error. Please try again later.');
-      console.error('Error adding contact:', err);
-    } finally {
-      setLoading(false);
     }
+  }
+
+  const fieldVariants = {
+    hidden: { opacity: 0, y: -6, height: 0 },
+    show: { opacity: 1, y: 0, height: "auto" },
+    exit: { opacity: 0, y: -6, height: 0 },
+  };
+
+  const isExisting = form.leadType === "Customer" && form.customerStatus === "Existing";
+  const isLead = form.leadType === "Lead";
+  const isNewCustomer = form.leadType === "Customer" && form.customerStatus === "New";
+  
+  // Dynamic color schemes
+  const getColorScheme = () => {
+    if (isLead) {
+      return {
+        bg: 'from-blue-50 to-blue-100',
+        inputRing: 'focus:ring-blue-300 focus:border-blue-400',
+        button: 'from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700',
+        accent: 'from-blue-50 to-blue-100',
+        text: 'text-blue-900'
+      };
+    } else if (isNewCustomer) {
+      return {
+        bg: 'from-purple-50 to-purple-100',
+        inputRing: 'focus:ring-purple-300 focus:border-purple-400',
+        button: 'from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700',
+        accent: 'from-purple-50 to-purple-100',
+        text: 'text-purple-900'
+      };
+    } else if (isExisting) {
+      return {
+        bg: 'from-indigo-50 to-indigo-100',
+        inputRing: 'focus:ring-indigo-300 focus:border-indigo-400',
+        button: 'from-indigo-500 to-indigo-600 hover:from-indigo-600 hover:to-indigo-700',
+        accent: 'from-indigo-50 to-indigo-100',
+        text: 'text-indigo-900'
+      };
+    }
+    return {
+      bg: 'from-white to-blue-50',
+      inputRing: 'focus:ring-blue-300 focus:border-blue-400',
+      button: 'from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700',
+      accent: 'from-gray-50 to-gray-100',
+      text: 'text-gray-900'
+    };
   };
   
+  const colorScheme = getColorScheme();
+
+  if (!isOpen) return null;
+
   return (
-    <div className="bg-white rounded-lg p-4">
-      {error && (
-        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-          {error}
-        </div>
-      )}
-      
-      {success && (
-        <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4">
-          {contactType === 'lead' 
-            ? 'Lead added successfully!' 
-            : isExistingCustomer 
-              ? 'Existing customer record added successfully!'
-              : 'Customer added successfully!'
-          }
-        </div>
-      )}
-      
-      <form onSubmit={handleSubmit}>
-        {/* Contact Type Selection */}
-        <div className="mb-6 border-b pb-4">
-          <label className="block text-sm font-medium text-gray-700 mb-2">Contact Type</label>
-          <div className="flex gap-4">
-            <button
-              type="button"
-              className={`px-4 py-2 rounded-md ${
-                contactType === 'lead' 
-                  ? 'bg-blue-500 text-white' 
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
-              onClick={() => setContactType('lead')}
+    <div className="fixed inset-0 z-50 overflow-y-auto">
+      <div className="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
+        {/* Background overlay */}
+        <div 
+          className="fixed inset-0 transition-opacity bg-gray-500 opacity-75" 
+          aria-hidden="true"
+          onClick={onCancel}
+        />
+        
+        {/* Center modal */}
+        <span className="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+        
+        {/* Modal panel */}
+        <div className={`inline-block align-bottom bg-gradient-to-b ${colorScheme.bg} rounded-2xl text-left overflow-hidden shadow-2xl transform transition-all sm:my-12 sm:align-middle sm:w-full sm:max-w-lg mx-4`}>
+          {/* Header */}
+          <div className="flex justify-between items-center bg-blue-600 px-4 py-3 border-b">
+            <h3 className="text-lg font-medium text-white">Add New Customer/Lead</h3>
+            <button 
+              onClick={onCancel} 
+              className="text-white hover:text-gray-200 focus:outline-none"
             >
-              Lead
-            </button>
-            <button
-              type="button"
-              className={`px-4 py-2 rounded-md ${
-                contactType === 'customer' 
-                  ? 'bg-purple-500 text-white' 
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
-              onClick={() => setContactType('customer')}
-            >
-              Customer
+              <FiX className="h-5 w-5" />
             </button>
           </div>
-        </div>
-
-         {/* Existing Customer Checkbox */}
-            <div className="mb-4">
-              <div className="flex items-center">
-                <input
-                  type="checkbox"
-                  id="existingCustomer"
-                  checked={isExistingCustomer}
-                  onChange={(e) => setIsExistingCustomer(e.target.checked)}
-                  className="mr-2 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                />
-                <label htmlFor="existingCustomer" className="text-sm font-medium text-gray-700">
-                  Existing Customer
-                </label>
-              </div>
-            </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Name*</label>
-            <input
-              type="text"
-              name="name"
-              value={formData.name}
-              autoComplete='off'
-              onChange={handleInputChange}
-              className="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-              required
-            />
-          </div>
           
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Phone Number*</label>
-            <div className="flex">
-              <div className="relative">
-                <button
-                  type="button"
-                  className="flex items-center justify-between w-20 p-2 border border-r-0 rounded-l bg-gray-50"
-                  onClick={() => setShowCountryCodeDropdown(!showCountryCodeDropdown)}
-                >
-                  <span>{countryCode}</span>
-                  <span>▼</span>
-                </button>
-                
-                {showCountryCodeDropdown && (
-                  <div className="absolute z-10 mt-1 bg-white border rounded-md shadow-lg w-48">
-                    {countryCodes.map(country => (
-                      <div 
-                        key={country.code} 
-                        className="p-2 hover:bg-gray-100 cursor-pointer"
-                        onClick={() => {
-                          setCountryCode(country.code);
-                          setShowCountryCodeDropdown(false);
-                        }}
-                      >
-                        <span className="font-medium">{country.code}</span> - {country.country}
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-              
-              <input 
-                type="text"
-                value={phoneWithoutCode}
-                onChange={handlePhoneChange}
-                placeholder="Enter phone number"
-                className="w-full p-2 border rounded-r focus:outline-none focus:ring-2 focus:ring-blue-500"
-                required
-              />
-            </div>
-            
-            {/* Existing records alert */}
-            {showSearchResults && (
-              <div className="mt-2 p-2 border rounded bg-yellow-50 text-sm">
-                <p className="font-medium text-yellow-800">Existing records found:</p>
-                <div className="mt-1 max-h-32 overflow-y-auto">
-                  {searchResults.map((result, idx) => (
-                    <div key={idx} className="flex justify-between items-center p-1 border-b">
-                      <div>
-                        <span className="font-medium">{result.name}</span> - {result.phoneNumber}
-                      </div>
-                      <span className={`text-xs px-2 py-1 rounded-full capitalize ${
-                        result.type === 'lead' ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800'
-                      }`}>
-                        {result.type}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-          
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Firm Name</label>
-            <input
-              type="firmName"
-              name="firmName"
-              value={formData.firmName}
-              onChange={handleInputChange}
-              autoComplete='off'
-              className="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-          
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">WhatsApp Number</label>
-            <div className="flex">
-              <div className="relative">
-                <button
-                  type="button"
-                  className="flex items-center justify-between w-20 p-2 border border-r-0 rounded-l bg-gray-50"
-                >
-                  <span>{countryCode}</span>
-                  <span>▼</span>
-                </button>
-              </div>
-              
-              <input 
-                type="text"
-                value={whatsappWithoutCode}
-                onChange={(e) => setWhatsappWithoutCode(e.target.value)}
-                placeholder="Enter WhatsApp number"
-                className="w-full p-2 border rounded-r focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-            <div className="flex items-center mt-1">
-              <input 
-                type="checkbox" 
-                id="sameAsPhone" 
-                className="mr-2"
-                onChange={(e) => {
-                  if(e.target.checked) {
-                    setWhatsappWithoutCode(phoneWithoutCode);
-                  }
-                }}
-              />
-              <label htmlFor="sameAsPhone" className="text-xs text-gray-500">Same as phone number</label>
-            </div>
-          </div>
-          
-          {/* <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Age</label>
-            <input 
-              type="number"
-              name="age"
-              value={formData.age}
-              onChange={handleInputChange}
-              className="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-              min="1"
-            />
-          </div> */}
-          
-          {user.role === 'admin' && (
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Branch</label>
-              <select
-                value={selectedBranch}
-                onChange={(e) => setSelectedBranch(e.target.value)}
-                className="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="">Select Branch</option>
-                {branches.map(branch => (
-                  <option key={branch._id} value={branch._id}>
-                    {branch.name}
-                  </option>
-                ))}
-              </select>
+          {/* Form Content */}
+          <div className="p-4">
+            <form onSubmit={onSubmit}>
+          {/* Show errors */}
+          {errors.submit && (
+            <div className="mb-2 p-1 bg-gradient-to-r from-red-50 to-red-100 border border-red-300 text-red-700 rounded text-xs">
+              {errors.submit}
             </div>
           )}
-          
-          <div className="md:col-span-2">
-            <label className="block text-sm font-medium text-gray-700 mb-1">Address</label>
-            <textarea 
-              name="address"
-              value={formData.address}
-              onChange={handleInputChange}
-              className="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-              rows="2"
-            ></textarea>
-          </div>
-        </div>
-        
-        {/* Customer-specific fields */}
-        {contactType === 'customer' && (
-          <div className="md:col-span-2 border-t mt-4 pt-4">
 
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-2">Project Type*</label>
-              <select
-                value={projectType}
-                onChange={(e) => setProjectType(e.target.value)}
-                className="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-                required
-              >
-                <option value="">Select Project Type</option>
-                {projectTypes.map((type, index) => (
-                  <option key={index} value={type}>
-                    {type}
-                  </option>
-                ))}
-              </select>
-            </div>
+          {/* Basic Details */}
+          <div className="mb-6">
+            <SectionTitle title="Basic Details" />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <TextField 
+              label="Customer Name" 
+              placeholder="Enter full name" 
+              value={form.customerName} 
+              onChange={(v) => update("customerName", v)} 
+              error={errors.customerName}
+              colorScheme={colorScheme}
+            />
+            <TextField 
+              label="Company Name" 
+              placeholder="Optional" 
+              value={form.companyName} 
+              onChange={(v) => update("companyName", v)}
+              colorScheme={colorScheme}
+            />
 
-            {/* Existing Customer Additional Fields */}
-            {isExistingCustomer && (
-              <>
-                <div className="mb-4">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Completion Date*</label>
-                  <input
-                    type="date"
-                    value={completionDate}
-                    onChange={(e) => setCompletionDate(e.target.value)}
-                    className="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+            <div>
+              <label className="block">
+                <span className="block text-sm font-medium text-gray-700 mb-1">Phone Number*</span>
+                <div className="flex">
+                  <div className="relative phone-dropdown">
+                    <button
+                      type="button"
+                      className={`flex items-center justify-between w-14 p-1 h-[36px] border border-r-0 rounded-l-lg bg-gradient-to-r ${colorScheme.accent} hover:opacity-80 transition-colors text-xs`}
+                      onClick={() => setShowPhoneDropdown(!showPhoneDropdown)}
+                    >
+                      <span className="text-sm">{countryCode}</span>
+                      <span className="text-xs">▼</span>
+                    </button>
+                    
+                    {showPhoneDropdown && (
+                      <div className="absolute z-10 mt-1 bg-white border rounded-xl shadow-lg w-48">
+                        {countryCodes.map(country => (
+                          <div 
+                            key={country.code} 
+                            className="p-2 hover:bg-gray-100 cursor-pointer text-sm"
+                            onClick={() => {
+                              setCountryCode(country.code);
+                              setShowPhoneDropdown(false);
+                            }}
+                          >
+                            <span className="font-medium">{country.code}</span> - {country.country}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  
+                  <input 
+                    type="text"
+                    value={form.phone}
+                    onChange={(e) => handlePhoneChange(e.target.value)}
+                    placeholder="Phone number"
+                    size="12"
+                    className={`w-full rounded-r-lg border ${errors.phone ? "border-red-400" : "border-gray-300"} focus:outline-none focus:ring-2 ${colorScheme.inputRing} transition p-1 text-gray-900 placeholder:text-gray-400 text-sm`}
                     required
                   />
                 </div>
-
-                <div className="mb-4">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Installed By*</label>
-                  <select
-                    value={installedBy}
-                    onChange={(e) => setInstalledBy(e.target.value)}
-                    className="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    required
-                  >
-                    <option value="">Select Project Type</option>
-                    <option value="Our Company">Our Company</option>
-                    <option value="Others">Others</option>
-                  </select>
-                </div>
-              </>
-            )}
-            
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                {isExistingCustomer ? 'Remark' : 'Initial Remark'}
+                {errors.phone && <span className="text-xs text-red-600 mt-1 inline-block">{errors.phone}</span>}
               </label>
-              <textarea
-                value={customerRemark}
-                onChange={(e) => setCustomerRemark(e.target.value)}
-                className="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-                rows="3"
-                placeholder={isExistingCustomer ? "Enter remarks about the completed work..." : "Enter initial customer remarks or notes..."}
-              ></textarea>
+              
+              {/* Existing records alert */}
+              {showSearchResults && (
+                <div className="mt-2 p-2 border rounded-xl bg-yellow-50 text-sm">
+                  <p className="font-medium text-yellow-800">Existing records found:</p>
+                  <div className="mt-1 max-h-32 overflow-y-auto">
+                    {searchResults.map((result, idx) => (
+                      <div key={idx} className="flex justify-between items-center p-1 border-b">
+                        <div>
+                          <span className="font-medium">{result.name}</span> - {result.phoneNumber}
+                        </div>
+                        <span className={`text-xs px-2 py-1 rounded-full capitalize ${
+                          result.type === 'lead' ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800'
+                        }`}>
+                          {result.type}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
-          </div>
-        )}
-        
-        {/* Lead-specific fields */}
-        {contactType === 'lead' && (
-          <div className="md:col-span-2 border-t mt-4 pt-4">
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-2">Initial Remark</label>
-              <textarea
-                value={remarkText}
-                onChange={(e) => setRemarkText(e.target.value)}
-                className="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-                rows="3"
-                placeholder="Enter initial query or remarks..."
-              ></textarea>
-            </div>
-            
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-2">Status:</label>
-              <div className="flex space-x-4">
-                <button
-                  type="button"
-                  className={`px-3 py-1 rounded-md text-sm ${
-                    remarkStatus === 'positive' ? 'bg-green-500 text-white' : 'bg-green-100 text-green-800 hover:bg-green-200'
-                  }`}
-                  onClick={() => setRemarkStatus('positive')}
-                >
-                  Positive
-                </button>
-                <button
-                  type="button"
-                  className={`px-3 py-1 rounded-md text-sm ${
-                    remarkStatus === 'neutral' ? 'bg-gray-500 text-white' : 'bg-gray-100 text-gray-800 hover:bg-gray-200'
-                  }`}
-                  onClick={() => setRemarkStatus('neutral')}
-                >
-                  Neutral
-                </button>
-                <button
-                  type="button"
-                  className={`px-3 py-1 rounded-md text-sm ${
-                    remarkStatus === 'negative' ? 'bg-red-500 text-white' : 'bg-red-100 text-red-800 hover:bg-red-200'
-                  }`}
-                  onClick={() => setRemarkStatus('negative')}
-                >
-                  Negative
-                </button>
+
+            {/* WhatsApp with checkbox */}
+            <div>
+              <label className="block">
+                <span className="block text-sm font-medium text-gray-700 mb-1">WhatsApp Number</span>
+                <div className="flex">
+                  <div className="relative whatsapp-dropdown">
+                    <button
+                      type="button"
+                      className={`flex items-center justify-between w-14 p-1 h-[36px] border border-r-0 rounded-l-lg bg-gradient-to-r ${colorScheme.accent} hover:opacity-80 transition-colors text-xs`}
+                      onClick={() => setShowWhatsappDropdown(!showWhatsappDropdown)}
+                    >
+                      <span className="text-sm">{whatsappCountryCode}</span>
+                      <span className="text-xs">▼</span>
+                    </button>
+                    
+                    {showWhatsappDropdown && (
+                      <div className="absolute z-10 mt-1 bg-white border rounded-xl shadow-lg w-48">
+                        {countryCodes.map(country => (
+                          <div 
+                            key={country.code} 
+                            className="p-2 hover:bg-gray-100 cursor-pointer text-sm"
+                            onClick={() => {
+                              setWhatsappCountryCode(country.code);
+                              setShowWhatsappDropdown(false);
+                            }}
+                          >
+                            <span className="font-medium">{country.code}</span> - {country.country}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  
+                  <input 
+                    type="text"
+                    value={form.whatsapp}
+                    onChange={(e) => handleWhatsappChange(e.target.value)}
+                    placeholder="WhatsApp number"
+                    size="12"
+                    disabled={form.sameAsPhone}
+                    className={`w-full rounded-r-lg border ${errors.whatsapp ? "border-red-400" : "border-gray-300"} focus:outline-none focus:ring-2 ${colorScheme.inputRing} transition p-1 text-gray-900 placeholder:text-gray-400 disabled:bg-gray-100 text-sm`}
+                  />
+                </div>
+                {errors.whatsapp && <span className="text-xs text-red-600 mt-1 inline-block">{errors.whatsapp}</span>}
+              </label>
+              
+              <div className="flex items-center mt-2">
+                <input 
+                  type="checkbox" 
+                  id="sameAsPhone" 
+                  className="mr-2 h-4 w-4 rounded border-gray-300"
+                  checked={form.sameAsPhone}
+                  onChange={(e) => update("sameAsPhone", e.target.checked)}
+                />
+                <label htmlFor="sameAsPhone" className="text-xs text-gray-500">Same as phone number</label>
               </div>
             </div>
+
+            <div className="md:col-span-2">
+              <label className="block">
+                <span className="block text-sm font-medium text-gray-700 mb-1">Address</span>
+                <textarea 
+                  className={`w-full rounded-lg border border-gray-300 focus:outline-none focus:ring-2 ${colorScheme.inputRing} transition p-1 text-gray-900 placeholder:text-gray-400 text-sm`}
+                  placeholder="Address"
+                  value={form.address}
+                  onChange={(e) => update("address", e.target.value)}
+                  rows="1"
+                ></textarea>
+              </label>
+            </div>
+            
+            {user.role === 'admin' && (
+              <SelectField 
+                label="Branch" 
+                value={selectedBranch} 
+                onChange={setSelectedBranch} 
+                options={[
+                  { value: "", label: "Select Branch" }, 
+                  ...branches.map(branch => ({ value: branch._id, label: branch.name }))
+                ]}
+                colorScheme={colorScheme}
+              />
+            )}
           </div>
-        )}
-        
-        <div className="mt-8 flex justify-end space-x-4">
-          <button
-            type="button"
-            onClick={onCancel}
-            className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 flex items-center hover:bg-gray-50"
-          >
-            <FiX className="mr-2" />
-            Cancel
-          </button>
-          
-          <button
-            type="submit"
-            disabled={loading}
-            className="px-4 py-2 bg-blue-500 text-white rounded-md flex items-center hover:bg-blue-600 disabled:opacity-50"
-          >
-            <FiSave className="mr-2" />
-            {loading ? 'Saving...' : `Save ${contactType === 'lead' ? 'Lead' : isExistingCustomer ? 'Existing Customer' : 'Customer'}`}
-          </button>
+
+          {/* Lead / Customer */}
+          <div className="mt-8 mb-6">
+            <SectionTitle title="Lead / Customer" subtle />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <SelectField 
+                label="Select Type" 
+                value={form.leadType} 
+                onChange={(v) => update("leadType", v)} 
+                options={[
+                  { value: "", label: "Choose..." }, 
+                  { value: "Lead", label: "Lead" }, 
+                  { value: "Customer", label: "Customer" }
+                ]} 
+                error={errors.leadType}
+                colorScheme={colorScheme}
+              />
+
+              <AnimatePresence initial={false}>
+                {form.leadType === "Customer" && (
+                  <motion.div key="customerStatus" variants={fieldVariants} initial="hidden" animate="show" exit="exit" transition={{ duration: 0.22, ease: "easeOut" }}>
+                    <SelectField 
+                      label="Customer Status" 
+                      value={form.customerStatus} 
+                      onChange={(v) => update("customerStatus", v)} 
+                      options={[
+                        { value: "", label: "Choose..." }, 
+                        { value: "New", label: "New" }, 
+                        { value: "Existing", label: "Existing" }
+                      ]} 
+                      error={errors.customerStatus}
+                      colorScheme={colorScheme}
+                    />
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+
+            {/* Existing -> Installation Date */}
+            <AnimatePresence initial={false}>
+              {isExisting && (
+                <motion.div key="installDate" variants={fieldVariants} initial="hidden" animate="show" exit="exit" transition={{ duration: 0.22, ease: "easeOut" }} className="mt-2 w-full">
+                  <DateField label="Installation Date" value={form.installDate} onChange={(v) => update("installDate", v)} error={errors.installDate} colorScheme={colorScheme} />
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+
+          {/* Project Type / Inquire For */}
+          <div className="mt-8 mb-6">
+            <SectionTitle title={isLead ? "Inquire For" : "Project Type"} subtle />
+            <div className="w-full">
+              <SelectField 
+                label={isLead ? "Inquire For" : "Choose Service"} 
+                value={form.projectType} 
+                onChange={(v) => update("projectType", v)} 
+                options={[{ value: "", label: "Choose..." }, ...services]} 
+                error={errors.projectType}
+                colorScheme={colorScheme}
+              />
+            </div>
+          </div>
+          </div>
+
+          {/* Installed By (only when Existing Customer) */}
+          <AnimatePresence initial={false}>
+            {isExisting && (
+              <motion.div key="installedBy" variants={fieldVariants} initial="hidden" animate="show" exit="exit" transition={{ duration: 0.22, ease: "easeOut" }} className="mt-2 w-full">
+                <SelectField label="Installed By" value={form.installedBy} onChange={(v) => update("installedBy", v)} options={installedByOptions} error={errors.installedBy} colorScheme={colorScheme} />
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* Remarks */}
+          <div className="mt-8 mb-6">
+            <SectionTitle title="Remarks" subtle />
+            <textarea 
+              className={`w-full rounded-lg border border-gray-300 focus:outline-none focus:ring-2 ${colorScheme.inputRing} transition p-1 text-gray-900 placeholder:text-gray-400 text-sm min-h-[60px]`}
+              placeholder="Notes..." 
+              value={form.remarks} 
+              onChange={(e) => update("remarks", e.target.value)} 
+            />
+          </div>
+
+          <div className="mt-8 flex flex-col sm:flex-row gap-4 justify-center">
+            <button 
+              type="submit" 
+              disabled={loading}
+              className="inline-flex items-center justify-center rounded-xl bg-white text-gray-700 px-8 py-3 font-semibold shadow-lg hover:shadow-xl transition-all duration-300 border-2 border-gray-200 hover:border-transparent hover:text-white transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-gray-200 disabled:opacity-50 disabled:cursor-not-allowed"
+              style={{
+                '--hover-from': isLead ? '#3b82f6' : isNewCustomer ? '#a855f7' : isExisting ? '#6366f1' : '#3b82f6',
+                '--hover-to': isLead ? '#1d4ed8' : isNewCustomer ? '#9333ea' : isExisting ? '#4f46e5' : '#1d4ed8'
+              }}
+              onMouseEnter={(e) => {
+                if (!loading) {
+                  e.target.style.background = `linear-gradient(to right, var(--hover-from), var(--hover-to))`;
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (!loading) {
+                  e.target.style.background = 'white';
+                }
+              }}
+            >
+              {loading ? 'Submitting...' : 'Submit'}
+            </button>
+            <button 
+              type="button" 
+              onClick={onCancel}
+              className="inline-flex items-center justify-center rounded-xl bg-white text-gray-700 px-8 py-3 font-semibold shadow-lg hover:shadow-xl transition-all duration-300 border-2 border-gray-200 hover:border-gray-300 hover:bg-gray-50 transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-gray-200"
+            >
+              Cancel
+            </button>
+              </div>
+            </form>
+
+            <AnimatePresence>
+              {submitted && (
+                <motion.div 
+                  initial={{ y: 20, opacity: 0 }} 
+                  animate={{ y: 0, opacity: 1 }} 
+                  exit={{ y: 20, opacity: 0 }} 
+                  transition={{ duration: 0.25 }} 
+                  className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-white text-gray-900 shadow-lg ring-1 ring-gray-200 px-4 py-3 rounded-xl"
+                >
+                  Form submitted successfully ✅
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
         </div>
-      </form>
+      </div>
     </div>
   );
-};
+}
 
-export default AddContactForm;
+function SectionTitle({ title, subtle }) {
+  return (
+    <div className="mb-3">
+      <h2 className={`text-sm font-medium ${subtle ? "text-gray-500" : "text-gray-800"}`}>{title}</h2>
+    </div>
+  );
+}
+
+function TextField({ label, value, onChange, placeholder, error, colorScheme }) {
+  return (
+    <label className="block">
+      <span className="block text-xs font-medium text-gray-700 mb-1">{label}</span>
+      <input 
+        type="text" 
+        size="20"
+        className={`w-full rounded-lg border ${error ? "border-red-400" : "border-gray-300"} focus:outline-none focus:ring-2 ${colorScheme?.inputRing || 'focus:ring-blue-300 focus:border-blue-400'} transition p-1 text-gray-900 placeholder:text-gray-400 text-sm`} 
+        placeholder={placeholder} 
+        value={value} 
+        onChange={(e) => onChange(e.target.value)} 
+      />
+      {error && <span className="text-xs text-red-600 mt-1 inline-block">{error}</span>}
+    </label>
+  );
+}
+
+function SelectField({ label, value, onChange, options, error, colorScheme }) {
+  return (
+    <label className="block">
+      <span className="block text-xs font-medium text-gray-700 mb-1">{label}</span>
+      <select 
+        className={`w-full rounded-lg border ${error ? "border-red-400" : "border-gray-300"} bg-gradient-to-r from-white to-gray-50 focus:outline-none focus:ring-2 ${colorScheme?.inputRing || 'focus:ring-blue-300 focus:border-blue-400'} transition p-1 text-gray-900 text-sm`} 
+        value={value} 
+        onChange={(e) => onChange(e.target.value)}
+      >
+        {options.map((o) => (
+          <option key={o.value} value={o.value}>{o.label}</option>
+        ))}
+      </select>
+      {error && <span className="text-xs text-red-600 mt-1 inline-block">{error}</span>}
+    </label>
+  );
+}
+
+function DateField({ label, value, onChange, error, colorScheme }) {
+  return (
+    <label className="block">
+      <span className="block text-xs font-medium text-gray-700 mb-1">{label}</span>
+      <input 
+        type="date" 
+        className={`w-full rounded-lg border ${error ? "border-red-400" : "border-gray-300"} bg-gradient-to-r from-white to-gray-50 focus:outline-none focus:ring-2 ${colorScheme?.inputRing || 'focus:ring-green-300 focus:border-green-400'} transition p-1 text-gray-900 text-sm`} 
+        value={value} 
+        onChange={(e) => onChange(e.target.value)} 
+      />
+      {error && <span className="text-xs text-red-600 mt-1 inline-block">{error}</span>}
+    </label>
+  );
+}
