@@ -103,19 +103,16 @@ const fetchCustomerProjects = async () => {
         return;
       }
       
-      // Use the existing work order API but specify repair category
-      const response = await fetch(SummaryApi.createWorkOrder.url, {
-        method: SummaryApi.createWorkOrder.method,
+      // Use the new complaint API endpoint
+      const response = await fetch(`${SummaryApi.addComplaint.url}/${customerId}`, {
+        method: SummaryApi.addComplaint.method,
         credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          customerId,
-          projectType: projectDetails.projectType,
-          projectCategory: 'Repair', // Always "Repair" for complaints
-          initialRemark: complaintRemark,
-          existingProjectId: selectedProjectId // Pass the existing project ID
+          existingProjectId: selectedProjectId,
+          complaintRemark: complaintRemark
         })
       });
       

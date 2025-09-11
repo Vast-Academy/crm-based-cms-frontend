@@ -295,24 +295,32 @@ const handleViewProjectDetails = async (project) => {
                   });
                 }
                 
-                // Add completed projects that don't have work orders (existing customers)
+                // Add completed projects (especially for existing customers)
                 if (customer.projects && customer.projects.length > 0) {
                   customer.projects.forEach(project => {
-                    // Only add if this project doesn't already have a work order
-                    const hasWorkOrder = customer.workOrders && 
-                      customer.workOrders.some(wo => wo.projectId === project.projectId);
-                    
-                    if (!hasWorkOrder && project.status === 'completed') {
+                    // Always show completed projects in history
+                    if (project.status === 'completed') {
                       allItems.push({
                         ...project,
                         type: 'completedProject',
                         displayType: 'Completed Project',
                         status: 'completed',
-                        orderId: null // No order ID for completed projects
+                        orderId: null, // No order ID for completed projects
+                        isHistorical: true // Mark as historical entry
                       });
                     }
                   });
                 }
+                
+                // Sort items: completed projects first (historical), then workOrders by date
+                allItems.sort((a, b) => {
+                  // Completed projects (historical) should appear first
+                  if (a.type === 'completedProject' && b.type === 'workOrder') return -1;
+                  if (a.type === 'workOrder' && b.type === 'completedProject') return 1;
+                  
+                  // Within same type, sort by date
+                  return new Date(a.createdAt) - new Date(b.createdAt);
+                });
                 
                 return allItems.length > 0 ? (
   <div className="mb-6 max-h-[400px] overflow-y-auto">
@@ -338,15 +346,13 @@ const handleViewProjectDetails = async (project) => {
           </tr>
         </thead>
         <tbody className="bg-white divide-y divide-gray-200">
-        {allItems
-            .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
-            .map((item, index) => (
+        {allItems.map((item, index) => (
               <React.Fragment key={index}>
             <tr 
             onClick={() => setExpandedRow(expandedRow === (item._id || item.projectId) ? null : (item._id || item.projectId))}
             className={`hover:bg-gray-50 cursor-pointer ${
               expandedRow === (item._id || item.projectId) ? 'bg-gray-50' : ''
-            }`}
+            } ${item.isHistorical ? 'bg-purple-25 border-l-4 border-purple-400' : ''}`}
             >
               <td className="px-2 py-3 whitespace-nowrap">
                           <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center text-white font-medium">

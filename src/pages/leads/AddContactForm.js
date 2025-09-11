@@ -320,7 +320,9 @@ export default function AddContactForm({ initialPhone = '', initialType = 'lead'
   const getColorScheme = () => {
     if (isLead) {
       return {
-        bg: 'from-blue-50 to-blue-100',
+        bg: 'from-white to-white',
+        borderTop: 'border-t-blue-500',
+        borderAll: 'border-blue-500',
         inputRing: 'focus:ring-blue-300 focus:border-blue-400',
         button: 'from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700',
         accent: 'from-blue-50 to-blue-100',
@@ -328,7 +330,8 @@ export default function AddContactForm({ initialPhone = '', initialType = 'lead'
       };
     } else if (isNewCustomer) {
       return {
-        bg: 'from-purple-50 to-purple-100',
+        bg: 'from-white to-white',
+        borderTop: 'border-t-purple-500',
         inputRing: 'focus:ring-purple-300 focus:border-purple-400',
         button: 'from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700',
         accent: 'from-purple-50 to-purple-100',
@@ -336,7 +339,8 @@ export default function AddContactForm({ initialPhone = '', initialType = 'lead'
       };
     } else if (isExisting) {
       return {
-        bg: 'from-indigo-50 to-indigo-100',
+        bg: 'from-white to-white',
+        borderTop: 'border-t-indigo-500',
         inputRing: 'focus:ring-indigo-300 focus:border-indigo-400',
         button: 'from-indigo-500 to-indigo-600 hover:from-indigo-600 hover:to-indigo-700',
         accent: 'from-indigo-50 to-indigo-100',
@@ -344,7 +348,8 @@ export default function AddContactForm({ initialPhone = '', initialType = 'lead'
       };
     }
     return {
-      bg: 'from-white to-blue-50',
+      bg: 'from-white to-white',
+      borderTop: 'border-t-gray-400',
       inputRing: 'focus:ring-blue-300 focus:border-blue-400',
       button: 'from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700',
       accent: 'from-gray-50 to-gray-100',
@@ -370,13 +375,13 @@ export default function AddContactForm({ initialPhone = '', initialType = 'lead'
         <span className="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
         
         {/* Modal panel */}
-        <div className={`inline-block align-bottom bg-gradient-to-b ${colorScheme.bg} rounded-2xl text-left overflow-hidden shadow-2xl transform transition-all sm:my-12 sm:align-middle sm:w-full sm:max-w-lg mx-4`}>
+        <div className={`inline-block align-bottom bg-white rounded-lg text-left shadow-2xl transform transition-all sm:my-12 sm:align-middle sm:w-full sm:max-w-lg mx-4 border border-gray-200 overflow-hidden border-t-4 ${colorScheme.borderTop} ${colorScheme.borderAll} `}>
           {/* Header */}
-          <div className="flex justify-between items-center bg-blue-600 px-4 py-3 border-b">
-            <h3 className="text-lg font-medium text-white">Add New Customer/Lead</h3>
+          <div className="flex justify-between items-center bg-gray-100 px-4 py-3 border-b border-gray-400">
+            <h3 className="text-lg font-medium">Add New Customer/Lead</h3>
             <button 
               onClick={onCancel} 
-              className="text-white hover:text-gray-200 focus:outline-none"
+              className="text-gray-500 hover:text-gray-800 focus:outline-none"
             >
               <FiX className="h-5 w-5" />
             </button>

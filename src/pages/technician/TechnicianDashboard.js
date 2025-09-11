@@ -1535,10 +1535,12 @@ const fetchFreshWorkOrders = async () => {
             </div>
           </div>
 
-          {/* Original Technician Card - Only show for Repair/Complaint projects */}
+          {/* Original Technician Card - Only show for Repair/Complaint projects of customers who had NEW installations */}
           {(activeProject.projectCategory === 'Repair' || 
   activeProject.projectType?.toLowerCase().includes('repair') || 
-  activeProject.projectType?.toLowerCase().includes('complaint')) && (
+  activeProject.projectType?.toLowerCase().includes('complaint')) && 
+  activeProject.originalTechnician && // Only show if there's actually an original technician (means new installation was done)
+  (
   <div className={`${darkMode ? 'bg-gray-800/50' : 'bg-white'} rounded-xl shadow-lg p-4`}>
     <h3 className="text-lg font-semibold text-purple-800">Setup Technician</h3>
     {activeProject.originalTechnician ? (

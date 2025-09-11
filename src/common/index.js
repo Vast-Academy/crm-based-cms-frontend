@@ -165,6 +165,10 @@ const SummaryApi = {
         url : `${backendDomain}/api/create-work-orders`,
         method: "post"
       },
+      addComplaint: {
+        url : `${backendDomain}/api/add-complaint`,
+        method: "post"
+      },
       getWorkOrders: {
         url: `${backendDomain}/api/get-work-orders`,
         method: "get"
