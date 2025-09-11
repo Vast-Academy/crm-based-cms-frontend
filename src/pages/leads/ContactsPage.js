@@ -9,6 +9,9 @@ import LeadDetailModal from '../leads/LeadDetail';
 import CustomerDetailModal from './CustomerDetailModal';
 import WorkOrderModal from '../customers/WorkOrderModal';
 import ComplaintModal from '../customers/ComplaintModal';
+import DealerDetailModal from './DealerDetailModal';
+import DistributorDetailModal from './DistributorDetailModal';
+import BillingModal from './BillingModal';
 
 const statusColors = {
   positive: 'bg-green-100 text-green-800',
@@ -25,7 +28,7 @@ const ContactsPage = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [filteredContacts, setFilteredContacts] = useState([]);
   const [filters, setFilters] = useState({
-    type: 'all', // 'all', 'lead', 'customer'
+    type: 'all', // 'all', 'lead', 'customer', 'dealer', 'distributor'
     status: 'all'
   });
   
@@ -33,9 +36,15 @@ const ContactsPage = () => {
   const [showAddModal, setShowAddModal] = useState(false);
   const [showLeadDetailModal, setShowLeadDetailModal] = useState(false);
   const [showCustomerDetailModal, setShowCustomerDetailModal] = useState(false);
+  const [showDealerDetailModal, setShowDealerDetailModal] = useState(false);
+  const [showDistributorDetailModal, setShowDistributorDetailModal] = useState(false);
   const [showWorkOrderModal, setShowWorkOrderModal] = useState(false);
+  const [showBillingModal, setShowBillingModal] = useState(false);
   const [selectedLeadId, setSelectedLeadId] = useState(null);
   const [selectedCustomerId, setSelectedCustomerId] = useState(null);
+  const [selectedDealerId, setSelectedDealerId] = useState(null);
+  const [selectedDistributorId, setSelectedDistributorId] = useState(null);
+  const [selectedBillingCustomer, setSelectedBillingCustomer] = useState(null);
   const [initialPhone, setInitialPhone] = useState('');
   const [initialType, setInitialType] = useState('lead');
   const [expandedRow, setExpandedRow] = useState(null);
@@ -139,6 +148,22 @@ const fetchContacts = async (forceFresh = false) => {
       
       const customersData = await customersResponse.json();
       
+      // Fetch dealers
+      const dealersResponse = await fetch(`${SummaryApi.getAllDealers.url}${branchParam}`, {
+        method: SummaryApi.getAllDealers.method,
+        credentials: 'include'
+      });
+      
+      const dealersData = await dealersResponse.json();
+      
+      // Fetch distributors
+      const distributorsResponse = await fetch(`${SummaryApi.getAllDistributors.url}${branchParam}`, {
+        method: SummaryApi.getAllDistributors.method,
+        credentials: 'include'
+      });
+      
+      const distributorsData = await distributorsResponse.json();
+      
       // Process leads data
       const processedLeads = leadsData.success ? leadsData.data.map(lead => ({
         ...lead,
@@ -152,8 +177,20 @@ const fetchContacts = async (forceFresh = false) => {
         status: 'positive' // Customers are always marked as positive
       })) : [];
       
+      // Process dealers data
+      const processedDealers = dealersData.success ? dealersData.data.map(dealer => ({
+        ...dealer,
+        contactType: 'dealer'
+      })) : [];
+      
+      // Process distributors data
+      const processedDistributors = distributorsData.success ? distributorsData.data.map(distributor => ({
+        ...distributor,
+        contactType: 'distributor'
+      })) : [];
+      
       // Combine data and sort by createdAt date (newest first)
-      const combinedContacts = [...processedLeads, ...processedCustomers];
+      const combinedContacts = [...processedLeads, ...processedCustomers, ...processedDealers, ...processedDistributors];
       combinedContacts.sort((a, b) => {
         const aDate = a.updatedAt || a.createdAt;
         const bDate = b.updatedAt || b.createdAt;
@@ -228,6 +265,32 @@ const handleFilterChange = (type, status = 'all') => {
     setShowCustomerDetailModal(true);
   };
   
+  // Handle opening dealer detail modal
+  const handleViewDealer = (dealerId) => {
+    setSelectedDealerId(dealerId);
+    setShowDealerDetailModal(true);
+  };
+  
+  // Handle opening distributor detail modal
+  const handleViewDistributor = (distributorId) => {
+    setSelectedDistributorId(distributorId);
+    setShowDistributorDetailModal(true);
+  };
+  
+  // Handle opening billing modal for dealer/distributor
+  const handleCreateBill = (customer) => {
+    setSelectedBillingCustomer(customer);
+    setShowBillingModal(true);
+  };
+  
+  // Handle successful bill creation
+  const handleBillCreated = (billData) => {
+    console.log('Bill created successfully:', billData);
+    setShowBillingModal(false);
+    setSelectedBillingCustomer(null);
+    // Optionally show success message or refresh data
+  };
+  
   // Handle creating new project for a customer
   const handleCreateProject = (customerId) => {
     setSelectedCustomerId(customerId);
@@ -241,12 +304,16 @@ const handleFilterChange = (type, status = 'all') => {
     setShowWorkOrderModal(false);
   };
   
-  // Handle view of a contact (either lead or customer)
+  // Handle view of a contact (lead, customer, dealer, distributor)
   const handleViewContact = (contact) => {
     if (contact.contactType === 'lead') {
       handleViewLead(contact._id);
-    } else {
+    } else if (contact.contactType === 'customer') {
       handleViewCustomer(contact._id);
+    } else if (contact.contactType === 'dealer') {
+      handleViewDealer(contact._id);
+    } else if (contact.contactType === 'distributor') {
+      handleViewDistributor(contact._id);
     }
   };
   
@@ -461,11 +528,31 @@ const handleFilterChange = (type, status = 'all') => {
               onClick={() => handleFilterChange('customer')}
               className={`px-4 py-1.5 rounded-full text-sm ${
                 filters.type === 'customer' 
-                  ? 'bg-blue-500 text-white' 
-                  : 'bg-gray-100 text-gray-700'
+                  ? 'bg-purple-500 text-white' 
+                  : 'bg-purple-100 text-purple-800'
               }`}
             >
               Customers
+            </button>
+            <button
+              onClick={() => handleFilterChange('dealer')}
+              className={`px-4 py-1.5 rounded-full text-sm ${
+                filters.type === 'dealer' 
+                  ? 'bg-orange-500 text-white' 
+                  : 'bg-orange-100 text-orange-800'
+              }`}
+            >
+              Dealers
+            </button>
+            <button
+              onClick={() => handleFilterChange('distributor')}
+              className={`px-4 py-1.5 rounded-full text-sm ${
+                filters.type === 'distributor' 
+                  ? 'bg-teal-500 text-white' 
+                  : 'bg-teal-100 text-teal-800'
+              }`}
+            >
+              Distributors
             </button>
             
             {/* Status Filters - only shown when Leads is selected */}
@@ -565,9 +652,13 @@ const handleFilterChange = (type, status = 'all') => {
                           <span className={`px-2 py-1 rounded-full text-xs font-medium ${
                             contact.contactType === 'lead' 
                               ? 'bg-blue-100 text-blue-800' 
-                              : 'bg-purple-100 text-purple-800'
+                              : contact.contactType === 'customer'
+                              ? 'bg-purple-100 text-purple-800'
+                              : contact.contactType === 'dealer'
+                              ? 'bg-orange-100 text-orange-800'
+                              : 'bg-teal-100 text-teal-800'
                           }`}>
-                            {contact.contactType === 'lead' ? 'Lead' : 'Customer'}
+                            {contact.contactType.charAt(0).toUpperCase() + contact.contactType.slice(1)}
                           </span>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
@@ -635,7 +726,7 @@ const handleFilterChange = (type, status = 'all') => {
                                   </button>
                                   )}
                                 </>
-                              ) : (
+                              ) : contact.contactType === 'customer' ? (
                                 <>
                                   <button 
                                     onClick={(e) => {
@@ -671,7 +762,55 @@ const handleFilterChange = (type, status = 'all') => {
                                   </>
                                   )}
                                 </>
-                              )}
+                              ) : contact.contactType === 'dealer' ? (
+                                <>
+                                  <button 
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleViewDealer(contact._id);
+                                    }}
+                                    className="inline-flex items-center px-4 py-1.5 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-500 hover:bg-blue-600"
+                                  >
+                                    View Details
+                                  </button>
+                                  {/* Only show New Bill button if manager */}
+                                  {user.role === 'manager' && (
+                                    <button 
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleCreateBill(contact);
+                                      }}
+                                      className="inline-flex items-center px-4 py-1.5 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-500 hover:bg-green-600"
+                                    >
+                                      New Bill
+                                    </button>
+                                  )}
+                                </>
+                              ) : contact.contactType === 'distributor' ? (
+                                <>
+                                  <button 
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleViewDistributor(contact._id);
+                                    }}
+                                    className="inline-flex items-center px-4 py-1.5 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-500 hover:bg-blue-600"
+                                  >
+                                    View Details
+                                  </button>
+                                  {/* Only show New Bill button if manager */}
+                                  {user.role === 'manager' && (
+                                    <button 
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleCreateBill(contact);
+                                      }}
+                                      className="inline-flex items-center px-4 py-1.5 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-500 hover:bg-green-600"
+                                    >
+                                      New Bill
+                                    </button>
+                                  )}
+                                </>
+                              ) : null}
                             </div>
                           </td>
                         </tr>
@@ -703,6 +842,20 @@ const handleFilterChange = (type, status = 'all') => {
                       >
                         <FiUserPlus className="mr-2" />
                         Add as New Customer
+                      </button>
+                      <button
+                        onClick={() => handleAddNew(searchQuery, 'dealer')}
+                        className="bg-orange-500 hover:bg-orange-600 text-white px-4 py-1.5 rounded-md inline-flex items-center text-sm"
+                      >
+                        <FiUserPlus className="mr-2" />
+                        Add as New Dealer
+                      </button>
+                      <button
+                        onClick={() => handleAddNew(searchQuery, 'distributor')}
+                        className="bg-teal-500 hover:bg-teal-600 text-white px-4 py-1.5 rounded-md inline-flex items-center text-sm"
+                      >
+                        <FiUserPlus className="mr-2" />
+                        Add as New Distributor
                       </button>
                     </div>
                   )}
@@ -759,6 +912,28 @@ const handleFilterChange = (type, status = 'all') => {
   customerId={selectedCustomerId}
   onSuccess={handleComplaintSuccess}
 />
+
+      <DealerDetailModal
+        isOpen={showDealerDetailModal}
+        onClose={() => setShowDealerDetailModal(false)}
+        dealerId={selectedDealerId}
+        onDealerUpdated={handleContactAdded}
+      />
+
+      <DistributorDetailModal
+        isOpen={showDistributorDetailModal}
+        onClose={() => setShowDistributorDetailModal(false)}
+        distributorId={selectedDistributorId}
+        onDistributorUpdated={handleContactAdded}
+      />
+
+      {/* Billing Modal */}
+      <BillingModal
+        isOpen={showBillingModal}
+        onClose={() => setShowBillingModal(false)}
+        customer={selectedBillingCustomer}
+        onBillCreated={handleBillCreated}
+      />
     </div>
   );
 };

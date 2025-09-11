@@ -16,7 +16,7 @@ export default function AddContactForm({ initialPhone = '', initialType = 'lead'
     whatsapp: "",
     sameAsPhone: false,
     address: "",
-    leadType: initialType, // Lead | Customer
+    leadType: initialType, // Lead | Customer | Dealer | Distributor
     customerStatus: "", // New | Existing
     installDate: "",
     projectType: "",
@@ -199,7 +199,8 @@ export default function AddContactForm({ initialPhone = '', initialType = 'lead'
     if (form.leadType === "Customer" && !form.customerStatus) e.customerStatus = "Select one";
     if (form.leadType === "Customer" && form.customerStatus === "Existing" && !form.installDate) e.installDate = "Required";
 
-    if (!form.projectType) e.projectType = "Select a project";
+    // Project type is not required for dealers and distributors
+    if (!form.projectType && !isDealer && !isDistributor) e.projectType = "Select a project";
     if (form.leadType === "Customer" && form.customerStatus === "Existing" && !form.installedBy) e.installedBy = "Select who installed";
 
     return e;
@@ -258,6 +259,56 @@ export default function AddContactForm({ initialPhone = '', initialType = 'lead'
           } else {
             setErrors({ submit: data.message || 'Failed to add lead' });
           }
+        } else if (form.leadType === 'Dealer') {
+          // Dealer creation
+          if (form.remarks) {
+            dataToSubmit.initialRemark = form.remarks;
+          }
+
+          const response = await fetch(SummaryApi.createDealer.url, {
+            method: SummaryApi.createDealer.method,
+            credentials: 'include',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(dataToSubmit)
+          });
+          
+          const data = await response.json();
+          
+          if (data.success) {
+            setSubmitted(true);
+            setTimeout(() => {
+              if (onSuccess) onSuccess(data.data);
+            }, 1500);
+          } else {
+            setErrors({ submit: data.message || 'Failed to add dealer' });
+          }
+        } else if (form.leadType === 'Distributor') {
+          // Distributor creation
+          if (form.remarks) {
+            dataToSubmit.initialRemark = form.remarks;
+          }
+
+          const response = await fetch(SummaryApi.createDistributor.url, {
+            method: SummaryApi.createDistributor.method,
+            credentials: 'include',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(dataToSubmit)
+          });
+          
+          const data = await response.json();
+          
+          if (data.success) {
+            setSubmitted(true);
+            setTimeout(() => {
+              if (onSuccess) onSuccess(data.data);
+            }, 1500);
+          } else {
+            setErrors({ submit: data.message || 'Failed to add distributor' });
+          }
         } else {
           // Customer creation
           dataToSubmit.projectType = form.projectType;
@@ -315,6 +366,8 @@ export default function AddContactForm({ initialPhone = '', initialType = 'lead'
   const isExisting = form.leadType === "Customer" && form.customerStatus === "Existing";
   const isLead = form.leadType === "Lead";
   const isNewCustomer = form.leadType === "Customer" && form.customerStatus === "New";
+  const isDealer = form.leadType === "Dealer";
+  const isDistributor = form.leadType === "Distributor";
   
   // Dynamic color schemes
   const getColorScheme = () => {
@@ -350,6 +403,28 @@ export default function AddContactForm({ initialPhone = '', initialType = 'lead'
         button: 'from-indigo-500 to-indigo-600 hover:from-indigo-600 hover:to-indigo-700',
         accent: 'from-indigo-50 to-indigo-100',
         text: 'text-indigo-900'
+      };
+    } else if (isDealer) {
+      return {
+        bg: 'from-white to-white',
+        borderTop: 'border-t-orange-500',
+        borderAll: 'border-orange-500',
+        inputBorder: 'border-orange-300',
+        inputRing: 'focus:ring-orange-300 focus:border-orange-400',
+        button: 'from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700',
+        accent: 'from-orange-50 to-orange-100',
+        text: 'text-orange-900'
+      };
+    } else if (isDistributor) {
+      return {
+        bg: 'from-white to-white',
+        borderTop: 'border-t-teal-500',
+        borderAll: 'border-teal-500',
+        inputBorder: 'border-teal-300',
+        inputRing: 'focus:ring-teal-300 focus:border-teal-400',
+        button: 'from-teal-500 to-teal-600 hover:from-teal-600 hover:to-teal-700',
+        accent: 'from-teal-50 to-teal-100',
+        text: 'text-teal-900'
       };
     }
     return {
@@ -587,7 +662,9 @@ export default function AddContactForm({ initialPhone = '', initialType = 'lead'
                 options={[
                   { value: "", label: "Choose..." }, 
                   { value: "Lead", label: "Lead" }, 
-                  { value: "Customer", label: "Customer" }
+                  { value: "Customer", label: "Customer" },
+                  { value: "Dealer", label: "Dealer" },
+                  { value: "Distributor", label: "Distributor" }
                 ]} 
                 error={errors.leadType}
                 colorScheme={colorScheme}
@@ -623,20 +700,22 @@ export default function AddContactForm({ initialPhone = '', initialType = 'lead'
             </AnimatePresence>
           </div>
 
-          {/* Project Type / Inquire For */}
-          <div className="mt-8 mb-6">
-            <SectionTitle title={isLead ? "Inquire For" : "Project Type"} subtle />
-            <div className="w-full">
-              <SelectField 
-                label={isLead ? "Inquire For" : "Choose Service"} 
-                value={form.projectType} 
-                onChange={(v) => update("projectType", v)} 
-                options={[{ value: "", label: "Choose..." }, ...services]} 
-                error={errors.projectType}
-                colorScheme={colorScheme}
-              />
+          {/* Project Type / Inquire For - Only show for Leads and Customers */}
+          {!isDealer && !isDistributor && (
+            <div className="mt-8 mb-6">
+              <SectionTitle title={isLead ? "Inquire For" : "Project Type"} subtle />
+              <div className="w-full">
+                <SelectField 
+                  label={isLead ? "Inquire For" : "Choose Service"} 
+                  value={form.projectType} 
+                  onChange={(v) => update("projectType", v)} 
+                  options={[{ value: "", label: "Choose..." }, ...services]} 
+                  error={errors.projectType}
+                  colorScheme={colorScheme}
+                />
+              </div>
             </div>
-          </div>
+          )}
           </div>
 
           {/* Installed By (only when Existing Customer) */}
@@ -665,8 +744,8 @@ export default function AddContactForm({ initialPhone = '', initialType = 'lead'
               disabled={loading}
               className="inline-flex items-center justify-center rounded-xl bg-white text-gray-700 px-6 py-2 h-12 font-semibold shadow-lg hover:shadow-xl transition-all duration-300 border-2 border-gray-200 hover:text-white"
               style={{
-                '--hover-from': isLead ? '#3b82f6' : isNewCustomer ? '#a855f7' : isExisting ? '#6366f1' : '#3b82f6',
-                '--hover-to': isLead ? '#1d4ed8' : isNewCustomer ? '#9333ea' : isExisting ? '#4f46e5' : '#1d4ed8'
+                '--hover-from': isLead ? '#3b82f6' : isNewCustomer ? '#a855f7' : isExisting ? '#6366f1' : isDealer ? '#f97316' : isDistributor ? '#14b8a6' : '#3b82f6',
+                '--hover-to': isLead ? '#1d4ed8' : isNewCustomer ? '#9333ea' : isExisting ? '#4f46e5' : isDealer ? '#ea580c' : isDistributor ? '#0f766e' : '#1d4ed8'
               }}
               onMouseEnter={(e) => {
                 if (!loading) {

@@ -107,8 +107,10 @@ const ServicesList = ({ searchTerm = '' }) => {
   };
 
   const sortByPrice = (a, b) => {
-    if (a.salePrice < b.salePrice) return sortOrder === 'asc' ? -1 : 1;
-    if (a.salePrice > b.salePrice) return sortOrder === 'asc' ? 1 : -1;
+    const priceA = a.pricing?.customerPrice || 0;
+    const priceB = b.pricing?.customerPrice || 0;
+    if (priceA < priceB) return sortOrder === 'asc' ? -1 : 1;
+    if (priceA > priceB) return sortOrder === 'asc' ? 1 : -1;
     return 0;
   };
 
@@ -241,7 +243,16 @@ const ServicesList = ({ searchTerm = '' }) => {
                     {user.role === 'admin' && (
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">₹{service.purchasePrice || '-'}</td>
                     )}
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">₹{service.salePrice}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      <div className="space-y-1">
+                        <div className="text-xs text-gray-400">Customer:</div>
+                        <div className="font-medium">₹{service.pricing?.customerPrice || 0}</div>
+                        <div className="text-xs text-gray-400">Dealer:</div>
+                        <div>₹{service.pricing?.dealerPrice || 0}</div>
+                        <div className="text-xs text-gray-400">Distributor:</div>
+                        <div>₹{service.pricing?.distributorPrice || 0}</div>
+                      </div>
+                    </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       <div className="flex space-x-2">
                         {user.role === 'admin' && (

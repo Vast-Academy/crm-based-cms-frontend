@@ -324,6 +324,84 @@ const SummaryApi = {
       resetSystem: {
         url: `${backendDomain}/api/reset-system`,
         method: "post"
+      },
+      
+      // Dealer APIs
+      createDealer: {
+        url: `${backendDomain}/api/create-dealer`,
+        method: "post"
+      },
+      getAllDealers: {
+        url: `${backendDomain}/api/get-all-dealers`,
+        method: "get"
+      },
+      getDealer: {
+        url: `${backendDomain}/api/get-dealer`,
+        method: "get"
+      },
+      updateDealer: {
+        url: `${backendDomain}/api/update-dealer`,
+        method: "post"
+      },
+      addDealerRemark: {
+        url: `${backendDomain}/api/dealer-remarks`,
+        method: "post"
+      },
+      
+      // Distributor APIs
+      createDistributor: {
+        url: `${backendDomain}/api/create-distributor`,
+        method: "post"
+      },
+      getAllDistributors: {
+        url: `${backendDomain}/api/get-all-distributors`,
+        method: "get"
+      },
+      getDistributor: {
+        url: `${backendDomain}/api/get-distributor`,
+        method: "get"
+      },
+      updateDistributor: {
+        url: `${backendDomain}/api/update-distributor`,
+        method: "post"
+      },
+      addDistributorRemark: {
+        url: `${backendDomain}/api/distributor-remarks`,
+        method: "post"
+      },
+      
+      // Sales APIs
+      createSalesBill: {
+        url: `${backendDomain}/api/create-sales-bill`,
+        method: "post"
+      },
+      getSalesBills: {
+        url: `${backendDomain}/api/get-sales-bills`,
+        method: "get"
+      },
+      getBillDetailsById: {
+        url: `${backendDomain}/api/get-bill-details`,
+        method: "get"
+      },
+      processPayment: {
+        url: `${backendDomain}/api/process-payment`,
+        method: "post"
+      },
+      generateQRCode: {
+        url: `${backendDomain}/api/generate-qr`,
+        method: "get"
+      },
+      getDealerBills: {
+        url: `${backendDomain}/api/get-dealer-bills`,
+        method: "get"
+      },
+      getDistributorBills: {
+        url: `${backendDomain}/api/get-distributor-bills`,
+        method: "get"
+      },
+      processBulkPayment: {
+        url: `${backendDomain}/api/process-bulk-payment`,
+        method: "post"
       }
 }
 

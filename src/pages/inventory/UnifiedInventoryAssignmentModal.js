@@ -553,7 +553,9 @@ const handleKeyDown = (e) => {
                               </div>
                             </div>
                             <div className="text-right">
-                              <div className="font-bold">₹{product.salePrice}</div>
+                              <div className="font-bold">
+                                ₹{product.pricing?.customerPrice || 0}
+                              </div>
                               <div className="text-sm text-gray-500">
                                 Available: {availableStock} {product.unit || 'units'}
                               </div>

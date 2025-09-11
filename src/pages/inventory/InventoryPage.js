@@ -39,7 +39,9 @@ const [itemToDelete, setItemToDelete] = useState(null);
     warranty: '1 year',
     mrp: '',
     purchasePrice: '',
-    salePrice: ''
+    customerPrice: '',
+    dealerPrice: '',
+    distributorPrice: ''
   });
 
   // Fetch inventory items on component mount
@@ -245,8 +247,18 @@ const handleEditItemChange = (e) => {
       return false;
     }
     
-    if (!newItem.salePrice) {
-      setError('Sale price is required');
+    if (!newItem.customerPrice) {
+      setError('Customer price is required');
+      return false;
+    }
+    
+    if (!newItem.dealerPrice) {
+      setError('Dealer price is required');
+      return false;
+    }
+    
+    if (!newItem.distributorPrice) {
+      setError('Distributor price is required');
       return false;
     }
     
@@ -328,7 +340,9 @@ const getStockDisplay = (item) => {
           warranty: '1 year',
           mrp: '',
           purchasePrice: '',
-          salePrice: ''
+          customerPrice: '',
+          dealerPrice: '',
+          distributorPrice: ''
         });
         // Do not close the modal automatically
         
@@ -501,7 +515,13 @@ const getStockDisplay = (item) => {
         <td className="px-4 py-3 border-t">{item.warranty || 'N/A'}</td>
         <td className="px-4 py-3 border-t">{item.mrp || 'N/A'}</td>
         <td className="px-4 py-3 border-t">{item.purchasePrice || 'N/A'}</td>
-        <td className="px-4 py-3 border-t">₹{item.salePrice}</td>
+        <td className="px-4 py-3 border-t">
+          <div className="space-y-1">
+            <div className="text-xs text-gray-400">C: ₹{item.pricing?.customerPrice || 0}</div>
+            <div className="text-xs text-gray-400">D: ₹{item.pricing?.dealerPrice || 0}</div>
+            <div className="text-xs text-gray-400">Dist: ₹{item.pricing?.distributorPrice || 0}</div>
+          </div>
+        </td>
         <td className="px-4 py-3 border-t">
           {item.type !== 'service' ? (
             <span className="px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
@@ -752,19 +772,51 @@ const getStockDisplay = (item) => {
                   </>
                 )}
                 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Sale Price (₹) *
-                  </label>
-                  <input
-                    type="number"
-                    name="salePrice"
-                    value={newItem.salePrice}
-                    onChange={handleItemInputChange}
-                    className="w-full p-2 border rounded-md"
-                    placeholder="Sale Price"
-                    required
-                  />
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Customer Price (₹) *
+                    </label>
+                    <input
+                      type="number"
+                      name="customerPrice"
+                      value={newItem.customerPrice}
+                      onChange={handleItemInputChange}
+                      className="w-full p-2 border rounded-md"
+                      placeholder="Customer Price"
+                      required
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Dealer Price (₹) *
+                    </label>
+                    <input
+                      type="number"
+                      name="dealerPrice"
+                      value={newItem.dealerPrice}
+                      onChange={handleItemInputChange}
+                      className="w-full p-2 border rounded-md"
+                      placeholder="Dealer Price"
+                      required
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Distributor Price (₹) *
+                    </label>
+                    <input
+                      type="number"
+                      name="distributorPrice"
+                      value={newItem.distributorPrice}
+                      onChange={handleItemInputChange}
+                      className="w-full p-2 border rounded-md"
+                      placeholder="Distributor Price"
+                      required
+                    />
+                  </div>
                 </div>
               </div>
             </div>
@@ -960,18 +1012,63 @@ const getStockDisplay = (item) => {
             </>
           )}
           
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Sale Price (₹)
-            </label>
-            <input
-              type="number"
-              name="salePrice"
-              value={selectedItem.salePrice}
-              onChange={handleEditItemChange}
-              className="w-full p-2 border rounded-md"
-              placeholder="Sale Price"
-            />
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Customer Price (₹)
+              </label>
+              <input
+                type="number"
+                name="customerPrice"
+                value={selectedItem.pricing?.customerPrice || ''}
+                onChange={(e) => handleEditItemChange({
+                  target: {
+                    name: 'pricing.customerPrice',
+                    value: e.target.value
+                  }
+                })}
+                className="w-full p-2 border rounded-md"
+                placeholder="Customer Price"
+              />
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Dealer Price (₹)
+              </label>
+              <input
+                type="number"
+                name="dealerPrice"
+                value={selectedItem.pricing?.dealerPrice || ''}
+                onChange={(e) => handleEditItemChange({
+                  target: {
+                    name: 'pricing.dealerPrice',
+                    value: e.target.value
+                  }
+                })}
+                className="w-full p-2 border rounded-md"
+                placeholder="Dealer Price"
+              />
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Distributor Price (₹)
+              </label>
+              <input
+                type="number"
+                name="distributorPrice"
+                value={selectedItem.pricing?.distributorPrice || ''}
+                onChange={(e) => handleEditItemChange({
+                  target: {
+                    name: 'pricing.distributorPrice',
+                    value: e.target.value
+                  }
+                })}
+                className="w-full p-2 border rounded-md"
+                placeholder="Distributor Price"
+              />
+            </div>
           </div>
         </div>
       </div>

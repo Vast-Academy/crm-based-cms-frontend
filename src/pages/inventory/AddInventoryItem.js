@@ -26,7 +26,9 @@ const AddInventoryItem = () => {
     warranty: '1 year',
     mrp: '',
     purchasePrice: '',
-    salePrice: ''
+    customerPrice: '',
+    dealerPrice: '',
+    distributorPrice: ''
   });
 
   // Handle input change for new item form
@@ -57,8 +59,18 @@ const AddInventoryItem = () => {
       return false;
     }
     
-    if (!newItem.salePrice) {
-      setError('Sale price is required');
+    if (!newItem.customerPrice) {
+      setError('Customer price is required');
+      return false;
+    }
+    
+    if (!newItem.dealerPrice) {
+      setError('Dealer price is required');
+      return false;
+    }
+    
+    if (!newItem.distributorPrice) {
+      setError('Distributor price is required');
       return false;
     }
     
@@ -102,7 +114,9 @@ const AddInventoryItem = () => {
           warranty: '1 year',
           mrp: '',
           purchasePrice: '',
-          salePrice: ''
+          customerPrice: '',
+          dealerPrice: '',
+          distributorPrice: ''
         });
       } else {
         showNotification('error', data.message || 'Failed to add inventory item');
@@ -256,19 +270,51 @@ const AddInventoryItem = () => {
             </>
           )}
           
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Sale Price (₹) *
-            </label>
-            <input
-              type="number"
-              name="salePrice"
-              value={newItem.salePrice}
-              onChange={handleItemInputChange}
-              className="w-full p-2 border rounded-md"
-              placeholder="Sale Price"
-              required
-            />
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Customer Price (₹) *
+              </label>
+              <input
+                type="number"
+                name="customerPrice"
+                value={newItem.customerPrice}
+                onChange={handleItemInputChange}
+                className="w-full p-2 border rounded-md"
+                placeholder="Customer Price"
+                required
+              />
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Dealer Price (₹) *
+              </label>
+              <input
+                type="number"
+                name="dealerPrice"
+                value={newItem.dealerPrice}
+                onChange={handleItemInputChange}
+                className="w-full p-2 border rounded-md"
+                placeholder="Dealer Price"
+                required
+              />
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Distributor Price (₹) *
+              </label>
+              <input
+                type="number"
+                name="distributorPrice"
+                value={newItem.distributorPrice}
+                onChange={handleItemInputChange}
+                className="w-full p-2 border rounded-md"
+                placeholder="Distributor Price"
+                required
+              />
+            </div>
           </div>
           
           <div className="pt-4">

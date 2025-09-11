@@ -282,8 +282,10 @@ const handleCancelSave = () => {
       };
     
       const sortByPrice = (a, b) => {
-        if (a.salePrice < b.salePrice) return sortOrder === 'asc' ? -1 : 1;
-        if (a.salePrice > b.salePrice) return sortOrder === 'asc' ? 1 : -1;
+        const priceA = a.pricing?.customerPrice || 0;
+        const priceB = b.pricing?.customerPrice || 0;
+        if (priceA < priceB) return sortOrder === 'asc' ? -1 : 1;
+        if (priceA > priceB) return sortOrder === 'asc' ? 1 : -1;
         return 0;
       };
     
@@ -753,7 +755,16 @@ const handleCancelSave = () => {
           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{item.unit}</td>
           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{item.warranty || 'No Warranty'}</td>
           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">₹{item.mrp}</td> */}
-          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">₹{item.salePrice}</td>
+          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+            <div className="space-y-1">
+              <div className="text-xs text-gray-400">Customer:</div>
+              <div className="font-medium">₹{item.pricing?.customerPrice || 0}</div>
+              <div className="text-xs text-gray-400">Dealer:</div>
+              <div>₹{item.pricing?.dealerPrice || 0}</div>
+              <div className="text-xs text-gray-400">Distributor:</div>
+              <div>₹{item.pricing?.distributorPrice || 0}</div>
+            </div>
+          </td>
           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
             <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium text-emerald-800 bg-emerald-200">
               {totalStock} {item.unit}
