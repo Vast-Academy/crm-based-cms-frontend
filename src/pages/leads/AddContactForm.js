@@ -322,7 +322,8 @@ export default function AddContactForm({ initialPhone = '', initialType = 'lead'
       return {
         bg: 'from-white to-white',
         borderTop: 'border-t-blue-500',
-        borderAll: 'border-blue-500',
+        borderAll: 'border-blue-600',
+        inputBorder: 'border-blue-300',
         inputRing: 'focus:ring-blue-300 focus:border-blue-400',
         button: 'from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700',
         accent: 'from-blue-50 to-blue-100',
@@ -332,6 +333,8 @@ export default function AddContactForm({ initialPhone = '', initialType = 'lead'
       return {
         bg: 'from-white to-white',
         borderTop: 'border-t-purple-500',
+        borderAll: 'border-purple-500',
+        inputBorder: 'border-purple-300',
         inputRing: 'focus:ring-purple-300 focus:border-purple-400',
         button: 'from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700',
         accent: 'from-purple-50 to-purple-100',
@@ -341,6 +344,8 @@ export default function AddContactForm({ initialPhone = '', initialType = 'lead'
       return {
         bg: 'from-white to-white',
         borderTop: 'border-t-indigo-500',
+        borderAll: 'border-indigo-500',
+        inputBorder: 'border-indigo-300',
         inputRing: 'focus:ring-indigo-300 focus:border-indigo-400',
         button: 'from-indigo-500 to-indigo-600 hover:from-indigo-600 hover:to-indigo-700',
         accent: 'from-indigo-50 to-indigo-100',
@@ -350,6 +355,8 @@ export default function AddContactForm({ initialPhone = '', initialType = 'lead'
     return {
       bg: 'from-white to-white',
       borderTop: 'border-t-gray-400',
+      borderAll: 'border-gray-400',
+      inputBorder: 'border-gray-300',
       inputRing: 'focus:ring-blue-300 focus:border-blue-400',
       button: 'from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700',
       accent: 'from-gray-50 to-gray-100',
@@ -375,7 +382,7 @@ export default function AddContactForm({ initialPhone = '', initialType = 'lead'
         <span className="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
         
         {/* Modal panel */}
-        <div className={`inline-block align-bottom bg-white rounded-lg text-left shadow-2xl transform transition-all sm:my-12 sm:align-middle sm:w-full sm:max-w-lg mx-4 border border-gray-200 overflow-hidden border-t-4 ${colorScheme.borderTop} ${colorScheme.borderAll} `}>
+        <div className={`inline-block align-bottom bg-white rounded-3xl text-left shadow-2xl transform transition-all sm:my-12 sm:align-middle sm:w-full sm:max-w-xl mx-4 border border-gray-200 overflow-hidden border-t-4 ${colorScheme.borderTop} ${colorScheme.borderAll} `}>
           {/* Header */}
           <div className="flex justify-between items-center bg-gray-100 px-4 py-3 border-b border-gray-400">
             <h3 className="text-lg font-medium">Add New Customer/Lead</h3>
@@ -455,7 +462,7 @@ export default function AddContactForm({ initialPhone = '', initialType = 'lead'
                     onChange={(e) => handlePhoneChange(e.target.value)}
                     placeholder="Phone number"
                     size="12"
-                    className={`w-full rounded-r-lg border ${errors.phone ? "border-red-400" : "border-gray-300"} focus:outline-none focus:ring-2 ${colorScheme.inputRing} transition p-1 text-gray-900 placeholder:text-gray-400 text-sm`}
+                    className={`w-full rounded-r-lg border ${errors.phone ? "border-red-400" : (colorScheme.inputBorder || "border-gray-300")} focus:outline-none focus:ring-2 ${colorScheme.inputRing} transition p-1 text-gray-900 placeholder:text-gray-400 text-sm`}
                     required
                   />
                 </div>
@@ -524,7 +531,7 @@ export default function AddContactForm({ initialPhone = '', initialType = 'lead'
                     placeholder="WhatsApp number"
                     size="12"
                     disabled={form.sameAsPhone}
-                    className={`w-full rounded-r-lg border ${errors.whatsapp ? "border-red-400" : "border-gray-300"} focus:outline-none focus:ring-2 ${colorScheme.inputRing} transition p-1 text-gray-900 placeholder:text-gray-400 disabled:bg-gray-100 text-sm`}
+                    className={`w-full rounded-r-lg border ${errors.whatsapp ? "border-red-400" : (colorScheme.inputBorder || "border-gray-300")} focus:outline-none focus:ring-2 ${colorScheme.inputRing} transition p-1 text-gray-900 placeholder:text-gray-400 disabled:bg-gray-100 text-sm`}
                   />
                 </div>
                 {errors.whatsapp && <span className="text-xs text-red-600 mt-1 inline-block">{errors.whatsapp}</span>}
@@ -546,7 +553,7 @@ export default function AddContactForm({ initialPhone = '', initialType = 'lead'
               <label className="block">
                 <span className="block text-sm font-medium text-gray-700 mb-1">Address</span>
                 <textarea 
-                  className={`w-full rounded-lg border border-gray-300 focus:outline-none focus:ring-2 ${colorScheme.inputRing} transition p-1 text-gray-900 placeholder:text-gray-400 text-sm`}
+                  className={`w-full rounded-lg border ${colorScheme.inputBorder || "border-gray-300"} focus:outline-none focus:ring-2 ${colorScheme.inputRing} transition p-1 text-gray-900 placeholder:text-gray-400 text-sm`}
                   placeholder="Address"
                   value={form.address}
                   onChange={(e) => update("address", e.target.value)}
@@ -645,7 +652,7 @@ export default function AddContactForm({ initialPhone = '', initialType = 'lead'
           <div className="mt-8 mb-6">
             <SectionTitle title="Remarks" subtle />
             <textarea 
-              className={`w-full rounded-lg border border-gray-300 focus:outline-none focus:ring-2 ${colorScheme.inputRing} transition p-1 text-gray-900 placeholder:text-gray-400 text-sm min-h-[60px]`}
+              className={`w-full rounded-lg border ${colorScheme.inputBorder || "border-gray-300"} focus:outline-none focus:ring-2 ${colorScheme.inputRing} transition p-1 text-gray-900 placeholder:text-gray-400 text-sm min-h-[60px]`}
               placeholder="Notes..." 
               value={form.remarks} 
               onChange={(e) => update("remarks", e.target.value)} 
@@ -656,7 +663,7 @@ export default function AddContactForm({ initialPhone = '', initialType = 'lead'
             <button 
               type="submit" 
               disabled={loading}
-              className="inline-flex items-center justify-center rounded-xl bg-white text-gray-700 px-8 py-3 font-semibold shadow-lg hover:shadow-xl transition-all duration-300 border-2 border-gray-200 hover:border-transparent hover:text-white transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-gray-200 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="inline-flex items-center justify-center rounded-xl bg-white text-gray-700 px-6 py-2 h-12 font-semibold shadow-lg hover:shadow-xl transition-all duration-300 border-2 border-gray-200 hover:text-white"
               style={{
                 '--hover-from': isLead ? '#3b82f6' : isNewCustomer ? '#a855f7' : isExisting ? '#6366f1' : '#3b82f6',
                 '--hover-to': isLead ? '#1d4ed8' : isNewCustomer ? '#9333ea' : isExisting ? '#4f46e5' : '#1d4ed8'
@@ -677,7 +684,7 @@ export default function AddContactForm({ initialPhone = '', initialType = 'lead'
             <button 
               type="button" 
               onClick={onCancel}
-              className="inline-flex items-center justify-center rounded-xl bg-white text-gray-700 px-8 py-3 font-semibold shadow-lg hover:shadow-xl transition-all duration-300 border-2 border-gray-200 hover:border-gray-300 hover:bg-gray-50 transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-gray-200"
+              className="inline-flex items-center justify-center rounded-xl bg-white text-gray-700 px-6 py-2 h-12 font-semibold shadow-lg hover:shadow-xl transition-all duration-300 border-2 border-gray-200 "
             >
               Cancel
             </button>
@@ -719,7 +726,7 @@ function TextField({ label, value, onChange, placeholder, error, colorScheme }) 
       <input 
         type="text" 
         size="20"
-        className={`w-full rounded-lg border ${error ? "border-red-400" : "border-gray-300"} focus:outline-none focus:ring-2 ${colorScheme?.inputRing || 'focus:ring-blue-300 focus:border-blue-400'} transition p-1 text-gray-900 placeholder:text-gray-400 text-sm`} 
+        className={`w-full rounded-lg border ${error ? "border-red-400" : (colorScheme?.inputBorder || "border-gray-300")} focus:outline-none focus:ring-2 ${colorScheme?.inputRing || 'focus:ring-blue-300 focus:border-blue-400'} transition p-1 text-gray-900 placeholder:text-gray-400 text-sm`} 
         placeholder={placeholder} 
         value={value} 
         onChange={(e) => onChange(e.target.value)} 
@@ -734,7 +741,7 @@ function SelectField({ label, value, onChange, options, error, colorScheme }) {
     <label className="block">
       <span className="block text-xs font-medium text-gray-700 mb-1">{label}</span>
       <select 
-        className={`w-full rounded-lg border ${error ? "border-red-400" : "border-gray-300"} bg-gradient-to-r from-white to-gray-50 focus:outline-none focus:ring-2 ${colorScheme?.inputRing || 'focus:ring-blue-300 focus:border-blue-400'} transition p-1 text-gray-900 text-sm`} 
+        className={`w-full rounded-lg border ${error ? "border-red-400" : (colorScheme?.inputBorder || "border-gray-300")} bg-gradient-to-r from-white to-gray-50 focus:outline-none focus:ring-2 ${colorScheme?.inputRing || 'focus:ring-blue-300 focus:border-blue-400'} transition p-1 text-gray-900 text-sm`} 
         value={value} 
         onChange={(e) => onChange(e.target.value)}
       >
@@ -753,7 +760,7 @@ function DateField({ label, value, onChange, error, colorScheme }) {
       <span className="block text-xs font-medium text-gray-700 mb-1">{label}</span>
       <input 
         type="date" 
-        className={`w-full rounded-lg border ${error ? "border-red-400" : "border-gray-300"} bg-gradient-to-r from-white to-gray-50 focus:outline-none focus:ring-2 ${colorScheme?.inputRing || 'focus:ring-green-300 focus:border-green-400'} transition p-1 text-gray-900 text-sm`} 
+        className={`w-full rounded-lg border ${error ? "border-red-400" : (colorScheme?.inputBorder || "border-gray-300")} bg-gradient-to-r from-white to-gray-50 focus:outline-none focus:ring-2 ${colorScheme?.inputRing || 'focus:ring-green-300 focus:border-green-400'} transition p-1 text-gray-900 text-sm`} 
         value={value} 
         onChange={(e) => onChange(e.target.value)} 
       />
