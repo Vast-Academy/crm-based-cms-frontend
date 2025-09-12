@@ -12,6 +12,7 @@ import ComplaintModal from '../customers/ComplaintModal';
 import DealerDetailModal from './DealerDetailModal';
 import DistributorDetailModal from './DistributorDetailModal';
 import BillingModal from './BillingModal';
+import CustomerBillingModal from './CustomerBillingModal';
 
 const statusColors = {
   positive: 'bg-green-100 text-green-800',
@@ -40,11 +41,13 @@ const ContactsPage = () => {
   const [showDistributorDetailModal, setShowDistributorDetailModal] = useState(false);
   const [showWorkOrderModal, setShowWorkOrderModal] = useState(false);
   const [showBillingModal, setShowBillingModal] = useState(false);
+  const [showCustomerBillingModal, setShowCustomerBillingModal] = useState(false);
   const [selectedLeadId, setSelectedLeadId] = useState(null);
   const [selectedCustomerId, setSelectedCustomerId] = useState(null);
   const [selectedDealerId, setSelectedDealerId] = useState(null);
   const [selectedDistributorId, setSelectedDistributorId] = useState(null);
   const [selectedBillingCustomer, setSelectedBillingCustomer] = useState(null);
+  const [selectedCustomerForBilling, setSelectedCustomerForBilling] = useState(null);
   const [initialPhone, setInitialPhone] = useState('');
   const [initialType, setInitialType] = useState('lead');
   const [expandedRow, setExpandedRow] = useState(null);
@@ -289,6 +292,21 @@ const handleFilterChange = (type, status = 'all') => {
     setShowBillingModal(false);
     setSelectedBillingCustomer(null);
     // Optionally show success message or refresh data
+  };
+
+  // Handle creating customer bill
+  const handleCreateCustomerBill = (customer) => {
+    setSelectedCustomerForBilling(customer);
+    setShowCustomerBillingModal(true);
+  };
+
+  // Handle successful customer bill creation
+  const handleCustomerBillCreated = (billData) => {
+    console.log('Customer bill created successfully:', billData);
+    setShowCustomerBillingModal(false);
+    setSelectedCustomerForBilling(null);
+    // Optionally refresh data
+    fetchContacts();
   };
   
   // Handle creating new project for a customer
@@ -759,6 +777,18 @@ const handleFilterChange = (type, status = 'all') => {
                                   >
                                     New Project
                                   </button>
+                                  {/* Only show New Bill button if manager */}
+                                  {user.role === 'manager' && (
+                                    <button 
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleCreateCustomerBill(contact);
+                                      }}
+                                      className="inline-flex items-center px-4 py-1.5 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-purple-500 hover:bg-purple-600"
+                                    >
+                                      New Bill
+                                    </button>
+                                  )}
                                   </>
                                   )}
                                 </>
@@ -933,6 +963,13 @@ const handleFilterChange = (type, status = 'all') => {
         onClose={() => setShowBillingModal(false)}
         customer={selectedBillingCustomer}
         onBillCreated={handleBillCreated}
+      />
+
+      <CustomerBillingModal
+        isOpen={showCustomerBillingModal}
+        onClose={() => setShowCustomerBillingModal(false)}
+        customer={selectedCustomerForBilling}
+        onBillCreated={handleCustomerBillCreated}
       />
     </div>
   );

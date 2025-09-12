@@ -402,6 +402,20 @@ const SummaryApi = {
       processBulkPayment: {
         url: `${backendDomain}/api/process-bulk-payment`,
         method: "post"
+      },
+      
+      // Customer billing APIs
+      getCustomerBills: {
+        url: `${backendDomain}/api/get-customer-bills`,
+        method: "get"
+      },
+      createCustomerBill: {
+        url: `${backendDomain}/api/create-customer-bill`,
+        method: "post"
+      },
+      processCustomerBulkPayment: {
+        url: `${backendDomain}/api/process-customer-bulk-payment`,
+        method: "post"
       }
 }
 

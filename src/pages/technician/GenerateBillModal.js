@@ -65,10 +65,10 @@ const [selectedServices, setSelectedServices] = useState([]);
       const data = await response.json();
       
       if (data.success) {
-        // Ensure all items have a proper salePrice value
+        // Ensure all items have a proper salePrice value (backend now sends customerPrice as salePrice)
         const inventoryWithPrices = data.data.map(item => ({
           ...item,
-          salePrice: item.salePrice || 0
+          salePrice: item.salePrice || 0 // Backend already provides customerPrice as salePrice
         }));
         setTechnicianInventory(inventoryWithPrices);
       } else {

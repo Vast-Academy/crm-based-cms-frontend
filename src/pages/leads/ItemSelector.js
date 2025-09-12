@@ -46,9 +46,13 @@ export default function ItemSelector({
 
   const getCustomerPrice = (item) => {
     if (item.pricing) {
-      return customerType === 'dealer' 
-        ? item.pricing.dealerPrice 
-        : item.pricing.distributorPrice;
+      if (customerType === 'dealer') {
+        return item.pricing.dealerPrice;
+      } else if (customerType === 'distributor') {
+        return item.pricing.distributorPrice;
+      } else if (customerType === 'customer') {
+        return item.pricing.customerPrice;
+      }
     }
     return item.salePrice;
   };
