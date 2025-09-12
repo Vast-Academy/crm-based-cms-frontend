@@ -386,23 +386,46 @@ const handleFilterChange = (type, status = 'all') => {
   const handleContactAdded = (newContact) => {
     setShowAddModal(false);
     
-    // एक additional contactType प्रॉपर्टी जोड़ें
-    const contactTypeField = newContact.projectType ? 'customer' : 'lead';
+    // Determine correct contact type based on response data
+    let contactType = 'lead'; // default
+    
+    // Check if the response indicates it's a customer (has projectType)
+    if (newContact.projectType) {
+      contactType = 'customer';
+    }
+    // Check if it's a dealer (has dealerType property or came from dealer endpoint)
+    else if (newContact.dealerType || newContact.isDealer) {
+      contactType = 'dealer';  
+    }
+    // Check if it's a distributor (has distributorType property or came from distributor endpoint)
+    else if (newContact.distributorType || newContact.isDistributor) {
+      contactType = 'distributor';
+    }
+    // Check initial type that was set when opening the modal
+    else if (initialType && initialType !== 'lead') {
+      contactType = initialType;
+    }
+    
     const contactWithType = {
       ...newContact,
-      contactType: contactTypeField
+      contactType: contactType
     };
     
     // स्टेट अपडेट करें
-  const updatedContacts = [contactWithType, ...contacts];
-  setContacts(updatedContacts);
-  
-  // फिल्टर्स को फिर से लागू करें
-  applyFilters(updatedContacts);
-  
-  // कैश अपडेट करें
-  localStorage.setItem('contactsData', JSON.stringify(updatedContacts));
-}
+    const updatedContacts = [contactWithType, ...contacts];
+    setContacts(updatedContacts);
+    
+    // फिल्टर्स को फिर से लागू करें
+    applyFilters(updatedContacts);
+    
+    // कैश अपडेट करें
+    localStorage.setItem('contactsData', JSON.stringify(updatedContacts));
+    
+    // Fresh data fetch करें to get accurate type
+    setTimeout(() => {
+      fetchContacts(true);
+    }, 500);
+  }
 
   // LeadDetailModal से लीड अपडेट हैंडलिंग
   const handleLeadUpdated = (updatedLead) => {
@@ -516,7 +539,7 @@ const handleFilterChange = (type, status = 'all') => {
             className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-full flex items-center whitespace-nowrap"
           >
             <FiPlusCircle className="mr-2" size={18} />
-            Add New Lead/Customer
+            Add New Contact
           </button>
           )}
           
@@ -651,13 +674,35 @@ const handleFilterChange = (type, status = 'all') => {
                   {filteredContacts.map((contact, index) => (
                     <React.Fragment key={`${contact.contactType}-${contact._id}`}>
                       <tr 
-                        className={`hover:bg-gray-50 cursor-pointer ${
-                          expandedRow === `${contact.contactType}-${contact._id}` ? 'bg-gray-50' : ''
+                        className={`cursor-pointer ${
+                          expandedRow === `${contact.contactType}-${contact._id}` 
+                            ? contact.contactType === 'customer' 
+                              ? 'bg-purple-50' 
+                              : contact.contactType === 'dealer'
+                              ? 'bg-orange-50'
+                              : contact.contactType === 'distributor'
+                              ? 'bg-teal-50'
+                              : 'bg-blue-50'
+                            : contact.contactType === 'customer'
+                            ? 'hover:bg-purple-50/50 bg-purple-50/20'
+                            : contact.contactType === 'dealer'
+                            ? 'hover:bg-orange-50/50 bg-orange-50/20' 
+                            : contact.contactType === 'distributor'
+                            ? 'hover:bg-teal-50/50 bg-teal-50/20'
+                            : 'hover:bg-blue-50/50 bg-blue-50/20'
                         }`}
                         onClick={() => handleRowClick(`${contact.contactType}-${contact._id}`)}
                       >
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center text-white font-medium">
+                          <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-medium ${
+                            contact.contactType === 'customer' 
+                              ? 'bg-purple-500' 
+                              : contact.contactType === 'dealer'
+                              ? 'bg-orange-500'
+                              : contact.contactType === 'distributor'
+                              ? 'bg-teal-500'
+                              : 'bg-blue-500'
+                          }`}>
                             {index + 1}
                           </div>
                         </td>

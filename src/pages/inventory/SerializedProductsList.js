@@ -545,31 +545,15 @@ const handleCancelSave = () => {
         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">UNIT</th>
         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">WARRANTY</th>
         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">MRP</th> */}
-       <th
-                           className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer select-none"
-                           onClick={() => {
-                             if (sortField === 'price') {
-                               setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
-                             } else {
-                               setSortField('price');
-                               setSortOrder('asc');
-                             }
-                           }}
-                           title="Sort by Price"
-                         >
-                           PRICE
-                           <span className="inline-block ml-1">
-                             {sortField === 'price' ? (
-                               sortOrder === 'asc' ? (
-                                 <LuArrowDownUp className="inline h-4 w-4 text-gray-600" />
-                               ) : (
-                                 <LuArrowUpDown className="inline h-4 w-4 text-gray-600" />
-                               )
-                             ) : (
-                               <LuArrowDownUp className="inline h-4 w-4 text-gray-400" />
-                             )}
-                           </span>
-                         </th>
+      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          ₹ CUSTOMER
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          ₹ DEALER
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          ₹ DISTRIBUTOR
+                        </th>
         <th
                             className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer select-none"
                             onClick={() => {
@@ -983,15 +967,14 @@ const ClickableTableRow = ({ item, index, user, openViewStockModal, openAddStock
         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{item.unit}</td>
         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{item.warranty || 'No Warranty'}</td>
         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">₹{item.mrp}</td> */}
-        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-          <div className="space-y-1">
-            <div className="text-xs text-gray-400">Customer:</div>
-            <div className="font-medium">₹{item.pricing?.customerPrice || 0}</div>
-            <div className="text-xs text-gray-400">Dealer:</div>
-            <div>₹{item.pricing?.dealerPrice || 0}</div>
-            <div className="text-xs text-gray-400">Distributor:</div>
-            <div>₹{item.pricing?.distributorPrice || 0}</div>
-          </div>
+        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-medium">
+          ₹{item.pricing?.customerPrice || 0}
+        </td>
+        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-medium">
+          ₹{item.pricing?.dealerPrice || 0}
+        </td>
+        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-medium">
+          ₹{item.pricing?.distributorPrice || 0}
         </td>
         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
           <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium text-blue-800 bg-blue-200">

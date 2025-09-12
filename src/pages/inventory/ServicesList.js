@@ -203,31 +203,15 @@ const ServicesList = ({ searchTerm = '' }) => {
                   {user.role === 'admin' && (
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Purchase Price</th>
                   )}
-                  <th
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer select-none"
-                    onClick={() => {
-                      if (sortField === 'price') {
-                        setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
-                      } else {
-                        setSortField('price');
-                        setSortOrder('asc');
-                      }
-                    }}
-                    title="Sort by Price"
-                  >
-                    Price
-                    <span className="inline-block ml-1">
-                      {sortField === 'price' ? (
-                        sortOrder === 'asc' ? (
-                          <LuArrowDownUp className="inline h-4 w-4 text-gray-600" />
-                        ) : (
-                          <LuArrowUpDown className="inline h-4 w-4 text-gray-600" />
-                        )
-                      ) : (
-                        <LuArrowDownUp className="inline h-4 w-4 text-gray-400" />
-                      )}
-                    </span>
-                  </th>
+                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          ₹ CUSTOMER
+                        </th>
+                                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            ₹ DEALER
+                                          </th>
+                                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            ₹ DISTRIBUTOR
+                                          </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                 </tr>
               </thead>
@@ -243,16 +227,15 @@ const ServicesList = ({ searchTerm = '' }) => {
                     {user.role === 'admin' && (
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">₹{service.purchasePrice || '-'}</td>
                     )}
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      <div className="space-y-1">
-                        <div className="text-xs text-gray-400">Customer:</div>
-                        <div className="font-medium">₹{service.pricing?.customerPrice || 0}</div>
-                        <div className="text-xs text-gray-400">Dealer:</div>
-                        <div>₹{service.pricing?.dealerPrice || 0}</div>
-                        <div className="text-xs text-gray-400">Distributor:</div>
-                        <div>₹{service.pricing?.distributorPrice || 0}</div>
-                      </div>
-                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-medium">
+          ₹{service.pricing?.customerPrice || 0}
+        </td>
+        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-medium">
+          ₹{service.pricing?.dealerPrice || 0}
+        </td>
+        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-medium">
+          ₹{service.pricing?.distributorPrice || 0}
+        </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       <div className="flex space-x-2">
                         {user.role === 'admin' && (

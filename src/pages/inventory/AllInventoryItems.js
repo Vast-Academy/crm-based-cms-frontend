@@ -445,30 +445,14 @@ const handleRefresh = () => {
                   {/* <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">TYPE</th> */}
                   {/* <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">BRANCH</th> */}
                   {/* <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">UNIT</th> */}
-                  <th
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer select-none"
-                    onClick={() => {
-                      if (sortField === 'price') {
-                        setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
-                      } else {
-                        setSortField('price');
-                        setSortOrder('asc');
-                      }
-                    }}
-                    title="Sort by Price"
-                  >
-                    PRICE
-                    <span className="inline-block ml-1">
-                      {sortField === 'price' ? (
-                        sortOrder === 'asc' ? (
-                          <LuArrowDownUp className="inline h-4 w-4 text-gray-600" />
-                        ) : (
-                          <LuArrowUpDown className="inline h-4 w-4 text-gray-600" />
-                        )
-                      ) : (
-                        <LuArrowDownUp className="inline h-4 w-4 text-gray-400" />
-                      )}
-                    </span>
+                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          ₹ CUSTOMER
+                        </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    ₹ DEALER
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    ₹ DISTRIBUTOR
                   </th>
                   {user.role === 'admin' && (
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">PURCHASE PRICE</th>
@@ -1421,15 +1405,14 @@ const ClickableTableRow = ({ item, index, user, handleDeleteItem, getItemTypeDis
           {item.branch?.name || '-'}
         </td> */}
         {/* <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{item.unit || '-'}</td> */}
-        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-          <div className="space-y-1">
-            <div className="text-xs text-gray-400">Customer:</div>
-            <div className="font-medium">₹{item.pricing?.customerPrice || 0}</div>
-            <div className="text-xs text-gray-400">Dealer:</div>
-            <div>₹{item.pricing?.dealerPrice || 0}</div>
-            <div className="text-xs text-gray-400">Distributor:</div>
-            <div>₹{item.pricing?.distributorPrice || 0}</div>
-          </div>
+        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-medium">
+          ₹{item.pricing?.customerPrice || 0}
+        </td>
+        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-medium">
+          ₹{item.pricing?.dealerPrice || 0}
+        </td>
+        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-medium">
+          ₹{item.pricing?.distributorPrice || 0}
         </td>
         {user.role === 'admin' && (
           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">₹{item.purchasePrice || '-'}</td>
