@@ -429,7 +429,7 @@ const BranchList = () => {
                 </div>
                 
                 <div>
-                  <p className="text-sm font-medium text-gray-500">Technicians</p>
+                  <p className="text-sm font-medium text-gray-500">Engineers</p>
                   <p className="text-base font-medium">
                     {branchData[branch._id]?.techniciansCount || 0}
                   </p>

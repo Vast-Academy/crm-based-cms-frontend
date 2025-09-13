@@ -297,10 +297,10 @@ const ProjectDetailsModal = ({ isOpen, onClose, project, onProjectApproved }) =>
             </div>
           </div>
           
-          {/* Technician Information */}
+          {/* Engineer Information */}
           {project.technician && (
             <div className="mb-6">
-              <h3 className="text-md font-medium mb-3">Technician Information</h3>
+              <h3 className="text-md font-medium mb-3">Engineer Information</h3>
               
               <div className="bg-white border rounded-lg p-4">
                 <p className="font-medium">

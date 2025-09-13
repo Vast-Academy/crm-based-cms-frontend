@@ -112,7 +112,7 @@ useEffect(() => {
       <div className="bg-white rounded-lg w-full max-w-md max-h-[90vh] flex flex-col">
         <div className="flex justify-between items-center p-6 border-b">
           <h2 className="text-xl font-semibold">
-            {isComplaint ? 'Assign Technician to Complaint' : 'Assign Technician'}
+            {isComplaint ? 'Assign Engineer to Complaint' : 'Assign Engineer'}
           </h2>
           <button
             onClick={onClose}
@@ -166,7 +166,7 @@ useEffect(() => {
           {/* Add this block to display original technician info for repair category */}
           {isComplaint && workOrder.originalTechnician && (
             <div className="mb-4">
-              <h3 className="font-medium text-orange-700 mb-1">Setup Technician:</h3>
+              <h3 className="font-medium text-orange-700 mb-1">Setup Engineer:</h3>
               <div className="mt-2 p-2 bg-white rounded border border-orange-200">
                 <p><span className="font-medium">Name:</span> {workOrder.originalTechnician.firstName} {workOrder.originalTechnician.lastName}</p>
                 {workOrder.originalTechnician.phoneNumber && (
@@ -187,7 +187,7 @@ useEffect(() => {
             <form onSubmit={handleSubmit}>
               <div className="mb-4">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Select Technician*
+                  Select Engineer*
                 </label>
                 {technicians.length > 0 ? (
                   <select
@@ -196,7 +196,7 @@ useEffect(() => {
                     className="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
                     required
                   >
-                    <option value="">Select a Technician</option>
+                    <option value="">Select an Engineer</option>
                     {technicians.map(tech => (
                       <option key={tech._id} value={tech._id}>
                         {tech.firstName} {tech.lastName} - {tech.branch?.name || 'No Branch'}
@@ -204,20 +204,20 @@ useEffect(() => {
                     ))}
                   </select>
                 ) : (
-                  <p className="text-yellow-600">No technicians available</p>
+                  <p className="text-yellow-600">No Engineers available</p>
                 )}
               </div>
               
               <div className="mb-4">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Instructions for Technician
+                  Instructions for Engineer
                 </label>
                 <textarea
                   value={instructions}
                   onChange={(e) => setInstructions(e.target.value)}
                   className="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
                   rows="3"
-                  placeholder={`Enter instructions for the technician ${isComplaint ? 'handling this complaint' : ''}...`}
+                  placeholder={`Enter instructions for the engineer ${isComplaint ? 'handling this complaint' : ''}...`}
                 ></textarea>
               </div>
             </form>
@@ -242,7 +242,7 @@ useEffect(() => {
                 isComplaint ? 'bg-orange-500 hover:bg-orange-600' : 'bg-blue-500 hover:bg-blue-600'
               }`}
             >
-              {loading ? 'Assigning...' : 'Assign Technician'}
+              {loading ? 'Assigning...' : 'Assign Engineer'}
             </button>
           </div>
         </div>

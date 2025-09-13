@@ -145,7 +145,7 @@ const DashboardLayout = () => {
             path: '/users/managers'
           },
           {
-            name: 'Technicians',
+            name: 'Engineers',
             icon: Layers,
             path: '/users/technicians'
           },

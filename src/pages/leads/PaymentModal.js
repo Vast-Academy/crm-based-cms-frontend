@@ -114,6 +114,11 @@ export default function PaymentModal({
   };
 
   const handleClose = () => {
+    // If we're on success step and have billData, trigger payment success callback
+    if (currentStep === 'success' && billData && onPaymentSuccess) {
+      onPaymentSuccess(billData);
+    }
+    
     // Reset all states
     setCurrentStep('method');
     setPaymentMethod('');

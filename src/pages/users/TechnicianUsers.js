@@ -261,12 +261,12 @@ const TechnicianUsers = () => {
             </div>
           </div>
 
-          {/* Add Technician button - uses modal for both admin and manager */}
+          {/* Add Engineer button - uses modal for both admin and manager */}
           <button
                 onClick={() => setModalOpen(true)}
                 className="px-4 py-2 bg-pink-600 text-white rounded-full hover:bg-pink-700 flex items-center whitespace-nowrap"
               >
-                <FiPlus className="mr-2" /> Add Technician
+                <FiPlus className="mr-2" /> Add Engineer
               </button>
           
           {/* Search bar */}

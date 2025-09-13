@@ -204,7 +204,7 @@ const AddTechnicianModal = ({ isOpen, onClose, onSuccess }) => {
   };
   
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Add New Technician" size="lg">
+    <Modal isOpen={isOpen} onClose={onClose} title="Add New Engineer" size="lg">
       {error && (
         <div className="bg-red-100 text-red-700 p-3 rounded mb-4">
           {error}
@@ -402,7 +402,7 @@ const AddTechnicianModal = ({ isOpen, onClose, onSuccess }) => {
               </>
             ) : (
               <>
-                <FiSave className="mr-2" /> Save Technician
+                <FiSave className="mr-2" /> Save Engineer
               </>
             )}
           </button>

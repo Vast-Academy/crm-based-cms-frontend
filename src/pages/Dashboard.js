@@ -595,7 +595,7 @@ const Dashboard = () => {
             path: "/branches",
           },
           {
-            name: "Total Technicians",
+            name: "Total Engineers",
             value: stats.staff,
             icon: FiUsers,
             bgColor: "bg-blue-500",
@@ -661,7 +661,7 @@ const Dashboard = () => {
             path: "/contacts",
           },
           {
-            name: "Technicians",
+            name: "Engineers",
             value: stats.technicians,
             icon: FiUsers,
             bgColor: "bg-purple-500",
@@ -787,7 +787,7 @@ const Dashboard = () => {
       {/* Branch/Technician Overview */}
       <div className="bg-white rounded-lg shadow-md p-6 mb-8">
         <h2 className="text-lg font-semibold text-gray-800 mb-4">
-          {user.role === "admin" ? "Branch Overview" : "Technicians Overview"}
+          {user.role === "admin" ? "Branch Overview" : "Engineers Overview"}
         </h2>
 
         <div className="overflow-x-auto">
