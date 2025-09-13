@@ -323,6 +323,65 @@ export default function BillingModal({ isOpen, onClose, customer, onBillCreated 
                 </div>
               </div>
             )}
+
+            {/* Step 3: Payment */}
+            {currentStep === 'payment' && (
+              <div className="space-y-6">
+                <div className="flex justify-between items-center">
+                  <h4 className="text-xl font-semibold text-gray-900">Payment</h4>
+                  <button
+                    onClick={() => setCurrentStep('summary')}
+                    className={`px-4 py-2 rounded-lg ${colors.buttonLight} font-medium`}
+                  >
+                    Back to Summary
+                  </button>
+                </div>
+
+                {/* Payment Status */}
+                <div className="bg-blue-50 rounded-lg p-6 text-center">
+                  <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <svg className="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
+                    </svg>
+                  </div>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">Payment Processing</h3>
+                  <p className="text-gray-600 mb-4">
+                    Complete your payment of ₹{total} for {customer?.name}
+                  </p>
+
+                  {/* Payment Modal Launch Button */}
+                  <button
+                    onClick={() => setShowPaymentModal(true)}
+                    className={`px-6 py-3 ${colors.button} text-white rounded-lg font-medium shadow-md hover:shadow-lg transition-shadow`}
+                  >
+                    Open Payment Options
+                  </button>
+
+                  <p className="text-sm text-gray-500 mt-3">
+                    Click above to open payment options dialog
+                  </p>
+                </div>
+
+                {/* Bill Summary */}
+                <div className="bg-gray-50 rounded-lg p-4">
+                  <h5 className="font-medium text-gray-900 mb-3">Order Summary</h5>
+                  <div className="space-y-2 text-sm">
+                    <div className="flex justify-between">
+                      <span>Items:</span>
+                      <span>{cart.length}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Subtotal:</span>
+                      <span>₹{subtotal}</span>
+                    </div>
+                    <div className="flex justify-between font-semibold text-base border-t pt-2">
+                      <span>Total Amount:</span>
+                      <span>₹{total}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Footer Actions */}
@@ -358,6 +417,14 @@ export default function BillingModal({ isOpen, onClose, customer, onBillCreated 
                   Proceed to Payment
                 </button>
               )}
+              {currentStep === 'payment' && (
+                <button
+                  onClick={() => setCurrentStep('summary')}
+                  className="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 font-medium"
+                >
+                  Back to Summary
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -367,7 +434,10 @@ export default function BillingModal({ isOpen, onClose, customer, onBillCreated 
       {showPaymentModal && (
         <PaymentModal
           isOpen={showPaymentModal}
-          onClose={() => setShowPaymentModal(false)}
+          onClose={() => {
+            setShowPaymentModal(false);
+            setCurrentStep('summary'); // Go back to summary step
+          }}
           customer={customer}
           cart={cart}
           total={total}

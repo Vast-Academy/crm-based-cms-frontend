@@ -97,16 +97,22 @@ const handleViewProjectDetails = async (project) => {
   }
 };
   
+  // Reset tab to details when modal opens
   useEffect(() => {
     if (isOpen && customerId) {
+      setActiveTab('details'); // Always reset to details tab
       fetchCustomer();
-      if (activeTab === 'bills') {
-        fetchCustomerBills();
-      }
     } else {
       // Reset state when modal closes
       setCustomer(null);
       setError(null);
+    }
+  }, [isOpen, customerId]);
+
+  // Fetch bills when tab changes or bills/payment tab is active
+  useEffect(() => {
+    if (isOpen && customerId && (activeTab === 'bills' || activeTab === 'payment')) {
+      fetchCustomerBills();
     }
   }, [isOpen, customerId, activeTab]);
 

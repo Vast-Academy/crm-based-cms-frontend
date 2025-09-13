@@ -29,13 +29,18 @@ export default function DistributorDetailModal({ isOpen, onClose, distributorId,
   const [paymentNotes, setPaymentNotes] = useState('');
   const [processingPayment, setProcessingPayment] = useState(false);
 
-  // Fetch distributor details and bills
+  // Reset tab to details when modal opens
   useEffect(() => {
     if (isOpen && distributorId) {
+      setActiveTab('details'); // Always reset to details tab
       fetchDistributorDetails();
-      if (activeTab === 'bills') {
-        fetchDistributorBills();
-      }
+    }
+  }, [isOpen, distributorId]);
+
+  // Fetch bills when tab changes or bills/payment tab is active
+  useEffect(() => {
+    if (isOpen && distributorId && (activeTab === 'bills' || activeTab === 'payment')) {
+      fetchDistributorBills();
     }
   }, [isOpen, distributorId, activeTab]);
 

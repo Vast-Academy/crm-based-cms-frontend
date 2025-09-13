@@ -15,6 +15,8 @@ export default function ItemSelector({
   const [filteredItems, setFilteredItems] = useState(items || []);
   const [selectedSerialNumbers, setSelectedSerialNumbers] = useState({});
   const [quantities, setQuantities] = useState({});
+  const [inputValues, setInputValues] = useState({}); // For temporary input values
+  const [cartInputValues, setCartInputValues] = useState({}); // For cart input values
 
   // Filter items based on search query
   useEffect(() => {
@@ -88,12 +90,20 @@ export default function ItemSelector({
   const handleQuantityChange = (itemId, quantity) => {
     setQuantities(prev => ({
       ...prev,
-      [itemId]: Math.max(1, quantity)
+      [itemId]: quantity === '' ? '' : Math.max(1, quantity)
     }));
+
+    // Sync input values when using buttons
+    if (quantity !== '') {
+      setInputValues(prev => ({
+        ...prev,
+        [itemId]: Math.max(1, quantity)
+      }));
+    }
   };
 
   const handleAddToCart = (item) => {
-    const quantity = quantities[item._id] || 1;
+    const quantity = quantities[item._id] === '' || !quantities[item._id] ? 1 : quantities[item._id];
     const serialNumber = selectedSerialNumbers[item._id] || null;
 
     if (item.type === 'serialized-product' && !serialNumber) {
@@ -221,7 +231,42 @@ export default function ItemSelector({
                             >
                               <FiMinus size={16} />
                             </button>
-                            <span className="w-12 text-center font-medium">{quantity}</span>
+                            <input
+                              type="number"
+                              value={inputValues[item._id] !== undefined ? inputValues[item._id] : quantity}
+                              onChange={(e) => {
+                                const value = e.target.value;
+                                setInputValues(prev => ({
+                                  ...prev,
+                                  [item._id]: value
+                                }));
+
+                                if (value !== '' && !isNaN(parseInt(value))) {
+                                  handleQuantityChange(item._id, Math.max(1, parseInt(value)));
+                                }
+                              }}
+                              onBlur={(e) => {
+                                const value = e.target.value;
+                                if (value === '' || parseInt(value) < 1 || isNaN(parseInt(value))) {
+                                  handleQuantityChange(item._id, 1);
+                                  setInputValues(prev => ({
+                                    ...prev,
+                                    [item._id]: 1
+                                  }));
+                                } else {
+                                  setInputValues(prev => ({
+                                    ...prev,
+                                    [item._id]: parseInt(value)
+                                  }));
+                                }
+                              }}
+                              onFocus={(e) => {
+                                e.target.select(); // Select all text on focus for easy editing
+                              }}
+                              min="1"
+                              max={stock}
+                              className="w-16 text-center font-medium border border-gray-300 rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-300"
+                            />
                             <button
                               onClick={() => handleQuantityChange(item._id, quantity + 1)}
                               disabled={quantity >= stock}
@@ -230,6 +275,7 @@ export default function ItemSelector({
                               <FiPlus size={16} />
                             </button>
                           </div>
+                          <p className="text-xs text-gray-500 mt-1">Available: {stock}</p>
                         </div>
                       )}
 
@@ -303,7 +349,45 @@ export default function ItemSelector({
                         >
                           <FiMinus size={12} />
                         </button>
-                        <span className="w-8 text-center text-sm font-medium">{cartItem.quantity}</span>
+                        {!!cartItem.serialNumber ? (
+                          <span className="w-12 text-center text-sm font-medium">{cartItem.quantity}</span>
+                        ) : (
+                          <input
+                            type="number"
+                            value={cartInputValues[index] !== undefined ? cartInputValues[index] : cartItem.quantity}
+                            onChange={(e) => {
+                              const value = e.target.value;
+                              setCartInputValues(prev => ({
+                                ...prev,
+                                [index]: value
+                              }));
+
+                              if (value !== '' && !isNaN(parseInt(value))) {
+                                onUpdateQuantity(index, Math.max(1, parseInt(value)));
+                              }
+                            }}
+                            onBlur={(e) => {
+                              const value = e.target.value;
+                              if (value === '' || parseInt(value) < 1 || isNaN(parseInt(value))) {
+                                onUpdateQuantity(index, 1);
+                                setCartInputValues(prev => ({
+                                  ...prev,
+                                  [index]: 1
+                                }));
+                              } else {
+                                setCartInputValues(prev => ({
+                                  ...prev,
+                                  [index]: parseInt(value)
+                                }));
+                              }
+                            }}
+                            onFocus={(e) => {
+                              e.target.select(); // Select all text on focus for easy editing
+                            }}
+                            min="1"
+                            className="w-12 text-center text-sm font-medium border border-gray-300 rounded px-1 py-0.5 focus:outline-none focus:ring-1 focus:ring-blue-300"
+                          />
+                        )}
                         <button
                           onClick={() => onUpdateQuantity(index, cartItem.quantity + 1)}
                           disabled={!!cartItem.serialNumber}

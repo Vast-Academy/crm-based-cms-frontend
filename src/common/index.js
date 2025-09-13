@@ -65,6 +65,14 @@ const SummaryApi = {
         url : `${backendDomain}/api/lead-convert`,
         method: "post"
     },
+    convertToDealer: {
+        url : `${backendDomain}/api/lead-convert-dealer`,
+        method: "post"
+    },
+    convertToDistributor: {
+        url : `${backendDomain}/api/lead-convert-distributor`,
+        method: "post"
+    },
     search : {
         url : `${backendDomain}/api/search`,
         method: "get"

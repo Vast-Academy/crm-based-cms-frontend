@@ -1,5 +1,6 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { useLocation } from "react-router-dom";
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { NotificationProvider } from './context/NotificationContext';
 
@@ -57,11 +58,68 @@ const ProtectedRoute = ({ children, allowedRoles = [] }) => {
   return children;
 };
 
+// React 19 metadata approach: render <title> & <link rel="icon"> anywhere.
+// React hoists them to <head> automatically (no Helmet needed).
+function RouteHead() {
+  const { pathname } = useLocation();
+
+  // Defaults
+  let title = "3G Digital CRM";
+  let icon  = "/favicon.ico";
+
+  // Map your routes to panels — tweak to match your real paths
+  if (
+    pathname.startsWith("/branches") ||
+    pathname.startsWith("/users/managers") ||
+    pathname.startsWith("/users/branches/technicians") ||
+    pathname.startsWith("/inventory-items")
+  ) {
+    title = "3G Digital - Admin Panel";
+    icon  = "/admin.ico";
+  } else if (
+    pathname.startsWith("/users/manager/technicians") ||
+    pathname.startsWith("/contacts") ||
+    pathname.startsWith("/work-orders") ||
+    pathname.startsWith("/manager-dashboard") ||
+    pathname.startsWith("/transferred-projects") ||
+    pathname.startsWith("/inventory") ||
+    pathname.startsWith("/returned-inventory") ||
+    pathname.startsWith("/replacement-warranty") ||
+    pathname.startsWith("/inventory-transfer-history")
+  ) {
+    title = "3G Digital - Manager Panel";
+    icon  = "/manager.ico";
+  } else if (
+    pathname.startsWith("/technician-dashboard") ||
+    pathname.startsWith("/work-orders") ||
+    pathname.startsWith("/technician")
+  ) {
+    title = "3G Digital - Engineer Panel";
+    icon  = "/engineer.ico";
+  } 
+
+  // Cache-bust so browsers don't stick to an old favicon
+  const bust = Date.now();
+  const href = `${icon}?v=${bust}`;
+
+  // Return head tags directly — React 19 hoists them into <head>
+  return (
+    <>
+      <title>{title}</title>
+      <link rel="icon" href={href} />
+      {/* optional for mobile/pinned tiles */}
+      <link rel="apple-touch-icon" href={href} />
+    </>
+  );
+}
+
+
 function App() {
   return (
     <AuthProvider>
       <NotificationProvider>
       <Router>
+         <RouteHead /> 
         <Routes>
           <Route path="/login" element={<LoginPage />} />
           
@@ -125,9 +183,18 @@ function App() {
             
             {/* Technician Users */}
             <Route 
-  path="users/technicians" 
+  path="users/branches/technicians" 
   element={
-    <ProtectedRoute allowedRoles={['admin', 'manager']}>
+    <ProtectedRoute allowedRoles={['admin']}>
+      <TechnicianUsers />
+    </ProtectedRoute>
+  } 
+/>
+
+         <Route 
+  path="users/manager/technicians" 
+  element={
+    <ProtectedRoute allowedRoles={['manager']}>
       <TechnicianUsers />
     </ProtectedRoute>
   } 

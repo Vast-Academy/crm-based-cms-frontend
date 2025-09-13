@@ -147,7 +147,7 @@ const DashboardLayout = () => {
           {
             name: 'Engineers',
             icon: Layers,
-            path: '/users/technicians'
+            path: '/users/branches/technicians'
           },
           {
             name: 'Inventory',
@@ -169,7 +169,7 @@ const DashboardLayout = () => {
           // },
           {
             name: 'User Management',
-            path: '/users/technicians',
+            path: '/users/manager/technicians',
             icon: FiUsers
           },
           {

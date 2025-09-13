@@ -29,13 +29,18 @@ export default function DealerDetailModal({ isOpen, onClose, dealerId, onDealerU
   const [paymentNotes, setPaymentNotes] = useState('');
   const [processingPayment, setProcessingPayment] = useState(false);
 
-  // Fetch dealer details and bills
+  // Reset tab to details when modal opens
   useEffect(() => {
     if (isOpen && dealerId) {
+      setActiveTab('details'); // Always reset to details tab
       fetchDealerDetails();
-      if (activeTab === 'bills') {
-        fetchDealerBills();
-      }
+    }
+  }, [isOpen, dealerId]);
+
+  // Fetch bills when tab changes or bills tab is active
+  useEffect(() => {
+    if (isOpen && dealerId && (activeTab === 'bills' || activeTab === 'payment')) {
+      fetchDealerBills();
     }
   }, [isOpen, dealerId, activeTab]);
 

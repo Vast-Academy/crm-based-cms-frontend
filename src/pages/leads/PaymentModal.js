@@ -4,6 +4,7 @@ import { FiX, FiCreditCard, FiDollarSign, FiCheck, FiSmartphone } from 'react-ic
 import SummaryApi from '../../common';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import QRCodeDisplay from './QRCodeDisplay';
+import { QRCodeCanvas } from 'qrcode.react';
 
 export default function PaymentModal({ 
   isOpen, 
@@ -146,7 +147,7 @@ export default function PaymentModal({
         <span className="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
         
         {/* Modal panel */}
-        <div className={`inline-block align-bottom bg-white rounded-3xl text-left shadow-2xl transform transition-all sm:my-12 sm:align-middle sm:w-full sm:max-w-md mx-4 border ${colors.border} overflow-hidden border-t-4 ${colors.borderT}`}>
+        <div className={`inline-block align-bottom bg-white rounded-3xl text-left shadow-2xl transform transition-all sm:my-12 sm:align-middle sm:w-full sm:max-w-md mx-4 border ${colors.border} overflow-hidden border-t-4 ${colors.borderT}`} style={{ maxHeight: '90vh' }}>
           {/* Header */}
           <div className={`flex justify-between items-center bg-gradient-to-r ${colors.bg} px-6 py-4 border-b ${colors.border}`}>
             <div className="flex items-center space-x-3">
@@ -169,7 +170,7 @@ export default function PaymentModal({
           </div>
           
           {/* Content */}
-          <div className="p-6">
+          <div className="p-6 overflow-y-auto" style={{ maxHeight: 'calc(90vh - 120px)' }}>
             {error && (
               <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-4">
                 {error}
@@ -274,17 +275,35 @@ export default function PaymentModal({
                       )}
 
                       {paymentMethod === 'online' && (
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Transaction ID (Optional)
-                          </label>
-                          <input
-                            type="text"
-                            value={transactionId}
-                            onChange={(e) => setTransactionId(e.target.value)}
-                            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-300"
-                            placeholder="Enter transaction ID if available"
-                          />
+                        <div className="space-y-4">
+                          {/* QR Code Display */}
+                          <div className="text-center">
+                            <h5 className="font-medium mb-3">Scan QR Code to Pay</h5>
+                            <div className="inline-block p-4 bg-white rounded-lg border">
+                              <QRCodeCanvas
+                                value={`upi://pay?pa=itindia.asr@okicici&pn=SyncVap%20Industries&am=${total}&tn=Bill-Payment-${customer.name}`}
+                                size={200}
+                                level="H"
+                                includeMargin={true}
+                              />
+                            </div>
+                            <p className="text-sm text-gray-600 mt-2">
+                              Scan with any UPI app to pay ₹{total}
+                            </p>
+                          </div>
+
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                              Transaction ID (Enter after payment)
+                            </label>
+                            <input
+                              type="text"
+                              value={transactionId}
+                              onChange={(e) => setTransactionId(e.target.value)}
+                              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-300"
+                              placeholder="Enter UPI transaction ID after successful payment"
+                            />
+                          </div>
                         </div>
                       )}
                     </div>

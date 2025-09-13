@@ -6,6 +6,7 @@ import LoadingSpinner from '../../components/LoadingSpinner';
 import { useAuth } from '../../context/AuthContext';
 import AddContactForm from './AddContactForm';
 import LeadDetailModal from '../leads/LeadDetail';
+import ConvertTypeModal from '../../components/ConvertTypeModal';
 import CustomerDetailModal from './CustomerDetailModal';
 import WorkOrderModal from '../customers/WorkOrderModal';
 import ComplaintModal from '../customers/ComplaintModal';
@@ -54,6 +55,8 @@ const ContactsPage = () => {
   const [openInConvertMode, setOpenInConvertMode] = useState(false);
   const [showComplaintModal, setShowComplaintModal] = useState(false);
   const [lastRefreshTime, setLastRefreshTime] = useState(0);
+  const [showConvertTypeModal, setShowConvertTypeModal] = useState(false);
+  const [selectedLeadForConvert, setSelectedLeadForConvert] = useState(null);
 
   // Add a handler function for complaint success
 const handleComplaintSuccess = (data) => {
@@ -333,6 +336,44 @@ const handleFilterChange = (type, status = 'all') => {
     } else if (contact.contactType === 'distributor') {
       handleViewDistributor(contact._id);
     }
+  };
+
+  // Handle opening convert type modal
+  const handleConvertLead = (contact) => {
+    setSelectedLeadForConvert(contact);
+    setShowConvertTypeModal(true);
+  };
+
+  // Handle convert type selection
+  const handleConvertTypeSelected = (convertType, convertedData) => {
+    if (convertType === 'customer') {
+      // For customer conversion, use existing flow
+      handleViewLead(selectedLeadForConvert._id, true);
+    } else {
+      // For dealer/distributor, update the contacts list
+      setContacts(prevContacts => {
+        const updatedContacts = prevContacts.filter(
+          contact => !(contact.contactType === 'lead' && contact._id === selectedLeadForConvert._id)
+        );
+
+        if (convertedData) {
+          const newContact = {
+            ...convertedData,
+            contactType: convertType
+          };
+          return [newContact, ...updatedContacts];
+        }
+
+        return updatedContacts;
+      });
+
+      // Clear cache and refresh data
+      localStorage.removeItem('contactsData');
+      fetchContacts(true);
+    }
+
+    setShowConvertTypeModal(false);
+    setSelectedLeadForConvert(null);
   };
   
   // Handle lead conversion success
@@ -778,14 +819,14 @@ const handleFilterChange = (type, status = 'all') => {
                                   </button>
                                   {/* Only show Convert to Customer button if not admin */}
                                   {user.role !== 'admin' && (
-                                  <button 
+                                  <button
                                     onClick={(e) => {
                                       e.stopPropagation();
-                                      handleViewLead(contact._id, true);
+                                      handleConvertLead(contact);
                                     }}
                                     className="inline-flex items-center px-4 py-1.5 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-500 hover:bg-green-600"
                                   >
-                                    Convert to Customer
+                                    Convert
                                   </button>
                                   )}
                                 </>
@@ -1015,6 +1056,16 @@ const handleFilterChange = (type, status = 'all') => {
         onClose={() => setShowCustomerBillingModal(false)}
         customer={selectedCustomerForBilling}
         onBillCreated={handleCustomerBillCreated}
+      />
+
+      <ConvertTypeModal
+        isOpen={showConvertTypeModal}
+        onClose={() => {
+          setShowConvertTypeModal(false);
+          setSelectedLeadForConvert(null);
+        }}
+        leadData={selectedLeadForConvert}
+        onConvertSuccess={handleConvertTypeSelected}
       />
     </div>
   );

@@ -4,6 +4,7 @@ import SummaryApi from '../../common';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import { useAuth } from '../../context/AuthContext';
 import Modal from '../../components/Modal';
+import ConvertTypeModal from '../../components/ConvertTypeModal';
 import { useNavigate } from 'react-router-dom';
 
 const statusColors = {
@@ -39,6 +40,7 @@ const LeadDetailModal = ({ isOpen, onClose, leadId, onLeadUpdated, onConvertSucc
   const [showConvertForm, setShowConvertForm] = useState(initialConvertMode);
   const [projectType, setProjectType] = useState('');
   const [conversionRemark, setConversionRemark] = useState('');
+  const [showConvertTypeModal, setShowConvertTypeModal] = useState(false);
   
   const fetchLead = async () => {
     if (!leadId) return;
@@ -135,7 +137,7 @@ const LeadDetailModal = ({ isOpen, onClose, leadId, onLeadUpdated, onConvertSucc
   
   // Start the conversion process
   const handleStartConversion = () => {
-    setShowConvertForm(true);
+    setShowConvertTypeModal(true);
   };
   
   // Cancel the conversion process
@@ -145,6 +147,21 @@ const LeadDetailModal = ({ isOpen, onClose, leadId, onLeadUpdated, onConvertSucc
     setConversionRemark('');
   };
   
+  // Handle convert type selection
+  const handleConvertTypeSelected = (convertType, convertedData) => {
+    if (convertType === 'customer') {
+      // For customer conversion, show the project selection form
+      setShowConvertTypeModal(false);
+      setShowConvertForm(true);
+    } else {
+      // For dealer/distributor, close modal and notify parent
+      if (onConvertSuccess) {
+        onConvertSuccess(leadId, convertedData);
+      }
+      onClose();
+    }
+  };
+
   // Complete the conversion process
   const handleConvertToCustomer = async (e) => {
     e.preventDefault();
@@ -323,7 +340,7 @@ const LeadDetailModal = ({ isOpen, onClose, leadId, onLeadUpdated, onConvertSucc
                     className="w-full py-2 px-4 bg-green-500 text-white rounded-md flex items-center justify-center hover:bg-green-600"
                   >
                     <FiUserPlus className="mr-2" />
-                    Convert to Customer
+                    Convert
                   </button>
                 )}
               </div>
@@ -525,6 +542,13 @@ const LeadDetailModal = ({ isOpen, onClose, leadId, onLeadUpdated, onConvertSucc
           Lead not found
         </div>
       )}
+
+      <ConvertTypeModal
+        isOpen={showConvertTypeModal}
+        onClose={() => setShowConvertTypeModal(false)}
+        leadData={lead}
+        onConvertSuccess={handleConvertTypeSelected}
+      />
     </Modal>
   );
 };
