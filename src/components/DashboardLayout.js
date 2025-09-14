@@ -341,24 +341,35 @@ const DashboardLayout = () => {
           <div className="flex-1 px-2 flex items-center">
           <p className="text-xl font-semibold text-gray-800 capitalize">{user?.firstName} {user?.lastName} ({user?.role || 'User'}) </p>
           </div>
-          
-          <div className="flex items-center">
-            {/* <button className="p-1 mr-4 text-gray-500 hover:text-gray-600 relative">
-              <FiBell className="w-6 h-6" />
-              <span className="absolute top-0 right-0 bg-red-500 rounded-full w-4 h-4 text-white text-xs flex items-center justify-center">
-                0
-              </span>
-            </button> */}
-            
-      
 
-     {/* Logout Confirmation Popup */}
+          <div className="flex items-center space-x-4">
+            {/* Settings button for Admin only */}
+            {user?.role === 'admin' && (
+              <Link
+                to="/admin-settings/bank-accounts"
+                className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-200 font-medium"
+              >
+                <FiSettings className="w-4 h-4 mr-2" />
+                Settings
+              </Link>
+            )}
+          </div>
+        </header>
+         ) : null}
+        
+        {/* Page content */}
+      <main className={`flex-1 overflow-auto ${user?.role !== 'technician' ? 'p-4' : 'p-0'}`}>
+        <Outlet /> {/* This is where page components will be rendered */}
+      </main>
+    </div>
+
+    {/* Logout Confirmation Popup */}
 {showLogoutPopup && (
   <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
     <div className={` bg-white border border-gray-200 rounded-xl shadow-2xl p-6 max-w-sm w-full mx-auto`}>
       <div className="flex justify-between items-center mb-4">
         <h3 className={`font-bold text-lg text-gray-800`}>Confirm Logout</h3>
-        <button 
+        <button
           onClick={() => setShowLogoutPopup(false)}
           className={`p-1 rounded-full hover:bg-gray-100`}
         >
@@ -369,13 +380,13 @@ const DashboardLayout = () => {
         Are you sure you want to logout from your account?
       </p>
       <div className="flex justify-end space-x-3">
-        <button 
+        <button
           onClick={() => setShowLogoutPopup(false)}
           className={`px-4 py-2 rounded-lg bg-gray-200 hover:bg-gray-300 text-gray-800`}
         >
           Cancel
         </button>
-        <button 
+        <button
           onClick={handleLogout}
           className={`px-4 py-2 rounded-lg flex items-center bg-red-600 hover:bg-red-700 text-white`}
         >
@@ -387,18 +398,8 @@ const DashboardLayout = () => {
   </div>
 )}
 
-          </div>
-        </header>
-         ) : null}
-        
-        {/* Page content */}
-      <main className={`flex-1 overflow-auto ${user?.role !== 'technician' ? 'p-4' : 'p-0'}`}>
-        <Outlet /> {/* This is where page components will be rendered */}
-      </main>
-    </div>
-    
     {/* Settings Modal */}
-<UserSettingsModal 
+<UserSettingsModal
   isOpen={showSettingsModal}
   onClose={() => setShowSettingsModal(false)}
 />

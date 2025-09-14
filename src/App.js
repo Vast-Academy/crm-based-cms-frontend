@@ -38,6 +38,9 @@ import BranchDetails from './pages/branches/BranchDetails';
 import InventoryPage from './pages/inventory/InventoryPage';
 import ResetDefaultPage from './pages/ResetDefaultPage';
 
+// Settings Pages
+import BankAccountsPage from './pages/settings/BankAccountsPage';
+
 // Protected route component
 const ProtectedRoute = ({ children, allowedRoles = [] }) => {
   const { user, loading } = useAuth();
@@ -325,6 +328,16 @@ function App() {
           element={
             <ProtectedRoute allowedRoles={['technician']}>
               <TechnicianDashboard />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Admin Settings Routes */}
+        <Route
+          path="admin-settings/bank-accounts"
+          element={
+            <ProtectedRoute allowedRoles={['admin']}>
+              <BankAccountsPage />
             </ProtectedRoute>
           }
         />

@@ -424,6 +424,24 @@ const SummaryApi = {
       processCustomerBulkPayment: {
         url: `${backendDomain}/api/process-customer-bulk-payment`,
         method: "post"
+      },
+
+      // Bank Account APIs (Admin only)
+      getBankAccounts: {
+        url: `${backendDomain}/api/get-bank-accounts`,
+        method: "get"
+      },
+      addBankAccount: {
+        url: `${backendDomain}/api/add-bank-account`,
+        method: "post"
+      },
+      updateBankAccount: {
+        url: `${backendDomain}/api/update-bank-account`,
+        method: "put"
+      },
+      deleteBankAccount: {
+        url: `${backendDomain}/api/delete-bank-account`,
+        method: "delete"
       }
 }
 

@@ -6,17 +6,20 @@ import LoadingSpinner from '../../components/LoadingSpinner';
 import QRCodeDisplay from './QRCodeDisplay';
 import { QRCodeCanvas } from 'qrcode.react';
 
-export default function PaymentModal({ 
-  isOpen, 
-  onClose, 
-  customer, 
-  cart, 
-  total, 
-  onPaymentSuccess, 
-  colors 
+export default function PaymentModal({
+  isOpen,
+  onClose,
+  customer,
+  cart,
+  total,
+  onPaymentSuccess,
+  colors
 }) {
-  const [currentStep, setCurrentStep] = useState('method'); // 'method', 'details', 'qr', 'success'
+  const [currentStep, setCurrentStep] = useState('method'); // 'method', 'bank-selection', 'details', 'qr', 'success'
   const [paymentMethod, setPaymentMethod] = useState(''); // 'cash', 'online'
+  const [selectedBankAccount, setSelectedBankAccount] = useState(null);
+  const [bankAccounts, setBankAccounts] = useState([]);
+  const [fetchingBankAccounts, setFetchingBankAccounts] = useState(false);
   const [paidAmount, setPaidAmount] = useState(total);
   const [transactionId, setTransactionId] = useState('');
   const [loading, setLoading] = useState(false);
@@ -27,12 +30,55 @@ export default function PaymentModal({
   const dueAmount = Math.max(0, total - paidAmount);
   const isFullPayment = paidAmount >= total;
 
+  // Fetch bank accounts for online payment
+  const fetchBankAccounts = async () => {
+    setFetchingBankAccounts(true);
+    setError(null);
+
+    try {
+      const response = await fetch(SummaryApi.getBankAccounts.url, {
+        method: SummaryApi.getBankAccounts.method,
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        setBankAccounts(data.data);
+        // Auto-select primary account if available
+        const primaryAccount = data.data.find(account => account.isPrimary);
+        if (primaryAccount) {
+          setSelectedBankAccount(primaryAccount);
+        }
+      } else {
+        setError(data.message || 'Failed to fetch bank accounts');
+      }
+    } catch (err) {
+      console.error('Error fetching bank accounts:', err);
+      setError('Failed to load bank accounts. Please try again later.');
+    } finally {
+      setFetchingBankAccounts(false);
+    }
+  };
+
   const handleMethodSelection = (method) => {
     setPaymentMethod(method);
-    setCurrentStep('details');
+
     if (method === 'online') {
       setPaidAmount(total); // Online payments should be full
+      setCurrentStep('bank-selection');
+      fetchBankAccounts();
+    } else {
+      setCurrentStep('details');
     }
+  };
+
+  const handleBankAccountSelection = (account) => {
+    setSelectedBankAccount(account);
+    setCurrentStep('details');
   };
 
   const handleCreateBill = async () => {
@@ -119,10 +165,12 @@ export default function PaymentModal({
     if (currentStep === 'success' && billData && onPaymentSuccess) {
       onPaymentSuccess(billData);
     }
-    
+
     // Reset all states
     setCurrentStep('method');
     setPaymentMethod('');
+    setSelectedBankAccount(null);
+    setBankAccounts([]);
     setPaidAmount(total);
     setTransactionId('');
     setError(null);
@@ -226,7 +274,120 @@ export default function PaymentModal({
                   </motion.div>
                 )}
 
-                {/* Step 2: Payment Details */}
+                {/* Step 2: Bank Account Selection (for Online Payment) */}
+                {currentStep === 'bank-selection' && (
+                  <motion.div
+                    key="bank-selection"
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -20 }}
+                    className="space-y-4"
+                  >
+                    <div className="text-center mb-6">
+                      <h4 className="text-lg font-semibold text-gray-900 mb-2">
+                        Select Bank Account
+                      </h4>
+                      <p className="text-gray-600 text-sm">
+                        Choose which account to receive payment
+                      </p>
+                    </div>
+
+                    {fetchingBankAccounts ? (
+                      <div className="flex justify-center py-8">
+                        <LoadingSpinner />
+                        <span className="ml-2 text-gray-600">Loading bank accounts...</span>
+                      </div>
+                    ) : bankAccounts.length === 0 ? (
+                      <div className="text-center py-8">
+                        <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                          <FiCreditCard className="w-8 h-8 text-gray-400" />
+                        </div>
+                        <h3 className="text-lg font-semibold text-gray-800 mb-2">No Bank Accounts Found</h3>
+                        <p className="text-gray-600 mb-4">
+                          Please add a bank account first to receive online payments.
+                        </p>
+                        <button
+                          onClick={() => setCurrentStep('method')}
+                          className="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300"
+                        >
+                          Go Back
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        {bankAccounts.map((account) => (
+                          <button
+                            key={account._id}
+                            onClick={() => handleBankAccountSelection(account)}
+                            className={`w-full p-4 border-2 rounded-xl flex items-center justify-between transition-colors ${
+                              selectedBankAccount?._id === account._id
+                                ? 'border-blue-400 bg-blue-50'
+                                : 'border-gray-200 hover:border-blue-300 hover:bg-gray-50'
+                            }`}
+                          >
+                            <div className="flex items-center space-x-4">
+                              <div className={`w-12 h-12 rounded-full flex items-center justify-center ${
+                                account.isPrimary ? 'bg-yellow-100' : 'bg-blue-100'
+                              }`}>
+                                <FiCreditCard className={`text-lg ${
+                                  account.isPrimary ? 'text-yellow-600' : 'text-blue-600'
+                                }`} />
+                              </div>
+                              <div className="text-left">
+                                <div className="flex items-center space-x-2">
+                                  <h5 className="font-semibold text-gray-900">{account.bankName}</h5>
+                                  {account.isPrimary && (
+                                    <span className="px-2 py-1 bg-yellow-100 text-yellow-800 text-xs rounded-full font-medium">
+                                      Primary
+                                    </span>
+                                  )}
+                                </div>
+                                <p className="text-sm text-gray-600">
+                                  {account.accountHolderName}
+                                </p>
+                                <p className="text-xs text-gray-500">
+                                  •••• •••• •••• {account.accountNumber.slice(-4)}
+                                </p>
+                                {account.upiId ? (
+                                  <p className="text-xs text-green-600 font-medium">
+                                    UPI: {account.upiId}
+                                  </p>
+                                ) : (
+                                  <p className="text-xs text-orange-600 font-medium">
+                                    ⚠ No UPI ID - QR will use account number
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                            {selectedBankAccount?._id === account._id && (
+                              <div className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center">
+                                <FiCheck className="text-white text-sm" />
+                              </div>
+                            )}
+                          </button>
+                        ))}
+
+                        <div className="flex space-x-3 mt-6">
+                          <button
+                            onClick={() => setCurrentStep('method')}
+                            className="flex-1 py-3 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 font-medium"
+                          >
+                            Back
+                          </button>
+                          <button
+                            onClick={() => handleBankAccountSelection(selectedBankAccount)}
+                            disabled={!selectedBankAccount}
+                            className={`flex-1 py-3 ${colors.button} disabled:bg-gray-300 text-white rounded-lg font-medium`}
+                          >
+                            Continue
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </motion.div>
+                )}
+
+                {/* Step 3: Payment Details */}
                 {currentStep === 'details' && (
                   <motion.div
                     key="details"
@@ -274,22 +435,57 @@ export default function PaymentModal({
                         </div>
                       )}
 
-                      {paymentMethod === 'online' && (
+                      {paymentMethod === 'online' && selectedBankAccount && (
                         <div className="space-y-4">
+                          {/* Selected Bank Account Info */}
+                          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                            <div className="flex items-center space-x-3">
+                              <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                                <FiCreditCard className="text-blue-600 text-sm" />
+                              </div>
+                              <div className="flex-1">
+                                <p className="text-sm font-medium text-blue-900">
+                                  {selectedBankAccount.bankName}
+                                </p>
+                                <p className="text-xs text-blue-700">
+                                  {selectedBankAccount.accountHolderName}
+                                </p>
+                              </div>
+                              {selectedBankAccount.isPrimary && (
+                                <span className="px-2 py-1 bg-yellow-100 text-yellow-800 text-xs rounded-full">
+                                  Primary
+                                </span>
+                              )}
+                            </div>
+                          </div>
+
                           {/* QR Code Display */}
                           <div className="text-center">
                             <h5 className="font-medium mb-3">Scan QR Code to Pay</h5>
-                            <div className="inline-block p-4 bg-white rounded-lg border">
+                            <div className="inline-block p-4 bg-white rounded-lg border-2 border-gray-200">
                               <QRCodeCanvas
-                                value={`upi://pay?pa=itindia.asr@okicici&pn=SyncVap%20Industries&am=${total}&tn=Bill-Payment-${customer.name}`}
+                                value={selectedBankAccount.upiId ?
+                                  `upi://pay?pa=${selectedBankAccount.upiId}&pn=${encodeURIComponent(selectedBankAccount.accountHolderName)}&am=${total}&tn=Bill-Payment-${encodeURIComponent(customer.name)}` :
+                                  `upi://pay?pa=${selectedBankAccount.accountNumber}&pn=${encodeURIComponent(selectedBankAccount.accountHolderName)}&am=${total}&tn=Bill-Payment-${encodeURIComponent(customer.name)}`
+                                }
                                 size={200}
                                 level="H"
                                 includeMargin={true}
                               />
                             </div>
-                            <p className="text-sm text-gray-600 mt-2">
-                              Scan with any UPI app to pay ₹{total}
-                            </p>
+                            <div className="mt-3">
+                              <p className="text-sm font-medium text-gray-900">
+                                Pay ₹{total} to {selectedBankAccount.accountHolderName}
+                              </p>
+                              {selectedBankAccount.upiId && (
+                                <p className="text-xs text-green-600 font-medium">
+                                  UPI ID: {selectedBankAccount.upiId}
+                                </p>
+                              )}
+                              <p className="text-xs text-gray-500 mt-1">
+                                Scan with any UPI app like PhonePe, Google Pay, Paytm
+                              </p>
+                            </div>
                           </div>
 
                           <div>
@@ -310,7 +506,13 @@ export default function PaymentModal({
 
                     <div className="flex space-x-3">
                       <button
-                        onClick={() => setCurrentStep('method')}
+                        onClick={() => {
+                          if (paymentMethod === 'online') {
+                            setCurrentStep('bank-selection');
+                          } else {
+                            setCurrentStep('method');
+                          }
+                        }}
                         className="flex-1 py-3 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 font-medium"
                       >
                         Back
