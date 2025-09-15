@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FiX, FiCreditCard, FiDollarSign, FiCheck, FiSmartphone } from 'react-icons/fi';
+import { FiX, FiCreditCard, FiDollarSign, FiCheck, FiSmartphone, FiTrendingUp, FiFileText } from 'react-icons/fi';
 import SummaryApi from '../../common';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import QRCodeDisplay from './QRCodeDisplay';
@@ -26,6 +26,24 @@ export default function PaymentModal({
   const [error, setError] = useState(null);
   const [billData, setBillData] = useState(null);
   const [qrData, setQrData] = useState(null);
+  const [paymentFormData, setPaymentFormData] = useState({
+    // Bank Transfer
+    utrNumber: '',
+    bankName: '',
+    transferDate: '',
+    receivedAmount: '',
+
+    // Cheque
+    chequeNumber: '',
+    chequeBank: '',
+    chequeIfsc: '',
+    chequeDate: '',
+    chequeAmount: '',
+    drawerName: '',
+
+    // UPI
+    upiTransactionId: ''
+  });
 
   const dueAmount = Math.max(0, total - paidAmount);
   const isFullPayment = paidAmount >= total;
@@ -67,10 +85,13 @@ export default function PaymentModal({
   const handleMethodSelection = (method) => {
     setPaymentMethod(method);
 
-    if (method === 'online') {
-      setPaidAmount(total); // Online payments should be full
+    if (method === 'upi') {
+      setPaidAmount(total); // UPI payments should be full
       setCurrentStep('bank-selection');
       fetchBankAccounts();
+    } else if (method === 'bank_transfer' || method === 'cheque') {
+      setPaidAmount(0); // Reset for bank transfer and cheque as they will be set from their respective amount fields
+      setCurrentStep('details');
     } else {
       setCurrentStep('details');
     }
@@ -86,6 +107,33 @@ export default function PaymentModal({
     setError(null);
 
     try {
+      // Build payment details based on method
+      let paymentDetails = {};
+      let receivedAmount = paidAmount;
+
+      switch(paymentMethod) {
+        case 'upi':
+          paymentDetails.upiTransactionId = paymentFormData.upiTransactionId;
+          if (selectedBankAccount) {
+            paymentDetails.selectedBankAccount = selectedBankAccount._id;
+          }
+          break;
+        case 'bank_transfer':
+          paymentDetails.utrNumber = paymentFormData.utrNumber;
+          paymentDetails.bankName = paymentFormData.bankName;
+          paymentDetails.transferDate = paymentFormData.transferDate;
+          receivedAmount = parseFloat(paymentFormData.receivedAmount) || paidAmount;
+          break;
+        case 'cheque':
+          paymentDetails.chequeNumber = paymentFormData.chequeNumber;
+          paymentDetails.chequeBank = paymentFormData.chequeBank;
+          paymentDetails.chequeIfsc = paymentFormData.chequeIfsc;
+          paymentDetails.chequeDate = paymentFormData.chequeDate;
+          paymentDetails.chequeAmount = parseFloat(paymentFormData.chequeAmount);
+          paymentDetails.drawerName = paymentFormData.drawerName;
+          break;
+      }
+
       const billPayload = {
         customerType: customer.contactType,
         customerId: customer._id,
@@ -96,7 +144,9 @@ export default function PaymentModal({
         })),
         paymentMethod,
         paidAmount: parseFloat(paidAmount),
+        receivedAmount: parseFloat(receivedAmount),
         transactionId: transactionId || undefined,
+        paymentDetails: Object.keys(paymentDetails).length > 0 ? paymentDetails : undefined,
         notes: `Bill created for ${customer.name}`
       };
 
@@ -114,8 +164,8 @@ export default function PaymentModal({
       if (data.success) {
         setBillData(data.data);
         
-        if (paymentMethod === 'online' && dueAmount > 0) {
-          // Generate QR code for online payment
+        if (paymentMethod === 'upi' && dueAmount > 0) {
+          // Generate QR code for UPI payment
           await generateQRCode(data.data._id);
         } else {
           setCurrentStep('success');
@@ -173,6 +223,19 @@ export default function PaymentModal({
     setBankAccounts([]);
     setPaidAmount(total);
     setTransactionId('');
+    setPaymentFormData({
+      utrNumber: '',
+      bankName: '',
+      transferDate: '',
+      receivedAmount: '',
+      chequeNumber: '',
+      chequeBank: '',
+      chequeIfsc: '',
+      chequeDate: '',
+      chequeAmount: '',
+      drawerName: '',
+      upiTransactionId: ''
+    });
     setError(null);
     setBillData(null);
     setQrData(null);
@@ -245,36 +308,68 @@ export default function PaymentModal({
                     <h4 className="text-lg font-semibold text-gray-900 text-center mb-6">
                       Select Payment Method
                     </h4>
-                    
-                    <button
-                      onClick={() => handleMethodSelection('cash')}
-                      className="w-full p-4 border-2 border-gray-200 hover:border-green-400 rounded-xl flex items-center space-x-4 transition-colors"
-                    >
-                      <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
-                        <FiDollarSign className="text-green-600" size={24} />
-                      </div>
-                      <div className="text-left">
-                        <h5 className="font-semibold text-gray-900">Cash Payment</h5>
-                        <p className="text-sm text-gray-600">Pay with cash (partial payments allowed)</p>
-                      </div>
-                    </button>
 
-                    <button
-                      onClick={() => handleMethodSelection('online')}
-                      className="w-full p-4 border-2 border-gray-200 hover:border-blue-400 rounded-xl flex items-center space-x-4 transition-colors"
-                    >
-                      <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
-                        <FiSmartphone className="text-blue-600" size={24} />
-                      </div>
-                      <div className="text-left">
-                        <h5 className="font-semibold text-gray-900">Online Payment</h5>
-                        <p className="text-sm text-gray-600">Pay via UPI/QR Code</p>
-                      </div>
-                    </button>
+                    <div className="grid grid-cols-2 gap-4">
+                      {/* Cash Payment */}
+                      <button
+                        onClick={() => handleMethodSelection('cash')}
+                        className="p-4 border-2 border-gray-200 hover:border-green-400 rounded-xl flex flex-col items-center space-y-3 transition-colors"
+                      >
+                        <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
+                          <FiDollarSign className="text-green-600" size={24} />
+                        </div>
+                        <div className="text-center">
+                          <h5 className="font-semibold text-gray-900">Cash</h5>
+                          <p className="text-xs text-gray-600">Partial allowed</p>
+                        </div>
+                      </button>
+
+                      {/* UPI Payment */}
+                      <button
+                        onClick={() => handleMethodSelection('upi')}
+                        className="p-4 border-2 border-gray-200 hover:border-blue-400 rounded-xl flex flex-col items-center space-y-3 transition-colors"
+                      >
+                        <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
+                          <FiSmartphone className="text-blue-600" size={24} />
+                        </div>
+                        <div className="text-center">
+                          <h5 className="font-semibold text-gray-900">UPI</h5>
+                          <p className="text-xs text-gray-600">QR Code scan</p>
+                        </div>
+                      </button>
+
+                      {/* Bank Transfer */}
+                      <button
+                        onClick={() => handleMethodSelection('bank_transfer')}
+                        className="p-4 border-2 border-gray-200 hover:border-purple-400 rounded-xl flex flex-col items-center space-y-3 transition-colors"
+                      >
+                        <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center">
+                          <FiTrendingUp className="text-purple-600" size={24} />
+                        </div>
+                        <div className="text-center">
+                          <h5 className="font-semibold text-gray-900">Bank Transfer</h5>
+                          <p className="text-xs text-gray-600">IMPS/NEFT</p>
+                        </div>
+                      </button>
+
+                      {/* Cheque Payment */}
+                      <button
+                        onClick={() => handleMethodSelection('cheque')}
+                        className="p-4 border-2 border-gray-200 hover:border-orange-400 rounded-xl flex flex-col items-center space-y-3 transition-colors"
+                      >
+                        <div className="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center">
+                          <FiFileText className="text-orange-600" size={24} />
+                        </div>
+                        <div className="text-center">
+                          <h5 className="font-semibold text-gray-900">Cheque</h5>
+                          <p className="text-xs text-gray-600">Bank cheque</p>
+                        </div>
+                      </button>
+                    </div>
                   </motion.div>
                 )}
 
-                {/* Step 2: Bank Account Selection (for Online Payment) */}
+                {/* Step 2: Bank Account Selection (for UPI Payment) */}
                 {currentStep === 'bank-selection' && (
                   <motion.div
                     key="bank-selection"
@@ -398,33 +493,40 @@ export default function PaymentModal({
                   >
                     <div className="text-center">
                       <h4 className="text-lg font-semibold text-gray-900 mb-2">
-                        {paymentMethod === 'cash' ? 'Cash Payment' : 'Online Payment'}
+                        {paymentMethod === 'cash' ? 'Cash Payment' :
+                         paymentMethod === 'upi' ? 'UPI Payment' :
+                         paymentMethod === 'bank_transfer' ? 'Bank Transfer' :
+                         paymentMethod === 'cheque' ? 'Cheque Payment' : 'Payment'}
                       </h4>
                       <p className="text-gray-600">Bill Amount: ₹{total}</p>
                     </div>
 
                     <div className="space-y-4">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          {paymentMethod === 'cash' ? 'Amount Received' : 'Payment Amount'}
-                        </label>
-                        <div className="relative">
-                          <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">₹</span>
-                          <input
-                            type="number"
-                            value={paidAmount}
-                            onChange={(e) => setPaidAmount(Math.max(0, parseFloat(e.target.value) || 0))}
-                            min="0"
-                            max={paymentMethod === 'online' ? total : undefined}
-                            step="0.01"
-                            className="w-full pl-8 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-300"
-                            placeholder="0.00"
-                            disabled={paymentMethod === 'online'}
-                          />
+                      {/* Only show main amount field for Cash and UPI */}
+                      {(paymentMethod === 'cash' || paymentMethod === 'upi') && (
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            {paymentMethod === 'cash' ? 'Amount Received' : 'Payment Amount'}
+                          </label>
+                          <div className="relative">
+                            <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">₹</span>
+                            <input
+                              type="number"
+                              value={paidAmount}
+                              onChange={(e) => setPaidAmount(Math.max(0, parseFloat(e.target.value) || 0))}
+                              min="0"
+                              max={paymentMethod === 'upi' ? total : undefined}
+                              step="0.01"
+                              className="w-full pl-8 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-300"
+                              placeholder="0.00"
+                              disabled={paymentMethod === 'upi'}
+                            />
+                          </div>
                         </div>
-                      </div>
+                      )}
 
-                      {paymentMethod === 'cash' && dueAmount > 0 && (
+                      {/* Due amount display for all payment methods except UPI */}
+                      {paymentMethod !== 'upi' && dueAmount > 0 && (
                         <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
                           <p className="text-sm text-yellow-800">
                             <strong>Due Amount: ₹{dueAmount}</strong>
@@ -435,7 +537,20 @@ export default function PaymentModal({
                         </div>
                       )}
 
-                      {paymentMethod === 'online' && selectedBankAccount && (
+                      {/* Fully paid message */}
+                      {paymentMethod !== 'upi' && dueAmount === 0 && paidAmount > 0 && (
+                        <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+                          <p className="text-sm text-green-800">
+                            <strong>✓ Fully Paid</strong>
+                          </p>
+                          <p className="text-xs text-green-700 mt-1">
+                            This bill will be marked as completed
+                          </p>
+                        </div>
+                      )}
+
+                      {/* Method-specific forms */}
+                      {paymentMethod === 'upi' && selectedBankAccount && (
                         <div className="space-y-4">
                           {/* Selected Bank Account Info */}
                           <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
@@ -490,14 +605,213 @@ export default function PaymentModal({
 
                           <div>
                             <label className="block text-sm font-medium text-gray-700 mb-2">
-                              Transaction ID (Enter after payment)
+                              UPI Transaction ID (Enter after payment)
                             </label>
                             <input
                               type="text"
-                              value={transactionId}
-                              onChange={(e) => setTransactionId(e.target.value)}
+                              value={paymentFormData.upiTransactionId}
+                              onChange={(e) => setPaymentFormData(prev => ({...prev, upiTransactionId: e.target.value}))}
                               className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-300"
                               placeholder="Enter UPI transaction ID after successful payment"
+                              autoComplete="off"
+                              autoCorrect="off"
+                              autoCapitalize="off"
+                              spellCheck="false"
+                            />
+                          </div>
+                        </div>
+                      )}
+
+                      {paymentMethod === 'bank_transfer' && (
+                        <div className="space-y-4">
+                          <div className="bg-purple-50 border border-purple-200 rounded-lg p-3">
+                            <h5 className="font-medium text-purple-900 mb-1">Bank Transfer (IMPS/NEFT)</h5>
+                            <p className="text-sm text-purple-700">Transfer money and enter the details below</p>
+                          </div>
+
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                              UTR Number <span className="text-red-500">*</span>
+                            </label>
+                            <input
+                              type="text"
+                              value={paymentFormData.utrNumber}
+                              onChange={(e) => setPaymentFormData(prev => ({...prev, utrNumber: e.target.value}))}
+                              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-300"
+                              placeholder="Enter UTR/Reference number"
+                              autoComplete="off"
+                              autoCorrect="off"
+                              autoCapitalize="off"
+                              spellCheck="false"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                              Sender Bank Name
+                            </label>
+                            <input
+                              type="text"
+                              value={paymentFormData.bankName}
+                              onChange={(e) => setPaymentFormData(prev => ({...prev, bankName: e.target.value}))}
+                              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-300"
+                              placeholder="Name of the bank from which transfer was made"
+                              autoComplete="off"
+                              autoCorrect="off"
+                              autoCapitalize="off"
+                              spellCheck="false"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                              Transfer Date
+                            </label>
+                            <input
+                              type="date"
+                              value={paymentFormData.transferDate}
+                              onChange={(e) => setPaymentFormData(prev => ({...prev, transferDate: e.target.value}))}
+                              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-300"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                              Received Amount <span className="text-red-500">*</span>
+                            </label>
+                            <div className="relative">
+                              <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">₹</span>
+                              <input
+                                type="number"
+                                value={paymentFormData.receivedAmount}
+                                onChange={(e) => {
+                                  const amount = parseFloat(e.target.value) || 0;
+                                  setPaymentFormData(prev => ({...prev, receivedAmount: e.target.value}));
+                                  setPaidAmount(amount);
+                                }}
+                                min="0"
+                                step="0.01"
+                                className="w-full pl-8 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-300"
+                                placeholder="Amount received in your account"
+                              />
+                            </div>
+                            <p className="text-xs text-gray-500 mt-1">
+                              This may differ from transfer amount due to bank charges
+                            </p>
+                          </div>
+                        </div>
+                      )}
+
+                      {paymentMethod === 'cheque' && (
+                        <div className="space-y-4">
+                          <div className="bg-orange-50 border border-orange-200 rounded-lg p-3">
+                            <h5 className="font-medium text-orange-900 mb-1">Cheque Payment</h5>
+                            <p className="text-sm text-orange-700">Enter cheque details for record keeping</p>
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-4">
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-2">
+                                Cheque Number <span className="text-red-500">*</span>
+                              </label>
+                              <input
+                                type="text"
+                                value={paymentFormData.chequeNumber}
+                                onChange={(e) => setPaymentFormData(prev => ({...prev, chequeNumber: e.target.value}))}
+                                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-300"
+                                placeholder="Cheque number"
+                                autoComplete="off"
+                                autoCorrect="off"
+                                autoCapitalize="off"
+                                spellCheck="false"
+                              />
+                            </div>
+
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-2">
+                                Cheque Amount <span className="text-red-500">*</span>
+                              </label>
+                              <div className="relative">
+                                <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">₹</span>
+                                <input
+                                  type="number"
+                                  value={paymentFormData.chequeAmount}
+                                  onChange={(e) => {
+                                    const amount = parseFloat(e.target.value) || 0;
+                                    setPaymentFormData(prev => ({...prev, chequeAmount: e.target.value}));
+                                    setPaidAmount(amount);
+                                  }}
+                                  min="0"
+                                  step="0.01"
+                                  className="w-full pl-8 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-300"
+                                  placeholder="0.00"
+                                />
+                              </div>
+                            </div>
+                          </div>
+
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                              Bank Name
+                            </label>
+                            <input
+                              type="text"
+                              value={paymentFormData.chequeBank}
+                              onChange={(e) => setPaymentFormData(prev => ({...prev, chequeBank: e.target.value}))}
+                              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-300"
+                              placeholder="Bank name on cheque"
+                              autoComplete="off"
+                              autoCorrect="off"
+                              autoCapitalize="off"
+                              spellCheck="false"
+                            />
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-4">
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-2">
+                                IFSC Code
+                              </label>
+                              <input
+                                type="text"
+                                value={paymentFormData.chequeIfsc}
+                                onChange={(e) => setPaymentFormData(prev => ({...prev, chequeIfsc: e.target.value.toUpperCase()}))}
+                                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-300"
+                                placeholder="IFSC Code"
+                                autoComplete="off"
+                                autoCorrect="off"
+                                autoCapitalize="off"
+                                spellCheck="false"
+                              />
+                            </div>
+
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-2">
+                                Cheque Date
+                              </label>
+                              <input
+                                type="date"
+                                value={paymentFormData.chequeDate}
+                                onChange={(e) => setPaymentFormData(prev => ({...prev, chequeDate: e.target.value}))}
+                                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-300"
+                              />
+                            </div>
+                          </div>
+
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                              Drawer Name
+                            </label>
+                            <input
+                              type="text"
+                              value={paymentFormData.drawerName}
+                              onChange={(e) => setPaymentFormData(prev => ({...prev, drawerName: e.target.value}))}
+                              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-300"
+                              placeholder={`Name on cheque (default: ${customer.name})`}
+                              autoComplete="off"
+                              autoCorrect="off"
+                              autoCapitalize="off"
+                              spellCheck="false"
                             />
                           </div>
                         </div>
@@ -507,7 +821,7 @@ export default function PaymentModal({
                     <div className="flex space-x-3">
                       <button
                         onClick={() => {
-                          if (paymentMethod === 'online') {
+                          if (paymentMethod === 'upi') {
                             setCurrentStep('bank-selection');
                           } else {
                             setCurrentStep('method');
@@ -519,7 +833,11 @@ export default function PaymentModal({
                       </button>
                       <button
                         onClick={handleCreateBill}
-                        disabled={paidAmount <= 0}
+                        disabled={
+                          paidAmount <= 0 ||
+                          (paymentMethod === 'bank_transfer' && (!paymentFormData.utrNumber || !paymentFormData.receivedAmount)) ||
+                          (paymentMethod === 'cheque' && (!paymentFormData.chequeNumber || !paymentFormData.chequeAmount))
+                        }
                         className={`flex-1 py-3 ${colors.button} disabled:bg-gray-300 text-white rounded-lg font-medium`}
                       >
                         Confirm Payment

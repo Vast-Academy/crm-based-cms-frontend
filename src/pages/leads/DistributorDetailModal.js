@@ -4,6 +4,8 @@ import { FiX, FiUser, FiPhone, FiMapPin, FiMessageSquare, FiCalendar, FiFileText
 import SummaryApi from '../../common';
 import { useAuth } from '../../context/AuthContext';
 import LoadingSpinner from '../../components/LoadingSpinner';
+import BillHistoryTable from '../../components/BillHistoryTable';
+import ViewBillModal from '../../components/ViewBillModal';
 import { useNotification } from '../../context/NotificationContext';
 
 export default function DistributorDetailModal({ isOpen, onClose, distributorId, onDistributorUpdated }) {
@@ -28,6 +30,10 @@ export default function DistributorDetailModal({ isOpen, onClose, distributorId,
   const [transactionId, setTransactionId] = useState('');
   const [paymentNotes, setPaymentNotes] = useState('');
   const [processingPayment, setProcessingPayment] = useState(false);
+
+  // View Bill Modal states
+  const [showViewBillModal, setShowViewBillModal] = useState(false);
+  const [selectedBill, setSelectedBill] = useState(null);
 
   // Reset tab to details when modal opens
   useEffect(() => {
@@ -420,72 +426,14 @@ export default function DistributorDetailModal({ isOpen, onClose, distributorId,
                         </div>
 
                         {/* Bills List */}
-                        <div className="bg-gray-50 rounded-lg p-4">
-                          <h4 className="font-medium text-gray-900 mb-4 flex items-center">
-                            <FiFileText className="mr-2 text-teal-500" />
-                            Bills History
-                          </h4>
-                          
-                          {bills && bills.length > 0 ? (
-                            <div className="space-y-4 max-h-96 overflow-y-auto">
-                              {bills.map((bill, index) => (
-                                <div key={index} className="bg-white rounded-lg p-4 border border-teal-100">
-                                  <div className="flex justify-between items-start mb-3">
-                                    <div>
-                                      <h5 className="font-semibold text-gray-900">{bill.billNumber}</h5>
-                                      <p className="text-sm text-gray-600">{formatDate(bill.createdAt)}</p>
-                                    </div>
-                                    <span className={`px-2 py-1 text-xs rounded-full font-medium ${
-                                      bill.paymentStatus === 'completed' 
-                                        ? 'bg-green-100 text-green-800' 
-                                        : bill.paymentStatus === 'partial'
-                                        ? 'bg-yellow-100 text-yellow-800'
-                                        : 'bg-red-100 text-red-800'
-                                    }`}>
-                                      {bill.paymentStatus === 'completed' ? 'Paid' : 
-                                       bill.paymentStatus === 'partial' ? 'Partial' : 'Pending'}
-                                    </span>
-                                  </div>
-                                  
-                                  {/* Bill Items */}
-                                  <div className="mb-3">
-                                    <h6 className="text-sm font-medium text-gray-700 mb-2">Items:</h6>
-                                    <div className="space-y-1">
-                                      {bill.items.map((item, itemIndex) => (
-                                        <div key={itemIndex} className="flex justify-between text-sm text-gray-600">
-                                          <div className="flex-1">
-                                            <span className="font-medium text-gray-800">{item.itemName}</span>
-                                            <span className="text-gray-500"> × {item.quantity}</span>
-                                            <span className="text-xs text-gray-500 ml-2">@ ₹{item.unitPrice}</span>
-                                          </div>
-                                          <span className="font-semibold text-gray-800">₹{item.totalPrice}</span>
-                                        </div>
-                                      ))}
-                                    </div>
-                                  </div>
-                                  
-                                  {/* Bill Amounts */}
-                                  <div className="grid grid-cols-3 gap-4 pt-3 border-t border-gray-200">
-                                    <div>
-                                      <p className="text-xs text-gray-500">Total Amount</p>
-                                      <p className="font-semibold text-gray-900">₹{bill.total}</p>
-                                    </div>
-                                    <div>
-                                      <p className="text-xs text-gray-500">Paid Amount</p>
-                                      <p className="font-semibold text-green-600">₹{bill.paidAmount}</p>
-                                    </div>
-                                    <div>
-                                      <p className="text-xs text-gray-500">Due Amount</p>
-                                      <p className="font-semibold text-red-600">₹{bill.dueAmount}</p>
-                                    </div>
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                          ) : (
-                            <p className="text-gray-500 text-sm text-center py-8">No bills found</p>
-                          )}
-                        </div>
+                        <BillHistoryTable
+                          bills={bills}
+                          loading={loadingBills}
+                          onViewBill={(bill) => {
+                            setSelectedBill(bill);
+                            setShowViewBillModal(true);
+                          }}
+                        />
                       </>
                     ) : (
                       <p className="text-center py-8 text-gray-500">Click on Bills tab to load bill history</p>
@@ -537,20 +485,22 @@ export default function DistributorDetailModal({ isOpen, onClose, distributorId,
                                 className="w-full rounded-lg border border-teal-300 focus:outline-none focus:ring-2 focus:ring-teal-300 focus:border-teal-400 transition p-3"
                               >
                                 <option value="cash">Cash</option>
-                                <option value="online">Online</option>
+                                <option value="upi">UPI</option>
+                                <option value="bank_transfer">Bank Transfer</option>
+                                <option value="cheque">Cheque</option>
                               </select>
                             </div>
                             
-                            {paymentMethod === 'online' && (
+                            {(paymentMethod === 'upi' || paymentMethod === 'bank_transfer') && (
                               <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                                  Transaction ID
+                                  {paymentMethod === 'upi' ? 'UPI Transaction ID' : 'UTR Number'}
                                 </label>
                                 <input
                                   type="text"
                                   value={transactionId}
                                   onChange={(e) => setTransactionId(e.target.value)}
-                                  placeholder="Enter transaction ID..."
+                                  placeholder={paymentMethod === 'upi' ? 'Enter UPI transaction ID...' : 'Enter UTR number...'}
                                   className="w-full rounded-lg border border-teal-300 focus:outline-none focus:ring-2 focus:ring-teal-300 focus:border-teal-400 transition p-3"
                                 />
                               </div>
@@ -595,7 +545,18 @@ export default function DistributorDetailModal({ isOpen, onClose, distributorId,
           </div>
         </div>
       </div>
-      
+
+      {/* View Bill Modal */}
+      <ViewBillModal
+        isOpen={showViewBillModal}
+        onClose={() => {
+          setShowViewBillModal(false);
+          setSelectedBill(null);
+        }}
+        bill={selectedBill}
+        customerInfo={distributor}
+      />
+
       {/* Payment Confirmation Modal */}
       {showPaymentModal && (
         <div className="fixed inset-0 z-60 overflow-y-auto">
