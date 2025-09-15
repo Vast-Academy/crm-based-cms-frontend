@@ -273,7 +273,7 @@ const TechnicianUsers = () => {
           <div className="relative flex-grow mt-4">
             <input
               type="text"
-              placeholder="Search technicians..."
+              placeholder="Search engineers..."
               value={searchTerm}
               onChange={handleSearch}
               className="w-full px-3 py-2 pl-10 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"

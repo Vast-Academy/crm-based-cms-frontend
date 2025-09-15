@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { FiPhone, FiMail, FiMessageSquare, FiEdit2, FiClipboard, FiCalendar, FiDollarSign, FiFileText, FiUser, FiCheck, FiAlertCircle } from 'react-icons/fi';
+import { FiPhone, FiMail, FiMessageSquare, FiEdit2, FiClipboard, FiCalendar, FiDollarSign, FiFileText, FiUser, FiCheck, FiAlertCircle, FiCreditCard, FiSmartphone, FiTrendingUp } from 'react-icons/fi';
+import { QRCodeCanvas } from 'qrcode.react';
 import SummaryApi from '../../common';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import { useAuth } from '../../context/AuthContext';
@@ -9,6 +10,8 @@ import ComplaintModal from '../customers/ComplaintModal';
 import ProjectDetailsModal from '../manager/ProjectDetailsModal';
 import EditCustomerModal from './EditCustomerModal';
 import CustomerBillingModal from './CustomerBillingModal';
+import BillHistoryTable from '../../components/BillHistoryTable';
+import ViewBillModal from '../../components/ViewBillModal';
 
 const CustomerDetailModal = ({ isOpen, onClose, customerId, onCustomerUpdated }) => {
   const { user } = useAuth();
@@ -37,6 +40,33 @@ const [showBillingModal, setShowBillingModal] = useState(false);
   const [paymentNotes, setPaymentNotes] = useState('');
   const [processingPayment, setProcessingPayment] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
+
+  // View Bill Modal states
+  const [showViewBillModal, setShowViewBillModal] = useState(false);
+  const [selectedBill, setSelectedBill] = useState(null);
+
+  // Enhanced payment states
+  const [selectedBankAccount, setSelectedBankAccount] = useState(null);
+  const [bankAccounts, setBankAccounts] = useState([]);
+  const [fetchingBankAccounts, setFetchingBankAccounts] = useState(false);
+  const [showBankSelection, setShowBankSelection] = useState(false);
+  const [showQRCode, setShowQRCode] = useState(false);
+  const [paymentFormData, setPaymentFormData] = useState({
+    // Bank Transfer
+    utrNumber: '',
+    bankName: '',
+    transferDate: '',
+    receivedAmount: '',
+    // Cheque
+    chequeNumber: '',
+    chequeBank: '',
+    chequeIfsc: '',
+    chequeDate: '',
+    chequeAmount: '',
+    drawerName: '',
+    // UPI
+    upiTransactionId: ''
+  });
   
   const fetchCustomer = async () => {
     if (!customerId) return;
@@ -140,6 +170,60 @@ const handleViewProjectDetails = async (project) => {
     }
   };
 
+  // Fetch bank accounts for UPI payment
+  const fetchBankAccounts = async () => {
+    setFetchingBankAccounts(true);
+
+    try {
+      const response = await fetch(SummaryApi.getBankAccounts.url, {
+        method: SummaryApi.getBankAccounts.method,
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        setBankAccounts(data.data);
+        // Auto-select primary account if available
+        const primaryAccount = data.data.find(account => account.isPrimary);
+        if (primaryAccount) {
+          setSelectedBankAccount(primaryAccount);
+        }
+      } else {
+        alert(data.message || 'Failed to fetch bank accounts');
+      }
+    } catch (err) {
+      console.error('Error fetching bank accounts:', err);
+      alert('Failed to load bank accounts. Please try again later.');
+    } finally {
+      setFetchingBankAccounts(false);
+    }
+  };
+
+  // Handle payment method selection
+  const handlePaymentMethodChange = (method) => {
+    setPaymentMethod(method);
+    setShowBankSelection(false);
+    setShowQRCode(false);
+    setSelectedBankAccount(null);
+
+    if (method === 'upi') {
+      setShowBankSelection(true);
+      fetchBankAccounts();
+    }
+  };
+
+  // Handle UPI continue after bank selection
+  const handleUPIContinue = () => {
+    if (selectedBankAccount) {
+      setShowBankSelection(false);
+      setShowQRCode(true);
+    }
+  };
+
   const handleProcessPayment = async () => {
     if (!paymentAmount || parseFloat(paymentAmount) <= 0) {
       alert('Please enter a valid payment amount');
@@ -151,9 +235,38 @@ const handleViewProjectDetails = async (project) => {
       return;
     }
 
-    if (paymentMethod === 'online' && !transactionId.trim()) {
-      alert('Transaction ID is required for online payments');
-      return;
+    // Enhanced validation for each payment method
+    if (paymentMethod === 'upi') {
+      if (!paymentFormData.upiTransactionId.trim()) {
+        alert('UPI Transaction ID is required');
+        return;
+      }
+      if (!selectedBankAccount) {
+        alert('Please select a bank account for UPI payment');
+        return;
+      }
+    }
+
+    if (paymentMethod === 'bank_transfer') {
+      if (!paymentFormData.utrNumber.trim()) {
+        alert('UTR Number is required for bank transfer');
+        return;
+      }
+      if (!paymentFormData.receivedAmount || parseFloat(paymentFormData.receivedAmount) <= 0) {
+        alert('Please enter the received amount');
+        return;
+      }
+    }
+
+    if (paymentMethod === 'cheque') {
+      if (!paymentFormData.chequeNumber.trim()) {
+        alert('Cheque number is required');
+        return;
+      }
+      if (!paymentFormData.chequeAmount || parseFloat(paymentFormData.chequeAmount) <= 0) {
+        alert('Please enter the cheque amount');
+        return;
+      }
     }
 
     setProcessingPayment(true);
@@ -168,8 +281,33 @@ const handleViewProjectDetails = async (project) => {
         body: JSON.stringify({
           customerId: customerId,
           paymentAmount: parseFloat(paymentAmount),
+          receivedAmount: paymentMethod === 'bank_transfer' ? parseFloat(paymentFormData.receivedAmount) : parseFloat(paymentAmount),
           paymentMethod,
-          transactionId: paymentMethod === 'online' ? transactionId.trim() : undefined,
+          transactionId: paymentMethod === 'upi' ? paymentFormData.upiTransactionId.trim() :
+                       (paymentMethod === 'bank_transfer' ? paymentFormData.utrNumber.trim() : undefined),
+          paymentDetails: paymentMethod !== 'cash' ? {
+            // UPI details
+            ...(paymentMethod === 'upi' && {
+              upiTransactionId: paymentFormData.upiTransactionId,
+              selectedBankAccount: selectedBankAccount?._id
+            }),
+            // Bank Transfer details
+            ...(paymentMethod === 'bank_transfer' && {
+              utrNumber: paymentFormData.utrNumber,
+              bankName: paymentFormData.bankName,
+              transferDate: paymentFormData.transferDate,
+              receivedAmount: parseFloat(paymentFormData.receivedAmount)
+            }),
+            // Cheque details
+            ...(paymentMethod === 'cheque' && {
+              chequeNumber: paymentFormData.chequeNumber,
+              chequeBank: paymentFormData.chequeBank,
+              chequeIfsc: paymentFormData.chequeIfsc,
+              chequeDate: paymentFormData.chequeDate,
+              chequeAmount: parseFloat(paymentFormData.chequeAmount),
+              drawerName: paymentFormData.drawerName || customer?.name
+            })
+          } : undefined,
           notes: paymentNotes.trim() || undefined
         })
       });
@@ -185,6 +323,25 @@ const handleViewProjectDetails = async (project) => {
         setTransactionId('');
         setPaymentNotes('');
         setShowPaymentModal(false);
+
+        // Reset enhanced payment states
+        setSelectedBankAccount(null);
+        setBankAccounts([]);
+        setShowBankSelection(false);
+        setShowQRCode(false);
+        setPaymentFormData({
+          utrNumber: '',
+          bankName: '',
+          transferDate: '',
+          receivedAmount: '',
+          chequeNumber: '',
+          chequeBank: '',
+          chequeIfsc: '',
+          chequeDate: '',
+          chequeAmount: '',
+          drawerName: '',
+          upiTransactionId: ''
+        });
         
         // Refresh bills data
         fetchCustomerBills();
@@ -660,72 +817,14 @@ const handleViewProjectDetails = async (project) => {
                   </div>
 
                   {/* Bills List */}
-                  <div className="bg-gray-50 rounded-lg p-4">
-                    <h4 className="font-medium text-gray-900 mb-4 flex items-center">
-                      <FiFileText className="mr-2 text-purple-500" />
-                      Bills History
-                    </h4>
-                    
-                    {bills && bills.length > 0 ? (
-                      <div className="space-y-4 max-h-96 overflow-y-auto">
-                        {bills.map((bill, index) => (
-                          <div key={index} className="bg-white rounded-lg p-4 border border-purple-100">
-                            <div className="flex justify-between items-start mb-3">
-                              <div>
-                                <h5 className="font-semibold text-gray-900">{bill.billNumber}</h5>
-                                <p className="text-sm text-gray-600">{formatDate(bill.createdAt)}</p>
-                              </div>
-                              <span className={`px-2 py-1 text-xs rounded-full font-medium ${
-                                bill.paymentStatus === 'completed' 
-                                  ? 'bg-green-100 text-green-800' 
-                                  : bill.paymentStatus === 'partial'
-                                  ? 'bg-yellow-100 text-yellow-800'
-                                  : 'bg-red-100 text-red-800'
-                              }`}>
-                                {bill.paymentStatus === 'completed' ? 'Paid' : 
-                                 bill.paymentStatus === 'partial' ? 'Partial' : 'Pending'}
-                              </span>
-                            </div>
-                            
-                            {/* Bill Items */}
-                            <div className="mb-3">
-                              <h6 className="text-sm font-medium text-gray-700 mb-2">Items:</h6>
-                              <div className="space-y-1">
-                                {bill.items.map((item, itemIndex) => (
-                                  <div key={itemIndex} className="flex justify-between text-sm text-gray-600">
-                                    <div className="flex-1">
-                                      <span className="font-medium text-gray-800">{item.itemName}</span>
-                                      <span className="text-gray-500"> × {item.quantity}</span>
-                                      <span className="text-xs text-gray-500 ml-2">@ ₹{item.unitPrice}</span>
-                                    </div>
-                                    <span className="font-semibold text-gray-800">₹{item.totalPrice}</span>
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                            
-                            {/* Bill Amounts */}
-                            <div className="grid grid-cols-3 gap-4 pt-3 border-t border-gray-200">
-                              <div>
-                                <p className="text-xs text-gray-500">Total Amount</p>
-                                <p className="font-semibold text-gray-900">₹{bill.total}</p>
-                              </div>
-                              <div>
-                                <p className="text-xs text-gray-500">Paid Amount</p>
-                                <p className="font-semibold text-green-600">₹{bill.paidAmount}</p>
-                              </div>
-                              <div>
-                                <p className="text-xs text-gray-500">Due Amount</p>
-                                <p className="font-semibold text-red-600">₹{bill.dueAmount}</p>
-                              </div>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <p className="text-gray-500 text-sm text-center py-8">No bills found</p>
-                    )}
-                  </div>
+                  <BillHistoryTable
+                    bills={bills}
+                    loading={loadingBills}
+                    onViewBill={(bill) => {
+                      setSelectedBill(bill);
+                      setShowViewBillModal(true);
+                    }}
+                  />
                 </>
               ) : (
                 <p className="text-center py-8 text-gray-500">Click on Bills tab to load bill history</p>
@@ -773,26 +872,288 @@ const handleViewProjectDetails = async (project) => {
                         </label>
                         <select
                           value={paymentMethod}
-                          onChange={(e) => setPaymentMethod(e.target.value)}
+                          onChange={(e) => handlePaymentMethodChange(e.target.value)}
                           className="w-full rounded-lg border border-purple-300 focus:outline-none focus:ring-2 focus:ring-purple-300 focus:border-purple-400 transition p-3"
                         >
                           <option value="cash">Cash</option>
-                          <option value="online">Online</option>
+                          <option value="upi">UPI</option>
+                          <option value="bank_transfer">Bank Transfer</option>
+                          <option value="cheque">Cheque</option>
                         </select>
                       </div>
                       
-                      {paymentMethod === 'online' && (
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Transaction ID
-                          </label>
-                          <input
-                            type="text"
-                            value={transactionId}
-                            onChange={(e) => setTransactionId(e.target.value)}
-                            placeholder="Enter transaction ID..."
-                            className="w-full rounded-lg border border-purple-300 focus:outline-none focus:ring-2 focus:ring-purple-300 focus:border-purple-400 transition p-3"
-                          />
+                      {/* UPI Payment Method */}
+                      {paymentMethod === 'upi' && (
+                        <div className="space-y-4">
+                          {showBankSelection && (
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-2">
+                                Select Bank Account
+                              </label>
+                              {fetchingBankAccounts ? (
+                                <div className="flex items-center justify-center py-4">
+                                  <LoadingSpinner />
+                                  <span className="ml-2 text-gray-600">Loading bank accounts...</span>
+                                </div>
+                              ) : bankAccounts.length === 0 ? (
+                                <div className="text-center py-4">
+                                  <p className="text-gray-600 mb-2">No bank accounts found</p>
+                                  <p className="text-sm text-gray-500">Please add a bank account first</p>
+                                </div>
+                              ) : (
+                                <>
+                                  <select
+                                    value={selectedBankAccount?._id || ''}
+                                    onChange={(e) => {
+                                      const account = bankAccounts.find(acc => acc._id === e.target.value);
+                                      setSelectedBankAccount(account);
+                                    }}
+                                    className="w-full rounded-lg border border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-300 focus:border-blue-400 transition p-3"
+                                  >
+                                    <option value="">Choose a bank account...</option>
+                                    {bankAccounts.map((account) => (
+                                      <option key={account._id} value={account._id}>
+                                        {account.bankName} - {account.accountHolderName}
+                                        {account.isPrimary ? ' (Primary)' : ''}
+                                      </option>
+                                    ))}
+                                  </select>
+
+                                  {selectedBankAccount && (
+                                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mt-3">
+                                      <div className="flex items-center space-x-2 mb-2">
+                                        <FiCreditCard className="text-blue-500" />
+                                        <span className="font-medium text-blue-900">
+                                          {selectedBankAccount.bankName}
+                                        </span>
+                                        {selectedBankAccount.isPrimary && (
+                                          <span className="px-2 py-1 bg-yellow-100 text-yellow-800 text-xs rounded-full">
+                                            Primary
+                                          </span>
+                                        )}
+                                      </div>
+                                      <p className="text-sm text-blue-700">
+                                        {selectedBankAccount.accountHolderName}
+                                      </p>
+                                      {selectedBankAccount.upiId && (
+                                        <p className="text-xs text-green-600 mt-1">
+                                          UPI ID: {selectedBankAccount.upiId}
+                                        </p>
+                                      )}
+                                    </div>
+                                  )}
+
+                                  <button
+                                    onClick={handleUPIContinue}
+                                    disabled={!selectedBankAccount}
+                                    className="w-full bg-blue-500 hover:bg-blue-600 disabled:bg-blue-300 text-white py-2 px-4 rounded-lg font-medium"
+                                  >
+                                    Continue to QR Code
+                                  </button>
+                                </>
+                              )}
+                            </div>
+                          )}
+
+                          {showQRCode && selectedBankAccount && (
+                            <div className="space-y-4">
+                              <div className="text-center">
+                                <h5 className="font-medium mb-3 text-blue-900">Scan QR Code to Pay</h5>
+                                <div className="inline-block p-4 bg-white rounded-lg border-2 border-blue-200">
+                                  <QRCodeCanvas
+                                    value={selectedBankAccount.upiId ?
+                                      `upi://pay?pa=${selectedBankAccount.upiId}&pn=${encodeURIComponent(selectedBankAccount.accountHolderName)}&am=${paymentAmount}&tn=Customer-Payment-${encodeURIComponent(customer?.name || '')}` :
+                                      `upi://pay?pa=${selectedBankAccount.accountNumber}&pn=${encodeURIComponent(selectedBankAccount.accountHolderName)}&am=${paymentAmount}&tn=Customer-Payment-${encodeURIComponent(customer?.name || '')}`
+                                    }
+                                    size={200}
+                                    level="H"
+                                    includeMargin={true}
+                                  />
+                                </div>
+                                <p className="text-sm text-gray-600 mt-2">
+                                  Pay ₹{paymentAmount} to {selectedBankAccount.accountHolderName}
+                                </p>
+                              </div>
+
+                              <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                  UPI Transaction ID (Enter after payment)
+                                </label>
+                                <input
+                                  type="text"
+                                  value={paymentFormData.upiTransactionId}
+                                  onChange={(e) => setPaymentFormData(prev => ({...prev, upiTransactionId: e.target.value}))}
+                                  placeholder="Enter UPI transaction ID after successful payment"
+                                  className="w-full rounded-lg border border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-300 focus:border-blue-400 transition p-3"
+                                />
+                              </div>
+
+                              <button
+                                onClick={() => {
+                                  setShowQRCode(false);
+                                  setShowBankSelection(true);
+                                }}
+                                className="w-full bg-gray-500 hover:bg-gray-600 text-white py-2 px-4 rounded-lg font-medium"
+                              >
+                                Change Bank Account
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Bank Transfer Payment Method */}
+                      {paymentMethod === 'bank_transfer' && (
+                        <div className="space-y-4">
+                          <div className="bg-purple-50 border border-purple-200 rounded-lg p-3">
+                            <h5 className="font-medium text-purple-900 mb-1">Bank Transfer (IMPS/NEFT)</h5>
+                            <p className="text-sm text-purple-700">Transfer money and enter the details below</p>
+                          </div>
+
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                              UTR Number <span className="text-red-500">*</span>
+                            </label>
+                            <input
+                              type="text"
+                              value={paymentFormData.utrNumber}
+                              onChange={(e) => setPaymentFormData(prev => ({...prev, utrNumber: e.target.value}))}
+                              placeholder="Enter UTR/Reference number"
+                              className="w-full rounded-lg border border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-300 focus:border-blue-400 transition p-3"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                              Sender Bank Name
+                            </label>
+                            <input
+                              type="text"
+                              value={paymentFormData.bankName}
+                              onChange={(e) => setPaymentFormData(prev => ({...prev, bankName: e.target.value}))}
+                              placeholder="Name of the bank from which transfer was made"
+                              className="w-full rounded-lg border border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-300 focus:border-blue-400 transition p-3"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                              Transfer Date
+                            </label>
+                            <input
+                              type="date"
+                              value={paymentFormData.transferDate}
+                              onChange={(e) => setPaymentFormData(prev => ({...prev, transferDate: e.target.value}))}
+                              className="w-full rounded-lg border border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-300 focus:border-blue-400 transition p-3"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                              Received Amount <span className="text-red-500">*</span>
+                            </label>
+                            <input
+                              type="number"
+                              value={paymentFormData.receivedAmount}
+                              onChange={(e) => setPaymentFormData(prev => ({...prev, receivedAmount: e.target.value}))}
+                              placeholder="Amount received in your account"
+                              className="w-full rounded-lg border border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-300 focus:border-blue-400 transition p-3"
+                            />
+                            <p className="text-xs text-gray-500 mt-1">
+                              This may differ from payment amount due to bank charges
+                            </p>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Cheque Payment Method */}
+                      {paymentMethod === 'cheque' && (
+                        <div className="space-y-4">
+                          <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+                            <h5 className="font-medium text-green-900 mb-1">Cheque Payment</h5>
+                            <p className="text-sm text-green-700">Enter cheque details for record keeping</p>
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-4">
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-2">
+                                Cheque Number <span className="text-red-500">*</span>
+                              </label>
+                              <input
+                                type="text"
+                                value={paymentFormData.chequeNumber}
+                                onChange={(e) => setPaymentFormData(prev => ({...prev, chequeNumber: e.target.value}))}
+                                placeholder="Cheque number"
+                                className="w-full rounded-lg border border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-300 focus:border-blue-400 transition p-3"
+                              />
+                            </div>
+
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-2">
+                                Cheque Amount <span className="text-red-500">*</span>
+                              </label>
+                              <input
+                                type="number"
+                                value={paymentFormData.chequeAmount}
+                                onChange={(e) => setPaymentFormData(prev => ({...prev, chequeAmount: e.target.value}))}
+                                placeholder="Amount on cheque"
+                                className="w-full rounded-lg border border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-300 focus:border-blue-400 transition p-3"
+                              />
+                            </div>
+                          </div>
+
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                              Bank Name
+                            </label>
+                            <input
+                              type="text"
+                              value={paymentFormData.chequeBank}
+                              onChange={(e) => setPaymentFormData(prev => ({...prev, chequeBank: e.target.value}))}
+                              placeholder="Bank name on cheque"
+                              className="w-full rounded-lg border border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-300 focus:border-blue-400 transition p-3"
+                            />
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-4">
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-2">
+                                IFSC Code
+                              </label>
+                              <input
+                                type="text"
+                                value={paymentFormData.chequeIfsc}
+                                onChange={(e) => setPaymentFormData(prev => ({...prev, chequeIfsc: e.target.value.toUpperCase()}))}
+                                placeholder="IFSC Code"
+                                className="w-full rounded-lg border border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-300 focus:border-blue-400 transition p-3"
+                              />
+                            </div>
+
+                            <div>
+                              <label className="block text-sm font-medium text-gray-700 mb-2">
+                                Cheque Date
+                              </label>
+                              <input
+                                type="date"
+                                value={paymentFormData.chequeDate}
+                                onChange={(e) => setPaymentFormData(prev => ({...prev, chequeDate: e.target.value}))}
+                                className="w-full rounded-lg border border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-300 focus:border-blue-400 transition p-3"
+                              />
+                            </div>
+                          </div>
+
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                              Drawer Name
+                            </label>
+                            <input
+                              type="text"
+                              value={paymentFormData.drawerName}
+                              onChange={(e) => setPaymentFormData(prev => ({...prev, drawerName: e.target.value}))}
+                              placeholder={`Name on cheque (default: ${customer?.name || 'Customer name'})`}
+                              className="w-full rounded-lg border border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-300 focus:border-blue-400 transition p-3"
+                            />
+                          </div>
                         </div>
                       )}
                       
@@ -884,6 +1245,17 @@ const handleViewProjectDetails = async (project) => {
       )}
 
     </Modal>
+
+    {/* View Bill Modal */}
+    <ViewBillModal
+      isOpen={showViewBillModal}
+      onClose={() => {
+        setShowViewBillModal(false);
+        setSelectedBill(null);
+      }}
+      bill={selectedBill}
+      customerInfo={customer}
+    />
 
     {/* Customer Billing Modal - Outside main modal for proper z-index */}
     <CustomerBillingModal

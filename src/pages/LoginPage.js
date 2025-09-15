@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FaLock, FaUser } from 'react-icons/fa';
 import { useAuth } from '../context/AuthContext';
+import logo from '../images/logo3g.jpg';
 
 const LoginPage = () => {
   const [username, setUsername] = useState('');
@@ -35,9 +36,9 @@ const LoginPage = () => {
     <div className="min-h-screen flex items-center justify-center bg-gray-100">
       <div className="bg-white p-8 rounded-lg shadow-md w-full max-w-md">
         <div className="text-center mb-8">
-          <img 
-            src="/logo.png" 
-            alt="Company Logo" 
+          <img
+            src={logo}
+            alt="3G Digital"
             className="h-16 mx-auto mb-4"
           />
           <h1 className="text-2xl font-bold text-gray-800">Login to Your Account</h1>

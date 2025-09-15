@@ -99,6 +99,10 @@ export default function PaymentModal({
 
   const handleBankAccountSelection = (account) => {
     setSelectedBankAccount(account);
+    // Don't automatically move to details step - wait for user to click Continue
+  };
+
+  const handleContinueAfterBankSelection = () => {
     setCurrentStep('details');
   };
 
@@ -134,24 +138,47 @@ export default function PaymentModal({
           break;
       }
 
-      const billPayload = {
-        customerType: customer.contactType,
-        customerId: customer._id,
-        items: cart.map(item => ({
-          itemId: item.itemId,
-          quantity: item.quantity,
-          serialNumber: item.serialNumber || undefined
-        })),
-        paymentMethod,
-        paidAmount: parseFloat(paidAmount),
-        receivedAmount: parseFloat(receivedAmount),
-        transactionId: transactionId || undefined,
-        paymentDetails: Object.keys(paymentDetails).length > 0 ? paymentDetails : undefined,
-        notes: `Bill created for ${customer.name}`
-      };
+      let billPayload, apiEndpoint;
 
-      const response = await fetch(SummaryApi.createSalesBill.url, {
-        method: SummaryApi.createSalesBill.method,
+      if (customer.contactType === 'customer') {
+        // Customer bill payload - uses same payment method enums as dealer bills
+        billPayload = {
+          customerId: customer._id,
+          items: cart.map(item => ({
+            itemId: item.itemId,
+            quantity: item.quantity,
+            serialNumber: item.serialNumber || undefined
+          })),
+          paymentMethod, // Send actual method: 'cash', 'upi', 'bank_transfer', 'cheque'
+          paidAmount: parseFloat(paidAmount),
+          receivedAmount: parseFloat(receivedAmount),
+          transactionId: transactionId || undefined,
+          paymentDetails: Object.keys(paymentDetails).length > 0 ? paymentDetails : undefined,
+          notes: `Bill created for ${customer.name}`
+        };
+        apiEndpoint = SummaryApi.createCustomerBill;
+      } else {
+        // Dealer/Distributor bill payload
+        billPayload = {
+          customerType: customer.contactType,
+          customerId: customer._id,
+          items: cart.map(item => ({
+            itemId: item.itemId,
+            quantity: item.quantity,
+            serialNumber: item.serialNumber || undefined
+          })),
+          paymentMethod,
+          paidAmount: parseFloat(paidAmount),
+          receivedAmount: parseFloat(receivedAmount),
+          transactionId: transactionId || undefined,
+          paymentDetails: Object.keys(paymentDetails).length > 0 ? paymentDetails : undefined,
+          notes: `Bill created for ${customer.name}`
+        };
+        apiEndpoint = SummaryApi.createSalesBill;
+      }
+
+      const response = await fetch(apiEndpoint.url, {
+        method: apiEndpoint.method,
         credentials: 'include',
         headers: {
           'Content-Type': 'application/json'
@@ -162,11 +189,20 @@ export default function PaymentModal({
       const data = await response.json();
 
       if (data.success) {
-        setBillData(data.data);
-        
+        console.log('Bill creation response:', data.data);
+
+        // Handle different response structures for customer vs dealer bills
+        let billInfo = data.data;
+        if (customer.contactType === 'customer' && data.data.bill) {
+          // Customer API might return { bill: {...}, message: "..." }
+          billInfo = data.data.bill;
+        }
+
+        setBillData(billInfo);
+
         if (paymentMethod === 'upi' && dueAmount > 0) {
           // Generate QR code for UPI payment
-          await generateQRCode(data.data._id);
+          await generateQRCode(billInfo._id);
         } else {
           setCurrentStep('success');
         }
@@ -409,58 +445,83 @@ export default function PaymentModal({
                         </button>
                       </div>
                     ) : (
-                      <div className="space-y-3">
-                        {bankAccounts.map((account) => (
-                          <button
-                            key={account._id}
-                            onClick={() => handleBankAccountSelection(account)}
-                            className={`w-full p-4 border-2 rounded-xl flex items-center justify-between transition-colors ${
-                              selectedBankAccount?._id === account._id
-                                ? 'border-blue-400 bg-blue-50'
-                                : 'border-gray-200 hover:border-blue-300 hover:bg-gray-50'
-                            }`}
+                      <div className="space-y-4">
+                        {/* Bank Account Dropdown */}
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Select Bank Account
+                          </label>
+                          <select
+                            value={selectedBankAccount?._id || ''}
+                            onChange={(e) => {
+                              const account = bankAccounts.find(acc => acc._id === e.target.value);
+                              if (account) {
+                                handleBankAccountSelection(account);
+                              }
+                            }}
+                            className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-300 focus:border-blue-400"
                           >
-                            <div className="flex items-center space-x-4">
-                              <div className={`w-12 h-12 rounded-full flex items-center justify-center ${
-                                account.isPrimary ? 'bg-yellow-100' : 'bg-blue-100'
+                            <option value="">Choose a bank account...</option>
+                            {bankAccounts.map((account) => (
+                              <option key={account._id} value={account._id}>
+                                {account.bankName} - {account.accountHolderName}
+                                {account.isPrimary ? ' (Primary)' : ''}
+                                - ••••{account.accountNumber.slice(-4)}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+
+                        {/* Selected Account Details */}
+                        {selectedBankAccount && (
+                          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                            <div className="flex items-center space-x-3 mb-3">
+                              <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                                selectedBankAccount.isPrimary ? 'bg-yellow-100' : 'bg-blue-100'
                               }`}>
                                 <FiCreditCard className={`text-lg ${
-                                  account.isPrimary ? 'text-yellow-600' : 'text-blue-600'
+                                  selectedBankAccount.isPrimary ? 'text-yellow-600' : 'text-blue-600'
                                 }`} />
                               </div>
-                              <div className="text-left">
+                              <div className="flex-1">
                                 <div className="flex items-center space-x-2">
-                                  <h5 className="font-semibold text-gray-900">{account.bankName}</h5>
-                                  {account.isPrimary && (
+                                  <h5 className="font-semibold text-blue-900">{selectedBankAccount.bankName}</h5>
+                                  {selectedBankAccount.isPrimary && (
                                     <span className="px-2 py-1 bg-yellow-100 text-yellow-800 text-xs rounded-full font-medium">
                                       Primary
                                     </span>
                                   )}
                                 </div>
-                                <p className="text-sm text-gray-600">
-                                  {account.accountHolderName}
+                                <p className="text-sm text-blue-700">
+                                  {selectedBankAccount.accountHolderName}
                                 </p>
-                                <p className="text-xs text-gray-500">
-                                  •••• •••• •••• {account.accountNumber.slice(-4)}
+                                <p className="text-xs text-blue-600">
+                                  Account: •••• •••• •••• {selectedBankAccount.accountNumber.slice(-4)}
                                 </p>
-                                {account.upiId ? (
-                                  <p className="text-xs text-green-600 font-medium">
-                                    UPI: {account.upiId}
-                                  </p>
-                                ) : (
-                                  <p className="text-xs text-orange-600 font-medium">
-                                    ⚠ No UPI ID - QR will use account number
-                                  </p>
-                                )}
                               </div>
                             </div>
-                            {selectedBankAccount?._id === account._id && (
-                              <div className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center">
-                                <FiCheck className="text-white text-sm" />
+
+                            {selectedBankAccount.upiId ? (
+                              <div className="bg-green-50 border border-green-200 rounded p-2">
+                                <p className="text-xs text-green-700 font-medium">
+                                  ✓ UPI ID: {selectedBankAccount.upiId}
+                                </p>
+                                <p className="text-xs text-green-600 mt-1">
+                                  QR code will use UPI ID for payment
+                                </p>
+                              </div>
+                            ) : (
+                              <div className="bg-orange-50 border border-orange-200 rounded p-2">
+                                <p className="text-xs text-orange-700 font-medium">
+                                  ⚠ No UPI ID configured
+                                </p>
+                                <p className="text-xs text-orange-600 mt-1">
+                                  QR code will use account number for payment
+                                </p>
                               </div>
                             )}
-                          </button>
-                        ))}
+                          </div>
+                        )}
 
                         <div className="flex space-x-3 mt-6">
                           <button
@@ -470,7 +531,7 @@ export default function PaymentModal({
                             Back
                           </button>
                           <button
-                            onClick={() => handleBankAccountSelection(selectedBankAccount)}
+                            onClick={handleContinueAfterBankSelection}
                             disabled={!selectedBankAccount}
                             className={`flex-1 py-3 ${colors.button} disabled:bg-gray-300 text-white rounded-lg font-medium`}
                           >
