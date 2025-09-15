@@ -442,6 +442,16 @@ const SummaryApi = {
       deleteBankAccount: {
         url: `${backendDomain}/api/delete-bank-account`,
         method: "delete"
+      },
+
+      // Profile Picture APIs
+      uploadProfilePicture: {
+        url: `${backendDomain}/api/upload-profile-picture`,
+        method: "post"
+      },
+      deleteProfilePicture: {
+        url: `${backendDomain}/api/delete-profile-picture`,
+        method: "delete"
       }
 }
 

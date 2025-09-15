@@ -37,6 +37,7 @@ import ManagerDetail from './pages/users/ManagerDetail';
 import BranchDetails from './pages/branches/BranchDetails';
 import InventoryPage from './pages/inventory/InventoryPage';
 import ResetDefaultPage from './pages/ResetDefaultPage';
+import SettingsPage from './pages/SettingsPage';
 
 // Settings Pages
 import BankAccountsPage from './pages/settings/BankAccountsPage';
@@ -328,6 +329,16 @@ function App() {
           element={
             <ProtectedRoute allowedRoles={['technician']}>
               <TechnicianDashboard />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Settings Routes */}
+        <Route
+          path="settings"
+          element={
+            <ProtectedRoute>
+              <SettingsPage />
             </ProtectedRoute>
           }
         />

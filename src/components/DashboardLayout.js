@@ -1,18 +1,20 @@
 import React, { useEffect, useState } from 'react';
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { 
-  FiHome, FiUsers, FiSettings, 
-  FiPackage, FiClipboard, FiMenu, 
+import {
+  FiHome, FiUsers, FiSettings,
+  FiPackage, FiClipboard, FiMenu,
   FiBell, FiLogOut, FiChevronDown,
   FiBriefcase, FiFileText, FiTool, FiRefreshCw,
   FiActivity,
   FiArrowLeft,
-  FiRepeat, FiShield 
+  FiRepeat, FiShield
 } from 'react-icons/fi';
-import { Replace, Layers, Users, Building, X, User } from 'lucide-react';
+import { Replace, Layers, Users, Building, X, User, Camera, ChevronDown } from 'lucide-react';
 import ManagerStatusChecker from './ManagerStatusChecker';
 import UserSettingsModal from '../pages/users/UserSettingsModal';
+import ChangeProfilePictureModal from './ChangeProfilePictureModal';
+import ImagePreviewModal from './ImagePreviewModal';
 // import GlobalSearch from './GlobalSearch';
 
 const DashboardLayout = () => {
@@ -28,6 +30,8 @@ const DashboardLayout = () => {
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [showLogoutPopup, setShowLogoutPopup] = useState(false);
+  const [showChangeProfilePictureModal, setShowChangeProfilePictureModal] = useState(false);
+  const [showImagePreviewModal, setShowImagePreviewModal] = useState(false);
   
   useEffect(() => {
     // Check if user is a manager and has activeManagerStatus='active'
@@ -221,11 +225,11 @@ const DashboardLayout = () => {
       
       {/* Sidebar */}
       <div 
-        className={`fixed z-30 inset-y-0 left-0 w-64 bg-gray-800 text-white shadow-lg transition-transform duration-200 ease-in-out transform ${
+        className={`fixed z-30 inset-y-0 left-0 w-64 bg-gray-800 text-white transition-transform duration-200 ease-in-out transform ${
           sidebarOpen ? 'translate-x-0' : '-translate-x-full'
         } md:translate-x-0 md:static md:inset-0`}
       >
-        <div className="flex p-4 h-16 border-b">
+        <div className="flex p-4 h-16">
           <h1 className="text-2xl font-bold text-white">CMS Panel</h1>
         </div>
         
@@ -283,7 +287,7 @@ const DashboardLayout = () => {
       <div className="flex-1 flex flex-col overflow-hidden">
        {/* Conditionally show header for non-technicians */}
       {user?.role !== 'technician' ? (
-        <header className="flex items-center justify-between h-16 px-4 bg-white shadow-sm">
+        <header className="flex items-center justify-between h-[85px] px-4 inset-y-0 left-0 bg-gray-800 ">
           <button
             onClick={() => setSidebarOpen(!sidebarOpen)}
             className="p-1 text-gray-600 focus:outline-none md:hidden"
@@ -291,59 +295,149 @@ const DashboardLayout = () => {
             <FiMenu className="w-6 h-6" />
           </button>
 
-          <div className="relative flex items-center">
-  <button 
-    onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
-    className="flex items-center focus:outline-none"
-    aria-haspopup="true"
-    aria-expanded={profileDropdownOpen}
-  >
-    <div className="cursor-pointer">
-    <User size={26}/>
-    </div>
-  </button>
-  
-  {/* Profile Dropdown */}
-  {profileDropdownOpen && (
-    <div 
-      className="absolute left-0 right-0 top-8 w-48 bg-white rounded-md shadow-lg py-1 z-50 border border-gray-200"
-    >
-      <div className="px-4 py-2 border-b border-gray-100">
-        <p className="text-sm font-medium capitalize">{user?.firstName} {user?.lastName}</p>
-        <p className="text-xs text-gray-500 capitalize">{user?.role || 'User'}</p>
-      </div>
-      
-      <button 
-        onClick={() => {
-          setShowSettingsModal(true);
-          setProfileDropdownOpen(false);
-        }}
-        className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center"
-      >
-        <FiSettings className="mr-2 h-4 w-4" />
-        Settings
-      </button>
-      
-      <button 
-        onClick={() => {
-          toggleLogoutPopup();
-          setProfileDropdownOpen(false);
-        }}
-        className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center"
-      >
-        <FiLogOut className="mr-2 h-4 w-4" />
-        Logout
-      </button>
-    </div>
-  )}
-        </div>
-          
           <div className="flex-1 px-2 flex items-center">
-          <p className="text-xl font-semibold text-gray-800 capitalize">{user?.firstName} {user?.lastName} ({user?.role || 'User'}) </p>
+            {/* Branch Information - Only for Managers */}
+            {user?.role === 'manager' && (
+              <div className="flex flex-col items-start">
+                 <span className="text-xs text-gray-300">
+                  Branch
+                </span>
+                <span className="text-2xl font-semibold text-white capitalize">
+                  {user?.branch?.name || 'Main Branch'}
+                </span>
+              </div>
+            )}
           </div>
 
-          <div className="flex items-center space-x-4">
+          {/* New Profile Button UI */}
+          <div className="relative mr-4">
+            <button
+              onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
+              className="flex items-center space-x-3 px-4 py-2 bg-gray-700 hover:bg-gray-600 transition-colors duration-200 rounded-lg border border-gray-700 h-[65px]"
+            >
+              {/* Profile Picture with Online Status */}
+              <div className="relative">
+                {user?.profileImage ? (
+                  <img
+                    src={user.profileImage}
+                    alt="Profile"
+                    className="w-10 h-10 rounded-full object-cover"
+                  />
+                ) : (
+                  <div className="w-10 h-10 rounded-full bg-gray-500 flex items-center justify-center text-white font-medium">
+                    {user?.firstName?.charAt(0)}{user?.lastName?.charAt(0)}
+                  </div>
+                )}
+                {/* Online Status Dot */}
+                <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-green-500 rounded-full border-2 border-white">
+                  <div className="w-full h-full bg-green-500 rounded-full animate-pulse"></div>
+                </div>
+              </div>
+
+              {/* Name and Role */}
+              <div className="flex flex-col items-start">
+                <span className="text-sm font-medium text-white capitalize">
+                  {user?.firstName} {user?.lastName}
+                </span>
+                <span className="text-xs text-gray-200 capitalize">
+                  {user?.role || 'User'}
+                </span>
+              </div>
+
+              {/* Dropdown Arrow */}
+              <ChevronDown className={`w-4 h-4 text-gray-200 transition-transform duration-200 ${profileDropdownOpen ? 'rotate-180' : ''}`} />
+            </button>
+
+            {/* Dropdown Menu */}
+            {profileDropdownOpen && (
+              <div className="absolute right-0 mt-2 w-64 bg-gray-800 rounded-lg shadow-lg border border-gray-200 py-2 z-50">
+                {/* Profile Info in Dropdown */}
+                <div className="px-4 py-3 border-b border-gray-100">
+                  <div className="flex items-center space-x-3">
+                    <div className="relative">
+                      {user?.profileImage ? (
+                        <img
+                          src={user.profileImage}
+                          alt="Profile"
+                          className="w-12 h-12 rounded-full object-cover cursor-pointer hover:opacity-80 transition-opacity"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setShowImagePreviewModal(true);
+                            setProfileDropdownOpen(false);
+                          }}
+                        />
+                      ) : (
+                        <div className="w-12 h-12 rounded-full bg-gray-500 flex items-center justify-center text-white font-medium text-lg">
+                          {user?.firstName?.charAt(0)}{user?.lastName?.charAt(0)}
+                        </div>
+                      )}
+                      {/* Online Status Dot */}
+                      <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-green-500 rounded-full border-2 border-white">
+                        <div className="w-full h-full bg-green-500 rounded-full animate-pulse"></div>
+                      </div>
+                    </div>
+                    <div className="flex flex-col">
+                      <span className="font-medium text-white capitalize">{user?.firstName} {user?.lastName}</span>
+                      <span className="text-sm text-gray-200 capitalize">{user?.role || 'User'}</span>
+                      {/* <span className="text-xs text-green-600 flex items-center">
+                        <div className="w-2 h-2 bg-green-500 rounded-full mr-1"></div>
+                        Online
+                      </span> */}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Menu Options */}
+                <div className="py-1">
+                  <button
+                    onClick={() => {
+                      setShowChangeProfilePictureModal(true);
+                      setProfileDropdownOpen(false);
+                    }}
+                    className="flex items-center space-x-3 w-full px-4 py-2 text-sm text-gray-200 hover:bg-gray-600 transition-colors duration-150"
+                  >
+                    <Camera className="w-4 h-4" />
+                    <span>Change Profile Picture</span>
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      navigate('/settings');
+                      setProfileDropdownOpen(false);
+                    }}
+                    className="flex items-center space-x-3 w-full px-4 py-2 text-sm text-gray-200 hover:bg-gray-600 transition-colors duration-150"
+                  >
+                    <FiSettings className="w-4 h-4" />
+                    <span>Settings</span>
+                  </button>
+
+                  <hr className="my-1 border-gray-200" />
+
+                  <button
+                    onClick={() => {
+                      toggleLogoutPopup();
+                      setProfileDropdownOpen(false);
+                    }}
+                    className="flex items-center space-x-3 w-full px-4 py-2 text-sm text-red-500 hover:bg-gray-600 transition-colors duration-150"
+                  >
+                    <FiLogOut className="w-4 h-4" />
+                    <span>Logout</span>
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Backdrop to close dropdown */}
+            {profileDropdownOpen && (
+              <div
+                className="fixed inset-0 z-40"
+                onClick={() => setProfileDropdownOpen(false)}
+              ></div>
+            )}
+          </div>
+
             {/* Settings button for Admin only */}
+          {/* <div className="flex items-center space-x-4">
             {user?.role === 'admin' && (
               <Link
                 to="/admin-settings/bank-accounts"
@@ -353,7 +447,7 @@ const DashboardLayout = () => {
                 Settings
               </Link>
             )}
-          </div>
+          </div> */}
         </header>
          ) : null}
         
@@ -402,6 +496,20 @@ const DashboardLayout = () => {
 <UserSettingsModal
   isOpen={showSettingsModal}
   onClose={() => setShowSettingsModal(false)}
+/>
+
+{/* Change Profile Picture Modal */}
+<ChangeProfilePictureModal
+  isOpen={showChangeProfilePictureModal}
+  onClose={() => setShowChangeProfilePictureModal(false)}
+/>
+
+{/* Image Preview Modal */}
+<ImagePreviewModal
+  isOpen={showImagePreviewModal}
+  onClose={() => setShowImagePreviewModal(false)}
+  imageUrl={user?.profileImage}
+  userName={`${user?.firstName} ${user?.lastName}`}
 />
   </div>
 );
