@@ -1,9 +1,11 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { motion } from 'framer-motion';
 import { FiX, FiCalendar, FiUser, FiPhone, FiMapPin, FiDollarSign, FiCreditCard, FiFileText, FiPrinter, FiDownload } from 'react-icons/fi';
 
 export default function ViewBillModal({ isOpen, onClose, bill, customerInfo }) {
+  const printRef = useRef();
+
   // Hide parent modal background when this modal is open
   React.useEffect(() => {
     if (isOpen) {
@@ -62,12 +64,111 @@ export default function ViewBillModal({ isOpen, onClose, bill, customerInfo }) {
   const paymentMethod = getPaymentMethodInfo(bill.paymentMethod);
 
   const handlePrint = () => {
-    window.print();
+    const printContent = printRef.current;
+    const WinPrint = window.open('', '', 'width=900,height=650');
+    WinPrint.document.write(`
+      <html>
+        <head>
+          <title>Invoice ${bill.billNumber}</title>
+          <style>
+            body { font-family: Arial, sans-serif; margin: 20px; color: #333; }
+            .print-content { max-width: 800px; margin: 0 auto; }
+            .header { text-align: center; margin-bottom: 30px; border-bottom: 2px solid #333; padding-bottom: 20px; }
+            .company-name { font-size: 28px; font-weight: bold; color: #2563eb; margin-bottom: 10px; }
+            .invoice-title { font-size: 24px; font-weight: bold; margin-bottom: 20px; }
+            .bill-info { display: flex; justify-content: space-between; margin-bottom: 30px; }
+            .customer-info, .invoice-details { width: 45%; }
+            .section-title { font-size: 18px; font-weight: bold; margin-bottom: 10px; color: #374151; }
+            table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+            th, td { padding: 12px; text-align: left; border-bottom: 1px solid #ddd; }
+            th { background-color: #f3f4f6; font-weight: bold; }
+            .text-right { text-align: right; }
+            .totals { margin-top: 20px; }
+            .total-row { display: flex; justify-content: space-between; padding: 5px 0; }
+            .final-total { font-size: 18px; font-weight: bold; border-top: 2px solid #333; padding-top: 10px; margin-top: 10px; }
+            @media print { body { margin: 0; } }
+          </style>
+        </head>
+        <body>
+          ${printContent.innerHTML}
+        </body>
+      </html>
+    `);
+    WinPrint.document.close();
+    WinPrint.focus();
+    WinPrint.print();
+    WinPrint.close();
   };
 
-  const handleDownload = () => {
-    // This would typically generate and download a PDF
-    console.log('Download bill:', bill.billNumber);
+  const handleDownloadPDF = async () => {
+    // Create a simplified HTML version for PDF generation
+    const htmlContent = `
+      <div style="font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px;">
+        <div style="text-align: center; margin-bottom: 30px; border-bottom: 2px solid #333; padding-bottom: 20px;">
+          <h1 style="color: #2563eb; margin-bottom: 10px;">SyncVap CRM</h1>
+          <p>Your Business Address</p>
+          <p>Phone: (000) 000-0000 | Email: info@syncvap.com</p>
+        </div>
+
+        <h2 style="text-align: center; margin-bottom: 30px;">INVOICE</h2>
+
+        <div style="display: flex; justify-content: space-between; margin-bottom: 30px;">
+          <div>
+            <h3>Bill To:</h3>
+            <p><strong>${bill.customerName || customerInfo?.name || 'N/A'}</strong></p>
+            <p>${customerInfo?.address || 'Address not available'}</p>
+            <p>${bill.customerPhone || customerInfo?.phoneNumber || 'Phone not available'}</p>
+            <p>${customerInfo?.email || 'Email not available'}</p>
+          </div>
+          <div>
+            <p><strong>Invoice #:</strong> ${bill.billNumber}</p>
+            <p><strong>Date:</strong> ${formatDate(bill.createdAt).split(',')[0]}</p>
+            <p><strong>Status:</strong> ${getPaymentStatusConfig(bill.paymentStatus).label}</p>
+          </div>
+        </div>
+
+        <table style="width: 100%; border-collapse: collapse; margin: 20px 0;">
+          <thead>
+            <tr style="background-color: #f3f4f6;">
+              <th style="padding: 12px; border-bottom: 1px solid #ddd;">Item</th>
+              <th style="padding: 12px; border-bottom: 1px solid #ddd; text-align: center;">Qty</th>
+              <th style="padding: 12px; border-bottom: 1px solid #ddd; text-align: right;">Unit Price</th>
+              <th style="padding: 12px; border-bottom: 1px solid #ddd; text-align: right;">Total</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${bill.items?.map(item => `
+              <tr>
+                <td style="padding: 12px; border-bottom: 1px solid #ddd;">${item.itemName}</td>
+                <td style="padding: 12px; border-bottom: 1px solid #ddd; text-align: center;">${item.quantity}</td>
+                <td style="padding: 12px; border-bottom: 1px solid #ddd; text-align: right;">${formatCurrency(item.unitPrice)}</td>
+                <td style="padding: 12px; border-bottom: 1px solid #ddd; text-align: right;">${formatCurrency(item.totalPrice)}</td>
+              </tr>
+            `).join('') || '<tr><td colspan="4" style="text-align: center; padding: 12px;">No items found</td></tr>'}
+          </tbody>
+        </table>
+
+        <div style="margin-top: 30px; text-align: right;">
+          <p><strong>Subtotal: ${formatCurrency(bill.subtotal || 0)}</strong></p>
+          <p style="font-size: 18px; border-top: 2px solid #333; padding-top: 10px;"><strong>Total: ${formatCurrency(bill.total || 0)}</strong></p>
+          <p><strong>Paid: ${formatCurrency(bill.paidAmount || 0)}</strong></p>
+          <p style="color: ${(bill.dueAmount || 0) > 0 ? '#dc2626' : '#16a34a'};"><strong>Pending: ${formatCurrency(bill.dueAmount || 0)}</strong></p>
+        </div>
+      </div>
+    `;
+
+    // Create a blob and download
+    const blob = new Blob([htmlContent], { type: 'text/html' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `invoice_${bill.billNumber}.html`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+
+    alert('Invoice downloaded as HTML file. You can open it in a browser and print to PDF.');
   };
 
   return createPortal(
@@ -118,9 +219,9 @@ export default function ViewBillModal({ isOpen, onClose, bill, customerInfo }) {
                 <FiPrinter size={18} />
               </button>
               <button
-                onClick={handleDownload}
+                onClick={handleDownloadPDF}
                 className="p-2 rounded-lg bg-white bg-opacity-20 hover:bg-opacity-30 transition-all"
-                title="Download Bill"
+                title="Download PDF"
               >
                 <FiDownload size={18} />
               </button>
@@ -135,14 +236,24 @@ export default function ViewBillModal({ isOpen, onClose, bill, customerInfo }) {
 
           {/* Content */}
           <div className="p-6 overflow-y-auto" style={{ maxHeight: 'calc(90vh - 120px)' }}>
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div ref={printRef} className="print-content">
+              {/* Company Header - Only visible in print */}
+              <div className="hidden print:block text-center mb-8 border-b-2 border-gray-800 pb-6">
+                <h1 className="text-3xl font-bold text-blue-600 mb-2">SyncVap CRM</h1>
+                <p className="text-gray-600">Your Business Address</p>
+                <p className="text-gray-600">Phone: (000) 000-0000 | Email: info@syncvap.com</p>
+              </div>
+
+              <h2 className="hidden print:block text-2xl font-bold text-center mb-8">INVOICE</h2>
+
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 print:grid-cols-1">
               {/* Bill Information */}
-              <div className="lg:col-span-2 space-y-6">
+              <div className="lg:col-span-2 space-y-6 print:col-span-1">
                 {/* Bill Header */}
-                <div className="bg-gray-50 rounded-xl p-6">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                      <h4 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                <div className="bg-gray-50 rounded-xl p-6 print:bg-transparent print:border-none print:shadow-none print:rounded-none">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 print:flex print:justify-between">
+                    <div className="print:w-5/12">
+                      <h4 className="text-lg font-semibold text-gray-900 mb-4 flex items-center print:hidden">
                         <FiFileText className="mr-2 text-blue-500" />
                         Bill Information
                       </h4>
@@ -166,29 +277,36 @@ export default function ViewBillModal({ isOpen, onClose, bill, customerInfo }) {
                     </div>
 
                     {/* Customer Information */}
-                    <div>
-                      <h4 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                    <div className="print:w-5/12 print:text-right">
+                      <h4 className="text-lg font-semibold text-gray-900 mb-4 flex items-center print:hidden">
                         <FiUser className="mr-2 text-green-500" />
                         Customer Information
                       </h4>
                       <div className="space-y-3">
-                        <div>
+                        <div className="print:hidden">
                           <label className="text-sm font-medium text-gray-500">Name</label>
                           <p className="text-gray-900 font-medium">{bill.customerName}</p>
                         </div>
-                        <div>
+                        <div className="hidden print:block">
+                          <p className="text-sm font-medium text-gray-500 mb-2">Bill To:</p>
+                          <p className="font-semibold text-lg">{bill.customerName || customerInfo?.name || 'N/A'}</p>
+                          <p className="text-gray-600">{customerInfo?.address || 'Address not available'}</p>
+                          <p className="text-gray-600">{bill.customerPhone || customerInfo?.phoneNumber || 'Phone not available'}</p>
+                          <p className="text-gray-600">{customerInfo?.email || 'Email not available'}</p>
+                        </div>
+                        <div className="print:hidden">
                           <label className="text-sm font-medium text-gray-500">Phone</label>
                           <p className="text-gray-900 flex items-center">
                             <FiPhone className="mr-1 text-gray-400" size={14} />
                             {bill.customerPhone}
                           </p>
                         </div>
-                        <div>
+                        <div className="print:hidden">
                           <label className="text-sm font-medium text-gray-500">Type</label>
                           <p className="text-gray-900 capitalize">{bill.customerType}</p>
                         </div>
                         {bill.branch && (
-                          <div>
+                          <div className="print:hidden">
                             <label className="text-sm font-medium text-gray-500">Branch</label>
                             <p className="text-gray-900 flex items-center">
                               <FiMapPin className="mr-1 text-gray-400" size={14} />
@@ -261,7 +379,7 @@ export default function ViewBillModal({ isOpen, onClose, bill, customerInfo }) {
               </div>
 
               {/* Payment Summary Sidebar */}
-              <div className="space-y-6">
+              <div className="space-y-6 print:hidden">
                 {/* Payment Status */}
                 <div className={`rounded-xl p-6 ${statusConfig.bg} ${statusConfig.border} border`}>
                   <h4 className="text-lg font-semibold mb-4 flex items-center">
@@ -388,6 +506,32 @@ export default function ViewBillModal({ isOpen, onClose, bill, customerInfo }) {
                   </div>
                 </div>
               </div>
+
+              {/* Print-only totals section */}
+              <div className="hidden print:block mt-8">
+                <div className="text-right max-w-sm ml-auto">
+                  <div className="flex justify-between py-2">
+                    <span className="font-semibold">Subtotal:</span>
+                    <span>{formatCurrency(bill.subtotal || 0)}</span>
+                  </div>
+                  <div className="flex justify-between py-2 border-t-2 border-gray-800 text-lg font-bold">
+                    <span>Total:</span>
+                    <span>{formatCurrency(bill.total || 0)}</span>
+                  </div>
+                  <div className="flex justify-between py-2">
+                    <span className="font-semibold">Paid:</span>
+                    <span className="text-green-600">{formatCurrency(bill.paidAmount || 0)}</span>
+                  </div>
+                  <div className="flex justify-between py-2">
+                    <span className="font-semibold">Pending:</span>
+                    <span className={(bill.dueAmount || 0) > 0 ? 'text-red-600' : 'text-green-600'}>
+                      {formatCurrency(bill.dueAmount || 0)}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+            </div>
             </div>
           </div>
 

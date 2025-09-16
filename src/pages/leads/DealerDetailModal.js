@@ -1,12 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FiX, FiUser, FiPhone, FiMapPin, FiMessageSquare, FiCalendar, FiFileText, FiDollarSign, FiCreditCard, FiCheck, FiAlertCircle, FiSmartphone, FiTrendingUp } from 'react-icons/fi';
+import { FiX, FiUser, FiPhone, FiMapPin, FiMessageSquare, FiCalendar, FiFileText, FiDollarSign, FiCreditCard, FiCheck, FiAlertCircle, FiSmartphone, FiTrendingUp, FiArrowLeft, FiPrinter, FiDownload } from 'react-icons/fi';
 import { QRCodeCanvas } from 'qrcode.react';
+import jsPDF from 'jspdf';
 import SummaryApi from '../../common';
 import { useAuth } from '../../context/AuthContext';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import BillHistoryTable from '../../components/BillHistoryTable';
-import ViewBillModal from '../../components/ViewBillModal';
 import { useNotification } from '../../context/NotificationContext';
 
 export default function DealerDetailModal({ isOpen, onClose, dealerId, onDealerUpdated }) {
@@ -55,14 +55,17 @@ export default function DealerDetailModal({ isOpen, onClose, dealerId, onDealerU
     upiTransactionId: ''
   });
 
-  // View Bill Modal states
-  const [showViewBillModal, setShowViewBillModal] = useState(false);
+  // Bill detail view states
+  const [billView, setBillView] = useState('list'); // 'list' or 'detail'
   const [selectedBill, setSelectedBill] = useState(null);
+  const printRef = useRef();
 
   // Reset tab to details when modal opens
   useEffect(() => {
     if (isOpen && dealerId) {
       setActiveTab('details'); // Always reset to details tab
+      setBillView('list'); // Reset bill view
+      setSelectedBill(null); // Clear selected bill
       fetchDealerDetails();
     }
   }, [isOpen, dealerId]);
@@ -347,14 +350,180 @@ export default function DealerDetailModal({ isOpen, onClose, dealerId, onDealerU
   };
 
   const formatDate = (dateString) => {
-    const options = { 
-      year: 'numeric', 
-      month: 'short', 
+    const options = {
+      year: 'numeric',
+      month: 'short',
       day: 'numeric',
       hour: '2-digit',
       minute: '2-digit'
     };
     return new Date(dateString).toLocaleDateString(undefined, options);
+  };
+
+  const formatCurrency = (amount) => {
+    return new Intl.NumberFormat('en-IN', {
+      style: 'currency',
+      currency: 'INR',
+      minimumFractionDigits: 0
+    }).format(amount || 0);
+  };
+
+  const handleViewBill = (bill) => {
+    setSelectedBill(bill);
+    setBillView('detail');
+  };
+
+  const handleBackToBills = () => {
+    setBillView('list');
+    setSelectedBill(null);
+  };
+
+  const handlePrint = () => {
+    const printContent = printRef.current;
+    const WinPrint = window.open('', '', 'width=900,height=650');
+    WinPrint.document.write(`
+      <html>
+        <head>
+          <title>Invoice ${selectedBill.billNumber}</title>
+          <style>
+            body { font-family: Arial, sans-serif; margin: 20px; color: #333; }
+            .print-content { max-width: 800px; margin: 0 auto; }
+            .header { text-align: center; margin-bottom: 30px; border-bottom: 2px solid #333; padding-bottom: 20px; }
+            .company-name { font-size: 28px; font-weight: bold; color: #2563eb; margin-bottom: 10px; }
+            .invoice-title { font-size: 24px; font-weight: bold; margin-bottom: 20px; }
+            .bill-info { display: flex; justify-content: space-between; margin-bottom: 30px; }
+            .customer-info, .invoice-details { width: 45%; }
+            .section-title { font-size: 18px; font-weight: bold; margin-bottom: 10px; color: #374151; }
+            table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+            th, td { padding: 12px; text-align: left; border-bottom: 1px solid #ddd; }
+            th { background-color: #f3f4f6; font-weight: bold; }
+            .text-right { text-align: right; }
+            .totals { margin-top: 20px; }
+            .total-row { display: flex; justify-content: space-between; padding: 5px 0; }
+            .final-total { font-size: 18px; font-weight: bold; border-top: 2px solid #333; padding-top: 10px; margin-top: 10px; }
+            @media print { body { margin: 0; } }
+          </style>
+        </head>
+        <body>
+          ${printContent.innerHTML}
+        </body>
+      </html>
+    `);
+    WinPrint.document.close();
+    WinPrint.focus();
+    WinPrint.print();
+    WinPrint.close();
+  };
+
+  const handleDownloadPDF = () => {
+    const doc = new jsPDF();
+
+    // Company Header
+    doc.setFontSize(20);
+    doc.setTextColor(37, 99, 235); // Blue color
+    doc.text('SyncVap CRM', 105, 20, { align: 'center' });
+
+    doc.setFontSize(10);
+    doc.setTextColor(100, 100, 100);
+    doc.text('Your Business Address', 105, 28, { align: 'center' });
+    doc.text('Phone: (000) 000-0000 | Email: info@syncvap.com', 105, 34, { align: 'center' });
+
+    // Line separator
+    doc.setLineWidth(0.5);
+    doc.line(20, 40, 190, 40);
+
+    // Invoice Title
+    doc.setFontSize(16);
+    doc.setTextColor(0, 0, 0);
+    doc.text('INVOICE', 105, 50, { align: 'center' });
+
+    // Bill Information - Left Side
+    doc.setFontSize(12);
+    doc.text('Bill To:', 20, 65);
+    doc.setFontSize(10);
+    doc.text(selectedBill.customerName || dealer?.name || 'N/A', 20, 72);
+    doc.text(dealer?.address || 'Address not available', 20, 78);
+    doc.text(selectedBill.customerPhone || dealer?.phoneNumber || 'Phone not available', 20, 84);
+
+    // Invoice Details - Right Side
+    doc.setFontSize(10);
+    doc.text(`Invoice #: ${selectedBill.billNumber}`, 130, 65);
+    doc.text(`Date: ${formatDate(selectedBill.createdAt).split(',')[0]}`, 130, 71);
+
+    const statusText = selectedBill.paymentStatus === 'completed' ? 'Paid'
+                      : selectedBill.paymentStatus === 'partial' ? 'Partially Paid'
+                      : 'Pending';
+    doc.text(`Status: ${statusText}`, 130, 77);
+
+    // Manual Table Header
+    const tableStartY = 105;
+    doc.setFillColor(243, 244, 246);
+    doc.rect(20, tableStartY - 5, 170, 10, 'F');
+
+    doc.setFontSize(10);
+    doc.setTextColor(0, 0, 0);
+    doc.text('Item', 25, tableStartY);
+    doc.text('Qty', 85, tableStartY, { align: 'center' });
+    doc.text('Unit Price', 125, tableStartY, { align: 'center' });
+    doc.text('Total', 170, tableStartY, { align: 'center' });
+
+    // Table Content
+    let currentY = tableStartY + 10;
+    if (selectedBill.items && selectedBill.items.length > 0) {
+      selectedBill.items.forEach((item, index) => {
+        // Alternating row colors
+        if (index % 2 === 0) {
+          doc.setFillColor(249, 250, 251);
+          doc.rect(20, currentY - 5, 170, 8, 'F');
+        }
+
+        doc.setTextColor(0, 0, 0);
+        doc.text(item.itemName || 'N/A', 25, currentY);
+        doc.text((item.quantity || 0).toString(), 85, currentY, { align: 'center' });
+        doc.text('Rs.' + (item.unitPrice || 0).toString(), 125, currentY, { align: 'center' });
+        doc.text('Rs.' + (item.totalPrice || 0).toString(), 170, currentY, { align: 'center' });
+
+        currentY += 8;
+      });
+    } else {
+      doc.text('No items found', 105, currentY, { align: 'center' });
+      currentY += 8;
+    }
+
+    // Table border
+    doc.setDrawColor(200, 200, 200);
+    doc.rect(20, tableStartY - 5, 170, currentY - tableStartY + 5);
+
+    // Totals Section
+    const totalsStartY = currentY + 20;
+    const totalsX = 130;
+    doc.setFontSize(10);
+    doc.setTextColor(0, 0, 0);
+
+    doc.text('Subtotal: Rs.' + (selectedBill.subtotal || 0).toString(), totalsX, totalsStartY);
+
+    // Add black line above Total
+    doc.setDrawColor(0, 0, 0); // Black color
+    doc.setLineWidth(0.5);
+    doc.line(totalsX, totalsStartY + 4, 190, totalsStartY + 4);
+
+    doc.text('Total: Rs.' + (selectedBill.total || 0).toString(), totalsX, totalsStartY + 12);
+    doc.text('Paid: Rs.' + (selectedBill.paidAmount || 0).toString(), totalsX, totalsStartY + 20);
+
+    // Pending amount with color
+    const pendingAmount = selectedBill.dueAmount || 0;
+    if (pendingAmount > 0) {
+      doc.setTextColor(220, 38, 38); // Red color for pending
+    } else {
+      doc.setTextColor(34, 197, 94); // Green color for fully paid
+    }
+    doc.text('Pending: Rs.' + pendingAmount.toString(), totalsX, totalsStartY + 28);
+
+    // Reset text color
+    doc.setTextColor(0, 0, 0);
+
+    // Save the PDF
+    doc.save(`invoice_${selectedBill.billNumber}.pdf`);
   };
 
   if (!isOpen) return null;
@@ -550,44 +719,169 @@ export default function DealerDetailModal({ isOpen, onClose, dealerId, onDealerU
                 {/* Bills Tab */}
                 {activeTab === 'bills' && (
                   <div>
-                    {loadingBills ? (
-                      <div className="flex justify-center py-12">
-                        <LoadingSpinner />
-                      </div>
-                    ) : billsSummary ? (
-                      <>
-                        {/* Bills Summary */}
-                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-                          <div className="bg-orange-50 rounded-lg p-4 border border-orange-200">
-                            <h4 className="font-medium text-orange-900 mb-2">Total Bills</h4>
-                            <p className="text-2xl font-bold text-orange-600">{billsSummary.totalBills}</p>
-                          </div>
-                          <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
-                            <h4 className="font-medium text-blue-900 mb-2">Total Amount</h4>
-                            <p className="text-2xl font-bold text-blue-600">₹{billsSummary.totalAmount}</p>
-                          </div>
-                          <div className="bg-green-50 rounded-lg p-4 border border-green-200">
-                            <h4 className="font-medium text-green-900 mb-2">Paid Amount</h4>
-                            <p className="text-2xl font-bold text-green-600">₹{billsSummary.totalPaid}</p>
-                          </div>
-                          <div className="bg-red-50 rounded-lg p-4 border border-red-200">
-                            <h4 className="font-medium text-red-900 mb-2">Due Amount</h4>
-                            <p className="text-2xl font-bold text-red-600">₹{billsSummary.totalDue}</p>
+                    {billView === 'detail' && selectedBill ? (
+                      /* Bill Detail View */
+                      <div>
+                        {/* Header Actions */}
+                        <div className="flex justify-between items-center mb-6">
+                          <button
+                            onClick={handleBackToBills}
+                            className="flex items-center gap-2 px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
+                          >
+                            <FiArrowLeft size={20} />
+                            Back to Bills
+                          </button>
+                          <div className="flex gap-3">
+                            <button
+                              onClick={handlePrint}
+                              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                            >
+                              <FiPrinter size={20} />
+                              Print
+                            </button>
+                            <button
+                              onClick={handleDownloadPDF}
+                              className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+                            >
+                              <FiDownload size={20} />
+                              Download PDF
+                            </button>
                           </div>
                         </div>
 
-                        {/* Bills List */}
-                        <BillHistoryTable
-                          bills={bills}
-                          loading={loadingBills}
-                          onViewBill={(bill) => {
-                            setSelectedBill(bill);
-                            setShowViewBillModal(true);
-                          }}
-                        />
-                      </>
+                        {/* Bill Detail */}
+                        <div ref={printRef} className="print-content bg-white rounded-lg shadow-lg p-8">
+                          {/* Company Header */}
+                          <div className="header text-center mb-8 border-b-2 border-gray-800 pb-6">
+                            <h1 className="company-name text-3xl font-bold text-blue-600 mb-2">SyncVap CRM</h1>
+                            <p className="text-gray-600">Your Business Address</p>
+                            <p className="text-gray-600">Phone: (000) 000-0000 | Email: info@syncvap.com</p>
+                          </div>
+
+                          <h2 className="invoice-title text-2xl font-bold text-center mb-8">INVOICE</h2>
+
+                          {/* Bill Info */}
+                          <div className="bill-info flex justify-between mb-8">
+                            <div className="customer-info">
+                              <h3 className="section-title text-lg font-semibold text-gray-700 mb-3">Bill To:</h3>
+                              <p className="font-semibold text-lg">{selectedBill.customerName || dealer?.name}</p>
+                              <p className="text-gray-600">{dealer?.address || 'Address not available'}</p>
+                              <p className="text-gray-600">{selectedBill.customerPhone || dealer?.phoneNumber}</p>
+                            </div>
+                            <div className="invoice-details text-right">
+                              <p className="mb-2"><span className="font-semibold">Invoice #:</span> {selectedBill.billNumber}</p>
+                              <p className="mb-2"><span className="font-semibold">Date:</span> {formatDate(selectedBill.createdAt).split(',')[0]}</p>
+                              <p className="mb-2">
+                                <span className="font-semibold">Status:</span>
+                                <span className={`ml-2 px-2 py-1 rounded text-sm ${
+                                  selectedBill.paymentStatus === 'completed'
+                                    ? 'bg-green-100 text-green-800'
+                                    : selectedBill.paymentStatus === 'partial'
+                                    ? 'bg-yellow-100 text-yellow-800'
+                                    : 'bg-red-100 text-red-800'
+                                }`}>
+                                  {selectedBill.paymentStatus === 'completed' ? 'Paid' : selectedBill.paymentStatus === 'partial' ? 'Partially Paid' : 'Pending'}
+                                </span>
+                              </p>
+                            </div>
+                          </div>
+
+                          {/* Items Table */}
+                          <table className="w-full border-collapse mb-8">
+                            <thead>
+                              <tr className="bg-gray-100">
+                                <th className="text-left p-3 border-b border-gray-300 font-semibold">Item</th>
+                                <th className="text-center p-3 border-b border-gray-300 font-semibold">Qty</th>
+                                <th className="text-right p-3 border-b border-gray-300 font-semibold">Unit Price</th>
+                                <th className="text-right p-3 border-b border-gray-300 font-semibold">Total</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {selectedBill.items?.map((item, index) => (
+                                <tr key={index} className="border-b border-gray-200">
+                                  <td className="p-3">
+                                    <div>
+                                      <div className="font-medium">{item.itemName}</div>
+                                      {item.serialNumber && (
+                                        <div className="text-xs text-gray-500">S/N: {item.serialNumber}</div>
+                                      )}
+                                    </div>
+                                  </td>
+                                  <td className="text-center p-3">{item.quantity}</td>
+                                  <td className="text-right p-3">{formatCurrency(item.unitPrice)}</td>
+                                  <td className="text-right p-3">{formatCurrency(item.totalPrice)}</td>
+                                </tr>
+                              )) || (
+                                <tr>
+                                  <td colSpan="4" className="text-center py-8 text-gray-500">No items found</td>
+                                </tr>
+                              )}
+                            </tbody>
+                          </table>
+
+                          {/* Totals */}
+                          <div className="totals text-right max-w-sm ml-auto">
+                            <div className="total-row flex justify-between py-2">
+                              <span className="font-semibold">Subtotal:</span>
+                              <span>{formatCurrency(selectedBill.subtotal || 0)}</span>
+                            </div>
+                            <div className="final-total flex justify-between py-3 border-t-2 border-gray-800 text-lg font-bold">
+                              <span>Total:</span>
+                              <span>{formatCurrency(selectedBill.total || 0)}</span>
+                            </div>
+                            <div className="total-row flex justify-between py-2">
+                              <span className="font-semibold">Paid:</span>
+                              <span className="text-green-600">{formatCurrency(selectedBill.paidAmount || 0)}</span>
+                            </div>
+                            <div className="total-row flex justify-between py-2">
+                              <span className="font-semibold">Pending:</span>
+                              <span className={(selectedBill.dueAmount || 0) > 0 ? 'text-red-600' : 'text-green-600'}>
+                                {formatCurrency(selectedBill.dueAmount || 0)}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
                     ) : (
-                      <p className="text-center py-8 text-gray-500">Click on Bills tab to load bill history</p>
+                      /* Bills List View */
+                      <div>
+                        {loadingBills ? (
+                          <div className="flex justify-center py-12">
+                            <LoadingSpinner />
+                          </div>
+                        ) : billsSummary ? (
+                          <>
+                            {/* Bills Summary */}
+                            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                              <div className="bg-orange-50 rounded-lg p-4 border border-orange-200">
+                                <h4 className="font-medium text-orange-900 mb-2">Total Bills</h4>
+                                <p className="text-2xl font-bold text-orange-600">{billsSummary.totalBills}</p>
+                              </div>
+                              <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
+                                <h4 className="font-medium text-blue-900 mb-2">Total Amount</h4>
+                                <p className="text-2xl font-bold text-blue-600">₹{billsSummary.totalAmount}</p>
+                              </div>
+                              <div className="bg-green-50 rounded-lg p-4 border border-green-200">
+                                <h4 className="font-medium text-green-900 mb-2">Paid Amount</h4>
+                                <p className="text-2xl font-bold text-green-600">₹{billsSummary.totalPaid}</p>
+                              </div>
+                              <div className="bg-red-50 rounded-lg p-4 border border-red-200">
+                                <h4 className="font-medium text-red-900 mb-2">Due Amount</h4>
+                                <p className="text-2xl font-bold text-red-600">₹{billsSummary.totalDue}</p>
+                              </div>
+                            </div>
+
+                            {/* Bills List */}
+                            <BillHistoryTable
+                              bills={bills}
+                              loading={loadingBills}
+                              onViewBill={handleViewBill}
+                            />
+                          </>
+                        ) : (
+                          <p className="text-center py-8 text-gray-500">Click on Bills tab to load bill history</p>
+                        )}
+                      </div>
                     )}
                   </div>
                 )}
@@ -957,16 +1251,6 @@ export default function DealerDetailModal({ isOpen, onClose, dealerId, onDealerU
         </div>
       </div>
 
-      {/* View Bill Modal */}
-      <ViewBillModal
-        isOpen={showViewBillModal}
-        onClose={() => {
-          setShowViewBillModal(false);
-          setSelectedBill(null);
-        }}
-        bill={selectedBill}
-        customerInfo={dealer}
-      />
 
       {/* Payment Confirmation Modal */}
       {showPaymentModal && (
