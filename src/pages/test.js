@@ -1,444 +1,669 @@
-import React, { useState, useRef } from 'react';
-import { Eye, Printer, Download, ArrowLeft, FileText, Calendar, DollarSign, Clock } from 'lucide-react';
+import React, { useState } from 'react';
+import { Home, List, Check, FileText, Calendar, User, Bell, Settings, Phone, MessageCircle, Eye, Package, ChevronDown, ArrowLeft, MoreVertical } from 'lucide-react';
 
-const BillManagementSystem = () => {
-  const [currentView, setCurrentView] = useState('summary');
-  const [selectedBill, setSelectedBill] = useState(null);
-  const printRef = useRef();
+const TaskManagerApp = () => {
+  const [currentView, setCurrentView] = useState('home');
 
-  // Sample bill data
-  const bills = [
-    {
-      id: 'INV-2024-001',
-      customerName: 'John Doe',
-      customerAddress: '123 Main Street, New York, NY 10001',
-      customerPhone: '+1 (555) 123-4567',
-      customerEmail: 'john.doe@email.com',
-      date: '2024-09-15',
-      dueDate: '2024-10-15',
-      items: [
-        { name: 'Laptop Computer', quantity: 1, price: 999.99, discount: 50 },
-        { name: 'Wireless Mouse', quantity: 2, price: 29.99, discount: 5 },
-        { name: 'USB Cable', quantity: 3, price: 12.99, discount: 0 }
-      ],
-      paid: 850,
-      tax: 89.25,
-      status: 'Partially Paid'
-    },
-    {
-      id: 'INV-2024-002',
-      customerName: 'Jane Smith',
-      customerAddress: '456 Oak Avenue, Los Angeles, CA 90210',
-      customerPhone: '+1 (555) 987-6543',
-      customerEmail: 'jane.smith@email.com',
-      date: '2024-09-14',
-      dueDate: '2024-10-14',
-      items: [
-        { name: 'Office Chair', quantity: 2, price: 199.99, discount: 20 },
-        { name: 'Desk Lamp', quantity: 1, price: 79.99, discount: 10 }
-      ],
-      paid: 449.97,
-      tax: 35.60,
-      status: 'Paid'
-    },
-    {
-      id: 'INV-2024-003',
-      customerName: 'Bob Johnson',
-      customerAddress: '789 Pine Road, Chicago, IL 60601',
-      customerPhone: '+1 (555) 246-8135',
-      customerEmail: 'bob.johnson@email.com',
-      date: '2024-09-13',
-      dueDate: '2024-10-13',
-      items: [
-        { name: 'Monitor', quantity: 1, price: 299.99, discount: 0 },
-        { name: 'Keyboard', quantity: 1, price: 89.99, discount: 15 },
-        { name: 'Headphones', quantity: 1, price: 149.99, discount: 25 }
-      ],
-      paid: 0,
-      tax: 42.98,
-      status: 'Pending'
-    }
-  ];
-
-  const calculateBillTotals = (bill) => {
-    const subtotal = bill.items.reduce((sum, item) => {
-      const itemTotal = (item.quantity * item.price) - item.discount;
-      return sum + itemTotal;
-    }, 0);
-    
-    const total = subtotal + bill.tax;
-    const pending = total - bill.paid;
-    
-    return { subtotal, total, pending };
-  };
-
-  const handleViewBill = (bill) => {
-    setSelectedBill(bill);
-    setCurrentView('detail');
-  };
-
-  const handlePrint = () => {
-    const printContent = printRef.current;
-    const WinPrint = window.open('', '', 'width=900,height=650');
-    WinPrint.document.write(`
-      <html>
-        <head>
-          <title>Invoice ${selectedBill.id}</title>
-          <style>
-            body { font-family: Arial, sans-serif; margin: 20px; color: #333; }
-            .print-content { max-width: 800px; margin: 0 auto; }
-            .header { text-align: center; margin-bottom: 30px; border-bottom: 2px solid #333; padding-bottom: 20px; }
-            .company-name { font-size: 28px; font-weight: bold; color: #2563eb; margin-bottom: 10px; }
-            .invoice-title { font-size: 24px; font-weight: bold; margin-bottom: 20px; }
-            .bill-info { display: flex; justify-content: space-between; margin-bottom: 30px; }
-            .customer-info, .invoice-details { width: 45%; }
-            .section-title { font-size: 18px; font-weight: bold; margin-bottom: 10px; color: #374151; }
-            table { width: 100%; border-collapse: collapse; margin: 20px 0; }
-            th, td { padding: 12px; text-align: left; border-bottom: 1px solid #ddd; }
-            th { background-color: #f3f4f6; font-weight: bold; }
-            .text-right { text-align: right; }
-            .totals { margin-top: 20px; }
-            .total-row { display: flex; justify-content: space-between; padding: 5px 0; }
-            .final-total { font-size: 18px; font-weight: bold; border-top: 2px solid #333; padding-top: 10px; margin-top: 10px; }
-            @media print { body { margin: 0; } }
-          </style>
-        </head>
-        <body>
-          ${printContent.innerHTML}
-        </body>
-      </html>
-    `);
-    WinPrint.document.close();
-    WinPrint.focus();
-    WinPrint.print();
-    WinPrint.close();
-  };
-
-  const handleDownloadPDF = async () => {
-    // Create a simplified HTML version for PDF generation
-    const billTotals = calculateBillTotals(selectedBill);
-    const htmlContent = `
-      <div style="font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px;">
-        <div style="text-align: center; margin-bottom: 30px; border-bottom: 2px solid #333; padding-bottom: 20px;">
-          <h1 style="color: #2563eb; margin-bottom: 10px;">Your Company Name</h1>
-          <p>123 Business Street, City, State 12345</p>
-          <p>Phone: (555) 000-0000 | Email: info@company.com</p>
-        </div>
+  // Home Screen Component
+  const HomeScreen = () => (
+    <div className="flex-1 px-4 py-2 overflow-y-auto">
+      {/* Today's Schedule Card */}
+      <div className="bg-white rounded-lg shadow-md p-3 mb-3">
+        <div className="text-gray-600 text-xs mb-1">Today's Schedule</div>
+        <div className="text-base font-bold text-gray-800 mb-3">September 19, 2025</div>
         
-        <h2 style="text-align: center; margin-bottom: 30px;">INVOICE</h2>
-        
-        <div style="display: flex; justify-content: space-between; margin-bottom: 30px;">
-          <div>
-            <h3>Bill To:</h3>
-            <p><strong>${selectedBill.customerName}</strong></p>
-            <p>${selectedBill.customerAddress}</p>
-            <p>${selectedBill.customerPhone}</p>
-            <p>${selectedBill.customerEmail}</p>
+        {/* Stats Grid */}
+        <div className="grid grid-cols-2 gap-2">
+          {/* Active Assignments */}
+          <div className="bg-slate-100 border border-slate-200 rounded-lg p-2">
+            <div className="w-6 h-6 bg-slate-600 rounded-lg flex items-center justify-center mb-1">
+              <FileText size={12} className="text-white" />
+            </div>
+            <div className="text-xs text-slate-600 mb-1">Active Assignments</div>
+            <div className="flex items-baseline gap-1">
+              <div className="text-xl font-bold text-slate-800">0</div>
+              <div className="text-xs text-slate-600">tasks</div>
+            </div>
           </div>
-          <div>
-            <p><strong>Invoice #:</strong> ${selectedBill.id}</p>
-            <p><strong>Date:</strong> ${selectedBill.date}</p>
-            <p><strong>Due Date:</strong> ${selectedBill.dueDate}</p>
-            <p><strong>Status:</strong> ${selectedBill.status}</p>
+
+          {/* Pending Approvals */}
+          <div className="bg-orange-50 border border-orange-200 rounded-lg p-2 cursor-pointer" onClick={() => setCurrentView('approvals')}>
+            <div className="w-6 h-6 bg-orange-600 rounded-lg flex items-center justify-center mb-1">
+              <Calendar size={12} className="text-white" />
+            </div>
+            <div className="text-xs text-orange-700 mb-1">Pending Approvals</div>
+            <div className="flex items-baseline gap-1">
+              <div className="text-xl font-bold text-orange-800">4</div>
+              <div className="text-xs text-orange-700">tasks</div>
+            </div>
           </div>
-        </div>
-        
-        <table style="width: 100%; border-collapse: collapse; margin: 20px 0;">
-          <thead>
-            <tr style="background-color: #f3f4f6;">
-              <th style="padding: 12px; border-bottom: 1px solid #ddd;">Item</th>
-              <th style="padding: 12px; border-bottom: 1px solid #ddd; text-align: center;">Qty</th>
-              <th style="padding: 12px; border-bottom: 1px solid #ddd; text-align: right;">Price</th>
-              <th style="padding: 12px; border-bottom: 1px solid #ddd; text-align: right;">Discount</th>
-              <th style="padding: 12px; border-bottom: 1px solid #ddd; text-align: right;">Total</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${selectedBill.items.map(item => `
-              <tr>
-                <td style="padding: 12px; border-bottom: 1px solid #ddd;">${item.name}</td>
-                <td style="padding: 12px; border-bottom: 1px solid #ddd; text-align: center;">${item.quantity}</td>
-                <td style="padding: 12px; border-bottom: 1px solid #ddd; text-align: right;">$${item.price.toFixed(2)}</td>
-                <td style="padding: 12px; border-bottom: 1px solid #ddd; text-align: right;">$${item.discount.toFixed(2)}</td>
-                <td style="padding: 12px; border-bottom: 1px solid #ddd; text-align: right;">$${((item.quantity * item.price) - item.discount).toFixed(2)}</td>
-              </tr>
-            `).join('')}
-          </tbody>
-        </table>
-        
-        <div style="margin-top: 30px; text-align: right;">
-          <p><strong>Subtotal: $${billTotals.subtotal.toFixed(2)}</strong></p>
-          <p><strong>Tax: $${selectedBill.tax.toFixed(2)}</strong></p>
-          <p style="font-size: 18px; border-top: 2px solid #333; padding-top: 10px;"><strong>Total: $${billTotals.total.toFixed(2)}</strong></p>
-          <p><strong>Paid: $${selectedBill.paid.toFixed(2)}</strong></p>
-          <p style="color: ${billTotals.pending > 0 ? '#dc2626' : '#16a34a'};"><strong>Pending: $${billTotals.pending.toFixed(2)}</strong></p>
+
+          {/* Completed */}
+          <div className="bg-green-50 border border-green-200 rounded-lg p-2">
+            <div className="w-6 h-6 bg-green-600 rounded-lg flex items-center justify-center mb-1">
+              <Check size={12} className="text-white" />
+            </div>
+            <div className="text-xs text-green-700 mb-1">Completed</div>
+            <div className="flex items-baseline gap-1">
+              <div className="text-xl font-bold text-green-800">5</div>
+              <div className="text-xs text-green-700">tasks</div>
+            </div>
+          </div>
+
+          {/* Inventory Items */}
+          <div className="bg-slate-100 border border-slate-200 rounded-lg p-2 cursor-pointer" onClick={() => setCurrentView('inventory')}>
+            <div className="w-6 h-6 bg-slate-600 rounded-lg flex items-center justify-center mb-1">
+              <div className="w-3 h-3 border-2 border-white rounded"></div>
+            </div>
+            <div className="text-xs text-slate-600 mb-1">Inventory Items</div>
+            <div className="flex items-baseline gap-1">
+              <div className="text-xl font-bold text-slate-800">5</div>
+              <div className="text-xs text-slate-600">units</div>
+            </div>
+          </div>
         </div>
       </div>
-    `;
 
-    // Create a blob and download
-    const blob = new Blob([htmlContent], { type: 'text/html' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `invoice_${selectedBill.id}.html`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-    
-    alert('Invoice downloaded as HTML file. You can open it in a browser and print to PDF.');
-  };
-
-  if (currentView === 'detail' && selectedBill) {
-    const billTotals = calculateBillTotals(selectedBill);
-    
-    return (
-      <div className="min-h-screen bg-gray-50 p-4">
-        <div className="max-w-4xl mx-auto">
-          {/* Header Actions */}
-          <div className="flex justify-between items-center mb-6">
-            <button
-              onClick={() => setCurrentView('summary')}
-              className="flex items-center gap-2 px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
-            >
-              <ArrowLeft size={20} />
-              Back to Summary
+      {/* Your Tasks Section */}
+      <div className="bg-white rounded-lg shadow-md p-3">
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="text-sm font-bold text-gray-800">Your Tasks</h3>
+          <div className="flex gap-1">
+            <button className="px-2 py-1 bg-orange-100 text-orange-700 rounded text-xs font-medium border border-orange-200 hover:bg-orange-200">
+              Return
             </button>
-            <div className="flex gap-3">
-              <button
-                onClick={handlePrint}
-                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-              >
-                <Printer size={20} />
-                Print
-              </button>
-              <button
-                onClick={handleDownloadPDF}
-                className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
-              >
-                <Download size={20} />
-                Download PDF
-              </button>
+            <button 
+              className="px-2 py-1 bg-slate-100 text-slate-700 rounded text-xs font-medium border border-slate-200 hover:bg-slate-200"
+              onClick={() => setCurrentView('inventory')}
+            >
+              View Inventory
+            </button>
+          </div>
+        </div>
+
+        {/* Task List */}
+        <div className="space-y-2">
+          {/* CCTV Camera Task */}
+          <div className="flex items-center gap-2 p-2 bg-gray-100 rounded-lg border border-slate-200 cursor-pointer" onClick={() => setCurrentView('active')}>
+            <div className="w-8 h-8 bg-slate-600 rounded-lg flex items-center justify-center">
+              <FileText size={14} className="text-white" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="font-semibold text-sm text-slate-800">CCTV Camera</div>
+              <div className="text-xs text-slate-700 bg-slate-200 inline-block px-2 py-0.5 rounded mt-0.5">
+                New Installation
+              </div>
+              <div className="flex items-center gap-1 mt-1 text-xs text-slate-600">
+                <User size={10} />
+                <span>Harpreet Singh</span>
+              </div>
+            </div>
+            <div className="px-2 py-1 bg-orange-100 text-orange-700 rounded text-xs font-medium border border-orange-200">
+              Pending
             </div>
           </div>
 
-          {/* Bill Detail */}
-          <div ref={printRef} className="print-content bg-white rounded-lg shadow-lg p-8">
-            {/* Company Header */}
-            <div className="header text-center mb-8 border-b-2 border-gray-800 pb-6">
-              <h1 className="company-name text-3xl font-bold text-blue-600 mb-2">Your Company Name</h1>
-              <p className="text-gray-600">123 Business Street, City, State 12345</p>
-              <p className="text-gray-600">Phone: (555) 000-0000 | Email: info@company.com</p>
+          {/* Attendance System Task 1 */}
+          <div className="flex items-center gap-2 p-2 bg-gray-100 rounded-lg border border-slate-200">
+            <div className="w-8 h-8 bg-slate-600 rounded-lg flex items-center justify-center">
+              <FileText size={14} className="text-white" />
             </div>
-
-            <h2 className="invoice-title text-2xl font-bold text-center mb-8">INVOICE</h2>
-
-            {/* Bill Info */}
-            <div className="bill-info flex justify-between mb-8">
-              <div className="customer-info">
-                <h3 className="section-title text-lg font-semibold text-gray-700 mb-3">Bill To:</h3>
-                <p className="font-semibold text-lg">{selectedBill.customerName}</p>
-                <p className="text-gray-600">{selectedBill.customerAddress}</p>
-                <p className="text-gray-600">{selectedBill.customerPhone}</p>
-                <p className="text-gray-600">{selectedBill.customerEmail}</p>
+            <div className="flex-1 min-w-0">
+              <div className="font-semibold text-sm text-slate-800">Attendance System</div>
+              <div className="text-xs text-slate-700 bg-slate-200 inline-block px-2 py-0.5 rounded mt-0.5">
+                New Installation
               </div>
-              <div className="invoice-details text-right">
-                <p className="mb-2"><span className="font-semibold">Invoice #:</span> {selectedBill.id}</p>
-                <p className="mb-2"><span className="font-semibold">Date:</span> {selectedBill.date}</p>
-                <p className="mb-2"><span className="font-semibold">Due Date:</span> {selectedBill.dueDate}</p>
-                <p className="mb-2">
-                  <span className="font-semibold">Status:</span> 
-                  <span className={`ml-2 px-2 py-1 rounded text-sm ${
-                    selectedBill.status === 'Paid' 
-                      ? 'bg-green-100 text-green-800' 
-                      : selectedBill.status === 'Partially Paid'
-                      ? 'bg-yellow-100 text-yellow-800'
-                      : 'bg-red-100 text-red-800'
-                  }`}>
-                    {selectedBill.status}
-                  </span>
-                </p>
+              <div className="flex items-center gap-1 mt-1 text-xs text-slate-600">
+                <User size={10} />
+                <span>Angrej Singh</span>
               </div>
             </div>
+            <div className="px-2 py-1 bg-orange-100 text-orange-700 rounded text-xs font-medium border border-orange-200">
+              Pending
+            </div>
+          </div>
 
-            {/* Items Table */}
-            <table className="w-full border-collapse mb-8">
-              <thead>
-                <tr className="bg-gray-100">
-                  <th className="text-left p-3 border-b border-gray-300 font-semibold">Item</th>
-                  <th className="text-center p-3 border-b border-gray-300 font-semibold">Qty</th>
-                  <th className="text-right p-3 border-b border-gray-300 font-semibold">Price</th>
-                  <th className="text-right p-3 border-b border-gray-300 font-semibold">Discount</th>
-                  <th className="text-right p-3 border-b border-gray-300 font-semibold">Total</th>
-                </tr>
-              </thead>
-              <tbody>
-                {selectedBill.items.map((item, index) => (
-                  <tr key={index} className="border-b border-gray-200">
-                    <td className="p-3">{item.name}</td>
-                    <td className="text-center p-3">{item.quantity}</td>
-                    <td className="text-right p-3">${item.price.toFixed(2)}</td>
-                    <td className="text-right p-3">${item.discount.toFixed(2)}</td>
-                    <td className="text-right p-3">${((item.quantity * item.price) - item.discount).toFixed(2)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-
-            {/* Totals */}
-            <div className="totals text-right max-w-sm ml-auto">
-              <div className="total-row flex justify-between py-2">
-                <span className="font-semibold">Subtotal:</span>
-                <span>${billTotals.subtotal.toFixed(2)}</span>
+          {/* Attendance System Task 2 */}
+          <div className="flex items-center gap-2 p-2 bg-gray-100 rounded-lg border border-slate-200">
+            <div className="w-8 h-8 bg-slate-600 rounded-lg flex items-center justify-center">
+              <div className="w-3 h-3 border-2 border-white rounded"></div>
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="font-semibold text-sm text-slate-800">Attendance System</div>
+              <div className="text-xs text-slate-700 bg-slate-200 inline-block px-2 py-0.5 rounded mt-0.5">
+                Repair
               </div>
-              <div className="total-row flex justify-between py-2">
-                <span className="font-semibold">Tax:</span>
-                <span>${selectedBill.tax.toFixed(2)}</span>
+              <div className="flex items-center gap-1 mt-1 text-xs text-slate-600">
+                <User size={10} />
+                <span>Harpreet Singh</span>
               </div>
-              <div className="final-total flex justify-between py-3 border-t-2 border-gray-800 text-lg font-bold">
-                <span>Total:</span>
-                <span>${billTotals.total.toFixed(2)}</span>
-              </div>
-              <div className="total-row flex justify-between py-2">
-                <span className="font-semibold">Paid:</span>
-                <span className="text-green-600">${selectedBill.paid.toFixed(2)}</span>
-              </div>
-              <div className="total-row flex justify-between py-2">
-                <span className="font-semibold">Pending:</span>
-                <span className={billTotals.pending > 0 ? 'text-red-600' : 'text-green-600'}>
-                  ${billTotals.pending.toFixed(2)}
-                </span>
-              </div>
+            </div>
+            <div className="px-2 py-1 bg-red-100 text-red-700 rounded text-xs font-medium border border-red-200">
+              Rejected
             </div>
           </div>
         </div>
       </div>
-    );
-  }
+    </div>
+  );
 
-  // Summary View
+  // All Projects Screen Component
+  const AllProjectsScreen = () => (
+    <div className="flex-1 px-4 py-2 overflow-y-auto">
+      {/* All Projects Card */}
+      <div className="bg-white rounded-lg shadow-md p-4 mb-3 border border-slate-200">
+        <div className="flex items-center gap-2 mb-3">
+          <div className="w-8 h-8 bg-slate-600 rounded-lg flex items-center justify-center">
+            <List size={16} className="text-white" />
+          </div>
+          <div>
+            <div className="text-lg font-bold text-slate-800">All Projects</div>
+            <div className="text-sm text-slate-600">Overview of your assignments</div>
+          </div>
+        </div>
+
+        {/* Total Projects */}
+        <div className="bg-slate-100 border border-slate-200 rounded-lg p-2 mb-3">
+          <div className="flex justify-between items-center">
+            <span className="text-sm text-slate-600">Total Projects:</span>
+            <span className="text-xl font-bold text-slate-800">15</span>
+          </div>
+        </div>
+
+        {/* Stats Grid */}
+        <div className="grid grid-cols-2 gap-2">
+          {/* Assigned */}
+          <div className="bg-slate-100 border border-slate-200 rounded-lg p-2 text-center">
+            <div className="text-2xl font-bold text-slate-800">0</div>
+            <div className="text-xs text-slate-600">Assigned</div>
+          </div>
+
+          {/* Approval */}
+          <div className="bg-orange-50 border border-orange-200 rounded-lg p-2 text-center cursor-pointer" onClick={() => setCurrentView('approvals')}>
+            <div className="text-2xl font-bold text-orange-800">4</div>
+            <div className="text-xs text-orange-700">Approval</div>
+          </div>
+
+          {/* Paused */}
+          <div className="bg-slate-100 border border-slate-200 rounded-lg p-2 text-center">
+            <div className="text-2xl font-bold text-slate-800">0</div>
+            <div className="text-xs text-slate-600">Paused</div>
+          </div>
+
+          {/* Completed */}
+          <div className="bg-green-50 border border-green-200 rounded-lg p-2 text-center">
+            <div className="text-2xl font-bold text-green-800">5</div>
+            <div className="text-xs text-green-700">Completed</div>
+          </div>
+        </div>
+      </div>
+
+      {/* Active Assignments Section */}
+      <div className="bg-white rounded-lg shadow-md p-3">
+        <h3 className="text-sm font-bold text-gray-800 mb-3">Active Assignments</h3>
+
+        {/* Assignment List */}
+        <div className="space-y-2">
+          {/* Attendance System */}
+          <div className="flex items-center gap-2 p-2 bg-gray-100 rounded-lg border border-slate-200">
+            <div className="w-8 h-8 bg-orange-500 rounded-lg flex items-center justify-center">
+              <FileText size={14} className="text-white" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="font-semibold text-sm text-slate-800">Attendance System</div>
+              <div className="text-xs text-slate-600 mt-0.5">
+                Order ID: WO-20250609-0004
+              </div>
+            </div>
+            <div className="px-2 py-1 bg-orange-100 text-orange-700 rounded text-xs font-medium border border-orange-200">
+              Pending-Approval
+            </div>
+          </div>
+
+          {/* IT & Networking */}
+          <div className="flex items-center gap-2 p-2 bg-gray-100 rounded-lg border border-slate-200">
+            <div className="w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center">
+              <FileText size={14} className="text-white" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="font-semibold text-sm text-slate-800">IT & Networking ...</div>
+              <div className="text-xs text-slate-600 mt-0.5">
+                Order ID: WO-20250608-0004
+              </div>
+            </div>
+            <div className="px-2 py-1 bg-red-100 text-red-700 rounded text-xs font-medium border border-red-200">
+              Rejected
+            </div>
+          </div>
+
+          {/* Software & Website */}
+          <div className="flex items-center gap-2 p-2 bg-gray-100 rounded-lg border border-slate-200">
+            <div className="w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center">
+              <FileText size={14} className="text-white" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="font-semibold text-sm text-slate-800">Software & Websi...</div>
+              <div className="text-xs text-slate-600 mt-0.5">
+                Order ID: WO-20250608-0003
+              </div>
+            </div>
+            <div className="px-2 py-1 bg-red-100 text-red-700 rounded text-xs font-medium border border-red-200">
+              Rejected
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
+  // Pending Approvals Screen Component
+  const PendingApprovalsScreen = () => (
+    <div className="flex-1 px-4 py-2 overflow-y-auto">
+      {/* Pending Approvals Card */}
+      <div className="bg-gradient-to-br from-orange-400 to-orange-600 rounded-lg shadow-md p-4 mb-3 text-white">
+        <div className="flex items-center gap-2 mb-3">
+          <div className="w-8 h-8 bg-orange-700 rounded-lg flex items-center justify-center">
+            <Calendar size={16} className="text-white" />
+          </div>
+          <div>
+            <div className="text-lg font-bold">Pending Approvals</div>
+            <div className="text-sm opacity-90">Projects awaiting approval</div>
+          </div>
+        </div>
+
+        {/* Total Pending */}
+        <div className="bg-orange-300/30 rounded-lg p-2 mb-3">
+          <div className="flex justify-between items-center">
+            <span className="text-sm opacity-90">Total Pending:</span>
+            <span className="text-xl font-bold">4 projects</span>
+          </div>
+        </div>
+
+        {/* Back to Home Button */}
+        <button 
+          className="w-full bg-orange-700 hover:bg-orange-800 rounded-lg p-2 flex items-center justify-center gap-2 text-white font-medium text-sm"
+          onClick={() => setCurrentView('home')}
+        >
+          <Home size={16} />
+          Back to Home
+        </button>
+      </div>
+
+      {/* Pending Approval Projects Section */}
+      <div className="bg-white rounded-lg shadow-md p-3">
+        <h3 className="text-sm font-bold text-gray-800 mb-3">Pending Approval Projects</h3>
+
+        {/* Project List */}
+        <div className="space-y-2">
+          {/* Attendance System */}
+          <div className="flex items-center gap-2 p-2 bg-gray-100 rounded-lg border border-slate-200">
+            <div className="w-8 h-8 bg-orange-500 rounded-lg flex items-center justify-center">
+              <Calendar size={14} className="text-white" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="font-semibold text-sm text-slate-800">Attendance System</div>
+              <div className="text-xs text-slate-600 mt-0.5">
+                Order ID: WO-20250609-0004
+              </div>
+            </div>
+            <div className="px-2 py-1 bg-orange-100 text-orange-700 rounded text-xs font-medium border border-orange-200">
+              Pending-Approval
+            </div>
+          </div>
+
+          {/* CCTV Camera 1 */}
+          <div className="flex items-center gap-2 p-2 bg-gray-100 rounded-lg border border-slate-200">
+            <div className="w-8 h-8 bg-orange-500 rounded-lg flex items-center justify-center">
+              <Calendar size={14} className="text-white" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="font-semibold text-sm text-slate-800">CCTV Camera</div>
+              <div className="text-xs text-slate-600 mt-0.5">
+                Order ID: WO-20250608-0002
+              </div>
+            </div>
+            <div className="px-2 py-1 bg-orange-100 text-orange-700 rounded text-xs font-medium border border-orange-200">
+              Pending-Approval
+            </div>
+          </div>
+
+          {/* CCTV Camera 2 */}
+          <div className="flex items-center gap-2 p-2 bg-gray-100 rounded-lg border border-slate-200">
+            <div className="w-8 h-8 bg-orange-500 rounded-lg flex items-center justify-center">
+              <Calendar size={14} className="text-white" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="font-semibold text-sm text-slate-800">CCTV Camera</div>
+              <div className="text-xs text-slate-600 mt-0.5">
+                Order ID: WO-20250527-0001
+              </div>
+            </div>
+            <div className="px-2 py-1 bg-orange-100 text-orange-700 rounded text-xs font-medium border border-orange-200">
+              Pending-Approval
+            </div>
+          </div>
+
+          {/* CCTV Camera 3 */}
+          <div className="flex items-center gap-2 p-2 bg-gray-100 rounded-lg border border-slate-200">
+            <div className="w-8 h-8 bg-orange-500 rounded-lg flex items-center justify-center">
+              <Calendar size={14} className="text-white" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="font-semibold text-sm text-slate-800">CCTV Camera</div>
+              <div className="text-xs text-slate-600 mt-0.5">
+                Order ID: WO-20250423-0001
+              </div>
+            </div>
+            <div className="px-2 py-1 bg-orange-100 text-orange-700 rounded text-xs font-medium border border-orange-200">
+              Pending-Approval
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
+  // Active Project Screen Component
+  const ActiveProjectScreen = () => (
+    <div className="flex-1 px-4 py-2 overflow-y-auto">
+      {/* Active Projects Card */}
+      <div className="bg-gradient-to-br from-blue-400 to-blue-600 rounded-lg shadow-md p-4 mb-3 text-white">
+        <div className="flex items-center gap-2 mb-3">
+          <div className="w-8 h-8 bg-blue-700 rounded-lg flex items-center justify-center">
+            <FileText size={16} className="text-white" />
+          </div>
+          <div>
+            <div className="text-lg font-bold">Active Projects</div>
+            <div className="text-sm opacity-90">Current assignment</div>
+          </div>
+        </div>
+
+        {/* Project Details */}
+        <div className="mb-4">
+          <div className="text-lg font-bold mb-1">CCTV Camera</div>
+          <div className="text-sm opacity-90">Type: Repair</div>
+        </div>
+
+        {/* Generate Bill Button */}
+        <button className="w-full bg-blue-700 hover:bg-blue-800 rounded-lg p-2 flex items-center justify-center gap-2 text-white font-medium text-sm">
+          <FileText size={16} />
+          Generate Bill
+        </button>
+      </div>
+
+      {/* Contact Cards */}
+      <div className="space-y-3">
+        {/* Harpreet Singh Contact */}
+        <div className="bg-white rounded-lg shadow-md p-3">
+          <h3 className="text-sm font-bold text-gray-800 mb-1">Harpreet Singh</h3>
+          <p className="text-xs text-gray-600 mb-3">happo gali sahmne khanbe nal baneya</p>
+          
+          <div className="flex gap-2">
+            <button className="flex-1 bg-blue-500 hover:bg-blue-600 text-white rounded-lg p-2 flex items-center justify-center gap-2 text-sm font-medium">
+              <MessageCircle size={14} />
+              Message
+            </button>
+            <button className="flex-1 bg-green-500 hover:bg-green-600 text-white rounded-lg p-2 flex items-center justify-center gap-2 text-sm font-medium">
+              <Phone size={14} />
+              Call
+            </button>
+          </div>
+        </div>
+
+        {/* Setup Technician */}
+        <div className="bg-white rounded-lg shadow-md p-3">
+          <h3 className="text-sm font-bold text-purple-600 mb-1">Setup Technician</h3>
+          <p className="text-sm text-gray-800 mb-1">Arveet Singh</p>
+          <p className="text-xs text-gray-600 mb-3">Installation date: 18 May 2025, 08:57 pm</p>
+          
+          <button className="w-full bg-purple-500 hover:bg-purple-600 text-white rounded-lg p-2 flex items-center justify-center gap-2 text-sm font-medium">
+            <Phone size={14} />
+            Call Original Technician
+          </button>
+        </div>
+
+        {/* Report History */}
+        <div className="bg-white rounded-lg shadow-md p-3">
+          <h3 className="text-sm font-bold text-gray-800 mb-2">Report History</h3>
+          <p className="text-xs text-gray-600 mb-3">Recent updates</p>
+          
+          {/* Status Update */}
+          <div className="flex justify-between items-start mb-3">
+            <div className="flex-1">
+              <div className="w-1 h-full bg-blue-400 rounded-full mr-3 float-left mt-1"></div>
+              <div className="ml-4">
+                <p className="text-sm font-medium text-gray-800">Technician</p>
+                <p className="text-xs text-gray-600">Status changed to in-progress</p>
+              </div>
+            </div>
+            <div className="text-xs text-gray-500 text-right">
+              <div>19 Sept 2025, 03:51 pm</div>
+            </div>
+          </div>
+          
+          <button className="w-full bg-slate-100 hover:bg-slate-200 text-blue-500 rounded-lg p-2 flex items-center justify-center gap-2 text-sm font-medium border border-slate-200">
+            <Eye size={14} />
+            View Complete History
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+
+  // Inventory Screen Component
+  const InventoryScreen = () => (
+    <div className="flex-1 px-4 py-2 overflow-y-auto">
+      {/* My Inventory Card */}
+      <div className="bg-gradient-to-br from-teal-400 to-teal-600 rounded-lg shadow-md p-4 mb-3 text-white">
+        <div className="flex items-center gap-2 mb-3">
+          <div className="w-8 h-8 bg-teal-700 rounded-lg flex items-center justify-center">
+            <Package size={16} className="text-white" />
+          </div>
+          <div>
+            <div className="text-lg font-bold">My Inventory</div>
+            <div className="text-sm opacity-90">Manage your stock</div>
+          </div>
+        </div>
+
+        {/* Total Units */}
+        <div className="bg-teal-300/30 rounded-lg p-2 mb-3">
+          <div className="flex justify-between items-center">
+            <span className="text-sm opacity-90">Total Units:</span>
+            <span className="text-xl font-bold">5 items</span>
+          </div>
+        </div>
+
+        {/* Return Items Button */}
+        <button className="w-full bg-teal-700 hover:bg-teal-800 rounded-lg p-2 flex items-center justify-center gap-2 text-white font-medium text-sm">
+          <ArrowLeft size={16} />
+          Return Items
+        </button>
+      </div>
+
+      {/* Inventory Items Section */}
+      <div className="bg-white rounded-lg shadow-md p-3">
+        <h3 className="text-sm font-bold text-gray-800 mb-3">Inventory Items</h3>
+
+        {/* Filter Tabs */}
+        <div className="flex gap-2 mb-3">
+          <button className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-medium">
+            Serialized
+          </button>
+          <button className="px-3 py-1 bg-slate-100 text-slate-600 rounded-full text-xs font-medium hover:bg-slate-200">
+            Generic
+          </button>
+          <button className="px-3 py-1 bg-slate-100 text-slate-600 rounded-full text-xs font-medium hover:bg-slate-200">
+            Services
+          </button>
+        </div>
+
+        {/* Inventory List */}
+        <div className="space-y-2">
+          {/* IP Cameras */}
+          <div className="flex items-center gap-2 p-2 bg-blue-50 rounded-lg border border-blue-200">
+            <div className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center text-white text-xs font-bold">
+              1
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-1">
+                <span className="font-semibold text-sm text-slate-800">IP Cameras</span>
+                <ChevronDown size={12} className="text-slate-600" />
+              </div>
+              <div className="text-xs text-slate-600">Serialized</div>
+            </div>
+            <div className="px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs font-medium border border-blue-200">
+              1 Piece
+            </div>
+          </div>
+
+          {/* TIANDY 2MP 2.8MM DOME */}
+          <div className="flex items-center gap-2 p-2 bg-blue-50 rounded-lg border border-blue-200">
+            <div className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center text-white text-xs font-bold">
+              2
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-1">
+                <span className="font-semibold text-sm text-slate-800">TIANDY 2MP 2.8MM DOME</span>
+                <ChevronDown size={12} className="text-slate-600" />
+              </div>
+              <div className="text-xs text-slate-600">Serialized</div>
+            </div>
+            <div className="px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs font-medium border border-blue-200">
+              1 Piece
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
+  // Render current view
+  const renderCurrentView = () => {
+    switch (currentView) {
+      case 'home':
+        return <HomeScreen />;
+      case 'all':
+        return <AllProjectsScreen />;
+      case 'approvals':
+        return <PendingApprovalsScreen />;
+      case 'active':
+        return <ActiveProjectScreen />;
+      case 'inventory':
+        return <InventoryScreen />;
+      default:
+        return <HomeScreen />;
+    }
+  };
+
+  const getInventoryCount = () => {
+    return currentView === 'inventory' ? '5' : '0';
+  };
+
   return (
-    <div className="min-h-screen bg-gray-50 p-4">
-      <div className="max-w-6xl mx-auto">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-800 mb-2">Bill Management System</h1>
-          <p className="text-gray-600">Manage and view all your invoices</p>
+    <div className="max-w-sm mx-auto bg-white h-screen flex flex-col overflow-hidden">
+      {/* Status Bar */}
+      <div className="bg-slate-800 text-white px-4 py-2 text-sm flex justify-between items-center">
+        <div className="flex items-center gap-1">
+          <div className="w-1 h-1 bg-white rounded-full"></div>
+          <div className="w-1 h-1 bg-white rounded-full"></div>
+          <div className="w-1 h-1 bg-white rounded-full"></div>
+          <span className="ml-2 text-xs">Airtel</span>
         </div>
-
-        {/* Summary Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-          <div className="bg-white rounded-lg shadow p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Total Bills</p>
-                <p className="text-3xl font-bold text-gray-900">{bills.length}</p>
-              </div>
-              <FileText className="w-8 h-8 text-blue-600" />
-            </div>
-          </div>
-          
-          <div className="bg-white rounded-lg shadow p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Paid Bills</p>
-                <p className="text-3xl font-bold text-green-600">
-                  {bills.filter(bill => bill.status === 'Paid').length}
-                </p>
-              </div>
-              <DollarSign className="w-8 h-8 text-green-600" />
-            </div>
-          </div>
-          
-          <div className="bg-white rounded-lg shadow p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Pending Bills</p>
-                <p className="text-3xl font-bold text-red-600">
-                  {bills.filter(bill => bill.status === 'Pending').length}
-                </p>
-              </div>
-              <Clock className="w-8 h-8 text-red-600" />
-            </div>
-          </div>
-          
-          <div className="bg-white rounded-lg shadow p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Total Amount</p>
-                <p className="text-3xl font-bold text-blue-600">
-                  ${bills.reduce((sum, bill) => sum + calculateBillTotals(bill).total, 0).toFixed(2)}
-                </p>
-              </div>
-              <Calendar className="w-8 h-8 text-blue-600" />
-            </div>
+        <div className="text-xs font-medium">9:41 AM</div>
+        <div className="flex items-center gap-1">
+          <div className="text-xs">100%</div>
+          <div className="w-6 h-3 border border-white rounded-sm">
+            <div className="w-full h-full bg-white rounded-sm"></div>
           </div>
         </div>
+      </div>
 
-        {/* Bills Table */}
-        <div className="bg-white rounded-lg shadow overflow-hidden">
-          <div className="px-6 py-4 border-b border-gray-200">
-            <h2 className="text-xl font-semibold text-gray-800">All Bills</h2>
+      {/* Header */}
+      <div className="bg-slate-800 text-white px-4 py-3 rounded-b-lg">
+        <div className="flex justify-between items-center">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 bg-slate-300 rounded-full flex items-center justify-center overflow-hidden">
+              <img 
+                src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&h=100&fit=crop&crop=face" 
+                alt="Arveet Profile" 
+                className="w-full h-full object-cover"
+              />
+            </div>
+            <div>
+              <div className="text-xs text-slate-300">Welcome back,</div>
+              <div className="text-sm font-semibold">Arveet</div>
+            </div>
           </div>
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="text-left py-3 px-6 font-semibold text-gray-700">Invoice #</th>
-                  <th className="text-left py-3 px-6 font-semibold text-gray-700">Customer</th>
-                  <th className="text-left py-3 px-6 font-semibold text-gray-700">Date</th>
-                  <th className="text-right py-3 px-6 font-semibold text-gray-700">Total</th>
-                  <th className="text-right py-3 px-6 font-semibold text-gray-700">Paid</th>
-                  <th className="text-right py-3 px-6 font-semibold text-gray-700">Pending</th>
-                  <th className="text-center py-3 px-6 font-semibold text-gray-700">Status</th>
-                  <th className="text-center py-3 px-6 font-semibold text-gray-700">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {bills.map((bill) => {
-                  const totals = calculateBillTotals(bill);
-                  return (
-                    <tr key={bill.id} className="border-b border-gray-200 hover:bg-gray-50">
-                      <td className="py-4 px-6 font-medium text-blue-600">{bill.id}</td>
-                      <td className="py-4 px-6">{bill.customerName}</td>
-                      <td className="py-4 px-6">{bill.date}</td>
-                      <td className="py-4 px-6 text-right font-semibold">${totals.total.toFixed(2)}</td>
-                      <td className="py-4 px-6 text-right text-green-600 font-semibold">${bill.paid.toFixed(2)}</td>
-                      <td className={`py-4 px-6 text-right font-semibold ${
-                        totals.pending > 0 ? 'text-red-600' : 'text-green-600'
-                      }`}>
-                        ${totals.pending.toFixed(2)}
-                      </td>
-                      <td className="py-4 px-6 text-center">
-                        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                          bill.status === 'Paid' 
-                            ? 'bg-green-100 text-green-800' 
-                            : bill.status === 'Partially Paid'
-                            ? 'bg-yellow-100 text-yellow-800'
-                            : 'bg-red-100 text-red-800'
-                        }`}>
-                          {bill.status}
-                        </span>
-                      </td>
-                      <td className="py-4 px-6 text-center">
-                        <button
-                          onClick={() => handleViewBill(bill)}
-                          className="inline-flex items-center gap-1 px-3 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-700 transition-colors"
-                        >
-                          <Eye size={16} />
-                          View
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+          <div className="flex gap-2">
+            <button className="w-7 h-7 bg-slate-700 rounded-lg flex items-center justify-center hover:bg-slate-600">
+              <Bell size={14} />
+            </button>
+            <button className="w-7 h-7 bg-slate-700 rounded-lg flex items-center justify-center hover:bg-slate-600">
+              <Settings size={14} />
+            </button>
           </div>
+        </div>
+      </div>
+
+      {/* Main Content */}
+      {renderCurrentView()}
+
+      {/* Bottom Navigation */}
+      <div className="bg-slate-800 border-t border-slate-700 px-4 py-2">
+        <div className="flex items-center justify-between">
+          <button 
+            className={`flex flex-col items-center gap-0.5 ${currentView === 'home' ? 'text-white' : 'text-slate-400'}`}
+            onClick={() => setCurrentView('home')}
+          >
+            <div className={`w-8 h-8 ${currentView === 'home' ? 'bg-slate-700' : ''} rounded-lg flex items-center justify-center`}>
+              <Home size={16} className={currentView === 'home' ? 'text-white' : 'text-slate-400'} />
+            </div>
+            <span className={`text-xs ${currentView === 'home' ? 'font-medium' : ''}`}>Home</span>
+          </button>
+          
+          <button 
+            className={`flex flex-col items-center gap-0.5 ${currentView === 'inventory' ? 'text-white' : 'text-slate-400'}`}
+            onClick={() => setCurrentView('inventory')}
+          >
+            <div className={`w-8 h-8 ${currentView === 'inventory' ? 'bg-teal-500' : ''} rounded-lg flex items-center justify-center`}>
+              <span className={`text-sm font-bold ${currentView === 'inventory' ? 'text-white' : 'text-slate-400'}`}>{getInventoryCount()}</span>
+            </div>
+            <span className={`text-xs ${currentView === 'inventory' ? 'font-medium' : ''}`}>{getInventoryCount()}</span>
+          </button>
+          
+          <button 
+            className={`flex flex-col items-center gap-0.5 ${currentView === 'all' ? 'text-white' : 'text-slate-400'}`}
+            onClick={() => setCurrentView('all')}
+          >
+            <div className={`w-8 h-8 ${currentView === 'all' ? 'bg-orange-500' : ''} rounded-lg flex items-center justify-center`}>
+              <List size={16} className={currentView === 'all' ? 'text-white' : 'text-slate-400'} />
+            </div>
+            <span className={`text-xs ${currentView === 'all' ? 'font-medium' : ''}`}>All</span>
+          </button>
+          
+          <button 
+            className={`flex flex-col items-center gap-0.5 ${currentView === 'approvals' ? 'text-white' : 'text-slate-400'}`}
+            onClick={() => setCurrentView('approvals')}
+          >
+            <div className={`w-8 h-8 ${currentView === 'approvals' ? 'bg-orange-500' : ''} rounded-lg flex items-center justify-center`}>
+              <Check size={16} className={currentView === 'approvals' ? 'text-white' : 'text-slate-400'} />
+            </div>
+            <span className={`text-xs ${currentView === 'approvals' ? 'font-medium' : ''}`}>Approval</span>
+          </button>
+          
+          <button 
+            className={`flex flex-col items-center gap-0.5 ${currentView === 'active' ? 'text-white' : 'text-slate-400'}`}
+            onClick={() => setCurrentView('active')}
+          >
+            <div className={`w-8 h-8 ${currentView === 'active' ? 'bg-blue-500' : ''} rounded-lg flex items-center justify-center`}>
+              <Calendar size={16} className={currentView === 'active' ? 'text-white' : 'text-slate-400'} />
+            </div>
+            <span className={`text-xs ${currentView === 'active' ? 'font-medium' : ''}`}>Current</span>
+          </button>
         </div>
       </div>
     </div>
   );
 };
 
-export default BillManagementSystem;
+export default TaskManagerApp;

@@ -6,6 +6,33 @@ import LoadingSpinner from '../../components/LoadingSpinner';
 import QRCodeDisplay from './QRCodeDisplay';
 import { QRCodeCanvas } from 'qrcode.react';
 
+// List of Indian Banks
+const INDIAN_BANKS = [
+  'State Bank of India (SBI)',
+  'Punjab National Bank (PNB)',
+  'Bank of Baroda (BoB)',
+  'Canara Bank',
+  'Union Bank of India',
+  'Indian Bank',
+  'Bank of India (BOI)',
+  'Central Bank of India',
+  'UCO Bank',
+  'Bank of Maharashtra',
+  'Punjab & Sind Bank',
+  'HDFC Bank',
+  'ICICI Bank',
+  'Axis Bank',
+  'Kotak Mahindra Bank',
+  'IndusInd Bank',
+  'Yes Bank',
+  'IDFC FIRST Bank',
+  'Federal Bank',
+  'City Union Bank',
+  'DCB Bank',
+  'RBL Bank',
+  'Bandhan Bank'
+];
+
 export default function PaymentModal({
   isOpen,
   onClose,
@@ -711,17 +738,18 @@ export default function PaymentModal({
                             <label className="block text-sm font-medium text-gray-700 mb-2">
                               Sender Bank Name
                             </label>
-                            <input
-                              type="text"
+                            <select
                               value={paymentFormData.bankName}
                               onChange={(e) => setPaymentFormData(prev => ({...prev, bankName: e.target.value}))}
-                              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-300"
-                              placeholder="Name of the bank from which transfer was made"
-                              autoComplete="off"
-                              autoCorrect="off"
-                              autoCapitalize="off"
-                              spellCheck="false"
-                            />
+                              className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-purple-300"
+                            >
+                              <option value="">Select sender bank</option>
+                              {INDIAN_BANKS.map((bank) => (
+                                <option key={bank} value={bank}>
+                                  {bank}
+                                </option>
+                              ))}
+                            </select>
                           </div>
 
                           <div>
@@ -815,17 +843,18 @@ export default function PaymentModal({
                             <label className="block text-sm font-medium text-gray-700 mb-2">
                               Bank Name
                             </label>
-                            <input
-                              type="text"
+                            <select
                               value={paymentFormData.chequeBank}
                               onChange={(e) => setPaymentFormData(prev => ({...prev, chequeBank: e.target.value}))}
-                              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-300"
-                              placeholder="Bank name on cheque"
-                              autoComplete="off"
-                              autoCorrect="off"
-                              autoCapitalize="off"
-                              spellCheck="false"
-                            />
+                              className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-orange-300"
+                            >
+                              <option value="">Select bank name on cheque</option>
+                              {INDIAN_BANKS.map((bank) => (
+                                <option key={bank} value={bank}>
+                                  {bank}
+                                </option>
+                              ))}
+                            </select>
                           </div>
 
                           <div className="grid grid-cols-2 gap-4">

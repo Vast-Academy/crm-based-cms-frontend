@@ -11,15 +11,14 @@ const UnifiedInventoryAssignmentModal = ({ isOpen, onClose, technician, onSucces
   const [loadingInventory, setLoadingInventory] = useState(false);
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
-  const [serialNumber, setSerialNumber] = useState('');
   const [serializedProducts, setSerializedProducts] = useState([]);
   const [genericProducts, setGenericProducts] = useState([]);
   const [selectedItems, setSelectedItems] = useState([]);
   const [showConfirmation, setShowConfirmation] = useState(false);
   const searchInputRef = useRef(null);
-  const serialInputRef = useRef(null);
+  const [selectedSerialNumbers, setSelectedSerialNumbers] = useState({});
 
-  // Add states for dropdown
+  // Add states for serial number search dropdown
   const [matchingSerialNumbers, setMatchingSerialNumbers] = useState([]);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [highlightedIndex, setHighlightedIndex] = useState(-1);
@@ -32,88 +31,134 @@ const UnifiedInventoryAssignmentModal = ({ isOpen, onClose, technician, onSucces
       // Reset when modal closes
       setSelectedItems([]);
       setSearchTerm('');
-      setSerialNumber('');
       setShowConfirmation(false);
+      setSelectedSerialNumbers({});
       setMatchingSerialNumbers([]);
       setIsDropdownOpen(false);
       setHighlightedIndex(-1);
     }
   }, [isOpen]);
 
-  // Add effect to filter serial numbers as user types
-   // Filter serial numbers as user types
-   useEffect(() => {
-    if (serialNumber.trim().length > 0) {
-      // Get all already selected serial numbers
-      const selectedSerialNumbers = [];
-      selectedItems.forEach(item => {
-        if (item.type === 'serialized-product' && item.serialNumbers) {
-          selectedSerialNumbers.push(...item.serialNumbers);
-        }
-      });
+  // Filter serial numbers as user types for dropdown
+  useEffect(() => {
+    if (searchTerm.trim().length > 0) {
+      // Check if search term looks like a serial number (you can adjust this logic)
+      const isSerialSearch = /^[A-Za-z0-9]{3,}$/.test(searchTerm.trim());
 
-      // Get all serial numbers from serialized products
-      const allSerialNumbers = [];
-      serializedProducts.forEach(product => {
-        if (product.stock && Array.isArray(product.stock)) {
-          product.stock.forEach(stockItem => {
-            if (stockItem.serialNumber && 
-                stockItem.serialNumber.toLowerCase().includes(serialNumber.toLowerCase()) &&
-                !selectedSerialNumbers.includes(stockItem.serialNumber)) { // Exclude already selected
-              allSerialNumbers.push({
-                serialNumber: stockItem.serialNumber,
-                productId: product.id,
-                productName: product.name
-              });
-            }
-          });
-        }
-      });
-      
-      setMatchingSerialNumbers(allSerialNumbers);
-      setIsDropdownOpen(allSerialNumbers.length > 0);
-      setHighlightedIndex(allSerialNumbers.length > 0 ? 0 : -1);
+      if (isSerialSearch) {
+        // Get all already selected serial numbers
+        const selectedSerialNumbersList = [];
+        selectedItems.forEach(item => {
+          if (item.type === 'serialized-product' && item.serialNumbers) {
+            selectedSerialNumbersList.push(...item.serialNumbers);
+          }
+        });
+
+        // Get all serial numbers from serialized products
+        const allSerialNumbers = [];
+        serializedProducts.forEach(product => {
+          if (product.stock && Array.isArray(product.stock)) {
+            product.stock.forEach(stockItem => {
+              if (stockItem.serialNumber &&
+                  stockItem.serialNumber.toLowerCase().includes(searchTerm.toLowerCase()) &&
+                  !selectedSerialNumbersList.includes(stockItem.serialNumber)) {
+                allSerialNumbers.push({
+                  serialNumber: stockItem.serialNumber,
+                  productId: product.id,
+                  productName: product.name
+                });
+              }
+            });
+          }
+        });
+
+        setMatchingSerialNumbers(allSerialNumbers);
+        setIsDropdownOpen(allSerialNumbers.length > 0);
+        setHighlightedIndex(allSerialNumbers.length > 0 ? 0 : -1);
+      } else {
+        setMatchingSerialNumbers([]);
+        setIsDropdownOpen(false);
+        setHighlightedIndex(-1);
+      }
     } else {
       setMatchingSerialNumbers([]);
       setIsDropdownOpen(false);
       setHighlightedIndex(-1);
     }
-  }, [serialNumber, serializedProducts, selectedItems]);
+  }, [searchTerm, serializedProducts, selectedItems]);
 
-  // Handle keyboard navigation for dropdown
-const handleKeyDown = (e) => {
-  if (!isDropdownOpen) {
-    if (e.key === 'Enter' && serialNumber.trim()) {
-      checkSerialNumber();
+    // Get available serial numbers for a product (excluding already selected ones)
+  const getAvailableSerialNumbers = (product) => {
+    if (product.type !== 'serialized-product') return [];
+
+    const usedSerials = selectedItems
+      .filter(item => item.id === product.id && item.serialNumbers)
+      .flatMap(item => item.serialNumbers) || [];
+
+    return product.stock
+      ?.filter(stock => stock.serialNumber && !usedSerials.includes(stock.serialNumber))
+      ?.map(stock => stock.serialNumber) || [];
+  };
+
+  // Handle serial number selection for a product
+  const handleSerialNumberChange = (productId, serialNumber) => {
+    setSelectedSerialNumbers(prev => ({
+      ...prev,
+      [productId]: serialNumber
+    }));
+  };
+
+  // Handle keyboard navigation for serial number dropdown
+  const handleKeyDown = (e) => {
+    if (!isDropdownOpen) {
+      return;
     }
-    return;
-  }
-  
-  switch (e.key) {
-    case 'ArrowDown':
-      e.preventDefault();
-      setHighlightedIndex(prev => 
-        prev < matchingSerialNumbers.length - 1 ? prev + 1 : prev
-      );
-      break;
-    case 'ArrowUp':
-      e.preventDefault();
-      setHighlightedIndex(prev => prev > 0 ? prev - 1 : 0);
-      break;
-    case 'Enter':
-      e.preventDefault();
-      if (highlightedIndex >= 0 && highlightedIndex < matchingSerialNumbers.length) {
-        const selected = matchingSerialNumbers[highlightedIndex];
-        handleSelectSerialNumber(selected);
+
+    switch (e.key) {
+      case 'ArrowDown':
+        e.preventDefault();
+        setHighlightedIndex(prev =>
+          prev < matchingSerialNumbers.length - 1 ? prev + 1 : prev
+        );
+        break;
+      case 'ArrowUp':
+        e.preventDefault();
+        setHighlightedIndex(prev => prev > 0 ? prev - 1 : 0);
+        break;
+      case 'Enter':
+        e.preventDefault();
+        if (highlightedIndex >= 0 && highlightedIndex < matchingSerialNumbers.length) {
+          const selected = matchingSerialNumbers[highlightedIndex];
+          handleSelectSerialNumber(selected);
+        }
+        break;
+      case 'Escape':
+        setIsDropdownOpen(false);
+        break;
+      default:
+        break;
+    }
+  };
+
+  // Handle select serial number from dropdown
+  const handleSelectSerialNumber = (serialData) => {
+    // Find the product
+    const product = serializedProducts.find(p => p.id === serialData.productId);
+
+    if (product) {
+      addSerializedProduct(product, serialData.serialNumber);
+      setSearchTerm(''); // Clear search input
+      setIsDropdownOpen(false); // Close dropdown
+      setHighlightedIndex(-1); // Reset highlighted index
+
+      // Focus back on the input
+      if (searchInputRef.current) {
+        searchInputRef.current.focus();
       }
-      break;
-    case 'Escape':
-      setIsDropdownOpen(false);
-      break;
-    default:
-      break;
-  }
-};
+    } else {
+      showNotification('error', 'Product not found for this serial number');
+    }
+  };
 
 
   const fetchProducts = async () => {
@@ -149,25 +194,6 @@ const handleKeyDown = (e) => {
     }
   };
 
-  // Handle select serial number from suggestions
-  const handleSelectSerialNumber = (serialData) => {
-    // Find the product
-    const product = serializedProducts.find(p => p.id === serialData.productId);
-    
-    if (product) {
-      addSerializedProduct(product, serialData.serialNumber);
-      setSerialNumber(''); // Clear input
-      setIsDropdownOpen(false); // Close dropdown
-      setHighlightedIndex(-1); // Reset highlighted index
-      
-      // Focus back on the input
-      if (serialInputRef.current) {
-        serialInputRef.current.focus();
-      }
-    } else {
-      showNotification('error', 'Product not found for this serial number');
-    }
-  };
 
   // All products combined (for display)
   const allProducts = [...serializedProducts, ...genericProducts].map(product => ({
@@ -175,39 +201,48 @@ const handleKeyDown = (e) => {
     displayType: product.type === 'serialized-product' ? 'Serialized' : 'Generic'
   }));
 
-  // Filter products based on search term
-  const filteredProducts = allProducts.filter(product => 
-    product.name.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
-  // Check if serial number exists in inventory
-  const checkSerialNumber = async () => {
-    if (!serialNumber.trim()) return;
-    
-    try {
-      const response = await fetch(`${SummaryApi.checkSerialNumber.url}/${serialNumber.trim()}`, {
-        method: 'GET',
-        credentials: 'include'
-      });
-      
-      const data = await response.json();
-      
-      if (data.exists) {
-        // Find the product with this serial number
-        const serializedProduct = serializedProducts.find(p => p.id === data.item.id);
-        
-        if (serializedProduct) {
-          // Add to selected items
-          addSerializedProduct(serializedProduct, serialNumber.trim());
-          setSerialNumber(''); // Clear input field
-        }
-      } else {
-        showNotification('error', data.message || 'Serial number not found in inventory');
-      }
-    } catch (err) {
-      console.error('Error checking serial number:', err);
-      showNotification('error', 'Error checking serial number');
+  // Filter products based on search term - includes both name and serial number search
+  const filteredProducts = allProducts.filter(product => {
+    const query = searchTerm.toLowerCase();
+    // Search by product name
+    if (product.name.toLowerCase().includes(query)) {
+      return true;
     }
+    // Search by serial number for serialized products
+    if (product.type === 'serialized-product' && product.stock) {
+      return product.stock.some(stock =>
+        stock.serialNumber && stock.serialNumber.toLowerCase().includes(query)
+      );
+    }
+    return false;
+  });
+
+  // Add serialized product with selected serial number
+  const addSerializedProductWithSerial = (product) => {
+    const selectedSerial = selectedSerialNumbers[product.id];
+
+    if (!selectedSerial) {
+      showNotification('error', 'Please select a serial number for this product');
+      return;
+    }
+
+    // Check if this serial number is already added
+    const exists = selectedItems.some(item =>
+      item.type === 'serialized-product' && item.serialNumbers && item.serialNumbers.includes(selectedSerial)
+    );
+
+    if (exists) {
+      showNotification('warning', 'This serial number is already added');
+      return;
+    }
+
+    addSerializedProduct(product, selectedSerial);
+
+    // Clear the selected serial number
+    setSelectedSerialNumbers(prev => ({
+      ...prev,
+      [product.id]: ''
+    }));
   };
 
   // Add serialized product with serial number
@@ -289,9 +324,9 @@ const handleKeyDown = (e) => {
   // Handle product selection
   const handleSelectProduct = (product) => {
     // Calculate available stock
-    const availableStock = product.stock ? 
-      (product.type === 'serialized-product' 
-        ? product.stock.length 
+    const availableStock = product.stock ?
+      (product.type === 'serialized-product'
+        ? product.stock.length
         : product.stock.reduce((total, item) => total + item.quantity, 0)
       ) : 0;
 
@@ -301,8 +336,8 @@ const handleKeyDown = (e) => {
     }
 
     if (product.type === 'serialized-product') {
-      // For serialized products, show notification to enter serial number
-      showNotification('info', 'Please enter or scan a serial number for this product');
+      // For serialized products, try to add with selected serial number
+      addSerializedProductWithSerial(product);
     } else {
       // For generic products, add directly
       addGenericProduct(product);
@@ -374,12 +409,6 @@ const handleKeyDown = (e) => {
   // Calculate total items
   const totalItems = selectedItems.reduce((sum, item) => sum + item.quantity, 0);
 
-  // Handle key press for barcode scanner
-  const handleKeyPress = (e) => {
-    if (e.key === 'Enter' && serialNumber.trim()) {
-      checkSerialNumber();
-    }
-  };
 
   // Submit and assign inventory
   const handleAssignInventory = async () => {
@@ -477,54 +506,32 @@ const handleKeyDown = (e) => {
                     <input
                       ref={searchInputRef}
                       type="text"
-                      placeholder="Search product..."
+                      placeholder="Search by product name or serial number..."
                       className="w-full p-3 border rounded pl-10"
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
+                      onKeyDown={handleKeyDown}
                     />
                     <FiSearch className="absolute left-3 top-[14px] text-gray-400" />
-                  </div>
-                </div>
-                
-                <div className="p-4 border-b">
-                  <h3 className="font-medium mb-2">Scan Serial Number (for serialized products)</h3>
-                  <div className="flex space-x-2">
-                    <input
-                      type="text"
-                      placeholder="Enter or scan serial number"
-                      className="flex-grow p-2 border rounded"
-                      value={serialNumber}
-                      onChange={(e) => setSerialNumber(e.target.value)}
-                      onKeyPress={handleKeyDown}
-                    />
 
-                    <button
-                      type="button"
-                      onClick={checkSerialNumber}
-                      className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-                      disabled={!serialNumber.trim()}
-                    >
-                      Verify
-                    </button>
-
-                    {/* Improved dropdown styling */}
-                {isDropdownOpen && (
-                  <div className="absolute z-10 w-96 mt-10 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-y-auto">
-                    {matchingSerialNumbers.map((item, index) => (
-                      <div 
-                        key={index}
-                        className={`px-4 py-2 cursor-pointer border-b last:border-b-0 ${
-                          highlightedIndex === index ? 'bg-blue-50 border-l-4 border-l-blue-500' : ''
-                        }`}
-                        onClick={() => handleSelectSerialNumber(item)}
-                        onMouseEnter={() => setHighlightedIndex(index)}
-                      >
-                        <div className="font-medium text-gray-800">{item.serialNumber}</div>
-                        <div className="text-xs text-gray-500">{item.productName}</div>
+                    {/* Serial Number Dropdown */}
+                    {isDropdownOpen && (
+                      <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-y-auto">
+                        {matchingSerialNumbers.map((item, index) => (
+                          <div
+                            key={index}
+                            className={`px-4 py-2 cursor-pointer border-b last:border-b-0 hover:bg-gray-50 ${
+                              highlightedIndex === index ? 'bg-blue-50 border-l-4 border-l-blue-500' : ''
+                            }`}
+                            onClick={() => handleSelectSerialNumber(item)}
+                            onMouseEnter={() => setHighlightedIndex(index)}
+                          >
+                            <div className="font-medium text-gray-800">{item.serialNumber}</div>
+                            <div className="text-xs text-gray-500">{item.productName}</div>
+                          </div>
+                        ))}
                       </div>
-                    ))}
-                  </div>
-                )}
+                    )}
                   </div>
                 </div>
                 
@@ -540,10 +547,9 @@ const handleKeyDown = (e) => {
                         ) : 0;
                       
                       return (
-                        <div 
-                          key={product.id} 
-                          className="border p-3 rounded hover:bg-gray-50 cursor-pointer"
-                          onClick={() => handleSelectProduct(product)}
+                        <div
+                          key={product.id}
+                          className="border p-3 rounded hover:bg-gray-50"
                         >
                           <div className="flex justify-between">
                             <div>
@@ -561,6 +567,46 @@ const handleKeyDown = (e) => {
                               </div>
                             </div>
                           </div>
+
+                          {/* For serialized products, show dropdown and add button */}
+                          {product.type === 'serialized-product' && (
+                            <div className="mt-3 space-y-2">
+                              <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                  Choose Serial Number
+                                </label>
+                                <select
+                                  value={selectedSerialNumbers[product.id] || ''}
+                                  onChange={(e) => handleSerialNumberChange(product.id, e.target.value)}
+                                  className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-300"
+                                >
+                                  <option value="">Select serial number...</option>
+                                  {getAvailableSerialNumbers(product).map(serial => (
+                                    <option key={serial} value={serial}>{serial}</option>
+                                  ))}
+                                </select>
+                              </div>
+                              <button
+                                onClick={() => handleSelectProduct(product)}
+                                disabled={!selectedSerialNumbers[product.id]}
+                                className="w-full py-2 px-4 bg-blue-500 hover:bg-blue-600 disabled:bg-gray-300 text-white rounded font-medium"
+                              >
+                                Add
+                              </button>
+                            </div>
+                          )}
+
+                          {/* For generic products, show add button directly */}
+                          {product.type === 'generic-product' && (
+                            <div className="mt-3">
+                              <button
+                                onClick={() => handleSelectProduct(product)}
+                                className="w-full py-2 px-4 bg-blue-500 hover:bg-blue-600 text-white rounded font-medium"
+                              >
+                                Add
+                              </button>
+                            </div>
+                          )}
                         </div>
                       );
                     })}

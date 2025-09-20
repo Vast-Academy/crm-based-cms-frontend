@@ -65,7 +65,7 @@ const SelectTechnicianModal = ({ isOpen, onClose, onSelectTechnician }) => {
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title="Select Technician to Assign Inventory"
+      title="Select Engineer to Assign Inventory"
       size="md"
     >
       {error && (
@@ -83,7 +83,7 @@ const SelectTechnicianModal = ({ isOpen, onClose, onSelectTechnician }) => {
           <>
             <div className="mb-6">
               <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="technician">
-                Select Technician
+                Select Engineer
               </label>
               
               {technicians.length > 0 ? (
@@ -98,7 +98,7 @@ const SelectTechnicianModal = ({ isOpen, onClose, onSelectTechnician }) => {
                     onChange={handleTechnicianChange}
                     value={selectedTechnician?._id || ''}
                   >
-                    <option value="">-- Select a technician --</option>
+                    <option value="">-- Select an engineer --</option>
                     {technicians.map(tech => (
                       <option key={tech._id} value={tech._id}>
                         {tech.firstName} {tech.lastName} ({tech.username})
@@ -115,7 +115,7 @@ const SelectTechnicianModal = ({ isOpen, onClose, onSelectTechnician }) => {
 
             {selectedTechnician && (
               <div className="mb-6 p-3 bg-blue-50 rounded-md">
-                <h3 className="text-sm font-semibold text-blue-800 mb-1">Selected Technician:</h3>
+                <h3 className="text-sm font-semibold text-blue-800 mb-1">Selected Engineer:</h3>
                 <p className="text-sm">
                   <span className="font-medium">{selectedTechnician.firstName} {selectedTechnician.lastName}</span><br />
                   Username: {selectedTechnician.username}<br />

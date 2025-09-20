@@ -28,6 +28,7 @@ import WorkOrdersPage from './pages/workOrders/WorkOrdersPage';
 import TechnicianDashboard from './pages/technician/TechnicianDashboard';
 import TransferHistoryTable from './pages/manager/TransferHistoryTable';
 import ManagerProjectDashboard from './pages/manager/ManagerProjectDashboard';
+import PendingApprovals from './pages/manager/PendingApprovals';
 import InventoryManagement from './pages/inventory/InventoryManagement';
 import TransferredProjectsPage from './pages/manager/TransferredProjectsPage';
 import ReturnedInventoryTable from './pages/manager/ReturnedInventoryTable';
@@ -85,6 +86,7 @@ function RouteHead() {
     pathname.startsWith("/contacts") ||
     pathname.startsWith("/work-orders") ||
     pathname.startsWith("/manager-dashboard") ||
+    pathname.startsWith("/pending-approvals") ||
     pathname.startsWith("/transferred-projects") ||
     pathname.startsWith("/inventory") ||
     pathname.startsWith("/returned-inventory") ||
@@ -315,11 +317,20 @@ function App() {
           }
         />
 
-        <Route 
-          path="manager-dashboard" 
+        <Route
+          path="manager-dashboard"
           element={
             <ProtectedRoute>
               <ManagerProjectDashboard/>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="pending-approvals"
+          element={
+            <ProtectedRoute allowedRoles={['manager']}>
+              <PendingApprovals/>
             </ProtectedRoute>
           }
         />

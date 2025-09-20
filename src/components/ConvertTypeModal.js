@@ -11,10 +11,14 @@ const ConvertTypeModal = ({ isOpen, onClose, leadData, onConvertSuccess }) => {
   const handleTypeSelection = () => {
     if (!selectedType) return;
 
-    if (selectedType === 'customer') {
-      // For customer, close this modal and trigger existing customer conversion flow
+    if (selectedType === 'new_customer') {
+      // For new customer, close this modal and trigger existing customer conversion flow
       onClose();
-      onConvertSuccess('customer');
+      onConvertSuccess('new_customer');
+    } else if (selectedType === 'existing_customer') {
+      // For existing customer, close this modal and trigger existing customer selection
+      onClose();
+      onConvertSuccess('existing_customer');
     } else {
       // For dealer/distributor, show confirmation
       setShowConfirmation(true);
@@ -69,7 +73,8 @@ const ConvertTypeModal = ({ isOpen, onClose, leadData, onConvertSuccess }) => {
 
   const getTypeDisplayName = (type) => {
     switch(type) {
-      case 'customer': return 'Customer';
+      case 'new_customer': return 'New Customer';
+      case 'existing_customer': return 'Existing Customer';
       case 'dealer': return 'Dealer';
       case 'distributor': return 'Distributor';
       default: return type;
@@ -103,14 +108,29 @@ const ConvertTypeModal = ({ isOpen, onClose, leadData, onConvertSuccess }) => {
                 <input
                   type="radio"
                   name="convertType"
-                  value="customer"
-                  checked={selectedType === 'customer'}
+                  value="new_customer"
+                  checked={selectedType === 'new_customer'}
                   onChange={(e) => setSelectedType(e.target.value)}
                   className="mr-3"
                 />
                 <div>
-                  <div className="font-medium text-purple-800">Customer</div>
-                  <div className="text-sm text-gray-500">Convert to customer and start a project</div>
+                  <div className="font-medium text-purple-800">New Customer</div>
+                  <div className="text-sm text-gray-500">Convert to new customer and start a project</div>
+                </div>
+              </label>
+
+              <label className="flex items-center p-4 border rounded-lg cursor-pointer hover:bg-gray-50">
+                <input
+                  type="radio"
+                  name="convertType"
+                  value="existing_customer"
+                  checked={selectedType === 'existing_customer'}
+                  onChange={(e) => setSelectedType(e.target.value)}
+                  className="mr-3"
+                />
+                <div>
+                  <div className="font-medium text-indigo-800">Existing Customer</div>
+                  <div className="text-sm text-gray-500">Add service to existing customer (completed)</div>
                 </div>
               </label>
 

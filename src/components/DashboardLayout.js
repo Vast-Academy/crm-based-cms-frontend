@@ -8,7 +8,8 @@ import {
   FiBriefcase, FiFileText, FiTool, FiRefreshCw,
   FiActivity,
   FiArrowLeft,
-  FiRepeat, FiShield
+  FiRepeat, FiShield,
+  FiClock
 } from 'react-icons/fi';
 import { Replace, Layers, Users, Building, X, User, Camera, ChevronDown } from 'lucide-react';
 import ManagerStatusChecker from './ManagerStatusChecker';
@@ -183,6 +184,7 @@ const DashboardLayout = () => {
           },
           { name: 'Work Orders', path: '/work-orders', icon: FiTool },
           { name: 'Projects', path: '/manager-dashboard', icon: FiActivity },
+          { name: 'Pending Approvals', path: '/pending-approvals', icon: FiClock },
           { name: 'Transferring Requests', path: '/transferred-projects', icon: FiArrowLeft },
           {
             name: 'Inventory',

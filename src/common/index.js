@@ -73,6 +73,10 @@ const SummaryApi = {
         url : `${backendDomain}/api/lead-convert-distributor`,
         method: "post"
     },
+    convertToExistingCustomer: {
+        url : `${backendDomain}/api/lead-convert-existing-customer`,
+        method: "post"
+    },
     search : {
         url : `${backendDomain}/api/search`,
         method: "get"

@@ -57,6 +57,7 @@ const ContactsPage = () => {
   const [lastRefreshTime, setLastRefreshTime] = useState(0);
   const [showConvertTypeModal, setShowConvertTypeModal] = useState(false);
   const [selectedLeadForConvert, setSelectedLeadForConvert] = useState(null);
+  const [selectedConversionType, setSelectedConversionType] = useState(null);
 
   // Add a handler function for complaint success
 const handleComplaintSuccess = (data) => {
@@ -346,8 +347,9 @@ const handleFilterChange = (type, status = 'all') => {
 
   // Handle convert type selection
   const handleConvertTypeSelected = (convertType, convertedData) => {
-    if (convertType === 'customer') {
-      // For customer conversion, use existing flow
+    if (convertType === 'new_customer' || convertType === 'existing_customer') {
+      // Store the conversion type and open LeadDetailModal
+      setSelectedConversionType(convertType);
       handleViewLead(selectedLeadForConvert._id, true);
     } else {
       // For dealer/distributor, update the contacts list
@@ -375,6 +377,7 @@ const handleFilterChange = (type, status = 'all') => {
     setShowConvertTypeModal(false);
     setSelectedLeadForConvert(null);
   };
+
   
   // Handle lead conversion success
   const handleLeadConverted = (leadId, newCustomer) => {
@@ -1001,11 +1004,14 @@ const handleFilterChange = (type, status = 'all') => {
         onClose={() => {
           setShowLeadDetailModal(false);
           setOpenInConvertMode(false);
+          setSelectedConversionType(null);
         }}
         leadId={selectedLeadId}
         onLeadUpdated={handleLeadUpdated}
         onConvertSuccess={handleLeadConverted}
         initialConvertMode={openInConvertMode}
+        conversionType={selectedConversionType}
+        availableContacts={contacts}
       />
       
       <CustomerDetailModal
@@ -1067,6 +1073,7 @@ const handleFilterChange = (type, status = 'all') => {
         leadData={selectedLeadForConvert}
         onConvertSuccess={handleConvertTypeSelected}
       />
+
     </div>
   );
 };
