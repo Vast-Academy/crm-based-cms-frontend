@@ -999,13 +999,13 @@ const fetchFreshWorkOrders = async () => {
   return (
     <div className="max-w-sm mx-auto bg-white h-screen flex flex-col overflow-hidden">
       {/* Header */}
-      <div className="bg-slate-800 text-white px-4 py-6 rounded-b-lg ">
+      <div className="bg-slate-800 text-white px-4 py-5 rounded-b-lg ">
         <div className="flex justify-between items-center">
           <div className="flex items-center gap-2">
             <div className="relative">
               <div
                 onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
-                className="w-8 h-8 bg-slate-300 rounded-full flex items-center justify-center overflow-hidden cursor-pointer"
+                className="w-10 h-10 bg-slate-300 rounded-full flex items-center justify-center overflow-hidden cursor-pointer"
               >
                 <div className="w-full h-full rounded-full bg-blue-600 flex items-center justify-center text-white text-xl font-bold">
                   👨
@@ -1051,19 +1051,19 @@ const fetchFreshWorkOrders = async () => {
               )}
             </div>
             <div>
-              <div className="text-xs text-slate-300">Welcome back,</div>
-              <div className="text-sm font-semibold">{user?.firstName || 'Technician'}</div>
+              <div className="text-md text-slate-300">Welcome back,</div>
+              <div className="text-lg capitalize font-semibold">{user?.firstName || 'Technician'}</div>
             </div>
           </div>
           <div className="flex gap-2">
-            <button className="w-7 h-7 bg-slate-700 rounded-lg flex items-center justify-center hover:bg-slate-600">
-              <Bell size={14} />
+            <button className="w-10 h-10 bg-slate-700 rounded-lg flex items-center justify-center hover:bg-slate-600">
+              <Bell size={20} />
             </button>
             <button
               onClick={() => setShowSettingsModal(true)}
-              className="w-7 h-7 bg-slate-700 rounded-lg flex items-center justify-center hover:bg-slate-600"
+              className="w-10 h-10 bg-slate-700 rounded-lg flex items-center justify-center hover:bg-slate-600"
             >
-              <Settings size={14} />
+              <Settings size={20} />
             </button>
           </div>
         </div>
@@ -2191,14 +2191,14 @@ const fetchFreshWorkOrders = async () => {
       </main>
       
       {/* Bottom Navigation */}
-      <div className="bg-slate-800 border-t border-slate-700 px-4 py-4">
+      <div className="bg-slate-800 border-t border-slate-700 px-4 py-2">
         <div className="flex items-center justify-between">
           <button
             onClick={() => handleTabChange('home')}
             className={`flex flex-col items-center gap-0.5 ${activeTab === 'home' ? 'text-white' : 'text-slate-400'}`}
           >
-            <div className={`w-8 h-8 ${activeTab === 'home' ? 'bg-slate-700' : ''} rounded-lg flex items-center justify-center`}>
-              <Home size={16} className={activeTab === 'home' ? 'text-white' : 'text-slate-400'} />
+            <div className={`w-10 h-10 ${activeTab === 'home' ? 'bg-slate-700' : ''} rounded-lg flex items-center justify-center`}>
+              <Home size={22} className={activeTab === 'home' ? 'text-white' : 'text-slate-400'} />
             </div>
             <span className={`text-xs ${activeTab === 'home' ? 'font-medium' : ''}`}>Home</span>
           </button>
@@ -2207,8 +2207,8 @@ const fetchFreshWorkOrders = async () => {
             onClick={() => handleTabChange('inventory')}
             className={`flex flex-col items-center gap-0.5 ${activeTab === 'inventory' ? 'text-white' : 'text-slate-400'}`}
           >
-            <div className={`w-8 h-8 ${activeTab === 'inventory' ? 'bg-teal-500' : ''} rounded-lg flex items-center justify-center`}>
-              <span className={`text-sm font-bold ${activeTab === 'inventory' ? 'text-white' : 'text-slate-400'}`}>{calculateTotalUnits()}</span>
+            <div className={`w-10 h-10 ${activeTab === 'inventory' ? 'bg-teal-500' : ''} rounded-lg flex items-center justify-center`}>
+              <span className={`text-md font-bold ${activeTab === 'inventory' ? 'text-white' : 'text-slate-400'}`}>{calculateTotalUnits()}</span>
             </div>
             <span className={`text-xs ${activeTab === 'inventory' ? 'font-medium' : ''}`}>{calculateTotalUnits()}</span>
           </button>
@@ -2217,8 +2217,8 @@ const fetchFreshWorkOrders = async () => {
             onClick={() => handleTabChange('all-projects')}
             className={`flex flex-col items-center gap-0.5 ${activeTab === 'all-projects' ? 'text-white' : 'text-slate-400'}`}
           >
-            <div className={`w-8 h-8 ${activeTab === 'all-projects' ? 'bg-orange-500' : ''} rounded-lg flex items-center justify-center`}>
-              <List size={16} className={activeTab === 'all-projects' ? 'text-white' : 'text-slate-400'} />
+            <div className={`w-10 h-10 ${activeTab === 'all-projects' ? 'bg-orange-500' : ''} rounded-lg flex items-center justify-center`}>
+              <List size={22} className={activeTab === 'all-projects' ? 'text-white' : 'text-slate-400'} />
             </div>
             <span className={`text-xs ${activeTab === 'all-projects' ? 'font-medium' : ''}`}>All</span>
           </button>
@@ -2227,8 +2227,8 @@ const fetchFreshWorkOrders = async () => {
             onClick={() => handleTabChange('pending-approval-projects')}
             className={`flex flex-col items-center gap-0.5 ${activeTab === 'pending-approval-projects' ? 'text-white' : 'text-slate-400'}`}
           >
-            <div className={`w-8 h-8 ${activeTab === 'pending-approval-projects' ? 'bg-orange-500' : ''} rounded-lg flex items-center justify-center`}>
-              <Check size={16} className={activeTab === 'pending-approval-projects' ? 'text-white' : 'text-slate-400'} />
+            <div className={`w-10 h-10 ${activeTab === 'pending-approval-projects' ? 'bg-orange-500' : ''} rounded-lg flex items-center justify-center`}>
+              <Check size={22} className={activeTab === 'pending-approval-projects' ? 'text-white' : 'text-slate-400'} />
             </div>
             <span className={`text-xs ${activeTab === 'pending-approval-projects' ? 'font-medium' : ''}`}>Approval</span>
           </button>
@@ -2237,8 +2237,8 @@ const fetchFreshWorkOrders = async () => {
             onClick={() => handleTabChange('current-project')}
             className={`flex flex-col items-center gap-0.5 ${activeTab === 'current-project' ? 'text-white' : 'text-slate-400'}`}
           >
-            <div className={`w-8 h-8 ${activeTab === 'current-project' ? 'bg-blue-500' : ''} rounded-lg flex items-center justify-center`}>
-              <Calendar size={16} className={activeTab === 'current-project' ? 'text-white' : 'text-slate-400'} />
+            <div className={`w-10 h-10 ${activeTab === 'current-project' ? 'bg-blue-500' : ''} rounded-lg flex items-center justify-center`}>
+              <Calendar size={22} className={activeTab === 'current-project' ? 'text-white' : 'text-slate-400'} />
             </div>
             <span className={`text-xs ${activeTab === 'current-project' ? 'font-medium' : ''}`}>Current</span>
           </button>
