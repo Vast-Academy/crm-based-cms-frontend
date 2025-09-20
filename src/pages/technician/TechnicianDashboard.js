@@ -999,7 +999,7 @@ const fetchFreshWorkOrders = async () => {
   return (
     <div className="max-w-sm mx-auto bg-white h-screen flex flex-col overflow-hidden">
       {/* Header */}
-      <div className="bg-slate-800 text-white px-4 py-3 rounded-b-lg">
+      <div className="bg-slate-800 text-white px-4 py-6 rounded-b-lg ">
         <div className="flex justify-between items-center">
           <div className="flex items-center gap-2">
             <div className="relative">
@@ -2191,7 +2191,7 @@ const fetchFreshWorkOrders = async () => {
       </main>
       
       {/* Bottom Navigation */}
-      <div className="bg-slate-800 border-t border-slate-700 px-4 py-2">
+      <div className="bg-slate-800 border-t border-slate-700 px-4 py-4">
         <div className="flex items-center justify-between">
           <button
             onClick={() => handleTabChange('home')}
