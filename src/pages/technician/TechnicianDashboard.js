@@ -1022,9 +1022,9 @@ const fetchFreshWorkOrders = async () => {
   const activeWorkOrders = getActiveWorkOrders();
 
   return (
-    <div className="max-w-sm mx-auto bg-white h-screen flex flex-col overflow-hidden">
-      {/* Header */}
-      <div className="bg-slate-800 text-white px-4 py-5 rounded-b-lg ">
+    <div className="max-w-sm mx-auto bg-white h-screen flex flex-col">
+      {/* Header - Fixed */}
+      <div className="bg-slate-800 text-white px-4 py-3 flex-shrink-0">
         <div className="flex justify-between items-center">
           <div className="flex items-center gap-2">
             <div>
@@ -1158,10 +1158,10 @@ const fetchFreshWorkOrders = async () => {
         </div>
       </div>
 
-      {/* Main Content Area */}
-      <main className="flex-1  p-2">
+      {/* Main Content Area - Scrollable */}
+      <main className="flex-1 overflow-y-auto min-h-0 p-2">
         {activeTab === 'home' && (
-          <div className="flex-1 px-1 py-2 overflow-y-auto">
+          <div className="px-1 py-2">
             {/* Today's Schedule Card */}
             <div className="bg-white rounded-lg shadow-md p-3 mb-3">
               <div className="text-gray-600 text-xs mb-1">Today's Schedule</div>
@@ -1300,7 +1300,7 @@ const fetchFreshWorkOrders = async () => {
 {/* Modify the inventory tab section in TechnicianDashboard.jsx */}
 
 {activeTab === 'inventory' && (
-  <div className="flex-1 px-1 py-2 overflow-y-auto">
+  <div className="px-1 py-2">
     {/* My Inventory Card */}
     <div className="bg-gradient-to-br from-teal-400 to-teal-600 rounded-lg shadow-md p-4 mb-3 text-white">
       <div className="flex items-center gap-2 mb-3">
@@ -1438,7 +1438,7 @@ const fetchFreshWorkOrders = async () => {
 )}
 
 {activeTab === 'current-project' && (
-  <div className="flex-1 px-1 py-2 overflow-y-auto">
+  <div className="px-1 py-2">
     {(() => {
       const activeProject = workOrders.find(order => order.status === 'in-progress');
 
@@ -1817,7 +1817,7 @@ const fetchFreshWorkOrders = async () => {
 
 
         {activeTab === 'all-projects' && (
-          <div className="flex-1 px-1 py-2 overflow-y-auto">
+          <div className="px-1 py-2">
             {/* All Projects Card */}
             <div className="bg-white rounded-lg shadow-md p-4 mb-3 border border-slate-200">
               <div className="flex items-center gap-2 mb-3">
@@ -1923,7 +1923,7 @@ const fetchFreshWorkOrders = async () => {
         )}
           
         {activeTab === 'completed' && (
-          <div className="flex flex-col space-y-6">
+          <div className="flex flex-col space-y-6 px-1 py-2">
             {/* Completed Summary */}
             <div className={`${darkMode ? 'bg-gradient-to-br from-green-600 to-green-800' : 'bg-gradient-to-br from-green-500 to-green-600'} p-6 rounded-2xl shadow-xl text-white`}>
               <div className="flex items-center mb-4">
@@ -1998,7 +1998,7 @@ const fetchFreshWorkOrders = async () => {
         )}
 
 {activeTab === 'pending-approval-projects' && (
-  <div className="flex-1 px-1 py-2 overflow-y-auto">
+  <div className="px-1 py-2">
     {/* Pending Approvals Card */}
     <div className="bg-gradient-to-br from-orange-400 to-orange-600 rounded-lg shadow-md p-4 mb-3 text-white">
       <div className="flex items-center gap-2 mb-3">
@@ -2067,7 +2067,7 @@ const fetchFreshWorkOrders = async () => {
 )}
 
 {activeTab === 'paused-projects' && (
-  <div className="flex flex-col space-y-6">
+  <div className="flex flex-col space-y-6 px-1 py-2">
     {/* Paused Projects Summary */}
     <div className={`${darkMode ? 'bg-gradient-to-br from-orange-600 to-orange-800' : 'bg-gradient-to-br from-orange-500 to-orange-600'} p-6 rounded-2xl shadow-xl text-white`}>
       <div className="flex items-center mb-4">
@@ -2140,7 +2140,7 @@ const fetchFreshWorkOrders = async () => {
 )}
 
 {activeTab === 'assigned-projects' && (
-  <div className="flex flex-col space-y-6">
+  <div className="flex flex-col space-y-6 px-1 py-2">
     {/* Assigned Projects Summary */}
     <div className={`${darkMode ? 'bg-gradient-to-br from-blue-600 to-blue-800' : 'bg-gradient-to-br from-blue-500 to-blue-600'} p-6 rounded-2xl shadow-xl text-white`}>
       <div className="flex items-center mb-4">
@@ -2213,7 +2213,7 @@ const fetchFreshWorkOrders = async () => {
 )}
 
 {activeTab === 'transferred-projects' && (
-  <div className="flex flex-col space-y-6">
+  <div className="flex flex-col space-y-6 px-1 py-2">
     {/* Transferred Projects Summary */}
     <div className={`${darkMode ? 'bg-gradient-to-br from-red-600 to-red-800' : 'bg-gradient-to-br from-red-500 to-red-600'} p-6 rounded-2xl shadow-xl text-white`}>
       <div className="flex items-center mb-4">
@@ -2279,8 +2279,8 @@ const fetchFreshWorkOrders = async () => {
 )}
       </main>
       
-      {/* Bottom Navigation */}
-      <div className="bg-gray-800 border-gray-700 border-t p-1 text-white">
+      {/* Bottom Navigation - Fixed */}
+      <div className="bg-gray-800 border-gray-700 border-t p-1 text-white flex-shrink-0">
         <div className="grid grid-cols-5 gap-1 px-2 pt-1">
           <button
             onClick={() => handleTabChange('home')}
