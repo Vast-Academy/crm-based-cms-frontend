@@ -41,18 +41,6 @@ import ImagePreviewModal from '../../components/ImagePreviewModal';
 const TechnicianDashboard = () => {
   const { user, logout } = useAuth();
 
-  // Add styles to body to prevent overflow issues
-  React.useEffect(() => {
-    document.body.style.overflow = 'hidden';
-    document.body.style.height = '100vh';
-    document.documentElement.style.height = '100vh';
-
-    return () => {
-      document.body.style.overflow = '';
-      document.body.style.height = '';
-      document.documentElement.style.height = '';
-    };
-  }, []);
   const [inventoryItems, setInventoryItems] = useState([]);
   const [workOrders, setWorkOrders] = useState([]);
   const [completedOrders, setCompletedOrders] = useState([]);
@@ -1035,7 +1023,7 @@ const fetchFreshWorkOrders = async () => {
   const activeWorkOrders = getActiveWorkOrders();
 
   return (
-    <div className="max-w-sm mx-auto bg-white min-h-screen max-h-screen flex flex-col overflow-hidden">
+    <div className="w-full sm:max-w-md mx-auto bg-white min-h-screen flex flex-col">
       {/* Header - Fixed */}
       <div className="bg-slate-800 text-white px-4 py-3 flex-shrink-0">
         <div className="flex justify-between items-center">
@@ -1172,7 +1160,7 @@ const fetchFreshWorkOrders = async () => {
       </div>
 
       {/* Main Content Area - Scrollable */}
-      <main className="flex-1 overflow-y-auto overflow-x-hidden p-2 min-h-0">
+      <main className="flex-1 overflow-y-auto p-2">
         {activeTab === 'home' && (
           <div className="px-1 py-2">
             {/* Today's Schedule Card */}
@@ -2293,7 +2281,7 @@ const fetchFreshWorkOrders = async () => {
       </main>
       
       {/* Bottom Navigation - Fixed */}
-      <div className="bg-gray-800 border-gray-700 border-t p-1 text-white flex-shrink-0">
+      <div className="bg-gray-800 border-gray-700 border-t p-1 text-white flex-shrink-0 w-full">
         <div className="grid grid-cols-5 gap-1 px-2 pt-1">
           <button
             onClick={() => handleTabChange('home')}
