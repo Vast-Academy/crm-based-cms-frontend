@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   Package,
+  Camera,
   Clipboard,
   CheckSquare,
   List,
@@ -34,6 +35,8 @@ import ReturnInventoryModal from './ReturnInventoryModal';
 import GenerateBillModal from './GenerateBillModal';
 import { FiPause } from 'react-icons/fi';
 import UserSettingsModal from '../users/UserSettingsModal';
+import ChangeProfilePictureModal from '../../components/ChangeProfilePictureModal';
+import ImagePreviewModal from '../../components/ImagePreviewModal';
 
 const TechnicianDashboard = () => {
   const { user, logout } = useAuth();
@@ -75,9 +78,31 @@ const [inventoryFilter, setInventoryFilter] = useState('Serialized');
   const [transferredProjects, setTransferredProjects] = useState([]);
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [showChangeProfilePictureModal, setShowChangeProfilePictureModal] = useState(false);
+  const [showImagePreviewModal, setShowImagePreviewModal] = useState(false);
 
   // नया कॉन्स्टेंट जोड़ें
 const CACHE_STALENESS_TIME = 15 * 1000;
+
+  // Function to get time-based greeting
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) {
+      return 'Good Morning';
+    } else if (hour < 17) {
+      return 'Good Afternoon';
+    } else {
+      return 'Good Evening';
+    }
+  };
+
+  // Function to display role
+  const getDisplayRole = (role) => {
+    if (role === 'technician') {
+      return 'Engineer';
+    }
+    return role;
+  };
 
   // Handle logout
   const handleLogout = () => {
@@ -1002,69 +1027,133 @@ const fetchFreshWorkOrders = async () => {
       <div className="bg-slate-800 text-white px-4 py-5 rounded-b-lg ">
         <div className="flex justify-between items-center">
           <div className="flex items-center gap-2">
-            <div className="relative">
-              <div
-                onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
-                className="w-10 h-10 bg-slate-300 rounded-full flex items-center justify-center overflow-hidden cursor-pointer"
-              >
-                <div className="w-full h-full rounded-full bg-blue-600 flex items-center justify-center text-white text-xl font-bold">
-                  👨
+            <div>
+              <div className="text-md text-slate-300">{getGreeting()},</div>
+              <div className="text-lg capitalize font-semibold">{user?.firstName || 'Engineer'}</div>
+            </div>
+          </div>
+
+          {/* Profile Dropdown */}
+          <div className="relative">
+            <button
+              onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
+              className="flex items-center space-x-3 px-3 py-2 bg-gray-700 hover:bg-gray-600 transition-colors duration-200 rounded-lg border border-gray-700 h-[50px]"
+            >
+              {/* Profile Picture with Online Status */}
+              <div className="relative">
+                {user?.profileImage ? (
+                  <img
+                    src={user.profileImage}
+                    alt="Profile"
+                    className="w-8 h-8 rounded-full object-cover"
+                  />
+                ) : (
+                  <div className="w-8 h-8 rounded-full bg-gray-500 flex items-center justify-center text-white font-medium text-sm">
+                    {user?.firstName?.charAt(0)}{user?.lastName?.charAt(0)}
+                  </div>
+                )}
+                {/* Online Status Dot */}
+                <div className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-green-500 rounded-full border-2 border-white">
+                  <div className="w-full h-full bg-green-500 rounded-full animate-pulse"></div>
                 </div>
               </div>
 
-              {/* Profile Dropdown */}
-              {profileDropdownOpen && (
-                <div
-                  className={`absolute left-[-10px] top-10 w-48 ${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} rounded-md shadow-lg py-1 z-50 border`}
-                >
-                  <div className={`px-4 py-2 ${darkMode ? 'border-b border-gray-700' : 'border-b border-gray-100'}`}>
-                    <p className={`text-sm font-medium capitalize ${darkMode ? 'text-white' : 'text-gray-800'}`}>
-                      {user?.firstName} {user?.lastName}
-                    </p>
-                    <p className={`text-xs ${darkMode ? 'text-gray-400' : 'text-gray-500'} capitalize`}>
-                      {user?.role || 'User'}
-                    </p>
+              {/* Name and Role */}
+              <div className="flex flex-col items-start">
+                {/* <span className="text-xs font-medium text-white capitalize">
+                  {user?.firstName}
+                </span> */}
+                <span className="text-sm text-gray-200 capitalize">
+                  {getDisplayRole(user?.role) || 'User'}
+                </span>
+              </div>
+
+              {/* Dropdown Arrow */}
+              <ChevronDown className={`w-3 h-3 text-gray-200 transition-transform duration-200 ${profileDropdownOpen ? 'rotate-180' : ''}`} />
+            </button>
+
+            {/* Dropdown Menu */}
+            {profileDropdownOpen && (
+              <div className="absolute right-0 mt-2 w-64 bg-gray-800 rounded-lg shadow-lg border border-gray-200 py-2 z-50">
+                {/* Profile Info in Dropdown */}
+                <div className="px-4 py-3 border-b border-gray-100">
+                  <div className="flex items-center space-x-3">
+                    <div className="relative">
+                      {user?.profileImage ? (
+                        <img
+                          src={user.profileImage}
+                          alt="Profile"
+                          className="w-12 h-12 rounded-full object-cover cursor-pointer hover:opacity-80 transition-opacity"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setShowImagePreviewModal(true);
+                            setProfileDropdownOpen(false);
+                          }}
+                        />
+                      ) : (
+                        <div className="w-12 h-12 rounded-full bg-gray-500 flex items-center justify-center text-white font-medium text-lg">
+                          {user?.firstName?.charAt(0)}{user?.lastName?.charAt(0)}
+                        </div>
+                      )}
+                      {/* Online Status Dot */}
+                      <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-green-500 rounded-full border-2 border-white">
+                        <div className="w-full h-full bg-green-500 rounded-full animate-pulse"></div>
+                      </div>
+                    </div>
+                    <div className="flex flex-col">
+                      <span className="font-medium text-white capitalize">{user?.firstName} {user?.lastName}</span>
+                      <span className="text-sm text-gray-200 capitalize">{getDisplayRole(user?.role) || 'User'}</span>
+                    </div>
                   </div>
+                </div>
+
+                {/* Menu Options */}
+                <div className="py-1">
+                  <button
+                    onClick={() => {
+                      setShowChangeProfilePictureModal(true);
+                      setProfileDropdownOpen(false);
+                    }}
+                    className="flex items-center space-x-3 w-full px-4 py-2 text-sm text-gray-200 hover:bg-gray-600 transition-colors duration-150"
+                  >
+                    <Camera className="w-4 h-4" />
+                    <span>Change Profile Picture</span>
+                  </button>
 
                   <button
                     onClick={() => {
                       setShowSettingsModal(true);
                       setProfileDropdownOpen(false);
                     }}
-                    className={`w-full text-left px-4 py-2 text-sm ${darkMode ? 'text-gray-300 hover:bg-gray-700' : 'text-gray-700 hover:bg-gray-100'} flex items-center`}
+                    className="flex items-center space-x-3 w-full px-4 py-2 text-sm text-gray-200 hover:bg-gray-600 transition-colors duration-150"
                   >
-                    <Settings className="mr-2 h-4 w-4" />
-                    Settings
+                    <Settings className="w-4 h-4" />
+                    <span>Settings</span>
                   </button>
+
+                  <hr className="my-1 border-gray-200" />
 
                   <button
                     onClick={() => {
                       setShowLogoutPopup(true);
                       setProfileDropdownOpen(false);
                     }}
-                    className={`w-full text-left px-4 py-2 text-sm ${darkMode ? 'text-gray-300 hover:bg-gray-700' : 'text-gray-700 hover:bg-gray-100'} flex items-center`}
+                    className="flex items-center space-x-3 w-full px-4 py-2 text-sm text-red-500 hover:bg-gray-600 transition-colors duration-150"
                   >
-                    <LogOut className="mr-2 h-4 w-4" />
-                    Logout
+                    <LogOut className="w-4 h-4" />
+                    <span>Logout</span>
                   </button>
                 </div>
-              )}
-            </div>
-            <div>
-              <div className="text-md text-slate-300">Welcome back,</div>
-              <div className="text-lg capitalize font-semibold">{user?.firstName || 'Technician'}</div>
-            </div>
-          </div>
-          <div className="flex gap-2">
-            <button className="w-10 h-10 bg-slate-700 rounded-lg flex items-center justify-center hover:bg-slate-600">
-              <Bell size={20} />
-            </button>
-            <button
-              onClick={() => setShowSettingsModal(true)}
-              className="w-10 h-10 bg-slate-700 rounded-lg flex items-center justify-center hover:bg-slate-600"
-            >
-              <Settings size={20} />
-            </button>
+              </div>
+            )}
+
+            {/* Backdrop to close dropdown */}
+            {profileDropdownOpen && (
+              <div
+                className="fixed inset-0 z-40"
+                onClick={() => setProfileDropdownOpen(false)}
+              ></div>
+            )}
           </div>
         </div>
       </div>
@@ -2191,56 +2280,86 @@ const fetchFreshWorkOrders = async () => {
       </main>
       
       {/* Bottom Navigation */}
-      <div className="bg-slate-800 border-t border-slate-700 px-4 py-2">
-        <div className="flex items-center justify-between">
+      <div className="bg-gray-800 border-gray-700 border-t p-1 text-white">
+        <div className="grid grid-cols-5 gap-1 px-2 pt-1">
           <button
             onClick={() => handleTabChange('home')}
-            className={`flex flex-col items-center gap-0.5 ${activeTab === 'home' ? 'text-white' : 'text-slate-400'}`}
+            className={`flex flex-col items-center py-2 px-4 rounded-xl flex-1 mx-1 h-14 ${
+              activeTab === 'home'
+                ? `${darkMode ? 'bg-gradient-to-r from-blue-600 to-blue-700' : 'bg-gradient-to-r from-blue-500 to-blue-600'} text-white shadow-lg`
+                : `${darkMode ? 'text-gray-400' : 'text-white'}`
+            }`}
           >
-            <div className={`w-10 h-10 ${activeTab === 'home' ? 'bg-slate-700' : ''} rounded-lg flex items-center justify-center`}>
-              <Home size={22} className={activeTab === 'home' ? 'text-white' : 'text-slate-400'} />
+            <div className="h-5 flex items-center">
+              <Home size={22} />
             </div>
-            <span className={`text-xs ${activeTab === 'home' ? 'font-medium' : ''}`}>Home</span>
+            <div className="h-5 flex items-center">
+              <span className="text-xs mt-2">Home</span>
+            </div>
           </button>
 
           <button
             onClick={() => handleTabChange('inventory')}
-            className={`flex flex-col items-center gap-0.5 ${activeTab === 'inventory' ? 'text-white' : 'text-slate-400'}`}
+            className={`flex flex-col items-center py-2 px-4 rounded-xl flex-1 mx-1 h-14 ${
+              activeTab === 'inventory'
+                ? `${darkMode ? 'bg-gradient-to-r from-teal-600 to-teal-700' : 'bg-gradient-to-r from-teal-500 to-teal-600'} text-white shadow-lg`
+                : `${darkMode ? 'text-gray-400' : 'text-white'}`
+            }`}
           >
-            <div className={`w-10 h-10 ${activeTab === 'inventory' ? 'bg-teal-500' : ''} rounded-lg flex items-center justify-center`}>
-              <span className={`text-md font-bold ${activeTab === 'inventory' ? 'text-white' : 'text-slate-400'}`}>{calculateTotalUnits()}</span>
+            <div className="h-5 flex items-center">
+              <span className="text-lg font-bold">{calculateTotalUnits()}</span>
             </div>
-            <span className={`text-xs ${activeTab === 'inventory' ? 'font-medium' : ''}`}>{calculateTotalUnits()}</span>
+            <div className="h-5 flex items-center">
+              <span className="text-xs mt-2">{calculateTotalUnits()}</span>
+            </div>
           </button>
 
           <button
             onClick={() => handleTabChange('all-projects')}
-            className={`flex flex-col items-center gap-0.5 ${activeTab === 'all-projects' ? 'text-white' : 'text-slate-400'}`}
+            className={`flex flex-col items-center py-2 px-4 rounded-xl flex-1 mx-1 h-14 ${
+              activeTab === 'all-projects'
+                ? `${darkMode ? 'bg-gradient-to-r from-amber-600 to-amber-700' : 'bg-gradient-to-r from-amber-500 to-amber-600'} text-white shadow-lg`
+                : `${darkMode ? 'text-gray-400' : 'text-white'}`
+            }`}
           >
-            <div className={`w-10 h-10 ${activeTab === 'all-projects' ? 'bg-orange-500' : ''} rounded-lg flex items-center justify-center`}>
-              <List size={22} className={activeTab === 'all-projects' ? 'text-white' : 'text-slate-400'} />
+            <div className="h-5 flex items-center">
+              <List size={22} />
             </div>
-            <span className={`text-xs ${activeTab === 'all-projects' ? 'font-medium' : ''}`}>All</span>
+            <div className="h-5 flex items-center">
+              <span className="text-xs mt-2">All</span>
+            </div>
           </button>
 
           <button
             onClick={() => handleTabChange('pending-approval-projects')}
-            className={`flex flex-col items-center gap-0.5 ${activeTab === 'pending-approval-projects' ? 'text-white' : 'text-slate-400'}`}
+            className={`flex flex-col items-center py-2 px-4 rounded-xl flex-1 mx-1 h-14 ${
+              activeTab === 'pending-approval-projects'
+                ? `${darkMode ? 'bg-gradient-to-br from-amber-600 to-amber-800' : 'bg-gradient-to-br from-amber-500 to-amber-600'} text-white shadow-lg`
+                : `${darkMode ? 'text-gray-400' : 'text-white'}`
+            }`}
           >
-            <div className={`w-10 h-10 ${activeTab === 'pending-approval-projects' ? 'bg-orange-500' : ''} rounded-lg flex items-center justify-center`}>
-              <Check size={22} className={activeTab === 'pending-approval-projects' ? 'text-white' : 'text-slate-400'} />
+            <div className="h-5 flex items-center">
+              <Check size={22} />
             </div>
-            <span className={`text-xs ${activeTab === 'pending-approval-projects' ? 'font-medium' : ''}`}>Approval</span>
+            <div className="h-5 flex items-center">
+              <span className="text-xs mt-2">Approval</span>
+            </div>
           </button>
 
           <button
             onClick={() => handleTabChange('current-project')}
-            className={`flex flex-col items-center gap-0.5 ${activeTab === 'current-project' ? 'text-white' : 'text-slate-400'}`}
+            className={`flex flex-col items-center py-2 px-4 rounded-xl flex-1 mx-1 h-14 ${
+              activeTab === 'current-project'
+                ? `${darkMode ? 'bg-gradient-to-r from-blue-600 to-blue-700' : 'bg-gradient-to-r from-blue-500 to-blue-600'} text-white shadow-lg`
+                : `${darkMode ? 'text-gray-400' : 'text-white'}`
+            }`}
           >
-            <div className={`w-10 h-10 ${activeTab === 'current-project' ? 'bg-blue-500' : ''} rounded-lg flex items-center justify-center`}>
-              <Calendar size={22} className={activeTab === 'current-project' ? 'text-white' : 'text-slate-400'} />
+            <div className="h-5 flex items-center">
+              <Calendar size={22} />
             </div>
-            <span className={`text-xs ${activeTab === 'current-project' ? 'font-medium' : ''}`}>Current</span>
+            <div className="h-5 flex items-center">
+              <span className="text-xs mt-2">Current</span>
+            </div>
           </button>
         </div>
       </div>
@@ -2330,9 +2449,23 @@ const fetchFreshWorkOrders = async () => {
   />
 )}
 
-<UserSettingsModal 
+<UserSettingsModal
   isOpen={showSettingsModal}
   onClose={() => setShowSettingsModal(false)}
+/>
+
+{/* Change Profile Picture Modal */}
+<ChangeProfilePictureModal
+  isOpen={showChangeProfilePictureModal}
+  onClose={() => setShowChangeProfilePictureModal(false)}
+/>
+
+{/* Image Preview Modal */}
+<ImagePreviewModal
+  isOpen={showImagePreviewModal}
+  onClose={() => setShowImagePreviewModal(false)}
+  imageUrl={user?.profileImage}
+  userName={`${user?.firstName} ${user?.lastName}`}
 />
     </div>
   );
