@@ -1022,7 +1022,7 @@ const fetchFreshWorkOrders = async () => {
   const activeWorkOrders = getActiveWorkOrders();
 
   return (
-    <div className="max-w-sm mx-auto bg-white flex flex-col overflow-hidden">
+    <div className="max-w-sm mx-auto bg-white h-screen flex flex-col ">
       {/* Header */}
       <div className="bg-slate-800 text-white px-4 py-5 rounded-b-lg ">
         <div className="flex justify-between items-center">
