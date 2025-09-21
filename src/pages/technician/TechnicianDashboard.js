@@ -1023,7 +1023,7 @@ const fetchFreshWorkOrders = async () => {
   const activeWorkOrders = getActiveWorkOrders();
 
   return (
-    <div className="w-full sm:max-w-md mx-auto bg-white min-h-screen flex flex-col">
+    <div className="w-full sm:max-w-md mx-auto bg-white h-screen flex flex-col overflow-hidden">
       {/* Header - Fixed */}
       <div className="bg-slate-800 text-white px-4 py-3 flex-shrink-0">
         <div className="flex justify-between items-center">
@@ -1160,7 +1160,7 @@ const fetchFreshWorkOrders = async () => {
       </div>
 
       {/* Main Content Area - Scrollable */}
-      <main className="flex-1 overflow-y-auto p-2">
+      <main className="flex-1 overflow-y-auto p-2 min-h-0">
         {activeTab === 'home' && (
           <div className="px-1 py-2">
             {/* Today's Schedule Card */}
