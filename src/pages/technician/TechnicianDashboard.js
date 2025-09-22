@@ -1023,9 +1023,9 @@ const fetchFreshWorkOrders = async () => {
   const activeWorkOrders = getActiveWorkOrders();
 
   return (
-    <div className="w-full sm:max-w-md mx-auto bg-white h-screen flex flex-col overflow-hidden">
+    <div className="w-full sm:max-w-md mx-auto bg-white min-h-screen flex flex-col">
       {/* Header - Fixed */}
-      <div className="bg-slate-800 text-white px-4 py-3 flex-shrink-0">
+      <div className="bg-slate-800 text-white px-4 py-3 flex-shrink-0 z-40">
         <div className="flex justify-between items-center">
           <div className="flex items-center gap-2">
             <div>
@@ -2279,9 +2279,12 @@ const fetchFreshWorkOrders = async () => {
   </div>
 )}
       </main>
-      
+
+      {/* Add bottom padding to prevent content from being hidden behind fixed footer */}
+      <div className="pb-20"></div>
+
       {/* Bottom Navigation - Fixed */}
-      <div className="bg-gray-800 border-gray-700 border-t p-1 text-white flex-shrink-0 w-full">
+      <div className="fixed bottom-0 left-0 right-0 bg-gray-800 border-gray-700 border-t p-1 text-white z-50 w-full">
         <div className="grid grid-cols-5 gap-1 px-2 pt-1">
           <button
             onClick={() => handleTabChange('home')}
