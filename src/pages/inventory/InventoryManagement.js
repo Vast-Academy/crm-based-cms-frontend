@@ -8,6 +8,7 @@ import UnifiedInventoryAssignmentModal from './UnifiedInventoryAssignmentModal';
 import SelectTechnicianModal from '../technician/SelectTechnicianModal';
 import { FiSearch, FiPackage } from 'react-icons/fi';
 import { useNotification } from '../../context/NotificationContext';
+import ExportInventoryButton from '../../components/ExportInventoryButton';
 
 const InventoryManagement = () => {
   const [searchParams] = useSearchParams();
@@ -75,14 +76,19 @@ const InventoryManagement = () => {
          
           {/* Filter and search row */}
           <div className="flex items-center justify-between mt-4">
-             {/* Assign Inventory Button */}
-             <button
-              onClick={openAssignInventoryFlow}
-              className="px-4 py-2 bg-teal-500 text-white rounded-md hover:bg-teal-600 flex items-center"
-            >
-              <FiPackage className="mr-2" />
-              Assign Inventory
-            </button>
+             {/* Action Buttons */}
+             <div className="flex items-center gap-2">
+               <button
+                onClick={openAssignInventoryFlow}
+                className="px-4 py-2 bg-teal-500 text-white rounded-md hover:bg-teal-600 flex items-center"
+              >
+                <FiPackage className="mr-2" />
+                Assign Inventory
+              </button>
+
+              {/* Export Inventory Button */}
+              <ExportInventoryButton />
+             </div>
 
             {/* Filter buttons */}
             <div className="flex space-x-2 mb-2 sm:mb-0">

@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { FiBox, FiX, FiSave, FiSearch, FiTrash2 } from 'react-icons/fi';
+import { FiBox, FiX, FiSave, FiSearch, FiTrash2, FiUpload } from 'react-icons/fi';
 import SummaryApi from '../../common';
 import { useNotification } from '../../context/NotificationContext';
 import { useAuth } from '../../context/AuthContext';
 import ConfirmationDialog from '../../components/ConfirmationDialog';
+import ExportInventoryButton from '../../components/ExportInventoryButton';
+import ImportInventoryModal from '../../components/ImportInventoryModal';
 
 // Sample product units for selection
 const productUnits = [
@@ -30,6 +32,7 @@ const [selectedItem, setSelectedItem] = useState(null);
 const [lastRefreshTime, setLastRefreshTime] = useState(0);
 const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
 const [itemToDelete, setItemToDelete] = useState(null);
+const [isImportModalOpen, setIsImportModalOpen] = useState(false);
 
   // New item form state
   const [newItem, setNewItem] = useState({
@@ -410,16 +413,30 @@ const getStockDisplay = (item) => {
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
         <div className="flex items-center gap-2">
     {/* Add Inventory Button */}
-    <button 
+    <button
       onClick={() => setIsModalOpen(true)}
       className="flex items-center px-4 py-2 bg-teal-500 text-white rounded-md hover:bg-teal-600 transition-colors"
     >
       <FiBox className="mr-2" />
       Add Inventory
     </button>
-    
+
+    {/* Export Inventory Button */}
+    <ExportInventoryButton />
+
+    {/* Import Inventory Button (Admin Only) */}
+    {user.role === 'admin' && (
+      <button
+        onClick={() => setIsImportModalOpen(true)}
+        className="p-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors"
+        title="Import inventory items from Excel file"
+      >
+        <FiUpload className="h-6 w-6" />
+      </button>
+    )}
+
     {/* Add Refresh Button */}
-    <button 
+    <button
       onClick={() => fetchFreshInventoryData()}
       className="p-2 rounded-full bg-gray-200 hover:bg-gray-300 text-gray-700"
       title="Refresh Inventory"
@@ -1104,6 +1121,17 @@ const getStockDisplay = (item) => {
     </div>
   </div>
 )}
+
+      {/* Import Inventory Modal */}
+      <ImportInventoryModal
+        isOpen={isImportModalOpen}
+        onClose={() => setIsImportModalOpen(false)}
+        onImportSuccess={() => {
+          // Clear cache and refresh inventory data
+          localStorage.removeItem('inventoryItems');
+          fetchFreshInventoryData();
+        }}
+      />
     </div>
   );
 };

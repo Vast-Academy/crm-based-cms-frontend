@@ -456,6 +456,16 @@ const SummaryApi = {
       deleteProfilePicture: {
         url: `${backendDomain}/api/delete-profile-picture`,
         method: "delete"
+      },
+
+      // Inventory Export/Import APIs
+      exportInventory: {
+        url: `${backendDomain}/api/export-inventory`,
+        method: "get"
+      },
+      importInventory: {
+        url: `${backendDomain}/api/import-inventory`,
+        method: "post"
       }
 }
 
