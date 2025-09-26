@@ -281,6 +281,14 @@ const SummaryApi = {
         url : `${backendDomain}/api/confirm-returned-inventory`,
         method: "post"
       },
+      rejectReturnedInventory: {
+        url: `${backendDomain}/api/reject-returned-inventory`,
+        method: "post"
+      },
+      getTechnicianReturnRequests: {
+        url: `${backendDomain}/api/get-technician-return-requests`,
+        method: "get"
+      },
       getSerialNumberDetails : {
         url: `${backendDomain}/api/serial-number-detail`,
         method: "get"

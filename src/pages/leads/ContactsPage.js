@@ -381,23 +381,10 @@ const handleFilterChange = (type, status = 'all') => {
   
   // Handle lead conversion success
   const handleLeadConverted = (leadId, newCustomer) => {
-    // लीड को लिस्ट से हटाएं
-    setContacts(prevContacts => {
-      const updatedContacts = prevContacts.filter(
-        contact => !(contact.contactType === 'lead' && contact._id === leadId)
-      );
-      
-      // अगर नया कस्टमर डेटा है तो उसे लिस्ट के शुरू में जोड़ें
-      if (newCustomer) {
-        return [
-          { ...newCustomer, contactType: 'customer' },
-          ...updatedContacts
-        ];
-      }
-      
-      return updatedContacts;
-    });
-    
+    // Clear cache and refresh data
+    localStorage.removeItem('contactsData');
+    fetchContacts(true);
+
     // मॉडल बंद करें
     setShowLeadDetailModal(false);
   };

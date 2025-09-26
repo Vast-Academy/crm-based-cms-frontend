@@ -3,6 +3,7 @@ import { FiChevronDown, FiChevronUp, FiClock, FiUser, FiPackage } from 'react-ic
 import SummaryApi from '../../common';
 import { useNotification } from '../../context/NotificationContext';
 import ConfirmReturnModal from './ConfirmReturnModal';
+import RejectReturnModal from './RejectReturnModal';
 
 const ReturnedInventoryTable = () => {
   const { showNotification } = useNotification();
@@ -11,6 +12,7 @@ const ReturnedInventoryTable = () => {
   const [error, setError] = useState(null);
   const [expandedRowId, setExpandedRowId] = useState(null);
   const [confirmModalOpen, setConfirmModalOpen] = useState(false);
+  const [rejectModalOpen, setRejectModalOpen] = useState(false);
   const [selectedReturn, setSelectedReturn] = useState(null);
   const [lastRefreshTime, setLastRefreshTime] = useState(0);
 
@@ -128,11 +130,24 @@ const fetchFreshReturnedInventory = async (isBackground = false) => {
     setConfirmModalOpen(true);
   };
 
+  // Open reject modal
+  const handleOpenRejectModal = (returnItem) => {
+    setSelectedReturn(returnItem);
+    setRejectModalOpen(true);
+  };
+
   // Handle successful confirmation
   const handleReturnConfirmed = () => {
     // Refresh the data
     fetchReturnedInventory();
     showNotification('success', 'Inventory return confirmed successfully');
+  };
+
+  // Handle successful rejection
+  const handleReturnRejected = () => {
+    // Refresh the data
+    fetchReturnedInventory();
+    showNotification('success', 'Inventory return rejected successfully');
   };
 
   return (
@@ -272,8 +287,18 @@ const fetchFreshReturnedInventory = async (isBackground = false) => {
                             </table>
                           </div>
                           
-                          {/* Confirm button */}
-                          <div className="flex justify-end">
+                          {/* Action buttons */}
+                          <div className="flex justify-end space-x-3">
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleOpenRejectModal(returnItem);
+                              }}
+                              className="px-4 py-2 bg-red-500 text-white rounded-md hover:bg-red-600 focus:outline-none"
+                            >
+                              Reject Return
+                            </button>
                             <button
                               type="button"
                               onClick={(e) => {
@@ -307,6 +332,16 @@ const fetchFreshReturnedInventory = async (isBackground = false) => {
           onClose={() => setConfirmModalOpen(false)}
           returnData={selectedReturn}
           onConfirmed={handleReturnConfirmed}
+        />
+      )}
+
+      {/* Reject Return Modal */}
+      {selectedReturn && (
+        <RejectReturnModal
+          isOpen={rejectModalOpen}
+          onClose={() => setRejectModalOpen(false)}
+          returnData={selectedReturn}
+          onRejected={handleReturnRejected}
         />
       )}
     </div>

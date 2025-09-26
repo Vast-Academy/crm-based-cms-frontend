@@ -418,7 +418,7 @@ const PendingApprovals = () => {
                                 }}
                                 className="inline-flex items-center px-4 py-1.5 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-500 hover:bg-green-600"
                               >
-                                <FiCheckCircle className="mr-2" /> Approve Project
+                                <FiCheckCircle className="mr-2" /> Review Project
                               </button>
                             </div>
                           </td>

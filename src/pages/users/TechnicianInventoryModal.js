@@ -96,56 +96,56 @@ const TechnicianInventoryModal = ({ isOpen, onClose, technician }) => {
       }
     });
     
-    // Second pass: process each transfer to build the latest transfers map
-    // but only include items that are actually with the technician according to our tracking
-    sortedTransfers.forEach(transfer => {
-      const itemId = transfer.itemId;
-      
-      // For serialized products
-      if (transfer.type === 'serialized-product' && transfer.serialNumber) {
-        const serialKey = `${itemId}-${transfer.serialNumber}`;
-        const key = serialKey; // For latest transfers map
-        
-        // Only process if:
-        // 1. We haven't seen this item yet in our latest map
-        // 2. Our tracking shows this serial number is currently with the technician
-        if (!latest[key] && serialNumberStatus[serialKey] === 'with-technician') {
-          // Check transfer direction for accurate status flags
-          const isWithTechnician = transfer.to === technicianFullName && 
-                                transfer.from !== technicianFullName;
-                                
-          const isReturnedByTechnician = transfer.from === technicianFullName && 
-                                      transfer.to !== technicianFullName;
-          
-          // Only add if the last known state is that the item is with the technician
-          if (serialNumberStatus[serialKey] === 'with-technician') {
-            latest[key] = {
-              transfer,
-              isWithTechnician: true,  // Force this to true since we know it's with the technician
-              isReturnedByTechnician: false
-            };
-          }
+    // Second pass: Build latest transfers map based on current status
+    // Only include items that are currently with the technician
+
+    // For serialized products
+    Object.keys(serialNumberStatus).forEach(statusKey => {
+      if (statusKey.includes('-') && serialNumberStatus[statusKey] === 'with-technician') {
+        // This is a serialized item key: itemId-serialNumber
+        const [itemId, serialNumber] = statusKey.split('-');
+
+        // Find the most recent transfer for this serial number
+        const relevantTransfers = sortedTransfers.filter(t =>
+          t.type === 'serialized-product' &&
+          t.itemId === itemId &&
+          t.serialNumber === serialNumber
+        );
+
+        if (relevantTransfers.length > 0) {
+          const latestTransfer = relevantTransfers[0]; // Already sorted newest first
+
+          latest[statusKey] = {
+            transfer: latestTransfer,
+            isWithTechnician: true,
+            isReturnedByTechnician: false
+          };
         }
       }
-      // For generic products
-      else if (transfer.type === 'generic-product') {
-        const genericKey = `generic-${itemId}`;
-        const key = itemId; // For latest transfers map
-        
-        // Only process if:
-        // 1. We haven't seen this item yet in our latest map
-        // 2. Our tracking shows there's a positive quantity of this item with the technician
-        if (!latest[key] && 
-            serialNumberStatus[genericKey] && 
-            serialNumberStatus[genericKey].quantity > 0) {
-          
-          // Create a modified transfer with the actual current quantity
+    });
+
+    // For generic products
+    Object.keys(serialNumberStatus).forEach(statusKey => {
+      if (statusKey.startsWith('generic-') && serialNumberStatus[statusKey].quantity > 0) {
+        // This is a generic item key: generic-itemId
+        const itemId = statusKey.replace('generic-', '');
+
+        // Find the most recent transfer for this item
+        const relevantTransfers = sortedTransfers.filter(t =>
+          t.type === 'generic-product' &&
+          t.itemId === itemId
+        );
+
+        if (relevantTransfers.length > 0) {
+          const latestTransfer = relevantTransfers[0]; // Already sorted newest first
+
+          // Create transfer with current quantity
           const modifiedTransfer = {
-            ...transfer,
-            quantity: serialNumberStatus[genericKey].quantity
+            ...latestTransfer,
+            quantity: serialNumberStatus[statusKey].quantity
           };
-          
-          latest[key] = {
+
+          latest[itemId] = {
             transfer: modifiedTransfer,
             isWithTechnician: true,
             isReturnedByTechnician: false

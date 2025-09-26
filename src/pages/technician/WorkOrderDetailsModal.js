@@ -271,30 +271,38 @@ const WorkOrderDetailsModal = (props) => {
 
 // पॉज़ की तारीख खोजने के लिए
 const findPauseDateTime = () => {
-  if (!workOrder?.statusHistory) return "N/A";
-  
-  // स्टेटस हिस्ट्री से अंतिम पॉज़ एंट्री खोजें
+  if (!workOrder?.statusHistory || workOrder.statusHistory.length === 0) return "N/A";
+
+  console.log('Status history for pause date:', workOrder.statusHistory);
+
+  // स्टेटस हिस्ट्री से अंतिम पॉज़ एंट्री खोजें (case insensitive)
   const pauseHistory = [...workOrder.statusHistory]
     .reverse()
-    .find(history => history.status === 'paused');
-    
+    .find(history => history.status && history.status.toLowerCase() === 'paused');
+
+  console.log('Found pause history for date:', pauseHistory);
+
   if (!pauseHistory) return "N/A";
-  
-  return formatDate(pauseHistory.updatedAt);
+
+  return formatDate(pauseHistory.updatedAt || pauseHistory.createdAt);
 };
 
 // पॉज़ का कारण खोजने के लिए
 const findPauseReason = () => {
-  if (!workOrder?.statusHistory) return "No reason provided";
-  
-  // स्टेटस हिस्ट्री से अंतिम पॉज़ एंट्री खोजें
+  if (!workOrder?.statusHistory || workOrder.statusHistory.length === 0) return "No reason provided";
+
+  console.log('Status history for pause reason:', workOrder.statusHistory);
+
+  // स्टेटस हिस्ट्री से अंतिम पॉज़ एंट्री खोजें (case insensitive)
   const pauseHistory = [...workOrder.statusHistory]
     .reverse()
-    .find(history => history.status === 'paused');
-    
+    .find(history => history.status && history.status.toLowerCase() === 'paused');
+
+  console.log('Found pause history for reason:', pauseHistory);
+
   if (!pauseHistory) return "No reason provided";
-  
-  return pauseHistory.remark || "No reason provided";
+
+  return pauseHistory.remark || pauseHistory.reason || "No reason provided";
 };
 
 // प्रोजेक्ट रिज्यूम करने के लिए

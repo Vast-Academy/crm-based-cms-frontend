@@ -23,10 +23,13 @@ export default function BillingModal({ isOpen, onClose, customer, onBillCreated 
   const [subtotal, setSubtotal] = useState(0);
   const [total, setTotal] = useState(0);
 
-  // Fetch inventory items on modal open
+  // Fetch inventory items on modal open and reset state
   useEffect(() => {
     if (isOpen && customer) {
       fetchInventoryItems();
+    } else if (!isOpen) {
+      // Reset all states when modal closes
+      resetModal();
     }
   }, [isOpen, customer]);
 
@@ -149,6 +152,10 @@ export default function BillingModal({ isOpen, onClose, customer, onBillCreated 
     setCurrentStep('items');
     setError(null);
     setSearchQuery('');
+    setShowItemSelector(false);
+    setShowPaymentModal(false);
+    setSubtotal(0);
+    setTotal(0);
   };
 
   const handleClose = () => {

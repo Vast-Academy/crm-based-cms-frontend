@@ -1,16 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import {
-  Package,
-  Camera,
-  Clipboard,
-  CheckSquare,
-  List,
-  Bell,
-  Calendar,
-  Clock,
-  MapPin,
-  User,
-  Sun,
+import { 
+  Package, 
+  Clipboard, 
+  CheckSquare, 
+  List, 
+  Bell, 
+  Calendar, 
+  Clock, 
+  MapPin, 
+  User, 
+  Sun, 
   Moon,
   ArrowLeft,
   Activity,
@@ -18,12 +17,11 @@ import {
   Home,
   LogOut,
   X,
-  Phone,
+  Phone, 
   MessageSquare,
   ChevronDown,
   FileText,
-  Settings,
-  Check
+  
 } from 'lucide-react';
 import { LuCctv } from "react-icons/lu";
 import { useAuth } from '../../context/AuthContext';
@@ -32,16 +30,12 @@ import LoadingSpinner from '../../components/LoadingSpinner';
 import InventoryDetailsModal from './InventoryDetailsModal';
 import WorkOrderDetailsModal from './WorkOrderDetailsModal';
 import ReturnInventoryModal from './ReturnInventoryModal';
-import ReturnRequestDetailsModal from './ReturnRequestDetailsModal';
 import GenerateBillModal from './GenerateBillModal';
 import { FiPause } from 'react-icons/fi';
 import UserSettingsModal from '../users/UserSettingsModal';
-import ChangeProfilePictureModal from '../../components/ChangeProfilePictureModal';
-import ImagePreviewModal from '../../components/ImagePreviewModal';
 
 const TechnicianDashboard = () => {
   const { user, logout } = useAuth();
-
   const [inventoryItems, setInventoryItems] = useState([]);
   const [workOrders, setWorkOrders] = useState([]);
   const [completedOrders, setCompletedOrders] = useState([]);
@@ -65,9 +59,6 @@ const TechnicianDashboard = () => {
   const [showWorkOrderModal, setShowWorkOrderModal] = useState(false);
   const [selectedWorkOrder, setSelectedWorkOrder] = useState(null);
   const [showReturnModal, setShowReturnModal] = useState(false);
-  const [showReturnRequestModal, setShowReturnRequestModal] = useState(false);
-  const [selectedReturnRequest, setSelectedReturnRequest] = useState(null);
-  const [returnRequests, setReturnRequests] = useState([]);
   const [showFilterDropdown, setShowFilterDropdown] = useState(false);
 const [inventoryFilter, setInventoryFilter] = useState('Serialized');
   const [expandedItems, setExpandedItems] = useState([]);
@@ -78,36 +69,13 @@ const [inventoryFilter, setInventoryFilter] = useState('Serialized');
   const [showBillModal, setShowBillModal] = useState(false);
   const [showPauseConfirmationModal, setShowPauseConfirmationModal] = useState(false);
   const [showTransferModal, setShowTransferModal] = useState(false);
-  const [showStopConfirmationModal, setShowStopConfirmationModal] = useState(false);
   const [transferRemark, setTransferRemark] = useState('');
   const [transferredProjects, setTransferredProjects] = useState([]);
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
-  const [showChangeProfilePictureModal, setShowChangeProfilePictureModal] = useState(false);
-  const [showImagePreviewModal, setShowImagePreviewModal] = useState(false);
 
   // नया कॉन्स्टेंट जोड़ें
 const CACHE_STALENESS_TIME = 15 * 1000;
-
-  // Function to get time-based greeting
-  const getGreeting = () => {
-    const hour = new Date().getHours();
-    if (hour < 12) {
-      return 'Good Morning';
-    } else if (hour < 17) {
-      return 'Good Afternoon';
-    } else {
-      return 'Good Evening';
-    }
-  };
-
-  // Function to display role
-  const getDisplayRole = (role) => {
-    if (role === 'technician') {
-      return 'Engineer';
-    }
-    return role;
-  };
 
   // Handle logout
   const handleLogout = () => {
@@ -263,21 +231,15 @@ const confirmPauseProject = async (project) => {
   }
 };
 
-// Function to show stop project confirmation (step 1)
-const handleTransferProject = (project) => {
+// Function to stop/transfer the project
+const handleTransferProject = async (project) => {
   if (!transferRemark.trim()) {
     return;
   }
-
-  // पहले कन्फर्मेशन दिखाएं बजाय सीधे स्टॉप करने के
-  setShowStopConfirmationModal(true);
-};
-
-// कन्फर्मेशन के बाद स्टॉप का लॉजिक (step 2)
-const confirmStopProject = async (project) => {
+  
   try {
     setLoading(true);
-
+    
     const response = await fetch(SummaryApi.updateWorkOrderStatus.url, {
       method: SummaryApi.updateWorkOrderStatus.method,
       headers: {
@@ -291,24 +253,23 @@ const confirmStopProject = async (project) => {
         remark: transferRemark
       })
     });
-
+    
     const data = await response.json();
-
+    
     if (data.success) {
       // Update the work orders state - don't remove yet, just update status
-      setWorkOrders(prevOrders =>
-        prevOrders.map(order =>
+      setWorkOrders(prevOrders => 
+        prevOrders.map(order => 
           order.orderId === project.orderId ? {...order, status: 'transferring'} : order
         )
       );
-
-      // Close all modals
+      
+      // Close the modal
       setShowTransferModal(false);
-      setShowStopConfirmationModal(false);
-
+      
       // Clear the remark
       setTransferRemark('');
-
+      
       // Navigate back to home
       handleTabChange('home');
     } else {
@@ -323,93 +284,63 @@ const confirmStopProject = async (project) => {
 };
 
 // Add a handler for bill generation completion
-const handleBillGenerated = async (selectedItems, paymentCompleted = false, info = {}) => {
-  console.log('Bill items:', selectedItems, 'Payment completed:', paymentCompleted, 'info:', info);
-
-  if (!paymentCompleted) {
-    return;
-  }
-
-  const targetOrderId = info.orderId || (selectedWorkOrder ? selectedWorkOrder.orderId : undefined);
-
-  if (!targetOrderId) {
-    console.warn('No orderId available for bill update');
-    return;
-  }
-
-  try {
-    setWorkOrders(prevOrders => {
-      const hasOrder = prevOrders.some(order => order.orderId === targetOrderId);
-      if (!hasOrder) {
-        return prevOrders;
-      }
-
-      return prevOrders.map(order => {
-        if (order.orderId === targetOrderId) {
-          return { ...order, status: 'pending-approval' };
-        }
-        return order;
-      });
-    });
-
-    setSelectedWorkOrder(prev => {
-      if (prev && prev.orderId === targetOrderId) {
-        return { ...prev, status: 'pending-approval' };
-      }
-      return prev;
-    });
-
-    const cachedOrders = localStorage.getItem('technicianWorkOrders');
-    if (cachedOrders) {
-      try {
-        const parsedOrders = JSON.parse(cachedOrders);
-        if (Array.isArray(parsedOrders)) {
+const handleBillGenerated = async (selectedItems, paymentCompleted = false) => {
+  console.log('Bill items:', selectedItems, 'Payment completed:', paymentCompleted);
+  
+  if (paymentCompleted) {
+    // If payment is completed, update the project status to pending-approval
+    try {
+      // First, find the active project to get all necessary details
+      const activeProject = workOrders.find(order => order.status === 'in-progress');
+      
+      if (activeProject) {
+        // Update the work order in our state - move from in-progress to pending-approval
+        const updatedWorkOrders = workOrders.map(order => {
+          if (order.orderId === activeProject.orderId) {
+            return { ...order, status: 'pending-approval' };
+          }
+          return order;
+        });
+        
+        setWorkOrders(updatedWorkOrders);
+        
+        // Update localStorage cache
+        const cachedOrders = localStorage.getItem('technicianWorkOrders');
+        if (cachedOrders) {
+          const parsedOrders = JSON.parse(cachedOrders);
           const updatedCachedOrders = parsedOrders.map(order => {
-            if (order.orderId === targetOrderId) {
+            if (order.orderId === activeProject.orderId) {
               return { ...order, status: 'pending-approval' };
             }
             return order;
           });
-
+          
           localStorage.setItem('technicianWorkOrders', JSON.stringify(updatedCachedOrders));
-          localStorage.setItem(
-            'technicianWorkOrdersTimestamp',
-            new Date().getTime().toString()
-          );
+          localStorage.setItem('technicianWorkOrdersTimestamp', new Date().getTime().toString());
         }
-      } catch (cacheErr) {
-        console.error('Failed to update cached work orders:', cacheErr);
+        
+        // Redirect to home tab since project is no longer in-progress
+        handleTabChange('home');
+        
+        // Show a success message
+        // alert('Payment completed. Project has been marked for approval.');
       }
+    } catch (err) {
+      console.error('Error updating project status:', err);
     }
+    
+    // Refresh work orders data to get the updated state with payment info
+    fetchWorkOrders();
 
-    handleTabChange('home');
-  } catch (err) {
-    console.error('Error updating project status:', err);
+    // Add this line to refresh the inventory data
+    fetchInventory(true); 
   }
-
-  fetchWorkOrders();
-  fetchInventory(true);
 };
 
 // Update the handleWorkOrderClick function to handle bill generation separately
 const handleGenerateBill = (activeProject) => {
   setSelectedWorkOrder(activeProject);
   setShowBillModal(true);
-};
-
-const handleBillModalClose = () => {
-  setShowBillModal(false);
-  setSelectedWorkOrder(null);
-};
-
-const handleBillDone = async () => {
-  setShowBillModal(false);
-  setSelectedWorkOrder(null);
-
-  // Force fetch fresh work orders to reflect status changes
-  await fetchWorkOrders(true);
-
-  handleTabChange('home');
 };
 
 // Add a helper function to format dates
@@ -645,43 +576,6 @@ const fetchFreshInventory = async () => {
     localStorage.removeItem('technicianInventoryTimestamp');
     // Reload inventory data
     fetchInventory();
-    // Also refresh return requests
-    fetchReturnRequests();
-  };
-
-  // Fetch technician's return requests
-  const fetchReturnRequests = async () => {
-    try {
-      console.log('Fetching return requests...');
-      const response = await fetch(SummaryApi.getTechnicianReturnRequests.url, {
-        method: SummaryApi.getTechnicianReturnRequests.method,
-        credentials: 'include'
-      });
-
-      const data = await response.json();
-      console.log('Return requests response:', data);
-
-      if (data.success) {
-        setReturnRequests(data.data);
-        console.log('Return requests set:', data.data);
-      } else {
-        console.error('Error fetching return requests:', data.message);
-      }
-    } catch (err) {
-      console.error('Error fetching return requests:', err);
-    }
-  };
-
-  // Handle return request click
-  const handleReturnRequestClick = (returnRequest) => {
-    setSelectedReturnRequest(returnRequest);
-    setShowReturnRequestModal(true);
-  };
-
-  // Handle "again return" from rejected request
-  const handleAgainReturn = () => {
-    // Refresh return requests after re-submission
-    fetchReturnRequests();
   };
 
  // fetchWorkOrders फंक्शन को अपडेट करें
@@ -974,7 +868,6 @@ const fetchFreshWorkOrders = async () => {
   useEffect(() => {
     const loadData = async () => {
       await fetchInventory();
-      await fetchReturnRequests();
       await fetchWorkOrders();
     };
     
@@ -1102,646 +995,641 @@ const fetchFreshWorkOrders = async () => {
   const activeWorkOrders = getActiveWorkOrders();
 
   return (
-    <div className="w-full sm:max-w-md mx-auto bg-white min-h-screen flex flex-col">
-      {/* Header - Fixed */}
-      <div className="bg-slate-800 text-white px-4 py-3 flex-shrink-0 z-40">
-        <div className="flex justify-between items-center">
-          <div className="flex items-center gap-2">
-            <div>
-              <div className="text-md text-slate-300">{getGreeting()},</div>
-              <div className="text-lg capitalize font-semibold">{user?.firstName || 'Engineer'}</div>
-            </div>
-          </div>
-
-          {/* Profile Dropdown */}
-          <div className="relative">
-            <button
-              onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
-              className="flex items-center space-x-3 px-3 py-2 bg-gray-700 hover:bg-gray-600 transition-colors duration-200 rounded-lg border border-gray-700 h-[50px]"
+    <div className={`flex flex-col h-screen ${darkMode ? 'bg-gradient-to-b from-gray-900 to-gray-800 text-white' : 'bg-gradient-to-b from-gray-100 to-white text-gray-800'}`}>
+      {/* Header */}
+      <header className={`p-4 ${darkMode ? 'bg-gradient-to-r from-blue-600 to-purple-600' : 'bg-gradient-to-r from-blue-500 to-purple-500'} rounded-b-xl mx-2 shadow-xl text-white`}>
+        <div className="flex items-center justify-between">
+        <div className="flex items-center space-x-3">
+  <div 
+    className="relative"
+  >
+    <div 
+      onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
+      className="w-12 h-12 rounded-full bg-white p-1 overflow-hidden border-2 border-white shadow-lg cursor-pointer"
+    >
+      <div className="w-full h-full rounded-full bg-blue-600 flex items-center justify-center text-white text-xl font-bold">
+        👨
+      </div>
+    </div>
+    
+    {/* Profile Dropdown */}
+    {profileDropdownOpen && (
+      <div 
+        className={`absolute left-[-10px] top-16 w-48 ${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} rounded-md shadow-lg py-1 z-50 border`}
+      >
+        <div className={`px-4 py-2 ${darkMode ? 'border-b border-gray-700' : 'border-b border-gray-100'}`}>
+          <p className={`text-sm font-medium capitalize ${darkMode ? 'text-white' : 'text-gray-800'}`}>
+            {user?.firstName} {user?.lastName}
+          </p>
+          <p className={`text-xs ${darkMode ? 'text-gray-400' : 'text-gray-500'} capitalize`}>
+            {user?.role || 'User'}
+          </p>
+        </div>
+        
+        <button 
+          onClick={() => {
+            // Add your settings functionality here
+            setShowSettingsModal(true);
+            setProfileDropdownOpen(false);
+          }}
+          className={`w-full text-left px-4 py-2 text-sm ${darkMode ? 'text-gray-300 hover:bg-gray-700' : 'text-gray-700 hover:bg-gray-100'} flex items-center`}
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" className="mr-2 h-4 w-4" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="12" r="3"></circle>
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+          </svg>
+          Settings
+        </button>
+        
+        <button 
+          onClick={() => {
+            toggleLogoutPopup();
+            setProfileDropdownOpen(false);
+          }}
+          className={`w-full text-left px-4 py-2 text-sm ${darkMode ? 'text-gray-300 hover:bg-gray-700' : 'text-gray-700 hover:bg-gray-100'} flex items-center`}
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" className="mr-2 h-4 w-4" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+            <polyline points="16 17 21 12 16 7"></polyline>
+            <line x1="21" y1="12" x2="9" y2="12"></line>
+          </svg>
+          Logout
+        </button>
+      </div>
+    )}
+  </div>
+  <div>
+    <p className={`${darkMode ? 'text-blue-100' : 'text-blue-50'} text-xs font-medium tracking-wide`}>Welcome back,</p>
+    <h1 className="font-bold text-xl">{user?.firstName || 'Technician'}</h1>
+  </div>
+</div>
+          
+          <div className="flex ">
+  <div className={`text-xs ${darkMode ? 'text-gray-400' : 'text-gray-500'} flex items-center`}>
+    <button 
+      onClick={() => {
+        fetchFreshInventory();
+        fetchFreshWorkOrders();
+      }}
+      className={`p-2 rounded-full mr-2 ${darkMode ? 'bg-gray-700 hover:bg-gray-600' : 'bg-gray-200 hover:bg-gray-300'}`}
+    >
+      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/>
+      </svg>
+    </button>
+    {/* {lastRefreshTime.workOrders > 0 && (
+      <span>
+        Last updated: {new Date(lastRefreshTime.workOrders).toLocaleTimeString()}
+      </span>
+    )} */}
+  </div>
+            <button 
+              onClick={toggleTheme}
+              className="p-2 rounded-full bg-white/20 backdrop-blur-sm hover:bg-white/30 transition-all"
             >
-              {/* Profile Picture with Online Status */}
-              <div className="relative">
-                {user?.profileImage ? (
-                  <img
-                    src={user.profileImage}
-                    alt="Profile"
-                    className="w-8 h-8 rounded-full object-cover"
-                  />
-                ) : (
-                  <div className="w-8 h-8 rounded-full bg-gray-500 flex items-center justify-center text-white font-medium text-sm">
-                    {user?.firstName?.charAt(0)}{user?.lastName?.charAt(0)}
-                  </div>
-                )}
-                {/* Online Status Dot */}
-                <div className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-green-500 rounded-full border-2 border-white">
-                  <div className="w-full h-full bg-green-500 rounded-full animate-pulse"></div>
-                </div>
-              </div>
-
-              {/* Name and Role */}
-              <div className="flex flex-col items-start">
-                {/* <span className="text-xs font-medium text-white capitalize">
-                  {user?.firstName}
-                </span> */}
-                <span className="text-sm text-gray-200 capitalize">
-                  {getDisplayRole(user?.role) || 'User'}
-                </span>
-              </div>
-
-              {/* Dropdown Arrow */}
-              <ChevronDown className={`w-3 h-3 text-gray-200 transition-transform duration-200 ${profileDropdownOpen ? 'rotate-180' : ''}`} />
+              {darkMode ? <Sun size={20} className="text-white" /> : <Moon size={20} className="text-white" />}
             </button>
-
-            {/* Dropdown Menu */}
-            {profileDropdownOpen && (
-              <div className="absolute right-0 mt-2 w-64 bg-gray-800 rounded-lg shadow-lg border border-gray-200 py-2 z-50">
-                {/* Profile Info in Dropdown */}
-                <div className="px-4 py-3 border-b border-gray-100">
-                  <div className="flex items-center space-x-3">
-                    <div className="relative">
-                      {user?.profileImage ? (
-                        <img
-                          src={user.profileImage}
-                          alt="Profile"
-                          className="w-12 h-12 rounded-full object-cover cursor-pointer hover:opacity-80 transition-opacity"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setShowImagePreviewModal(true);
-                            setProfileDropdownOpen(false);
-                          }}
-                        />
-                      ) : (
-                        <div className="w-12 h-12 rounded-full bg-gray-500 flex items-center justify-center text-white font-medium text-lg">
-                          {user?.firstName?.charAt(0)}{user?.lastName?.charAt(0)}
-                        </div>
-                      )}
-                      {/* Online Status Dot */}
-                      <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-green-500 rounded-full border-2 border-white">
-                        <div className="w-full h-full bg-green-500 rounded-full animate-pulse"></div>
-                      </div>
-                    </div>
-                    <div className="flex flex-col">
-                      <span className="font-medium text-white capitalize">{user?.firstName} {user?.lastName}</span>
-                      <span className="text-sm text-gray-200 capitalize">{getDisplayRole(user?.role) || 'User'}</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Menu Options */}
-                <div className="py-1">
-                  <button
-                    onClick={() => {
-                      setShowChangeProfilePictureModal(true);
-                      setProfileDropdownOpen(false);
-                    }}
-                    className="flex items-center space-x-3 w-full px-4 py-2 text-sm text-gray-200 hover:bg-gray-600 transition-colors duration-150"
-                  >
-                    <Camera className="w-4 h-4" />
-                    <span>Change Profile Picture</span>
-                  </button>
-
-                  <button
-                    onClick={() => {
-                      setShowSettingsModal(true);
-                      setProfileDropdownOpen(false);
-                    }}
-                    className="flex items-center space-x-3 w-full px-4 py-2 text-sm text-gray-200 hover:bg-gray-600 transition-colors duration-150"
-                  >
-                    <Settings className="w-4 h-4" />
-                    <span>Settings</span>
-                  </button>
-
-                  <hr className="my-1 border-gray-200" />
-
-                  <button
-                    onClick={() => {
-                      setShowLogoutPopup(true);
-                      setProfileDropdownOpen(false);
-                    }}
-                    className="flex items-center space-x-3 w-full px-4 py-2 text-sm text-red-500 hover:bg-gray-600 transition-colors duration-150"
-                  >
-                    <LogOut className="w-4 h-4" />
-                    <span>Logout</span>
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {/* Backdrop to close dropdown */}
-            {profileDropdownOpen && (
-              <div
-                className="fixed inset-0 z-40"
-                onClick={() => setProfileDropdownOpen(false)}
-              ></div>
-            )}
           </div>
         </div>
-      </div>
+      </header>
 
-      {/* Main Content Area - Scrollable */}
-      <main className="flex-1 overflow-y-auto p-2 min-h-0">
+      {/* Main Content Area */}
+      <main className="flex-1 overflow-auto p-4">
         {activeTab === 'home' && (
-          <div className="px-1 py-2">
-            {/* Today's Schedule Card */}
-            <div className="bg-white rounded-lg shadow-md p-3 mb-3">
-              <div className="text-gray-600 text-xs mb-1">Today's Schedule</div>
-              <div className="text-base font-bold text-gray-800 mb-3">
-                {new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
+          <>
+            {/* Date Section */}
+            <div className="flex justify-between items-center mb-6">
+              <div>
+                <h2 className={`${darkMode ? 'text-gray-400' : 'text-gray-500'} text-sm`}>Today's Schedule</h2>
+                <p className={`${darkMode ? 'text-white' : 'text-gray-800'} font-bold text-lg`}>
+                  {new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
+                </p>
               </div>
-
-              {/* Stats Grid */}
-              <div className="grid grid-cols-2 gap-2">
-                {/* Active Assignments */}
-                <div className="bg-slate-100 border border-slate-200 rounded-lg p-2">
-                  <div className="w-6 h-6 bg-slate-600 rounded-lg flex items-center justify-center mb-1">
-                    <FileText size={12} className="text-white" />
-                  </div>
-                  <div className="text-xs text-slate-600 mb-1">Active Assignments</div>
-                  <div className="flex items-baseline gap-1">
-                    <div className="text-xl font-bold text-slate-800">
-                      {workOrders.filter(order => order.status === 'assigned' || order.status === 'in-progress').length}
-                    </div>
-                    <div className="text-xs text-slate-600">tasks</div>
-                  </div>
-                </div>
-
-                {/* Pending Approvals */}
-                <div className="bg-orange-50 border border-orange-200 rounded-lg p-2 cursor-pointer" onClick={() => handleTabChange('pending-approval-projects')}>
-                  <div className="w-6 h-6 bg-orange-600 rounded-lg flex items-center justify-center mb-1">
-                    <Calendar size={12} className="text-white" />
-                  </div>
-                  <div className="text-xs text-orange-700 mb-1">Pending Approvals</div>
-                  <div className="flex items-baseline gap-1">
-                    <div className="text-xl font-bold text-orange-800">
-                      {workOrders.filter(order => order.status === 'pending-approval').length}
-                    </div>
-                    <div className="text-xs text-orange-700">tasks</div>
-                  </div>
-                </div>
-
-                {/* Completed */}
-                <div className="bg-green-50 border border-green-200 rounded-lg p-2">
-                  <div className="w-6 h-6 bg-green-600 rounded-lg flex items-center justify-center mb-1">
-                    <Check size={12} className="text-white" />
-                  </div>
-                  <div className="text-xs text-green-700 mb-1">Completed</div>
-                  <div className="flex items-baseline gap-1">
-                    <div className="text-xl font-bold text-green-800">{completedOrders.length}</div>
-                    <div className="text-xs text-green-700">tasks</div>
-                  </div>
-                </div>
-
-                {/* Inventory Items */}
-                <div className="bg-slate-100 border border-slate-200 rounded-lg p-2 cursor-pointer" onClick={() => handleTabChange('inventory')}>
-                  <div className="w-6 h-6 bg-slate-600 rounded-lg flex items-center justify-center mb-1">
-                    <div className="w-3 h-3 border-2 border-white rounded"></div>
-                  </div>
-                  <div className="text-xs text-slate-600 mb-1">Inventory Items</div>
-                  <div className="flex items-baseline gap-1">
-                    <div className="text-xl font-bold text-slate-800">{calculateTotalUnits()}</div>
-                    <div className="text-xs text-slate-600">units</div>
-                  </div>
-                </div>
-              </div>
+              {/* <button className={`${darkMode ? 'bg-gradient-to-r from-blue-500 to-purple-500' : 'bg-gradient-to-r from-blue-400 to-purple-400'} p-2 rounded-lg shadow-lg flex items-center text-white`}>
+                <Calendar size={18} className="mr-2" />
+                <span className="text-sm font-medium">Calendar</span>
+              </button> */}
             </div>
 
-            {/* Return Requests Section - MOVED TO TOP FOR TESTING */}
-            <div className="bg-red-100 border-2 border-red-500 rounded-lg shadow-md p-3 mb-3">
-              <h3 className="text-sm font-bold text-red-800 mb-3">
-                 Return Requests ({returnRequests.length}) 
-              </h3>
-
-              <div className="space-y-2">
-                {console.log('Rendering return requests:', returnRequests)}
-                {returnRequests.length > 0 ? (
-                  returnRequests.map((request) => (
-                    <div
-                      key={request.id}
-                      className="flex items-center gap-2 p-2 bg-gray-100 rounded-lg border border-slate-200 cursor-pointer hover:bg-gray-200 transition-colors"
-                      onClick={() => handleReturnRequestClick(request)}
-                    >
-                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
-                        request.status === 'pending' ? 'bg-orange-500' :
-                        request.status === 'confirmed' ? 'bg-green-500' :
-                        request.status === 'rejected' ? 'bg-red-500' :
-                        'bg-gray-500'
-                      }`}>
-                        <Package size={14} className="text-white" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="font-semibold text-sm text-slate-800">
-                          Return Request - {request.itemCount} item{request.itemCount !== 1 ? 's' : ''}
-                        </div>
-                        <div className="text-xs text-slate-600 truncate">
-                          {request.totalQuantity} units • {
-                            request.status === 'pending' ? 'Pending Review' :
-                            request.status === 'confirmed' ? 'Confirmed' :
-                            request.status === 'rejected' ? 'Rejected' :
-                            request.status
-                          }
-                        </div>
-                      </div>
-                      <div className={`px-2 py-1 rounded-full text-xs font-medium ${
-                        request.status === 'pending' ? 'bg-orange-100 text-orange-800' :
-                        request.status === 'confirmed' ? 'bg-green-100 text-green-800' :
-                        request.status === 'rejected' ? 'bg-red-100 text-red-800' :
-                        'bg-gray-100 text-gray-800'
-                      }`}>
-                        {request.status === 'pending' ? 'Pending' :
-                         request.status === 'confirmed' ? 'Confirmed' :
-                         request.status === 'rejected' ? 'Rejected' :
-                         request.status}
-                      </div>
-                    </div>
-                  ))
-                ) : (
-                  <div className="p-4 text-center">
-                    <p className="text-gray-500 text-sm">No return requests</p>
+            {/* Dashboard Stats */}
+            <div className="grid grid-cols-2 gap-4 mb-6">
+              <div 
+                className={`${darkMode ? 'bg-gradient-to-br from-blue-500 to-blue-600' : 'bg-gradient-to-br from-blue-400 to-blue-500'} rounded-2xl shadow-lg p-4 relative overflow-hidden text-white cursor-pointer`}
+                onClick={() => handleTabChange('current-project')}
+              >
+                <div className="absolute right-0 top-0 w-20 h-20 bg-blue-400 rounded-full opacity-20 -mt-10 -mr-10"></div>
+                <div className="relative z-10">
+                  <div className="bg-white/20 w-10 h-10 rounded-full flex items-center justify-center mb-2">
+                    <Clipboard size={20} />
                   </div>
-                )}
+                  <p className={`${darkMode ? 'text-blue-100' : 'text-blue-50'} text-xs font-medium mb-1`}>Active Assignments</p>
+                  <div className="flex items-end">
+                  <p className="text-3xl font-bold">
+                    {workOrders.filter(order => order.status === 'assigned' || order.status === 'in-progress').length}
+                  </p>
+                    <p className={`${darkMode ? 'text-blue-200' : 'text-blue-100'} ml-2 mb-1 text-xs`}>tasks</p>
+                  </div>
+                </div>
               </div>
+              <div 
+                className={`${darkMode ? 'bg-gradient-to-br from-amber-500 to-amber-600' : 'bg-gradient-to-br from-amber-400 to-amber-500'} rounded-2xl shadow-lg p-4 relative overflow-hidden text-white cursor-pointer`}
+                onClick={() => handleTabChange('pending-approval-projects')}
+              >
+                <div className="absolute right-0 top-0 w-20 h-20 bg-amber-400 rounded-full opacity-20 -mt-10 -mr-10"></div>
+                <div className="relative z-10">
+                  <div className="bg-white/20 w-10 h-10 rounded-full flex items-center justify-center mb-2">
+                    <Activity size={20} />
+                  </div>
+                  <p className={`${darkMode ? 'text-amber-100' : 'text-amber-50'} text-xs font-medium mb-1`}>Pending Approvals</p>
+                <div className="flex items-end">
+                  <p className="text-3xl font-bold">
+                    {workOrders.filter(order => order.status === 'pending-approval').length}
+                  </p>
+                  <p className={`${darkMode ? 'text-amber-200' : 'text-amber-100'} ml-2 mb-1 text-xs`}>tasks</p>
+                </div>
+                </div>
+              </div>
+              <div 
+                className={`${darkMode ? 'bg-gradient-to-br from-green-500 to-green-600' : 'bg-gradient-to-br from-green-400 to-green-500'} rounded-2xl shadow-lg p-4 relative overflow-hidden text-white cursor-pointer`}
+                onClick={() => handleTabChange('transferred-projects')}
+              >
+                <div className="absolute right-0 top-0 w-20 h-20 bg-green-400 rounded-full opacity-20 -mt-10 -mr-10"></div>
+                <div className="relative z-10">
+                  <div className="bg-white/20 w-10 h-10 rounded-full flex items-center justify-center mb-2">
+                    <CheckSquare size={20} />
+                  </div>
+                  <p className={`${darkMode ? 'text-green-100' : 'text-green-50'} text-xs font-medium mb-1`}>Completed</p>
+                  <div className="flex items-end">
+                    <p className="text-3xl font-bold">{completedOrders.length}</p>
+                    <p className={`${darkMode ? 'text-green-200' : 'text-green-100'} ml-2 mb-1 text-xs`}>tasks</p>
+                  </div>
+                </div>
+              </div>
+              <div 
+                className={`${darkMode ? 'bg-gradient-to-br from-purple-500 to-purple-600' : 'bg-gradient-to-br from-purple-400 to-purple-500'} rounded-2xl shadow-lg p-4 relative overflow-hidden text-white cursor-pointer`}
+                onClick={() => handleTabChange('inventory')}
+              >
+                <div className="absolute right-0 top-0 w-20 h-20 bg-purple-400 rounded-full opacity-20 -mt-10 -mr-10"></div>
+                <div className="relative z-10">
+                  <div className="bg-white/20 w-10 h-10 rounded-full flex items-center justify-center mb-2">
+                    <Package size={20} />
+                  </div>
+                  <p className={`${darkMode ? 'text-purple-100' : 'text-purple-50'} text-xs font-medium mb-1`}>Inventory Items</p>
+                  <div className="flex items-end">
+                    <p className="text-3xl font-bold">{calculateTotalUnits()}</p>
+                    <p className={`${darkMode ? 'text-purple-200' : 'text-purple-100'} ml-2 mb-1 text-xs`}>units</p>
+                  </div>
+                </div>
+              </div>
+              
             </div>
 
-            {/* Your Tasks Section */}
-            <div className="bg-white rounded-lg shadow-md p-3">
-              <div className="flex items-center justify-between mb-3">
-                <h3 className="text-sm font-bold text-gray-800">Your Tasks</h3>
-                <div className="flex gap-1">
-                  <button
+            {/* Task List (All Work Orders) */}
+            <div className={`${darkMode ? 'bg-gray-800/50 backdrop-blur-sm border border-gray-700' : 'bg-white/80 backdrop-blur-sm border border-gray-200'} rounded-2xl shadow-xl overflow-hidden`}>
+              <div className={`p-4 ${darkMode ? 'border-b border-gray-700' : 'border-b border-gray-200'} flex justify-between items-center`}>
+                <h2 className="font-bold text-lg">Your Tasks</h2>
+                <div className="flex space-x-2">
+                  <button 
                     onClick={() => setShowReturnModal(true)}
-                    className="px-2 py-1 bg-orange-100 text-orange-700 rounded text-xs font-medium border border-orange-200 hover:bg-orange-200"
+                    className={`text-xs ${darkMode ? 'bg-orange-600 hover:bg-orange-700' : 'bg-orange-500 hover:bg-orange-600'} text-white px-3 py-1 rounded-full transition-colors flex items-center`}
                   >
-                    Return
+                    <ArrowLeft size={14} className="mr-1" /> Return
                   </button>
-                  <button
-                    onClick={() => handleTabChange('inventory')}
-                    className="px-2 py-1 bg-slate-100 text-slate-700 rounded text-xs font-medium border border-slate-200 hover:bg-slate-200"
+                  <button 
+                    onClick={() => setShowInventoryModal(true)}
+                    className={`text-xs ${darkMode ? 'bg-blue-600 hover:bg-blue-700' : 'bg-blue-500 hover:bg-blue-600'} text-white px-3 py-1 rounded-full transition-colors`}
                   >
                     View Inventory
                   </button>
                 </div>
               </div>
-
-              {/* Task List */}
-              <div className="space-y-2">
-                {activeWorkOrders.length > 0 ? (
-                  activeWorkOrders.map((order, index) => (
-                    <div
-                      key={order.orderId || `order-${index}`}
-                      className="flex items-center gap-2 p-2 bg-gray-100 rounded-lg border border-slate-200 cursor-pointer"
-                      onClick={() => handleWorkOrderClick(order)}
-                    >
-                      <div className="w-8 h-8 bg-slate-600 rounded-lg flex items-center justify-center">
-                        {order.projectCategory === 'Repair' ? (
-                          <div className="w-3 h-3 border-2 border-white rounded"></div>
-                        ) : (
-                          <FileText size={14} className="text-white" />
-                        )}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="font-semibold text-sm text-slate-800">{order.projectType}</div>
-                        <div className="text-xs text-slate-700 bg-slate-200 inline-block px-2 py-0.5 rounded mt-0.5">
-                          {order.projectCategory || 'New Installation'}
-                        </div>
-                        {order.customerName && (
-                          <div className="flex items-center gap-1 mt-1 text-xs text-slate-600">
-                            <User size={10} />
-                            <span>{order.customerName}</span>
-                          </div>
-                        )}
-                      </div>
-                      <div className={`px-2 py-1 rounded text-xs font-medium border ${
-                        order.status === 'assigned' ? 'bg-blue-100 text-blue-700 border-blue-200' :
-                        order.status === 'in-progress' ? 'bg-purple-100 text-purple-700 border-purple-200' :
-                        order.status === 'pending-approval' ? 'bg-orange-100 text-orange-700 border-orange-200' :
-                        order.status === 'paused' ? 'bg-yellow-100 text-yellow-700 border-yellow-200' :
-                        order.status === 'transferring' ? 'bg-red-100 text-red-700 border-red-200' :
-                        'bg-green-100 text-green-700 border-green-200'
-                      }`}>
-                        {order.status === 'pending-approval' ? 'Pending-Approval' :
-                         order.status === 'in-progress' ? 'In Progress' :
-                         order.status === 'paused' ? 'Paused' :
-                         order.status}
-                      </div>
-                    </div>
-                  ))
-                ) : (
-                  <div className="p-8 text-center">
-                    <p className="text-gray-500">No tasks assigned yet</p>
-                  </div>
-                )}
+              <div>
+              {activeWorkOrders.length > 0 ? (
+  activeWorkOrders.map((order, index) => (
+    <div
+      key={order.orderId || `order-${Math.random().toString(36).substr(2, 9)}`}
+      className={`p-4 ${darkMode ? 'border-b border-gray-700 last:border-b-0 hover:bg-gray-700/50' : 'border-b border-gray-200 last:border-b-0 hover:bg-gray-100/50'} transition-colors cursor-pointer`}
+      onClick={() => handleWorkOrderClick(order)}
+    >
+      <div className="flex items-start gap-3">
+      <div className={`flex-shrink-0 w-10 h-10 rounded-full ${getCategoryColorClass(order.projectCategory || 'New Installation')} flex items-center justify-center`}>
+  {order.projectCategory === 'Repair' ? (
+    <Package size={18} className="text-white" />
+  ) : (
+    <Clipboard size={18} className="text-white" />
+  )}
+</div>
+        <div className="flex-grow">
+          <div className="flex justify-between">
+            <h3 className={`font-medium truncate max-w-[150px] ${darkMode ? 'text-white' : 'text-gray-800'}`}>
+              {order.projectType}
+            </h3>
+            <span className={`px-2 py-1 rounded-full text-xs capitalize ${
+            order.status === 'assigned' ? `${darkMode ? 'bg-blue-600/40' : 'bg-blue-100'} ${darkMode ? 'text-blue-100' : 'text-blue-800'}` :
+            order.status === 'in-progress' ? `${darkMode ? 'bg-purple-600/40' : 'bg-purple-100'} ${darkMode ? 'text-purple-100' : 'text-purple-800'}` :
+            order.status === 'pending-approval' ? `${darkMode ? 'bg-amber-600' : 'bg-amber-100'} ${darkMode ? 'text-amber-100' : 'text-amber-600'}` :
+            order.status === 'paused' ? `${darkMode ? 'bg-orange-600/40' : 'bg-orange-100'} ${darkMode ? 'text-orange-100' : 'text-orange-800'}` :
+            order.status === 'transferring' ? `${darkMode ? 'bg-red-600/40' : 'bg-red-100'} ${darkMode ? 'text-red-100' : 'text-red-800'}` :
+            `${darkMode ? 'bg-green-600/40' : 'bg-green-100'} ${darkMode ? 'text-green-100' : 'text-green-800'}`
+          }`}>
+            {order.status}
+          </span>
+          </div>
+          <div className="mt-2 flex flex-wrap gap-2">
+            {/* Add Project Category Badge */}
+            <div className={`inline-flex items-center ${
+  order.projectCategory === 'Repair' 
+    ? `${darkMode ? 'bg-purple-600/40 text-purple-100' : 'bg-purple-100 text-purple-800'}` 
+    : `${darkMode ? 'bg-blue-600/40 text-blue-100' : 'bg-blue-100 text-blue-800'}`
+} text-xs px-2 py-1 rounded-full`}>
+  {order.projectCategory || 'New Installation'}
+</div>
+            
+            {order.customerName && (
+              <div className={`inline-flex items-center ${darkMode ? 'text-gray-400 bg-gray-700/50' : 'text-gray-600 bg-gray-200/70'} text-xs px-2 py-1 rounded-full`}>
+                <User size={12} className="mr-1" />
+                {order.customerName}
+              </div>
+            )}
+            {order.location && (
+              <div className={`inline-flex items-center ${darkMode ? 'text-gray-400 bg-gray-700/50' : 'text-gray-600 bg-gray-200/70'} text-xs px-2 py-1 rounded-full`}>
+                <MapPin size={12} className="mr-1" />
+                {order.location}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  ))
+) : (
+  <div className="p-8 text-center">
+    <p className={`${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>No tasks assigned yet</p>
+  </div>
+)}
               </div>
             </div>
-          </div>
+          </>
         )}
 
 {/* Modify the inventory tab section in TechnicianDashboard.jsx */}
 
 {activeTab === 'inventory' && (
-  <div className="px-1 py-2">
-    {/* My Inventory Card */}
-    <div className="bg-gradient-to-br from-teal-400 to-teal-600 rounded-lg shadow-md p-4 mb-3 text-white">
-      <div className="flex items-center gap-2 mb-3">
-        <div className="w-8 h-8 bg-teal-700 rounded-lg flex items-center justify-center">
-          <Package size={16} className="text-white" />
+  <div className="flex flex-col space-y-6">
+    {/* Inventory Summary */}
+    <div className={`${darkMode ? 'bg-gradient-to-br from-teal-600 to-teal-800' : 'bg-gradient-to-br from-teal-500 to-teal-600'} p-6 rounded-2xl shadow-xl text-white`}>
+      <div className="flex items-center mb-4">
+        <div className="w-16 h-16 bg-teal-700 rounded-full flex items-center justify-center shadow-xl mr-4">
+          <Package size={32} className="text-white" />
         </div>
         <div>
-          <div className="text-lg font-bold">My Inventory</div>
-          <div className="text-sm opacity-90">Manage your stock</div>
+          <p className="text-2xl font-bold mb-1">My Inventory</p>
+          <p className={`${darkMode ? 'text-teal-200' : 'text-teal-100'}`}>Manage your stock</p>
         </div>
       </div>
-
-      {/* Total Units */}
-      <div className="bg-teal-300/30 rounded-lg p-2 mb-3">
-        <div className="flex justify-between items-center">
-          <span className="text-sm opacity-90">Total Units:</span>
-          <span className="text-xl font-bold">{calculateTotalUnits()} items</span>
+      <div className={`${darkMode ? 'bg-white/10' : 'bg-white/20'} rounded-xl p-4 backdrop-blur-sm`}>
+        <div className="flex justify-between items-center mb-2">
+          <span className={`${darkMode ? 'text-teal-200' : 'text-teal-100'}`}>Total Units:</span>
+          <span className="text-white text-xl font-bold">{calculateTotalUnits()} items</span>
+        </div>
+        <div className="flex justify-center mt-4">
+          <button 
+            onClick={() => setShowReturnModal(true)}
+            className="bg-teal-600 hover:bg-teal-700 text-white px-4 py-2 rounded-md w-full flex items-center justify-center"
+          >
+            <ArrowLeft size={16} className="mr-2" /> Return Items
+          </button>
         </div>
       </div>
-
-      {/* Return Items Button */}
-      <button
-        onClick={() => setShowReturnModal(true)}
-        className="w-full bg-teal-700 hover:bg-teal-800 rounded-lg p-2 flex items-center justify-center gap-2 text-white font-medium text-sm"
-      >
-        <ArrowLeft size={16} />
-        Return Items
-      </button>
     </div>
 
-    {/* Inventory Items Section */}
-    <div className="bg-white rounded-lg shadow-md p-3">
-      <h3 className="text-sm font-bold text-gray-800 mb-3">Inventory Items</h3>
-
-      {/* Filter Tabs */}
-      <div className="flex gap-2 mb-3">
-        <button
-          onClick={() => setInventoryFilter('Serialized')}
-          className={`px-3 py-1 rounded-full text-xs font-medium ${
-            inventoryFilter === 'Serialized'
-              ? 'bg-blue-100 text-blue-700'
-              : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-          }`}
-        >
-          Serialized
-        </button>
-        <button
-          onClick={() => setInventoryFilter('Generic')}
-          className={`px-3 py-1 rounded-full text-xs font-medium ${
-            inventoryFilter === 'Generic'
-              ? 'bg-blue-100 text-blue-700'
-              : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-          }`}
-        >
-          Generic
-        </button>
-        <button
-          onClick={() => setInventoryFilter('Services')}
-          className={`px-3 py-1 rounded-full text-xs font-medium ${
-            inventoryFilter === 'Services'
-              ? 'bg-blue-100 text-blue-700'
-              : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-          }`}
-        >
-          Services
-        </button>
+    {/* Inventory List */}
+    <div className={`${darkMode ? 'bg-gray-800/50 backdrop-blur-sm border border-gray-700' : 'bg-white/80 backdrop-blur-sm border border-gray-200'} rounded-2xl shadow-xl overflow-hidden`}>
+      <div className={`p-4 ${darkMode ? 'border-b border-gray-700' : 'border-b border-gray-200'}`}>
+        <div className="flex justify-between items-center">
+          <h2 className="font-bold text-lg">Inventory Items</h2>
+        </div>
+        
+        {/* Filter buttons (horizontal) */}
+        <div className="mt-3 flex space-x-1">
+          <button 
+            onClick={() => setInventoryFilter('Serialized')}
+            className={`px-4 py-1.5 rounded-full text-sm ${
+              inventoryFilter === 'Serialized' 
+                ? `${darkMode ? 'bg-blue-600/30 text-blue-200' : 'bg-blue-200 text-blue-800'}` 
+                : `${darkMode ? 'bg-gray-700' : 'bg-gray-200'} ${darkMode ? 'text-gray-300' : 'text-gray-700'}`
+            }`}
+          >
+            Serialized
+          </button>
+          <button 
+            onClick={() => setInventoryFilter('Generic')}
+            className={`px-4 py-1.5 rounded-full text-sm ${
+              inventoryFilter === 'Generic' 
+                ? `${darkMode ? 'bg-emerald-600/30 text-emerald-200' : 'bg-emerald-200 text-emerald-800'}` 
+                : `${darkMode ? 'bg-gray-700' : 'bg-gray-200'} ${darkMode ? 'text-gray-300' : 'text-gray-700'}`
+            }`}
+          >
+            Generic
+          </button>
+          <button 
+            onClick={() => setInventoryFilter('Services')}
+            className={`px-4 py-1.5 rounded-full text-sm ${
+              inventoryFilter === 'Services' 
+                ? `${darkMode ? 'bg-purple-600/30 text-purple-200' : 'bg-purple-100 text-purple-800'}` 
+                : `${darkMode ? 'bg-gray-700' : 'bg-gray-200'} ${darkMode ? 'text-gray-300' : 'text-gray-700'}`
+            }`}
+          >
+            Services
+          </button>
+        </div>
       </div>
-
-      {/* Inventory List */}
-      <div className="space-y-2">
-        {filteredInventoryItems.length > 0 ? (
-          filteredInventoryItems.map((item, index) => {
-            const itemKey = item._id || item.id || item.itemId || `item-${item.itemName}-${Date.now()}`;
-            const itemCount = item.type === 'service' ? 'N/A' : getItemQuantity(item);
-            const isExpanded = expandedItems.includes(itemKey);
-
-            return (
-              <div key={itemKey}>
-                <div
-                  className="flex items-center gap-2 p-2 bg-blue-50 rounded-lg border border-blue-200 cursor-pointer"
-                  onClick={() => handleItemExpand(itemKey, item)}
+      
+      <div className="space-y-1">
+      {filteredInventoryItems.length > 0 ? (
+  filteredInventoryItems.map((item, index) => {
+    const itemKey = item._id || item.id || item.itemId || `item-${item.itemName}-${Date.now()}`;
+    const itemCount = item.type === 'service' ? 'N/A' : getItemQuantity(item);
+    const isExpanded = expandedItems.includes(itemKey);
+    
+    return (
+      <div key={itemKey}>
+        <div 
+          className={`p-4 ${darkMode ? 'hover:bg-gray-700/50' : 'hover:bg-gray-100/50'} cursor-pointer transition-colors`}
+          onClick={() => handleItemExpand(itemKey, item)}
+        >
+          <div className="flex items-center">
+            <div className={`w-8 h-8 rounded-full ${
+              item.type === 'serialized-product' 
+                ? (darkMode ? 'bg-blue-600/30 text-blue-200' : 'bg-blue-200 text-blue-800')
+                : item.type === 'generic-product'
+                ? (darkMode ? 'bg-emerald-600/30 text-emerald-200' : 'bg-emerald-200 text-emerald-800')
+                : (darkMode ? 'bg-purple-600/30 text-purple-200' : 'bg-purple-100 text-purple-800')
+            } flex items-center justify-center mr-3 font-medium`}>
+              {index + 1}
+            </div>
+            <div className="flex-1">
+              <div className="flex justify-between items-center">
+                <p className={`font-medium ${darkMode ? 'text-white' : 'text-gray-800'}`}>{item.itemName}</p>
+                <div className="flex items-center">
+                  {item.type === 'serialized-product' && (
+                    <svg 
+                      xmlns="http://www.w3.org/2000/svg" 
+                      viewBox="0 0 24 24" 
+                      width="18" 
+                      height="18" 
+                      fill="none" 
+                      stroke="currentColor" 
+                      strokeWidth="2" 
+                      strokeLinecap="round" 
+                      strokeLinejoin="round" 
+                      className={`mr-2 transition-transform duration-200 ${isExpanded ? 'transform rotate-180' : ''} ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}
+                    >
+                      <polyline points="6 9 12 15 18 9"></polyline>
+                    </svg>
+                  )}
+                  {item.type === 'service' ? (
+                    <div className={`px-3 py-1 rounded-full ${darkMode ? 'bg-purple-600/30 text-purple-200' : 'bg-purple-100 text-purple-800'}`}>
+                      ₹{item.salePrice}
+                    </div>
+                  ) : (
+            <div className={`px-3 py-1 rounded-full ${
+              item.type === 'serialized-product' 
+                ? (darkMode ? 'bg-blue-600/30 text-blue-200' : 'bg-blue-200 text-blue-800')
+                : item.type === 'generic-product'
+                ? (darkMode ? 'bg-emerald-600/30 text-emerald-200' : 'bg-emerald-200 text-emerald-800')
+                : (darkMode ? 'bg-purple-600/30 text-purple-200' : 'bg-purple-100 text-purple-800')
+            }`}>
+              {itemCount} {item.unit || 'Pcs'}
+            </div>
+                  )}
+                </div>
+              </div>
+              <p className={`text-xs ${darkMode ? 'text-gray-400' : 'text-gray-500'} capitalize`}>
+                {item.type === 'service' ? 'Service' : item.type.replace('-product', '')}
+              </p>
+            </div>
+          </div>
+        </div>
+        
+        {/* Expanded view for serialized items - keep this unchanged */}
+        {item.type === 'serialized-product' && isExpanded && (
+          <div className={`px-4 pb-4 ${darkMode ? 'bg-gray-700/30' : 'bg-gray-50'}`}>
+            <div className="ml-11 border-l-2 border-teal-500 pl-4 space-y-2">
+              {item.serializedItems.filter(serial => serial.status === 'active').map((serial, idx) => (
+                <div 
+                  key={serial.serialNumber || idx} 
+                  className={`p-2 rounded ${darkMode ? 'bg-gray-700/50' : 'bg-white'} text-sm`}
                 >
-                  <div className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center text-white text-xs font-bold">
-                    {index + 1}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-1">
-                      <span className="font-semibold text-sm text-slate-800">{item.itemName}</span>
-                      {item.type === 'serialized-product' && (
-                        <ChevronDown size={12} className={`text-slate-600 transition-transform duration-200 ${isExpanded ? 'transform rotate-180' : ''}`} />
-                      )}
-                    </div>
-                    <div className="text-xs text-slate-600 capitalize">
-                      {item.type === 'service' ? 'Service' : item.type.replace('-product', '')}
-                    </div>
-                  </div>
-                  <div className="px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs font-medium border border-blue-200">
-                    {item.type === 'service' ? `₹${item.salePrice}` : `${itemCount} ${item.unit || 'Piece'}`}
+                  <div className="flex justify-between">
+                    <span className={`font-medium ${darkMode ? 'text-gray-200' : 'text-gray-700'}`}>
+                      Serial Number:
+                    </span>
+                    <span className={darkMode ? 'text-gray-300' : 'text-gray-600'}>
+                      {serial.serialNumber}
+                    </span>
                   </div>
                 </div>
-
-                {/* Expanded view for serialized items */}
-                {item.type === 'serialized-product' && isExpanded && (
-                  <div className="px-4 pb-4 bg-gray-50">
-                    <div className="ml-8 border-l-2 border-blue-500 pl-4 space-y-2">
-                      {item.serializedItems && item.serializedItems.filter(serial => serial.status === 'active').map((serial, idx) => (
-                        <div
-                          key={serial.serialNumber || idx}
-                          className="p-2 rounded bg-white text-sm border border-blue-100"
-                        >
-                          <div className="flex justify-between">
-                            <span className="font-medium text-gray-700">Serial Number:</span>
-                            <span className="text-gray-600">{serial.serialNumber}</span>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            );
-          })
-        ) : (
-          <div className="p-8 text-center">
-            <p className="text-gray-500">
-              {inventoryFilter === 'All'
-                ? 'No inventory items assigned yet'
-                : `No ${inventoryFilter.toLowerCase()} items found`}
-            </p>
+              ))}
+            </div>
           </div>
         )}
+      </div>
+    );
+  })
+) : (
+  <div className="p-8 text-center">
+    <p className={`${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+      {inventoryFilter === 'All' 
+        ? 'No inventory items assigned yet' 
+        : `No ${inventoryFilter.toLowerCase()} items found`}
+    </p>
+  </div>
+)}
       </div>
     </div>
   </div>
 )}
 
 {activeTab === 'current-project' && (
-  <div className="px-1 py-2">
+  <div className="flex flex-col space-y-4">
     {(() => {
       const activeProject = workOrders.find(order => order.status === 'in-progress');
-
+      
       if (!activeProject) {
         return (
-          <div className="bg-white rounded-lg shadow-md p-8 text-center">
+          <div className={`${darkMode ? 'bg-gray-800/50' : 'bg-white'} rounded-xl shadow-lg p-8 text-center`}>
             <div className="w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Clipboard size={32} className="text-gray-400" />
+              <Clipboard size={32} className={`${darkMode ? 'text-gray-500' : 'text-gray-400'}`} />
             </div>
             <h3 className="text-xl font-semibold mb-2">No Active Project</h3>
-            <p className="text-gray-500 mb-4">
+            <p className={`${darkMode ? 'text-gray-400' : 'text-gray-500'} mb-4`}>
               You don't have any in-progress project at the moment.
             </p>
             <button
               onClick={() => handleTabChange('home')}
-              className="px-4 py-2 bg-blue-500 text-white rounded-md"
+              className={`px-4 py-2 ${darkMode ? 'bg-blue-600' : 'bg-blue-500'} text-white rounded-md`}
             >
               Go to Home
             </button>
           </div>
         );
       }
-
+      
       // Get most recent status update for brief history
-      const recentUpdate = activeProject.statusHistory &&
-        activeProject.statusHistory.length > 0 ?
+      const recentUpdate = activeProject.statusHistory && 
+        activeProject.statusHistory.length > 0 ? 
         activeProject.statusHistory[activeProject.statusHistory.length - 1] : null;
-
+        
       return (
         <>
-          {/* Active Projects Card */}
-          <div className="bg-gradient-to-br from-blue-400 to-blue-600 rounded-lg shadow-md p-4 mb-3 text-white">
-            <div className="flex items-center gap-2 mb-3">
-              <div className="w-8 h-8 bg-blue-700 rounded-lg flex items-center justify-center">
-                <FileText size={16} className="text-white" />
+          {/* Active Project Card - Blue Header Card */}
+          <div className=" bg-blue-500 rounded-xl shadow-sm p-4 text-white">
+            <div className="flex items-center mb-3">
+              <div className="bg-blue-600 rounded-full w-10 h-10 flex items-center justify-center mr-3">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                </svg>
               </div>
               <div>
-                <div className="text-lg font-bold">Active Projects</div>
-                <div className="text-sm opacity-90">Current assignment</div>
+                <h2 className="text-xl font-bold">Active Projects</h2>
+                <p className="text-sm opacity-80">Current assignment</p>
               </div>
             </div>
-
-            {/* Project Details */}
-            <div className="mb-4">
-              <div className="text-lg font-bold mb-1">{activeProject.projectType}</div>
-              <div className="text-sm opacity-90">Type: {activeProject.projectCategory || 'New Installation'}</div>
+            
+            {/* Project Card */}
+            <div className="bg-blue-400 bg-opacity-30 rounded-lg p-4 mt-2">
+              <h3 className="font-semibold">{activeProject.projectType}</h3>
+              <p className="text-sm opacity-80 mt-1">Type: {activeProject.projectCategory || 'New Installation'}</p>
+              <button
+  onClick={() => handleGenerateBill(activeProject)}
+  className="flex items-center justify-center mt-4 w-full bg-blue-600 text-white rounded-lg p-2"
+>
+  <FileText size={18} className="mr-2" />
+  <span>Generate Bill</span>
+</button>
             </div>
-
-            {/* Generate Bill Button */}
-            <button
-              onClick={() => handleGenerateBill(activeProject)}
-              className="w-full bg-blue-700 hover:bg-blue-800 rounded-lg p-2 flex items-center justify-center gap-2 text-white font-medium text-sm"
-            >
-              <FileText size={16} />
-              Generate Bill
-            </button>
+          </div>
+          
+          {/* Customer Card */}
+          <div className={`${darkMode ? 'bg-gray-800/50' : 'bg-white'} rounded-xl shadow-lg p-4`}>
+            <h3 className="text-lg font-semibold text-blue-800">{activeProject.customerName}</h3>
+            {activeProject.customerAddress && (
+              <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>{activeProject.customerAddress}</p>
+            )}
+            
+            {/* Contact Buttons */}
+            <div className="grid grid-cols-2 gap-3 mt-3">
+              <button
+                onClick={() => handleMessageCustomer(activeProject)}
+                className="bg-blue-500 text-white rounded-lg py-2 flex items-center justify-center"
+              >
+                <MessageSquare size={18} className="mr-2" /> Message
+              </button>
+              <button
+                onClick={() => handleCallCustomer(activeProject)}
+                className="bg-green-500 text-white rounded-lg py-2 flex items-center justify-center"
+              >
+                <Phone size={18} className="mr-2" /> Call
+              </button>
+            </div>
           </div>
 
-          {/* Contact Cards */}
-          <div className="space-y-3">
-            {/* Customer Contact */}
-            <div className="bg-white rounded-lg shadow-md p-3">
-              <h3 className="text-sm font-bold text-gray-800 mb-1">{activeProject.customerName}</h3>
-              {activeProject.customerAddress && (
-                <p className="text-xs text-gray-600 mb-3">{activeProject.customerAddress}</p>
-              )}
-
-              <div className="flex gap-2">
-                <button
-                  onClick={() => handleMessageCustomer(activeProject)}
-                  className="flex-1 bg-blue-500 hover:bg-blue-600 text-white rounded-lg p-2 flex items-center justify-center gap-2 text-sm font-medium"
-                >
-                  <MessageSquare size={14} />
-                  Message
-                </button>
-                <button
-                  onClick={() => handleCallCustomer(activeProject)}
-                  className="flex-1 bg-green-500 hover:bg-green-600 text-white rounded-lg p-2 flex items-center justify-center gap-2 text-sm font-medium"
-                >
-                  <Phone size={14} />
-                  Call
-                </button>
-              </div>
-            </div>
-
-            {/* Setup Technician - Only show for Repair/Complaint projects */}
-            {(activeProject.projectCategory === 'Repair' ||
-              activeProject.projectType?.toLowerCase().includes('repair') ||
-              activeProject.projectType?.toLowerCase().includes('complaint')) &&
-              activeProject.originalTechnician && (
-              <div className="bg-white rounded-lg shadow-md p-3">
-                <h3 className="text-sm font-bold text-purple-600 mb-1">Setup Technician</h3>
-                <p className="text-sm text-gray-800 mb-1">
-                  {activeProject.originalTechnician.firstName} {activeProject.originalTechnician.lastName}
-                </p>
-                <p className="text-xs text-gray-600 mb-3">
-                  Installation date: {activeProject.projectCreatedAt ? formatDate(activeProject.projectCreatedAt) : 'N/A'}
-                </p>
-
-                <button
-                  onClick={() => handleCallOriginalTechnician(activeProject)}
-                  className="w-full bg-purple-500 hover:bg-purple-600 text-white rounded-lg p-2 flex items-center justify-center gap-2 text-sm font-medium"
-                >
-                  <Phone size={14} />
-                  Call Original Technician
-                </button>
+          {/* Original Technician Card - Only show for Repair/Complaint projects */}
+          {(activeProject.projectCategory === 'Repair' || 
+  activeProject.projectType?.toLowerCase().includes('repair') || 
+  activeProject.projectType?.toLowerCase().includes('complaint')) && (
+  <div className={`${darkMode ? 'bg-gray-800/50' : 'bg-white'} rounded-xl shadow-lg p-4`}>
+    <h3 className="text-lg font-semibold text-purple-800">Setup Technician</h3>
+    {activeProject.originalTechnician ? (
+      <>
+        <p className={`text-sm font-medium ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+          {activeProject.originalTechnician.firstName} {activeProject.originalTechnician.lastName}
+        </p>
+        <p className={`text-xs ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+          Installation date: {activeProject.projectCreatedAt ? formatDate(activeProject.projectCreatedAt) : 'N/A'}
+        </p>
+        
+        {/* Call Original Technician Button */}
+        <div className="mt-3">
+          <button
+            onClick={() => handleCallOriginalTechnician(activeProject)}
+            className="bg-purple-500 text-white rounded-lg py-2 w-full flex items-center justify-center"
+          >
+            <Phone size={18} className="mr-2" /> Call Original Technician
+          </button>
+        </div>
+      </>
+    ) : (
+      // Loading state or placeholder when originalTechnician data is not yet available
+      <div className="py-2">
+        <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-500'} mt-2`}>
+          Original technician details loading...
+        </p>
+        <div className="mt-3">
+          <button
+            disabled
+            className="bg-purple-300 text-white rounded-lg py-2 w-full flex items-center justify-center"
+          >
+            <Phone size={18} className="mr-2" /> Call Original Technician
+          </button>
+        </div>
+      </div>
+    )}
+  </div>
+)}
+          
+          {/* Report History Card */}
+          <div className={`${darkMode ? 'bg-gray-800/50' : 'bg-white'} rounded-xl shadow-lg p-4`}>
+            <h3 className="font-bold text-lg mb-3">Report History</h3>
+            
+            {/* Recent updates section */}
+            {recentUpdate && (
+              <div className="mb-3">
+                <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Recent updates</p>
+                <div className="mt-2 border-l-4 border-blue-500 pl-3">
+                  <div className="flex justify-between">
+                    <p className="font-medium">{recentUpdate.updatedBy && recentUpdate.updatedBy.toString() === user._id.toString() ? 'Technician' : 'Manager'}</p>
+                    <p className={`text-xs ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                      {formatDate(recentUpdate.updatedAt)}
+                    </p>
+                  </div>
+                  <p className={`mt-1 text-sm ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                    {recentUpdate.remark || `Status changed to ${recentUpdate.status}`}
+                  </p>
+                </div>
               </div>
             )}
-
-            {/* Report History */}
-            <div className="bg-white rounded-lg shadow-md p-3">
-              <h3 className="text-sm font-bold text-gray-800 mb-2">Report History</h3>
-              <p className="text-xs text-gray-600 mb-3">Recent updates</p>
-
-              {/* Status Update */}
-              {recentUpdate && (
-                <div className="flex justify-between items-start mb-3">
-                  <div className="flex-1">
-                    <div className="w-1 h-full bg-blue-400 rounded-full mr-3 float-left mt-1"></div>
-                    <div className="ml-4">
-                      <p className="text-sm font-medium text-gray-800">
-                        {recentUpdate.updatedBy && recentUpdate.updatedBy.toString() === user._id.toString() ? 'Technician' : 'Manager'}
-                      </p>
-                      <p className="text-xs text-gray-600">
-                        {recentUpdate.remark || `Status changed to ${recentUpdate.status}`}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="text-xs text-gray-500 text-right">
-                    <div>{formatDate(recentUpdate.updatedAt)}</div>
-                  </div>
-                </div>
-              )}
-
-              <button
-                onClick={() => setShowFullHistory(true)}
-                className="w-full bg-slate-100 hover:bg-slate-200 text-blue-500 rounded-lg p-2 flex items-center justify-center gap-2 text-sm font-medium border border-slate-200"
-              >
-                <Eye size={14} />
-                View Complete History
-              </button>
-            </div>
-
-            {/* Pause and Stop Project Buttons - Your existing functionality */}
-            <div className="flex gap-2">
-              <button
-                onClick={() => setShowStopProjectModal(true)}
-                className="flex-1 bg-orange-500 hover:bg-orange-600 text-white rounded-lg p-2 flex items-center justify-center gap-2 text-sm font-medium"
-              >
-                <FiPause size={14} />
-                Pause Project
-              </button>
-
-              <button
-                onClick={() => setShowTransferModal(true)}
-                className="flex-1 bg-red-500 hover:bg-red-600 text-white rounded-lg p-2 flex items-center justify-center gap-2 text-sm font-medium"
-              >
-                <ArrowLeft size={14} />
-                Stop Project
-              </button>
-            </div>
+            
+            {/* View Complete History Button */}
+            <button
+              onClick={() => setShowFullHistory(true)}
+              className={`w-full py-2 ${darkMode ? 'bg-gray-700 text-white' : 'bg-blue-50 text-blue-600'} rounded-lg flex items-center justify-center`}
+            >
+              <Eye size={18} className="mr-2" /> View Complete History
+            </button>
           </div>
-
-            {/* Full History Modal */}
-            {showFullHistory && (
+          
+          <div className="flex gap-4 mt-6">
+  {/* Pause Project Button */}
+  <button
+    onClick={() => setShowStopProjectModal(true)}
+    className={`flex-1 py-3 ${darkMode ? 'bg-orange-900' : 'bg-orange-500'} text-white rounded-xl font-medium flex items-center justify-center`}
+  >
+    <FiPause size={18} className="mr-2" /> Pause Project
+  </button>
+  
+  {/* Stop Project Button */}
+  <button
+    onClick={() => setShowTransferModal(true)}
+    className={`flex-1 py-3 ${darkMode ? 'bg-red-900' : 'bg-red-500'} text-white rounded-xl font-medium flex items-center justify-center`}
+  >
+    <ArrowLeft size={18} className="mr-2" /> Stop Project
+  </button>
+</div>
+          
+          {/* Full History Modal */}
+          {showFullHistory && (
   <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center px-4">
     <div className={`w-full max-w-md ${darkMode ? 'bg-gray-800' : 'bg-white'} rounded-xl shadow-2xl`}>
       <div className="flex justify-between items-center p-4 border-b">
@@ -1835,34 +1723,35 @@ const fetchFreshWorkOrders = async () => {
     </div>
   </div>
 )}
-
+          
           {/* Stop Project Modal */}
           {showStopProjectModal && (
             <div className="fixed inset-0 bg-black/60 z-50 flex justify-center items-center p-4">
               <div className={`w-full max-w-md ${darkMode ? 'bg-gray-800' : 'bg-white'} rounded-xl shadow-2xl`}>
                 <div className="flex justify-between items-center p-4 border-b">
-                  <h3 className="font-bold text-lg">Pause Project</h3>
-                  <button
+                  <h3 className="font-bold text-lg">Stop Work</h3>
+                  <button 
                     onClick={() => setShowStopProjectModal(false)}
                     className="p-1"
                   >
                     <X size={20} />
                   </button>
                 </div>
-
+                
                 <div className="p-4">
-                  <p className="mb-4">Are you sure you want to pause this project? Please provide a reason:</p>
+                  <p className="block text-gray-700 mb-2 font-medium">Remarks</p>
                   <textarea
+                    className={`w-full p-3 rounded-lg ${darkMode ? 'bg-gray-700 text-white border-gray-600' : 'bg-white border-gray-300'} border mb-4`}
+                    rows="4"
+                    placeholder="Enter your remarks here..."
                     value={pauseProjectRemark}
                     onChange={(e) => setPauseProjectRemark(e.target.value)}
-                    placeholder="Enter reason for pausing..."
-                    className={`w-full p-3 border rounded-lg ${darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'border-gray-300'}`}
-                    rows={3}
-                  />
-                  <div className="flex mt-4">
+                  ></textarea>
+                  
+                  <div className="flex p-4 border-t">
                     <button
                       onClick={() => setShowStopProjectModal(false)}
-                      className="flex-1 py-2 bg-gray-500 text-white rounded-lg mr-2"
+                      className="flex-1 mr-2 py-2 border border-gray-300 rounded-lg text-gray-700"
                     >
                       Cancel
                     </button>
@@ -1880,258 +1769,202 @@ const fetchFreshWorkOrders = async () => {
           )}
 
           {/* Pause Confirmation Modal */}
-          {showPauseConfirmationModal && (
-            <div className="fixed inset-0 bg-black/60 z-50 flex justify-center items-center p-4">
-              <div className={`w-full max-w-md ${darkMode ? 'bg-gray-800' : 'bg-white'} rounded-xl shadow-2xl`}>
-                <div className="flex justify-between items-center p-4 border-b">
-                  <h3 className="font-bold text-lg">Confirm Pause</h3>
-                  <button
-                    onClick={() => setShowPauseConfirmationModal(false)}
-                    className="p-1"
-                  >
-                    <X size={20} />
-                  </button>
-                </div>
+{showPauseConfirmationModal && (
+  <div className="fixed inset-0 bg-black/60 z-50 flex justify-center items-center p-4">
+    <div className={`w-full max-w-md ${darkMode ? 'bg-gray-800' : 'bg-white'} rounded-xl shadow-2xl`}>
+      <div className="flex justify-between items-center p-4 border-b">
+        <h3 className="font-bold text-lg">Confirm Pause</h3>
+        <button 
+          onClick={() => setShowPauseConfirmationModal(false)}
+          className="p-1"
+        >
+          <X size={20} />
+        </button>
+      </div>
+      
+      <div className="p-4">
+        <p className="text-center mb-4">
+          You are about to pause your project with the following reason:
+        </p>
+        <div className={`p-3 rounded-md mb-4 text-gray-700 ${darkMode ? 'bg-gray-700 text-gray-300' : 'bg-gray-100'}`}>
+          "{pauseProjectRemark}"
+        </div>
+        <p className="text-center mb-6 font-medium">
+          Are you sure you want to pause this project?
+        </p>
+        
+        <div className="flex p-4 border-t">
+          <button
+            onClick={() => setShowPauseConfirmationModal(false)}
+            className="flex-1 mr-2 py-2 border border-gray-300 rounded-lg text-gray-700"
+          >
+            No
+          </button>
+          <button
+           onClick={() => confirmPauseProject(activeProject)}
+            className="flex-1 ml-2 py-2 bg-red-500 text-white rounded-lg"
+          >
+            Yes
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+)}
 
-                <div className="p-4">
-                  <p className="text-center mb-4">
-                    You are about to pause your project with the following reason:
-                  </p>
-                  <div className={`p-3 rounded-md mb-4 text-gray-700 ${darkMode ? 'bg-gray-700 text-gray-300' : 'bg-gray-100'}`}>
-                    "{pauseProjectRemark}"
-                  </div>
-                  <p className="text-center mb-6 font-medium">
-                    Are you sure you want to pause this project?
-                  </p>
-
-                  <div className="flex p-4 border-t">
-                    <button
-                      onClick={() => setShowPauseConfirmationModal(false)}
-                      className="flex-1 mr-2 py-2 border border-gray-300 rounded-lg text-gray-700"
-                    >
-                      No
-                    </button>
-                    <button
-                      onClick={() => confirmPauseProject(activeProject)}
-                      className="flex-1 ml-2 py-2 bg-red-500 text-white rounded-lg"
-                    >
-                      Yes
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Transfer/Stop Project Modal */}
-          {showTransferModal && (
-            <div className="fixed inset-0 bg-black/60 z-50 flex justify-center items-center p-4">
-              <div className={`w-full max-w-md ${darkMode ? 'bg-gray-800' : 'bg-white'} rounded-xl shadow-2xl`}>
-                <div className="flex justify-between items-center p-4 border-b">
-                  <h3 className="font-bold text-lg">Stop Project</h3>
-                  <button
-                    onClick={() => setShowTransferModal(false)}
-                    className="p-1"
-                  >
-                    <X size={20} />
-                  </button>
-                </div>
-
-                <div className="p-4">
-                  <p className="text-gray-600 mb-4">
-                    Stopping a project will transfer it back to the manager for reassignment.
-                    Please provide a detailed reason for stopping this project.
-                  </p>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Reason for Stopping Project*
-                  </label>
-                  <textarea
-                    className={`w-full p-3 rounded-lg ${darkMode ? 'bg-gray-700 text-white border-gray-600' : 'bg-white border-gray-300'} border mb-4`}
-                    rows="4"
-                    placeholder="Enter detailed reason for stopping this project..."
-                    value={transferRemark}
-                    onChange={(e) => setTransferRemark(e.target.value)}
-                  />
-
-                  <div className="flex p-4 border-t">
-                    <button
-                      onClick={() => setShowTransferModal(false)}
-                      className="flex-1 mr-2 py-2 border border-gray-300 rounded-lg text-gray-700"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      onClick={() => handleTransferProject(activeProject)}
-                      className="flex-1 ml-2 py-2 bg-red-500 text-white rounded-lg"
-                      disabled={!transferRemark.trim()}
-                    >
-                      Stop Project
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Stop Project Confirmation Modal */}
-          {showStopConfirmationModal && (
-            <div className="fixed inset-0 bg-black/60 z-50 flex justify-center items-center p-4">
-              <div className={`w-full max-w-md ${darkMode ? 'bg-gray-800' : 'bg-white'} rounded-xl shadow-2xl`}>
-                <div className="flex justify-between items-center p-4 border-b">
-                  <h3 className="font-bold text-lg">Confirm Stop Project</h3>
-                  <button
-                    onClick={() => setShowStopConfirmationModal(false)}
-                    className="p-1"
-                  >
-                    <X size={20} />
-                  </button>
-                </div>
-
-                <div className="p-4">
-                  <p className="text-center mb-4">
-                    You are about to stop your project with the following reason:
-                  </p>
-                  <div className={`p-3 rounded-md mb-4 text-gray-700 ${darkMode ? 'bg-gray-700 text-gray-300' : 'bg-gray-100'}`}>
-                    "{transferRemark}"
-                  </div>
-                  <p className="text-center mb-6 font-medium text-red-600">
-                    Are you sure you want to stop this project? This will transfer it back to the manager.
-                  </p>
-
-                  <div className="flex p-4 border-t">
-                    <button
-                      onClick={() => setShowStopConfirmationModal(false)}
-                      className="flex-1 mr-2 py-2 border border-gray-300 rounded-lg text-gray-700"
-                    >
-                      No
-                    </button>
-                    <button
-                      onClick={() => confirmStopProject(activeProject)}
-                      className="flex-1 ml-2 py-2 bg-red-500 text-white rounded-lg"
-                    >
-                      Yes, Stop Project
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
+{/* Transfer Project Modal */}
+{showTransferModal && (
+  <div className="fixed inset-0 bg-black/60 z-50 flex justify-center items-center p-4">
+    <div className={`w-full max-w-md ${darkMode ? 'bg-gray-800' : 'bg-white'} rounded-xl shadow-2xl`}>
+      <div className="flex justify-between items-center p-4 border-b">
+        <h3 className="font-bold text-lg">Stop Project</h3>
+        <button 
+          onClick={() => setShowTransferModal(false)}
+          className="p-1"
+        >
+          <X size={20} />
+        </button>
+      </div>
+      
+      <div className="p-4">
+        <p className="text-gray-600 mb-4">
+          Stopping a project will transfer it back to the manager for reassignment.
+          Please provide a detailed reason for stopping this project.
+        </p>
+        <label className="block text-sm font-medium text-gray-700 mb-2">
+          Reason for Stopping Project*
+        </label>
+        <textarea
+          className={`w-full p-3 rounded-lg ${darkMode ? 'bg-gray-700 text-white border-gray-600' : 'bg-white border-gray-300'} border mb-4`}
+          rows="4"
+          placeholder="Enter detailed reason for stopping this project..."
+          value={transferRemark}
+          onChange={(e) => setTransferRemark(e.target.value)}
+        ></textarea>
+        
+        <div className="flex p-4 border-t">
+          <button
+            onClick={() => setShowTransferModal(false)}
+            className="flex-1 mr-2 py-2 border border-gray-300 rounded-lg text-gray-700"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={() => handleTransferProject(activeProject)}
+            className="flex-1 ml-2 py-2 bg-red-500 text-white rounded-lg"
+            disabled={!transferRemark.trim()}
+          >
+            Submit
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+)}
         </>
       );
     })()}
   </div>
 )}
-
-
+          
         {activeTab === 'all-projects' && (
-          <div className="px-1 py-2">
-            {/* All Projects Card */}
-            <div className="bg-white rounded-lg shadow-md p-4 mb-3 border border-slate-200">
-              <div className="flex items-center gap-2 mb-3">
-                <div className="w-8 h-8 bg-slate-600 rounded-lg flex items-center justify-center">
-                  <List size={16} className="text-white" />
+          <div className="flex flex-col space-y-6">
+            {/* Projects Summary */}
+            <div className={`${darkMode ? 'bg-gradient-to-br from-amber-600 to-amber-800' : 'bg-gradient-to-br from-amber-500 to-amber-600'} p-6 rounded-2xl shadow-xl text-white`}>
+              <div className="flex items-center mb-4">
+                <div className="w-16 h-16 bg-amber-700 rounded-full flex items-center justify-center shadow-xl mr-4">
+                  <List size={32} className="text-white" />
                 </div>
                 <div>
-                  <div className="text-lg font-bold text-slate-800">All Projects</div>
-                  <div className="text-sm text-slate-600">Overview of your assignments</div>
+                  <p className="text-2xl font-bold mb-1">All Projects</p>
+                  <p className={`${darkMode ? 'text-amber-200' : 'text-amber-100'}`}>Overview of your assignments</p>
                 </div>
               </div>
-
-              {/* Total Projects */}
-              <div className="bg-slate-100 border border-slate-200 rounded-lg p-2 mb-3">
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-slate-600">Total Projects:</span>
-                  <span className="text-xl font-bold text-slate-800">{workOrders.length + completedOrders.length}</span>
+              
+              <div className={`${darkMode ? 'bg-white/10' : 'bg-white/20'} rounded-xl p-4 backdrop-blur-sm`}>
+                <div className="flex justify-between items-center mb-4">
+                  <span className={`${darkMode ? 'text-amber-200' : 'text-amber-100'}`}>Total Projects:</span>
+                  <span className="text-white text-xl font-bold">{workOrders.length + completedOrders.length}</span>
                 </div>
-              </div>
-
-              {/* Stats Grid */}
-              <div className="grid grid-cols-2 gap-2">
-                {/* Assigned */}
-                <div className="bg-slate-100 border border-slate-200 rounded-lg p-2 text-center">
-                  <div className="text-2xl font-bold text-slate-800">{workOrders.filter(order => order.status === 'assigned').length}</div>
-                  <div className="text-xs text-slate-600">Assigned</div>
-                </div>
-
-                {/* Approval */}
-                <div
-                  className="bg-orange-50 border border-orange-200 rounded-lg p-2 text-center cursor-pointer"
-                  onClick={() => handleTabChange('pending-approval-projects')}
-                >
-                  <div className="text-2xl font-bold text-orange-800">{workOrders.filter(order => order.status === 'pending-approval').length}</div>
-                  <div className="text-xs text-orange-700">Approval</div>
-                </div>
-
-                {/* Paused */}
-                <div className="bg-slate-100 border border-slate-200 rounded-lg p-2 text-center">
-                  <div className="text-2xl font-bold text-slate-800">{workOrders.filter(order => order.status === 'paused').length}</div>
-                  <div className="text-xs text-slate-600">Paused</div>
-                </div>
-
-                {/* Completed */}
-                <div className="bg-green-50 border border-green-200 rounded-lg p-2 text-center">
-                  <div className="text-2xl font-bold text-green-800">{completedOrders.length}</div>
-                  <div className="text-xs text-green-700">Completed</div>
+                
+                <div className="grid grid-cols-2 gap-3 text-center">
+                  <div className={`${darkMode ? 'bg-amber-800/50' : 'bg-amber-700/50'} p-3 rounded-lg cursor-pointer`}
+                  onClick={() => handleTabChange('assigned-projects')}>
+                    <p className="text-2xl font-bold">{workOrders.filter(order => order.status === 'assigned').length}</p>
+                    <p className={`text-xs ${darkMode ? 'text-amber-300' : 'text-amber-100'}`}>Assigned</p>
+                  </div>
+                  <div className={`${darkMode ? 'bg-amber-800/50' : 'bg-amber-700/50'} p-3 rounded-lg cursor-pointer`}
+                  onClick={() => handleTabChange('pending-approval-projects')}>
+                    <p className="text-2xl font-bold">{workOrders.filter(order => order.status === 'pending-approval').length}</p>
+                    <p className={`text-xs ${darkMode ? 'text-amber-300' : 'text-amber-100'}`}>Approval</p>
+                  </div>
+                  <div className={`${darkMode ? 'bg-amber-800/50' : 'bg-amber-700/50'} p-3 rounded-lg cursor-pointer`}
+                  onClick={() => handleTabChange('paused-projects')}>
+                    <p className="text-2xl font-bold">{workOrders.filter(order => order.status === 'paused').length}</p>
+                    <p className={`text-xs ${darkMode ? 'text-amber-300' : 'text-amber-100'}`}>Paused</p>
+                  </div>
+                  <div className={`${darkMode ? 'bg-amber-800/50' : 'bg-amber-700/50'} p-3 rounded-lg cursor-pointer`}
+                  onClick={() => handleTabChange('completed')}>
+                    <p className="text-2xl font-bold">{completedOrders.length}</p>
+                    <p className={`text-xs ${darkMode ? 'text-amber-300' : 'text-amber-100'}`}>Completed</p>
+                  </div>
                 </div>
               </div>
             </div>
-
-            {/* Active Assignments Section */}
-            <div className="bg-white rounded-lg shadow-md p-3">
-              <h3 className="text-sm font-bold text-gray-800 mb-3">Active Assignments</h3>
-
-              {/* Assignment List */}
-              <div className="space-y-2">
+            
+            {/* Active Work Orders */}
+            <div className={`${darkMode ? 'bg-gray-800/50 backdrop-blur-sm border border-gray-700' : 'bg-white/80 backdrop-blur-sm border border-gray-200'} rounded-2xl shadow-xl overflow-hidden mb-4`}>
+              <div className={`p-4 ${darkMode ? 'border-b border-gray-700' : 'border-b border-gray-200'}`}>
+                <h2 className="font-bold text-lg">Active Assignments</h2>
+              </div>
+              
+              <div>
                 {workOrders.length > 0 ? (
                   workOrders.map((order) => (
-                    <div
-                      key={order.orderId || `order-${Math.random().toString(36).substr(2, 9)}`}
-                      className="flex items-center gap-2 p-2 bg-gray-100 rounded-lg border border-slate-200 cursor-pointer"
+                    <div 
+                      key={order.orderId || `order-${Math.random().toString(36).substr(2, 9)}`} 
+                      className={`p-4 ${darkMode ? 'border-b border-gray-700 last:border-b-0 hover:bg-gray-700/50' : 'border-b border-gray-200 last:border-b-0 hover:bg-gray-100/50'} transition-colors cursor-pointer`}
                       onClick={() => handleWorkOrderClick(order)}
                     >
-                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
-                        order.status === 'pending-approval' ? 'bg-orange-500' :
-                        order.status === 'in-progress' ? 'bg-blue-500' :
-                        order.status === 'assigned' ? 'bg-blue-500' :
-                        order.status === 'paused' ? 'bg-yellow-500' :
-                        order.status === 'rejected' ? 'bg-red-500' :
-                        'bg-slate-600'
-                      }`}>
-                        <FileText size={14} className="text-white" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="font-semibold text-sm text-slate-800">{order.projectType}</div>
-                        <div className="text-xs text-slate-600 mt-0.5">
-                          Order ID: {order.orderId}
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center max-w-[200px]">
+                          <div className={`w-10 h-10 rounded-full ${getStatusColor(order.status)} flex items-center justify-center mr-3`}>
+                            <Clipboard size={18} className="text-white" />
+                          </div>
+                          <div>
+                            <p className={`font-medium truncate max-w-[140px] ${darkMode ? 'text-white' : 'text-gray-800'}`}>
+                              {order.projectType}
+                            </p>
+                            <p className={`text-xs ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                              Order ID: {order.orderId}
+                            </p>
+                          </div>
                         </div>
-                      </div>
-                      <div className={`px-2 py-1 rounded text-xs font-medium border ${
-                        order.status === 'pending-approval' ? 'bg-orange-100 text-orange-700 border-orange-200' :
-                        order.status === 'in-progress' ? 'bg-blue-100 text-blue-700 border-blue-200' :
-                        order.status === 'assigned' ? 'bg-blue-100 text-blue-700 border-blue-200' :
-                        order.status === 'paused' ? 'bg-yellow-100 text-yellow-700 border-yellow-200' :
-                        order.status === 'rejected' ? 'bg-red-100 text-red-700 border-red-200' :
-                        'bg-slate-100 text-slate-700 border-slate-200'
-                      }`}>
-                        {order.status === 'pending-approval' ? 'Pending-Approval' :
-                         order.status === 'in-progress' ? 'In Progress' :
-                         order.status}
+                        <span className={`px-2 py-1 rounded-full text-xs capitalize ${
+            order.status === 'assigned' ? `${darkMode ? 'bg-blue-600/40' : 'bg-blue-100'} ${darkMode ? 'text-blue-100' : 'text-blue-800'}` :
+            order.status === 'in-progress' ? `${darkMode ? 'bg-purple-600/40' : 'bg-purple-100'} ${darkMode ? 'text-purple-100' : 'text-purple-800'}` :
+            order.status === 'pending-approval' ? `${darkMode ? 'bg-amber-600' : 'bg-amber-100'} ${darkMode ? 'text-amber-100' : 'text-amber-600'}` :
+            order.status === 'paused' ? `${darkMode ? 'bg-orange-600/40' : 'bg-orange-100'} ${darkMode ? 'text-orange-100' : 'text-orange-800'}` :
+            order.status === 'transferring' ? `${darkMode ? 'bg-red-600/40' : 'bg-red-100'} ${darkMode ? 'text-red-100' : 'text-red-800'}` :
+            `${darkMode ? 'bg-green-600/40' : 'bg-green-100'} ${darkMode ? 'text-green-100' : 'text-green-800'}`
+          }`}>
+            {order.status}
+          </span>
                       </div>
                     </div>
                   ))
                 ) : (
                   <div className="p-8 text-center">
-                    <p className="text-gray-500">No active assignments</p>
+                    <p className={`${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>No active assignments</p>
                   </div>
                 )}
               </div>
             </div>
-
           </div>
         )}
-
+          
         {activeTab === 'completed' && (
-          <div className="flex flex-col space-y-6 px-1 py-2">
+          <div className="flex flex-col space-y-6">
             {/* Completed Summary */}
             <div className={`${darkMode ? 'bg-gradient-to-br from-green-600 to-green-800' : 'bg-gradient-to-br from-green-500 to-green-600'} p-6 rounded-2xl shadow-xl text-white`}>
               <div className="flex items-center mb-4">
@@ -2206,67 +2039,71 @@ const fetchFreshWorkOrders = async () => {
         )}
 
 {activeTab === 'pending-approval-projects' && (
-  <div className="px-1 py-2">
-    {/* Pending Approvals Card */}
-    <div className="bg-gradient-to-br from-orange-400 to-orange-600 rounded-lg shadow-md p-4 mb-3 text-white">
-      <div className="flex items-center gap-2 mb-3">
-        <div className="w-8 h-8 bg-orange-700 rounded-lg flex items-center justify-center">
-          <Calendar size={16} className="text-white" />
+  <div className="flex flex-col space-y-6">
+    {/* Pending Approval Summary */}
+    <div className={`${darkMode ? 'bg-gradient-to-br from-amber-600 to-amber-800' : 'bg-gradient-to-br from-amber-500 to-amber-600'} p-6 rounded-2xl shadow-xl text-white`}>
+      <div className="flex items-center mb-4">
+        <div className="w-16 h-16 bg-amber-700 rounded-full flex items-center justify-center shadow-xl mr-4">
+          <Activity size={32} className="text-white" />
         </div>
         <div>
-          <div className="text-lg font-bold">Pending Approvals</div>
-          <div className="text-sm opacity-90">Projects awaiting approval</div>
+          <p className="text-2xl font-bold mb-1">Pending Approvals</p>
+          <p className={`${darkMode ? 'text-amber-200' : 'text-amber-100'}`}>Projects awaiting approval</p>
         </div>
       </div>
-
-      {/* Total Pending */}
-      <div className="bg-orange-300/30 rounded-lg p-2 mb-3">
-        <div className="flex justify-between items-center">
-          <span className="text-sm opacity-90">Total Pending:</span>
-          <span className="text-xl font-bold">{workOrders.filter(order => order.status === 'pending-approval').length} projects</span>
+      
+      <div className={`${darkMode ? 'bg-white/10' : 'bg-white/20'} rounded-xl p-4 backdrop-blur-sm`}>
+        <div className="flex justify-between items-center mb-4">
+          <span className={`${darkMode ? 'text-amber-200' : 'text-amber-100'}`}>Total Pending:</span>
+          <span className="text-white text-xl font-bold">{workOrders.filter(order => order.status === 'pending-approval').length} projects</span>
         </div>
+        
+        <button 
+          onClick={() => handleTabChange('home')}
+          className="bg-amber-700 hover:bg-amber-800 text-white w-full py-2 rounded-lg flex items-center justify-center mt-2"
+        >
+          <Home size={16} className="mr-2" /> Back to Home
+        </button>
       </div>
-
-      {/* Back to Home Button */}
-      <button
-        className="w-full bg-orange-700 hover:bg-orange-800 rounded-lg p-2 flex items-center justify-center gap-2 text-white font-medium text-sm"
-        onClick={() => handleTabChange('home')}
-      >
-        <Home size={16} />
-        Back to Home
-      </button>
     </div>
-
-    {/* Pending Approval Projects Section */}
-    <div className="bg-white rounded-lg shadow-md p-3">
-      <h3 className="text-sm font-bold text-gray-800 mb-3">Pending Approval Projects</h3>
-
-      {/* Project List */}
-      <div className="space-y-2">
+    
+    {/* Pending Approval Projects List */}
+    <div className={`${darkMode ? 'bg-gray-800/50 backdrop-blur-sm border border-gray-700' : 'bg-white/80 backdrop-blur-sm border border-gray-200'} rounded-2xl shadow-xl overflow-hidden`}>
+      <div className={`p-4 ${darkMode ? 'border-b border-gray-700' : 'border-b border-gray-200'}`}>
+        <h2 className="font-bold text-lg">Pending Approval Projects</h2>
+      </div>
+      
+      <div>
         {workOrders.filter(order => order.status === 'pending-approval').length > 0 ? (
           workOrders.filter(order => order.status === 'pending-approval').map((order) => (
-            <div
-              key={order.orderId || `order-${Math.random().toString(36).substr(2, 9)}`}
-              className="flex items-center gap-2 p-2 bg-gray-100 rounded-lg border border-slate-200 cursor-pointer"
+            <div 
+              key={order.orderId || `order-${Math.random().toString(36).substr(2, 9)}`} 
+              className={`p-4 ${darkMode ? 'border-b border-gray-700 last:border-b-0 hover:bg-gray-700/50' : 'border-b border-gray-200 last:border-b-0 hover:bg-gray-100/50'} transition-colors cursor-pointer`}
               onClick={() => handleWorkOrderClick(order)}
             >
-              <div className="w-8 h-8 bg-orange-500 rounded-lg flex items-center justify-center">
-                <Calendar size={14} className="text-white" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="font-semibold text-sm text-slate-800">{order.projectType}</div>
-                <div className="text-xs text-slate-600 mt-0.5">
-                  Order ID: {order.orderId}
+              <div className="flex items-center justify-between">
+                <div className="flex items-center max-w-[200px]">
+                  <div className={`w-10 h-10 rounded-full ${darkMode ? 'bg-amber-600' : 'bg-amber-500'} flex items-center justify-center mr-3`}>
+                    <Activity size={18} className="text-white" />
+                  </div>
+                  <div>
+                    <p className={`font-medium truncate max-w-[140px] ${darkMode ? 'text-white' : 'text-gray-800'}`}>
+                      {order.projectType}
+                    </p>
+                    <p className={`text-xs ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                      Order ID: {order.orderId}
+                    </p>
+                  </div>
                 </div>
-              </div>
-              <div className="px-2 py-1 bg-orange-100 text-orange-700 rounded text-xs font-medium border border-orange-200">
-                Pending-Approval
+                <span className={`px-2 py-1 rounded-full text-xs capitalize ${darkMode ? 'bg-amber-600/40 text-amber-100' : 'bg-amber-100 text-amber-800'}`}>
+                  {order.status}
+                </span>
               </div>
             </div>
           ))
         ) : (
           <div className="p-8 text-center">
-            <p className="text-gray-500">No pending approval projects</p>
+            <p className={`${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>No pending approval projects</p>
           </div>
         )}
       </div>
@@ -2275,7 +2112,7 @@ const fetchFreshWorkOrders = async () => {
 )}
 
 {activeTab === 'paused-projects' && (
-  <div className="flex flex-col space-y-6 px-1 py-2">
+  <div className="flex flex-col space-y-6">
     {/* Paused Projects Summary */}
     <div className={`${darkMode ? 'bg-gradient-to-br from-orange-600 to-orange-800' : 'bg-gradient-to-br from-orange-500 to-orange-600'} p-6 rounded-2xl shadow-xl text-white`}>
       <div className="flex items-center mb-4">
@@ -2348,7 +2185,7 @@ const fetchFreshWorkOrders = async () => {
 )}
 
 {activeTab === 'assigned-projects' && (
-  <div className="flex flex-col space-y-6 px-1 py-2">
+  <div className="flex flex-col space-y-6">
     {/* Assigned Projects Summary */}
     <div className={`${darkMode ? 'bg-gradient-to-br from-blue-600 to-blue-800' : 'bg-gradient-to-br from-blue-500 to-blue-600'} p-6 rounded-2xl shadow-xl text-white`}>
       <div className="flex items-center mb-4">
@@ -2421,7 +2258,7 @@ const fetchFreshWorkOrders = async () => {
 )}
 
 {activeTab === 'transferred-projects' && (
-  <div className="flex flex-col space-y-6 px-1 py-2">
+  <div className="flex flex-col space-y-6">
     {/* Transferred Projects Summary */}
     <div className={`${darkMode ? 'bg-gradient-to-br from-red-600 to-red-800' : 'bg-gradient-to-br from-red-500 to-red-600'} p-6 rounded-2xl shadow-xl text-white`}>
       <div className="flex items-center mb-4">
@@ -2486,94 +2323,90 @@ const fetchFreshWorkOrders = async () => {
   </div>
 )}
       </main>
-
-      {/* Add bottom padding to prevent content from being hidden behind fixed footer */}
-      <div className="pb-20"></div>
-
-      {/* Bottom Navigation - Fixed */}
-      <div className="fixed bottom-0 left-0 right-0 bg-gray-800 border-gray-700 border-t p-1 text-white z-50 w-full">
+      
+      {/* Bottom Navigation */}
+      <footer className={`${darkMode ? 'bg-gray-800 border-t border-gray-700' : 'bg-white border-t border-gray-200'} p-1`}>
         <div className="grid grid-cols-5 gap-1 px-2 pt-1">
-          <button
+          <button 
             onClick={() => handleTabChange('home')}
-            className={`flex flex-col items-center py-2 px-4 rounded-xl flex-1 mx-1 h-14 ${
-              activeTab === 'home'
-                ? `${darkMode ? 'bg-gradient-to-r from-blue-600 to-blue-700' : 'bg-gradient-to-r from-blue-500 to-blue-600'} text-white shadow-lg`
-                : `${darkMode ? 'text-gray-400' : 'text-white'}`
+            className={`flex flex-col items-center py-2 px-4 rounded-xl flex-1 mx-1  h-14 ${
+              activeTab === 'home' 
+                ? `${darkMode ? 'bg-gradient-to-r from-blue-600 to-blue-700' : 'bg-gradient-to-r from-blue-500 to-blue-600'} text-white shadow-lg` 
+                : `${darkMode ? 'text-gray-400' : 'text-gray-500'}`
             }`}
           >
-            <div className="h-5 flex items-center">
-              <Home size={22} />
-            </div>
-            <div className="h-5 flex items-center">
-              <span className="text-xs mt-2">Home</span>
-            </div>
-          </button>
-
-          <button
-            onClick={() => handleTabChange('inventory')}
-            className={`flex flex-col items-center py-2 px-4 rounded-xl flex-1 mx-1 h-14 ${
-              activeTab === 'inventory'
-                ? `${darkMode ? 'bg-gradient-to-r from-teal-600 to-teal-700' : 'bg-gradient-to-r from-teal-500 to-teal-600'} text-white shadow-lg`
-                : `${darkMode ? 'text-gray-400' : 'text-white'}`
-            }`}
-          >
-            <div className="h-5 flex items-center">
-              <span className="text-lg font-bold">{calculateTotalUnits()}</span>
-            </div>
-            <div className="h-5 flex items-center">
-              <span className="text-xs mt-2">{calculateTotalUnits()}</span>
-            </div>
-          </button>
-
-          <button
-            onClick={() => handleTabChange('all-projects')}
-            className={`flex flex-col items-center py-2 px-4 rounded-xl flex-1 mx-1 h-14 ${
-              activeTab === 'all-projects'
-                ? `${darkMode ? 'bg-gradient-to-r from-amber-600 to-amber-700' : 'bg-gradient-to-r from-amber-500 to-amber-600'} text-white shadow-lg`
-                : `${darkMode ? 'text-gray-400' : 'text-white'}`
-            }`}
-          >
-            <div className="h-5 flex items-center">
-              <List size={22} />
-            </div>
-            <div className="h-5 flex items-center">
-              <span className="text-xs mt-2">All</span>
-            </div>
-          </button>
-
-          <button
-            onClick={() => handleTabChange('pending-approval-projects')}
-            className={`flex flex-col items-center py-2 px-4 rounded-xl flex-1 mx-1 h-14 ${
-              activeTab === 'pending-approval-projects'
-                ? `${darkMode ? 'bg-gradient-to-br from-amber-600 to-amber-800' : 'bg-gradient-to-br from-amber-500 to-amber-600'} text-white shadow-lg`
-                : `${darkMode ? 'text-gray-400' : 'text-white'}`
-            }`}
-          >
-            <div className="h-5 flex items-center">
-              <Check size={22} />
-            </div>
-            <div className="h-5 flex items-center">
-              <span className="text-xs mt-2">Approval</span>
-            </div>
-          </button>
-
-          <button
-            onClick={() => handleTabChange('current-project')}
-            className={`flex flex-col items-center py-2 px-4 rounded-xl flex-1 mx-1 h-14 ${
-              activeTab === 'current-project'
-                ? `${darkMode ? 'bg-gradient-to-r from-blue-600 to-blue-700' : 'bg-gradient-to-r from-blue-500 to-blue-600'} text-white shadow-lg`
-                : `${darkMode ? 'text-gray-400' : 'text-white'}`
-            }`}
-          >
-            <div className="h-5 flex items-center">
-              <Calendar size={22} />
-            </div>
-            <div className="h-5 flex items-center">
-              <span className="text-xs mt-2">Current</span>
-            </div>
-          </button>
-        </div>
+             <div className="h-5 flex items-center">
+         <Home size={20} />
       </div>
+      <div className="h-5 flex items-center">
+         <span className="text-xs mt-1">Home</span>
+      </div>
+          </button>
+          <button 
+            onClick={() => handleTabChange('inventory')}
+            className={`flex flex-col items-center py-2 px-4 rounded-xl flex-1 mx-1 ${
+              activeTab === 'inventory' 
+                ? `${darkMode ? 'bg-gradient-to-r from-teal-600 to-teal-700' : 'bg-gradient-to-r from-teal-500 to-teal-600'} text-white shadow-lg` 
+                : `${darkMode ? 'text-gray-400' : 'text-gray-500'}`
+            }`}
+          >
+             <div className="h-5 flex items-center">
+         <LuCctv size={24} />
+      </div>
+      <div className="h-5 flex items-center">
+         <span className="text-xs mt-1">{calculateTotalUnits()}</span>
+      </div>
+          </button>
+          <button 
+            onClick={() => handleTabChange('all-projects')}
+            className={`flex flex-col items-center py-2 px-4 rounded-xl flex-1 mx-1 ${
+              activeTab === 'all-projects' 
+                ? `${darkMode ? 'bg-gradient-to-r from-amber-600 to-amber-700' : 'bg-gradient-to-r from-amber-500 to-amber-600'} text-white shadow-lg` 
+                : `${darkMode ? 'text-gray-400' : 'text-gray-500'}`
+            }`}
+          >
+            <div className="h-5 flex items-center">
+            <List size={20} />
+            </div>
+            <div className="h-5 flex items-center">
+            <span className="text-xs mt-1">All</span>
+            </div>
+          </button>
+
+          <button 
+            onClick={() => handleTabChange('pending-approval-projects')}
+            className={`flex flex-col items-center py-2 px-4 rounded-xl flex-1 mx-1 ${
+              activeTab === 'pending-approval-projects' 
+                ? `${darkMode ?  'bg-gradient-to-br from-amber-600 to-amber-800' : 'bg-gradient-to-br from-amber-500 to-amber-600'} text-white shadow-lg` 
+                : `${darkMode ? 'text-gray-400' : 'text-gray-500'}`
+            }`}
+          >
+            <div className="h-5 flex items-center">
+            <CheckSquare size={20} />
+            </div>
+            <div className="h-5 flex items-center">
+            <span className="text-xs mt-1">Approval</span>
+            </div>
+          </button>
+
+          <button 
+            onClick={() => handleTabChange('current-project')}
+            className={`flex flex-col items-center py-2 px-4 rounded-xl flex-1 mx-1 ${
+              activeTab === 'current-project' 
+                ? `${darkMode ? 'bg-gradient-to-r from-blue-600 to-blue-700' : 'bg-gradient-to-r from-blue-500 to-blue-600'} text-white shadow-lg` 
+                : `${darkMode ? 'text-gray-400' : 'text-gray-500'}`
+            }`}
+          >
+            <div className="h-5 flex items-center">
+            <Clipboard size={20} />
+            </div>
+            <div className="h-5 flex items-center">
+            <span className="text-xs mt-1">Current</span>
+            </div>
+          </button>
+         
+        </div>
+      </footer>
       
       {/* Add bottom padding to prevent content from being hidden behind fixed footer */}
       {/* <div className="pb-16"></div> */}
@@ -2644,54 +2477,28 @@ const fetchFreshWorkOrders = async () => {
 )}
 
       {showReturnModal && (
-        <ReturnInventoryModal
+        <ReturnInventoryModal 
           isOpen={showReturnModal}
           onClose={() => setShowReturnModal(false)}
           onInventoryReturned={handleInventoryReturned}
         />
       )}
 
-      {showReturnRequestModal && selectedReturnRequest && (
-        <ReturnRequestDetailsModal
-          isOpen={showReturnRequestModal}
-          onClose={() => setShowReturnRequestModal(false)}
-          requestData={selectedReturnRequest}
-          onAgainReturn={handleAgainReturn}
-          darkMode={darkMode}
-        />
-      )}
-
 {showBillModal && (
   <GenerateBillModal
     isOpen={showBillModal}
-    onClose={handleBillModalClose}
+    onClose={() => setShowBillModal(false)}
     workOrder={selectedWorkOrder}
     onBillGenerated={handleBillGenerated}
-    onDone={handleBillDone}
   />
 )}
 
-<UserSettingsModal
+<UserSettingsModal 
   isOpen={showSettingsModal}
   onClose={() => setShowSettingsModal(false)}
-/>
-
-{/* Change Profile Picture Modal */}
-<ChangeProfilePictureModal
-  isOpen={showChangeProfilePictureModal}
-  onClose={() => setShowChangeProfilePictureModal(false)}
-/>
-
-{/* Image Preview Modal */}
-<ImagePreviewModal
-  isOpen={showImagePreviewModal}
-  onClose={() => setShowImagePreviewModal(false)}
-  imageUrl={user?.profileImage}
-  userName={`${user?.firstName} ${user?.lastName}`}
 />
     </div>
   );
 };
 
 export default TechnicianDashboard;
-

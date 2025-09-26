@@ -3,7 +3,7 @@ import { X, Search, Camera, FileText, ArrowRight, CheckCircle, ArrowLeft, AlertC
 import SummaryApi from '../../common';
 import { QRCodeCanvas } from 'qrcode.react';
 
-const GenerateBillModal = ({ isOpen, onClose, workOrder, onBillGenerated }) => {
+const GenerateBillModal = ({ isOpen, onClose, workOrder, onBillGenerated, onDone }) => {
   // Main state variables
   const [searchQuery, setSearchQuery] = useState('');
   const [technicianInventory, setTechnicianInventory] = useState([]);
@@ -560,6 +560,15 @@ const addServicesToBill = () => {
   const handleModalClose = async () => {
     // Just close the modal without additional actions
     onClose();
+  };
+
+  // Handle done button click (for payment success)
+  const handleDone = async () => {
+    if (onDone) {
+      onDone();
+    } else {
+      onClose();
+    }
   };
   
   // Handle going back to previous step
@@ -1193,9 +1202,9 @@ const addServicesToBill = () => {
 )}
   
   {currentStep === 'payment-success' && (
-    <button 
+    <button
       className="w-full py-2 bg-green-500 text-white rounded-md"
-      onClick={handleModalClose}
+      onClick={handleDone}
     >
       Done
     </button>

@@ -479,8 +479,8 @@ const ProjectDetailsModal = ({ isOpen, onClose, project, onProjectApproved }) =>
                           <span className="font-medium">₹{amountDue.toFixed(2)}</span>
                         </div>
                         <div className="flex justify-between text-sm">
-                          <span>Payment Date:</span>
-                          <span>{formatDate(bill.paidAt)}</span>
+                          <span>Bill Date:</span>
+                          <span>{formatDate(bill.createdAt)}</span>
                         </div>
                         {bill.transactionId && (
                           <div className="flex justify-between text-sm mt-1">
