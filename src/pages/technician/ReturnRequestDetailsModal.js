@@ -1,19 +1,14 @@
-import React, { useState } from 'react';
+import React from 'react';
 import {
   X,
   Package,
   Clock,
   CheckCircle,
   XCircle,
-  AlertCircle,
-  RefreshCw
+  AlertCircle
 } from 'lucide-react';
-import SummaryApi from '../../common';
-import { useNotification } from '../../context/NotificationContext';
 
-const ReturnRequestDetailsModal = ({ isOpen, onClose, requestData, onAgainReturn, darkMode = false }) => {
-  const { showNotification } = useNotification();
-  const [loading, setLoading] = useState(false);
+const ReturnRequestDetailsModal = ({ isOpen, onClose, requestData, darkMode = false }) => {
 
   // Format date
   const formatDate = (dateString) => {
@@ -57,63 +52,13 @@ const ReturnRequestDetailsModal = ({ isOpen, onClose, requestData, onAgainReturn
     }
   };
 
-  // Handle "Again Return" button click
-  const handleAgainReturn = async () => {
-    try {
-      setLoading(true);
-
-      // Process each item separately - similar to ReturnInventoryModal logic
-      for (const item of requestData.items) {
-        console.log("Re-submitting return request:", item);
-
-        const returnData = {
-          type: item.type,
-          itemId: item.itemId,
-          serialNumber: item.serialNumber || undefined,
-          quantity: item.quantity
-        };
-
-        const response = await fetch(SummaryApi.returnInventoryToManager.url, {
-          method: SummaryApi.returnInventoryToManager.method,
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          credentials: 'include',
-          body: JSON.stringify(returnData)
-        });
-
-        const data = await response.json();
-
-        if (!data.success) {
-          showNotification('error', data.message || 'Failed to re-submit some items');
-          setLoading(false);
-          return;
-        }
-      }
-
-      showNotification('success', 'Items re-submitted for return successfully');
-
-      // Call parent callback to refresh data
-      if (onAgainReturn) {
-        onAgainReturn();
-      }
-
-      // Close modal
-      onClose();
-    } catch (err) {
-      showNotification('error', 'Server error. Please try again later.');
-      console.error('Error re-submitting return request:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   if (!isOpen || !requestData) return null;
 
   const statusDetails = getStatusDetails(requestData.status);
 
   return (
-    <div className={`fixed inset-0 bg-black/50 flex justify-center items-center z-50 p-4`}>
+    <div className={`fixed inset-0 bg-black/70 flex justify-center items-center p-4`} style={{zIndex: 9999}}>
       <div className={`w-full max-w-2xl ${darkMode ? 'bg-gray-800 border border-gray-700' : 'bg-white border border-gray-200'} rounded-2xl shadow-2xl overflow-hidden`}>
         {/* Header */}
         <div className={`p-4 ${darkMode ? 'border-b border-gray-700' : 'border-b border-gray-200'} flex justify-between items-center`}>
@@ -248,41 +193,13 @@ const ReturnRequestDetailsModal = ({ isOpen, onClose, requestData, onAgainReturn
         </div>
 
         {/* Footer */}
-        <div className={`sticky bottom-0 p-4 ${darkMode ? 'border-t border-gray-700 bg-gray-800' : 'border-t border-gray-200 bg-white'} flex justify-end space-x-3`}>
+        <div className={`sticky bottom-0 p-4 ${darkMode ? 'border-t border-gray-700 bg-gray-800' : 'border-t border-gray-200 bg-white'} flex justify-end`}>
           <button
             onClick={onClose}
             className={`px-4 py-2 rounded-lg ${darkMode ? 'bg-gray-700 hover:bg-gray-600 text-white' : 'bg-gray-200 hover:bg-gray-300 text-gray-800'}`}
           >
             Close
           </button>
-
-          {/* Show "Again Return" button only for rejected requests */}
-          {requestData.status === 'rejected' && (
-            <button
-              onClick={handleAgainReturn}
-              disabled={loading}
-              className={`px-4 py-2 rounded-lg flex items-center ${
-                loading
-                  ? `${darkMode ? 'bg-teal-800 text-gray-500' : 'bg-teal-200 text-gray-400'} cursor-not-allowed`
-                  : `${darkMode ? 'bg-teal-600 hover:bg-teal-700' : 'bg-teal-500 hover:bg-teal-600'} text-white`
-              }`}
-            >
-              {loading ? (
-                <>
-                  <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-current" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
-                  Processing...
-                </>
-              ) : (
-                <>
-                  <RefreshCw size={16} className="mr-2" />
-                  Again Return Inventory
-                </>
-              )}
-            </button>
-          )}
         </div>
       </div>
     </div>

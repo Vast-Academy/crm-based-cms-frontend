@@ -33,6 +33,7 @@ import InventoryDetailsModal from './InventoryDetailsModal';
 import WorkOrderDetailsModal from './WorkOrderDetailsModal';
 import ReturnInventoryModal from './ReturnInventoryModal';
 import ReturnRequestDetailsModal from './ReturnRequestDetailsModal';
+import ReturnLogsModal from './ReturnLogsModal';
 import GenerateBillModal from './GenerateBillModal';
 import { FiPause } from 'react-icons/fi';
 import UserSettingsModal from '../users/UserSettingsModal';
@@ -66,6 +67,7 @@ const TechnicianDashboard = () => {
   const [selectedWorkOrder, setSelectedWorkOrder] = useState(null);
   const [showReturnModal, setShowReturnModal] = useState(false);
   const [showReturnRequestModal, setShowReturnRequestModal] = useState(false);
+  const [showReturnLogsModal, setShowReturnLogsModal] = useState(false);
   const [selectedReturnRequest, setSelectedReturnRequest] = useState(null);
   const [returnRequests, setReturnRequests] = useState([]);
   const [showFilterDropdown, setShowFilterDropdown] = useState(false);
@@ -652,18 +654,15 @@ const fetchFreshInventory = async () => {
   // Fetch technician's return requests
   const fetchReturnRequests = async () => {
     try {
-      console.log('Fetching return requests...');
       const response = await fetch(SummaryApi.getTechnicianReturnRequests.url, {
         method: SummaryApi.getTechnicianReturnRequests.method,
         credentials: 'include'
       });
 
       const data = await response.json();
-      console.log('Return requests response:', data);
 
       if (data.success) {
         setReturnRequests(data.data);
-        console.log('Return requests set:', data.data);
       } else {
         console.error('Error fetching return requests:', data.message);
       }
@@ -678,10 +677,23 @@ const fetchFreshInventory = async () => {
     setShowReturnRequestModal(true);
   };
 
-  // Handle "again return" from rejected request
-  const handleAgainReturn = () => {
-    // Refresh return requests after re-submission
-    fetchReturnRequests();
+  // Handle return request click from logs modal (keeps logs modal open)
+  const handleReturnRequestClickFromLogs = (returnRequest) => {
+    setSelectedReturnRequest(returnRequest);
+    setShowReturnRequestModal(true);
+    // Keep showReturnLogsModal true for popup-over-popup
+  };
+
+
+  // Filter today's return requests
+  const getTodaysReturnRequests = () => {
+    const today = new Date();
+    const todayString = today.toDateString();
+
+    return returnRequests.filter(request => {
+      const requestDate = new Date(request.returnedAt);
+      return requestDate.toDateString() === todayString;
+    });
   };
 
  // fetchWorkOrders फंक्शन को अपडेट करें
@@ -1305,63 +1317,6 @@ const fetchFreshWorkOrders = async () => {
               </div>
             </div>
 
-            {/* Return Requests Section - MOVED TO TOP FOR TESTING */}
-            <div className="bg-red-100 border-2 border-red-500 rounded-lg shadow-md p-3 mb-3">
-              <h3 className="text-sm font-bold text-red-800 mb-3">
-                 Return Requests ({returnRequests.length}) 
-              </h3>
-
-              <div className="space-y-2">
-                {console.log('Rendering return requests:', returnRequests)}
-                {returnRequests.length > 0 ? (
-                  returnRequests.map((request) => (
-                    <div
-                      key={request.id}
-                      className="flex items-center gap-2 p-2 bg-gray-100 rounded-lg border border-slate-200 cursor-pointer hover:bg-gray-200 transition-colors"
-                      onClick={() => handleReturnRequestClick(request)}
-                    >
-                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
-                        request.status === 'pending' ? 'bg-orange-500' :
-                        request.status === 'confirmed' ? 'bg-green-500' :
-                        request.status === 'rejected' ? 'bg-red-500' :
-                        'bg-gray-500'
-                      }`}>
-                        <Package size={14} className="text-white" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="font-semibold text-sm text-slate-800">
-                          Return Request - {request.itemCount} item{request.itemCount !== 1 ? 's' : ''}
-                        </div>
-                        <div className="text-xs text-slate-600 truncate">
-                          {request.totalQuantity} units • {
-                            request.status === 'pending' ? 'Pending Review' :
-                            request.status === 'confirmed' ? 'Confirmed' :
-                            request.status === 'rejected' ? 'Rejected' :
-                            request.status
-                          }
-                        </div>
-                      </div>
-                      <div className={`px-2 py-1 rounded-full text-xs font-medium ${
-                        request.status === 'pending' ? 'bg-orange-100 text-orange-800' :
-                        request.status === 'confirmed' ? 'bg-green-100 text-green-800' :
-                        request.status === 'rejected' ? 'bg-red-100 text-red-800' :
-                        'bg-gray-100 text-gray-800'
-                      }`}>
-                        {request.status === 'pending' ? 'Pending' :
-                         request.status === 'confirmed' ? 'Confirmed' :
-                         request.status === 'rejected' ? 'Rejected' :
-                         request.status}
-                      </div>
-                    </div>
-                  ))
-                ) : (
-                  <div className="p-4 text-center">
-                    <p className="text-gray-500 text-sm">No return requests</p>
-                  </div>
-                )}
-              </div>
-            </div>
-
             {/* Your Tasks Section */}
             <div className="bg-white rounded-lg shadow-md p-3">
               <div className="flex items-center justify-between mb-3">
@@ -1384,6 +1339,49 @@ const fetchFreshWorkOrders = async () => {
 
               {/* Task List */}
               <div className="space-y-2">
+                {/* Today's Return Requests */}
+                {getTodaysReturnRequests().map((request, index) => (
+                  <div
+                    key={`return-${request.id}`}
+                    className="flex items-center gap-2 p-2 bg-gray-100 rounded-lg border border-slate-200 cursor-pointer"
+                    onClick={() => handleReturnRequestClick(request)}
+                  >
+                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
+                      request.status === 'pending' ? 'bg-orange-500' :
+                      request.status === 'confirmed' ? 'bg-green-500' :
+                      request.status === 'rejected' ? 'bg-red-500' :
+                      'bg-gray-500'
+                    }`}>
+                      <Package size={14} className="text-white" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="font-semibold text-sm text-slate-800">
+                        Return Request - {request.itemCount} item{request.itemCount !== 1 ? 's' : ''}
+                      </div>
+                      <div className="text-xs text-slate-600 truncate">
+                        {request.totalQuantity} units • {
+                          request.status === 'pending' ? 'Pending Review' :
+                          request.status === 'confirmed' ? 'Confirmed' :
+                          request.status === 'rejected' ? 'Rejected' :
+                          request.status
+                        }
+                      </div>
+                    </div>
+                    <div className={`px-2 py-1 rounded-full text-xs font-medium ${
+                      request.status === 'pending' ? 'bg-orange-100 text-orange-800' :
+                      request.status === 'confirmed' ? 'bg-green-100 text-green-800' :
+                      request.status === 'rejected' ? 'bg-red-100 text-red-800' :
+                      'bg-gray-100 text-gray-800'
+                    }`}>
+                      {request.status === 'pending' ? 'Pending' :
+                       request.status === 'confirmed' ? 'Confirmed' :
+                       request.status === 'rejected' ? 'Rejected' :
+                       request.status}
+                    </div>
+                  </div>
+                ))}
+
+                {/* Work Orders */}
                 {activeWorkOrders.length > 0 ? (
                   activeWorkOrders.map((order, index) => (
                     <div
@@ -1425,11 +1423,11 @@ const fetchFreshWorkOrders = async () => {
                       </div>
                     </div>
                   ))
-                ) : (
+                ) : getTodaysReturnRequests().length === 0 ? (
                   <div className="p-8 text-center">
                     <p className="text-gray-500">No tasks assigned yet</p>
                   </div>
-                )}
+                ) : null}
               </div>
             </div>
           </div>
@@ -1459,14 +1457,23 @@ const fetchFreshWorkOrders = async () => {
         </div>
       </div>
 
-      {/* Return Items Button */}
-      <button
-        onClick={() => setShowReturnModal(true)}
-        className="w-full bg-teal-700 hover:bg-teal-800 rounded-lg p-2 flex items-center justify-center gap-2 text-white font-medium text-sm"
-      >
-        <ArrowLeft size={16} />
-        Return Items
-      </button>
+      {/* Return Items and View Logs Buttons */}
+      <div className="flex gap-2">
+        <button
+          onClick={() => setShowReturnModal(true)}
+          className="flex-1 bg-teal-700 hover:bg-teal-600 rounded-lg p-2 flex items-center justify-center gap-2 text-white font-medium text-sm"
+        >
+          <ArrowLeft size={16} />
+          Return Items
+        </button>
+        <button
+          onClick={() => setShowReturnLogsModal(true)}
+          className="flex-1 bg-indigo-600 hover:bg-indigo-700 rounded-lg p-2 flex items-center justify-center gap-2 text-white font-medium text-sm"
+        >
+          <Clock size={16} />
+          View Logs
+        </button>
+      </div>
     </div>
 
     {/* Inventory Items Section */}
@@ -2656,7 +2663,16 @@ const fetchFreshWorkOrders = async () => {
           isOpen={showReturnRequestModal}
           onClose={() => setShowReturnRequestModal(false)}
           requestData={selectedReturnRequest}
-          onAgainReturn={handleAgainReturn}
+          darkMode={darkMode}
+        />
+      )}
+
+      {showReturnLogsModal && (
+        <ReturnLogsModal
+          isOpen={showReturnLogsModal}
+          onClose={() => setShowReturnLogsModal(false)}
+          returnRequests={returnRequests}
+          onRequestClick={handleReturnRequestClickFromLogs}
           darkMode={darkMode}
         />
       )}
