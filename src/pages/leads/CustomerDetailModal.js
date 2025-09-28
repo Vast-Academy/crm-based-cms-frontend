@@ -12,6 +12,7 @@ import ProjectDetailsModal from '../manager/ProjectDetailsModal';
 import EditCustomerModal from './EditCustomerModal';
 import CustomerBillingModal from './CustomerBillingModal';
 import BillHistoryTable from '../../components/BillHistoryTable';
+import TransactionHistory from '../../components/TransactionHistory';
 
 const CustomerDetailModal = ({ isOpen, onClose, customerId, onCustomerUpdated }) => {
   const { user } = useAuth();
@@ -34,6 +35,8 @@ const [showBillingModal, setShowBillingModal] = useState(false);
   const [loadingBills, setLoadingBills] = useState(false);
   
   // Payment states
+  const [showPaymentForm, setShowPaymentForm] = useState(false);
+  const [transactionRefreshKey, setTransactionRefreshKey] = useState(0);
   const [paymentAmount, setPaymentAmount] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('cash');
   const [transactionId, setTransactionId] = useState('');
@@ -523,11 +526,12 @@ const handleViewProjectDetails = async (project) => {
           upiTransactionId: ''
         });
         
-        // Refresh bills data
+        // Refresh bills data and transaction history
         fetchCustomerBills();
-        
-        // Switch to bills tab to show updated status
-        setActiveTab('bills');
+        setTransactionRefreshKey(prev => prev + 1);
+
+        // Switch back to payment tab to show updated transaction history
+        setShowPaymentForm(false);
       } else {
         alert(data.message || 'Failed to process payment');
       }
@@ -1129,7 +1133,36 @@ const handleViewProjectDetails = async (project) => {
           {/* Payment Tab */}
           {activeTab === 'payment' && (
             <div className="p-6">
-              {billsSummary && billsSummary.totalDue > 0 ? (
+              {!showPaymentForm ? (
+                // Transaction History Component
+                <TransactionHistory
+                  key={transactionRefreshKey}
+                  customerId={customerId}
+                  customerType="customer"
+                  billsSummary={billsSummary}
+                  onPayDueClick={() => setShowPaymentForm(true)}
+                  themeColor="purple"
+                />
+              ) : (
+                // Payment Form View
+                <div>
+                  <div className="flex items-center mb-6">
+                    <button
+                      onClick={() => {
+                        setShowPaymentForm(false);
+                        // TransactionHistory component will automatically refresh when it becomes visible
+                      }}
+                      className="mr-4 p-2 text-gray-500 hover:text-gray-700 rounded-lg hover:bg-gray-100"
+                    >
+                      <FiArrowLeft size={20} />
+                    </button>
+                    <h4 className="font-medium text-gray-900 text-lg flex items-center">
+                      <FiDollarSign className="mr-2 text-purple-500" />
+                      Process Payment
+                    </h4>
+                  </div>
+
+                  {billsSummary && billsSummary.totalDue > 0 ? (
                 <div className="max-w-md mx-auto">
                   <div className="bg-purple-50 rounded-lg p-6 border border-purple-200">
                     <h4 className="font-medium text-purple-900 mb-4 flex items-center">
@@ -1472,17 +1505,19 @@ const handleViewProjectDetails = async (project) => {
                         {processingPayment ? 'Processing...' : 'Process Payment'}
                       </button>
                     </div>
+                    </div>
                   </div>
-                </div>
-              ) : (
-                <div className="text-center py-12">
-                  <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <FiCheck className="text-green-600" size={24} />
+                ) : (
+                  <div className="text-center py-12">
+                    <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                      <FiCheck className="text-green-600" size={24} />
+                    </div>
+                    <h4 className="text-lg font-medium text-gray-900 mb-2">No Pending Payments</h4>
+                    <p className="text-gray-600">All bills have been paid in full</p>
                   </div>
-                  <h4 className="text-lg font-medium text-gray-900 mb-2">No Pending Payments</h4>
-                  <p className="text-gray-600">All bills have been paid in full</p>
-                </div>
-              )}
+                )}
+              </div>
+            )}
             </div>
           )}
         </>

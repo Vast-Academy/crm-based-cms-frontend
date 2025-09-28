@@ -423,6 +423,12 @@ const SummaryApi = {
         url: `${backendDomain}/api/process-bulk-payment`,
         method: "post"
       },
+
+      // Transaction History API
+      getTransactionHistory: {
+        url: `${backendDomain}/api/transaction-history`,
+        method: "get"
+      },
       
       // Customer billing APIs
       getCustomerBills: {

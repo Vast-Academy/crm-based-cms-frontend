@@ -7,6 +7,7 @@ import SummaryApi from '../../common';
 import { useAuth } from '../../context/AuthContext';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import BillHistoryTable from '../../components/BillHistoryTable';
+import TransactionHistory from '../../components/TransactionHistory';
 import { useNotification } from '../../context/NotificationContext';
 
 // List of Indian Banks
@@ -54,15 +55,14 @@ export default function DistributorDetailModal({ isOpen, onClose, distributorId,
   // Payment states
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [showPaymentForm, setShowPaymentForm] = useState(false);
+  const [transactionRefreshKey, setTransactionRefreshKey] = useState(0);
   const [paymentAmount, setPaymentAmount] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('cash');
   const [transactionId, setTransactionId] = useState('');
   const [paymentNotes, setPaymentNotes] = useState('');
   const [processingPayment, setProcessingPayment] = useState(false);
 
-  // Transaction history states
-  const [transactions, setTransactions] = useState([]);
-  const [loadingTransactions, setLoadingTransactions] = useState(false);
+  // Transaction history will be handled by TransactionHistory component
 
   // Enhanced payment states
   const [selectedBankAccount, setSelectedBankAccount] = useState(null);
@@ -106,9 +106,6 @@ export default function DistributorDetailModal({ isOpen, onClose, distributorId,
   useEffect(() => {
     if (isOpen && distributorId && (activeTab === 'bills' || activeTab === 'payment')) {
       fetchDistributorBills();
-      if (activeTab === 'payment') {
-        fetchTransactionHistory();
-      }
     }
   }, [isOpen, distributorId, activeTab]);
 
@@ -162,75 +159,6 @@ export default function DistributorDetailModal({ isOpen, onClose, distributorId,
     }
   };
 
-  const fetchTransactionHistory = async () => {
-    setLoadingTransactions(true);
-
-    try {
-      // Using getDistributorBills API and extracting transaction history from bills
-      const response = await fetch(`${SummaryApi.getDistributorBills.url}/${distributorId}`, {
-        method: SummaryApi.getDistributorBills.method,
-        credentials: 'include'
-      });
-
-      const data = await response.json();
-
-      if (data.success) {
-        const allTransactions = [];
-
-        // Process each bill to extract transactions
-        data.data.bills.forEach(bill => {
-          // Add bill creation transaction (red - outgoing/purchase)
-          allTransactions.push({
-            id: `bill-${bill._id}`,
-            type: 'purchase',
-            amount: bill.total,
-            date: bill.createdAt,
-            description: `Bill #${bill.billNumber} - Items Purchase`,
-            status: 'debit',
-            paymentMethod: 'purchase',
-            billNumber: bill.billNumber
-          });
-
-          // Add payment transactions based on paid amount vs due amount
-          if (bill.paidAmount > 0) {
-            // For now, we'll show one payment transaction per bill that has been paid
-            // In the future, we can enhance the backend to store individual payment records
-            let paymentDescription = '';
-
-            if (bill.dueAmount === 0) {
-              paymentDescription = `Full payment for Bill #${bill.billNumber}`;
-            } else {
-              paymentDescription = `Partial payment for Bill #${bill.billNumber}`;
-            }
-
-            // Create payment transaction (green - incoming/payment received)
-            allTransactions.push({
-              id: `payment-${bill._id}-${bill.updatedAt}`,
-              type: 'payment',
-              amount: bill.paidAmount,
-              date: bill.updatedAt, // Use updated date as payment date
-              description: paymentDescription,
-              status: 'credit',
-              paymentMethod: bill.paymentMethod || 'cash',
-              billNumber: bill.billNumber,
-              transactionId: bill.transactionId || null
-            });
-          }
-        });
-
-        // Sort by date (newest first)
-        allTransactions.sort((a, b) => new Date(b.date) - new Date(a.date));
-        setTransactions(allTransactions);
-      } else {
-        showNotification('error', data.message || 'Failed to fetch transaction history');
-      }
-    } catch (err) {
-      showNotification('error', 'Server error while fetching transaction history');
-      console.error('Error fetching transaction history:', err);
-    } finally {
-      setLoadingTransactions(false);
-    }
-  };
 
   const formatDate = (dateString) => {
     const options = {
@@ -579,22 +507,6 @@ export default function DistributorDetailModal({ isOpen, onClose, distributorId,
       if (data.success) {
         showNotification('success', `Payment of ₹${paymentAmount} processed successfully`);
 
-        // Add payment transaction to history immediately
-        const newPaymentTransaction = {
-          id: `payment-new-${Date.now()}`,
-          type: 'payment',
-          amount: parseFloat(paymentAmount),
-          date: new Date().toISOString(),
-          description: `Payment received - Due cleared`,
-          status: 'credit',
-          paymentMethod: paymentMethod,
-          transactionId: paymentMethod === 'upi' ? paymentFormData.upiTransactionId :
-                        (paymentMethod === 'bank_transfer' ? paymentFormData.utrNumber : null)
-        };
-
-        // Add to existing transactions at the top
-        setTransactions(prev => [newPaymentTransaction, ...prev]);
-
         // Reset payment form
         setPaymentAmount('');
         setPaymentMethod('cash');
@@ -624,7 +536,7 @@ export default function DistributorDetailModal({ isOpen, onClose, distributorId,
 
         // Refresh bills data and transaction history
         fetchDistributorBills();
-        fetchTransactionHistory();
+        setTransactionRefreshKey(prev => prev + 1);
       } else {
         showNotification('error', data.message || 'Failed to process payment');
       }
@@ -1000,117 +912,24 @@ export default function DistributorDetailModal({ isOpen, onClose, distributorId,
                 {activeTab === 'payment' && (
                   <div>
                     {!showPaymentForm ? (
-                      // Transaction History View
-                      <div>
-                        <div className="flex justify-between items-center mb-6">
-                          <h4 className="font-medium text-gray-900 text-lg flex items-center">
-                            <FiClock className="mr-2 text-teal-500" />
-                            Transaction History
-                          </h4>
-                          {billsSummary && billsSummary.totalDue > 0 && (
-                            <button
-                              onClick={() => setShowPaymentForm(true)}
-                              className="bg-teal-500 hover:bg-teal-600 text-white px-6 py-2 rounded-lg font-medium transition-colors flex items-center"
-                            >
-                              {/* <span className="mr-2" size={16} /> */}
-                             ₹ Pay Due
-                            </button>
-                          )}
-                        </div>
-
-                        {/* Due Amount Summary */}
-                        {billsSummary && (
-                          <div className="grid grid-cols-3 gap-4 mb-6">
-                            <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
-                              <h5 className="font-medium text-blue-900 mb-2">Total Amount</h5>
-                              <p className="text-xl font-bold text-blue-600">₹{billsSummary.totalAmount}</p>
-                            </div>
-                            <div className="bg-green-50 rounded-lg p-4 border border-green-200">
-                              <h5 className="font-medium text-green-900 mb-2">Paid Amount</h5>
-                              <p className="text-xl font-bold text-green-600">₹{billsSummary.totalPaid}</p>
-                            </div>
-                            <div className="bg-red-50 rounded-lg p-4 border border-red-200">
-                              <h5 className="font-medium text-red-900 mb-2">Due Amount</h5>
-                              <p className="text-xl font-bold text-red-600">₹{billsSummary.totalDue}</p>
-                            </div>
-                          </div>
-                        )}
-
-                        {/* Transaction History */}
-                        <div className="bg-white border border-gray-200 rounded-lg">
-                          <div className="px-4 py-3 border-b border-gray-200">
-                            <h5 className="font-medium text-gray-900">Recent Transactions</h5>
-                          </div>
-
-                          {loadingTransactions ? (
-                            <div className="flex justify-center py-8">
-                              <LoadingSpinner />
-                            </div>
-                          ) : transactions.length > 0 ? (
-                            <div className="max-h-96 overflow-y-auto">
-                              {transactions.map((transaction) => (
-                                <div key={transaction.id} className="px-4 py-3 border-b border-gray-100 last:border-b-0 hover:bg-gray-50">
-                                  <div className="flex justify-between items-start">
-                                    <div className="flex-1">
-                                      <div className="flex items-center space-x-2 mb-1">
-                                        <div className={`w-2 h-2 rounded-full ${
-                                          transaction.status === 'credit' ? 'bg-green-500' : 'bg-red-500'
-                                        }`}></div>
-                                        <p className="font-medium text-gray-900 text-sm">
-                                          {transaction.description}
-                                        </p>
-                                      </div>
-                                      <div className="flex items-center space-x-4 text-xs text-gray-500">
-                                        <span>
-                                          {new Date(transaction.date).toLocaleDateString('en-IN', {
-                                            day: '2-digit',
-                                            month: 'short',
-                                            year: 'numeric'
-                                          })} at {new Date(transaction.date).toLocaleTimeString('en-IN', {
-                                            hour: '2-digit',
-                                            minute: '2-digit',
-                                            hour12: true
-                                          })}
-                                        </span>
-                                        <span className="capitalize">
-                                          {transaction.paymentMethod}
-                                        </span>
-                                        {transaction.billNumber && (
-                                          <span>#{transaction.billNumber}</span>
-                                        )}
-                                        {transaction.transactionId && (
-                                          <span className="text-blue-600">ID: {transaction.transactionId}</span>
-                                        )}
-                                      </div>
-                                    </div>
-                                    <div className="text-right">
-                                      <p className={`font-semibold ${
-                                        transaction.status === 'credit' ? 'text-green-600' : 'text-red-600'
-                                      }`}>
-                                        {transaction.status === 'credit' ? '+' : '-'}₹{transaction.amount}
-                                      </p>
-                                    </div>
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                          ) : (
-                            <div className="text-center py-8">
-                              <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                                <FiClock className="text-gray-400" size={20} />
-                              </div>
-                              <h4 className="text-lg font-medium text-gray-900 mb-2">No Transactions Yet</h4>
-                              <p className="text-gray-600">Transaction history will appear here</p>
-                            </div>
-                          )}
-                        </div>
-                      </div>
+                      // Transaction History Component
+                      <TransactionHistory
+                        key={transactionRefreshKey}
+                        customerId={distributorId}
+                        customerType="distributor"
+                        billsSummary={billsSummary}
+                        onPayDueClick={() => setShowPaymentForm(true)}
+                        themeColor="teal"
+                      />
                     ) : (
                       // Payment Form View
                       <div>
                         <div className="flex items-center mb-6">
                           <button
-                            onClick={() => setShowPaymentForm(false)}
+                            onClick={() => {
+                              setShowPaymentForm(false);
+                              // TransactionHistory component will automatically refresh when it becomes visible
+                            }}
                             className="mr-4 p-2 text-gray-500 hover:text-gray-700 rounded-lg hover:bg-gray-100"
                           >
                             <FiArrowLeft size={20} />
