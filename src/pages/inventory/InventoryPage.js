@@ -174,6 +174,8 @@ const handleUpdateItem = async () => {
     setLoading(true);
     setError(null);
     
+    console.log("Sending data to backend:", selectedItem);
+
     const response = await fetch(`${SummaryApi.updateInventoryItem.url}/${selectedItem.id}`, {
       method: SummaryApi.updateInventoryItem.method,
       credentials: 'include',
@@ -182,7 +184,7 @@ const handleUpdateItem = async () => {
       },
       body: JSON.stringify(selectedItem)
     });
-    
+
     const data = await response.json();
     console.log("check API data:", data);
     
@@ -216,10 +218,23 @@ const handleUpdateItem = async () => {
 // Add a function to handle edit form input changes
 const handleEditItemChange = (e) => {
   const { name, value } = e.target;
-  setSelectedItem({
-    ...selectedItem,
-    [name]: value
-  });
+
+  // Handle nested pricing fields
+  if (name.startsWith('pricing.')) {
+    const pricingField = name.split('.')[1];
+    setSelectedItem({
+      ...selectedItem,
+      pricing: {
+        ...selectedItem.pricing,
+        [pricingField]: value
+      }
+    });
+  } else {
+    setSelectedItem({
+      ...selectedItem,
+      [name]: value
+    });
+  }
 };
 
   // Handle input change for new item form
