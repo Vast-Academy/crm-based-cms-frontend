@@ -273,6 +273,10 @@ const SummaryApi = {
         url : `${backendDomain}/api/reject-technician-project-transfer`,
         method: "post"
       },
+      closeProject: {
+        url : `${backendDomain}/api/close-project`,
+        method: "post"
+      },
       getReturnedInventory: {
         url: `${backendDomain}/api/get-returned-inventory`,
         method: "get"

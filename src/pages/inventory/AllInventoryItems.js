@@ -8,7 +8,7 @@ import { useAuth } from '../../context/AuthContext';
 import ConfirmationDialog from '../../components/ConfirmationDialog';
 import Modal from '../../components/Modal';
 
-const AllInventoryItems = ({ searchTerm = '', refreshTrigger = 0, branch = '' }) => {
+const AllInventoryItems = ({ searchTerm = '', refreshTrigger = 0, branch = '', sortField = 'name', sortOrder = 'asc' }) => {
   const { user } = useAuth();
   const { showNotification } = useNotification();
   const [items, setItems] = useState([]);
@@ -16,9 +16,6 @@ const AllInventoryItems = ({ searchTerm = '', refreshTrigger = 0, branch = '' })
   const [error, setError] = useState(null);
   const CACHE_STALENESS_TIME = 15 * 60 * 1000;
   const [lastRefreshTime, setLastRefreshTime] = useState(0);
-  // const [searchTerm, setSearchTerm] = useState('');
-  const [sortOrder, setSortOrder] = useState('asc'); // New state for sorting order
-  const [sortField, setSortField] = useState('name'); // New state for sorting field ('name' or 'price')
   
   // Modal states
   const [isViewStockModalOpen, setIsViewStockModalOpen] = useState(false);
@@ -308,10 +305,25 @@ const handleRefresh = () => {
     return 0;
   };
 
-  const sortByPrice = (a, b) => {
-    // Sort by customer price
+  const sortByCustomerPrice = (a, b) => {
     const priceA = a.pricing?.customerPrice || 0;
     const priceB = b.pricing?.customerPrice || 0;
+    if (priceA < priceB) return sortOrder === 'asc' ? -1 : 1;
+    if (priceA > priceB) return sortOrder === 'asc' ? 1 : -1;
+    return 0;
+  };
+
+  const sortByDealerPrice = (a, b) => {
+    const priceA = a.pricing?.dealerPrice || 0;
+    const priceB = b.pricing?.dealerPrice || 0;
+    if (priceA < priceB) return sortOrder === 'asc' ? -1 : 1;
+    if (priceA > priceB) return sortOrder === 'asc' ? 1 : -1;
+    return 0;
+  };
+
+  const sortByDistributorPrice = (a, b) => {
+    const priceA = a.pricing?.distributorPrice || 0;
+    const priceB = b.pricing?.distributorPrice || 0;
     if (priceA < priceB) return sortOrder === 'asc' ? -1 : 1;
     if (priceA > priceB) return sortOrder === 'asc' ? 1 : -1;
     return 0;
@@ -326,7 +338,7 @@ const handleRefresh = () => {
   };
 
   // Choose sort function based on sortField
-  const sortFunction = sortField === 'price' ? sortByPrice : sortField === 'stock' ? sortByStock : sortByName;
+  const sortFunction = sortField === 'customerPrice' ? sortByCustomerPrice : sortField === 'dealerPrice' ? sortByDealerPrice : sortField === 'distributorPrice' ? sortByDistributorPrice : sortField === 'stock' ? sortByStock : sortByName;
 
     // Sort each group
     serializedItems.sort(sortFunction);
@@ -417,37 +429,15 @@ const handleRefresh = () => {
               <thead className="bg-gray-50">
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">S.NO</th>
-              <th
-                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer select-none"
-                onClick={() => {
-                  if (sortField === 'name') {
-                    setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
-                  } else {
-                    setSortField('name');
-                    setSortOrder('asc');
-                  }
-                }}
-                title="Sort by Name"
-              >
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 NAME
-                <span className="inline-block ml-1">
-              {sortField === 'name' ? (
-                sortOrder === 'asc' ? (
-                  <LuArrowDownUp className="inline h-4 w-4 text-gray-600" />
-                ) : (
-                  <LuArrowUpDown className="inline h-4 w-4 text-gray-600" />
-                )
-              ) : (
-                <LuArrowDownUp className="inline h-4 w-4 text-gray-400" />
-              )}
-                </span>
               </th>
                   {/* <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">TYPE</th> */}
                   {/* <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">BRANCH</th> */}
                   {/* <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">UNIT</th> */}
                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          ₹ CUSTOMER
-                        </th>
+                    ₹ CUSTOMER
+                  </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     ₹ DEALER
                   </th>
@@ -457,30 +447,8 @@ const handleRefresh = () => {
                   {user.role === 'admin' && (
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">PURCHASE PRICE</th>
                   )}
-                  <th
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer select-none"
-                    onClick={() => {
-                      if (sortField === 'stock') {
-                        setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
-                      } else {
-                        setSortField('stock');
-                        setSortOrder('asc');
-                      }
-                    }}
-                    title="Sort by Stock"
-                  >
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     STOCK
-                    <span className="inline-block ml-1">
-                      {sortField === 'stock' ? (
-                        sortOrder === 'asc' ? (
-                          <LuArrowDownUp className="inline h-4 w-4 text-gray-600" />
-                        ) : (
-                          <LuArrowUpDown className="inline h-4 w-4 text-gray-600" />
-                        )
-                      ) : (
-                        <LuArrowDownUp className="inline h-4 w-4 text-gray-400" />
-                      )}
-                    </span>
                   </th>
                   {/* <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ACTIONS</th> */}
                 </tr>

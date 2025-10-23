@@ -31,6 +31,7 @@ import SummaryApi from '../../common';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import InventoryDetailsModal from './InventoryDetailsModal';
 import WorkOrderDetailsModal from './WorkOrderDetailsModal';
+import ProjectDetailsModal from '../manager/ProjectDetailsModal';
 import ReturnInventoryModal from './ReturnInventoryModal';
 import ReturnRequestDetailsModal from './ReturnRequestDetailsModal';
 import ReturnLogsModal from './ReturnLogsModal';
@@ -71,7 +72,7 @@ const TechnicianDashboard = () => {
   const [selectedReturnRequest, setSelectedReturnRequest] = useState(null);
   const [returnRequests, setReturnRequests] = useState([]);
   const [showFilterDropdown, setShowFilterDropdown] = useState(false);
-const [inventoryFilter, setInventoryFilter] = useState('Serialized');
+const [inventoryFilter, setInventoryFilter] = useState('All');
   const [expandedItems, setExpandedItems] = useState([]);
   // Add these state variables
   const [showFullHistory, setShowFullHistory] = useState(false);
@@ -87,6 +88,8 @@ const [inventoryFilter, setInventoryFilter] = useState('Serialized');
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [showChangeProfilePictureModal, setShowChangeProfilePictureModal] = useState(false);
   const [showImagePreviewModal, setShowImagePreviewModal] = useState(false);
+  const [showProjectDetailsModal, setShowProjectDetailsModal] = useState(false);
+  const [selectedCompletedProject, setSelectedCompletedProject] = useState(null);
 
   // नया कॉन्स्टेंट जोड़ें
 const CACHE_STALENESS_TIME = 15 * 1000;
@@ -520,9 +523,12 @@ const handleItemExpand = (itemKey, item) => {
 
 // Filter and sort inventory items
 const getFilteredInventoryItems = () => {
-  // First filter based on active items
-  let filteredItems = inventoryItems;
-  
+  // First filter out items with 0 quantity
+  let filteredItems = inventoryItems.filter(item => {
+    const quantity = getItemQuantity(item);
+    return quantity > 0;
+  });
+
   // Then apply type filter
   if (inventoryFilter === 'Serialized') {
     filteredItems = filteredItems.filter(item => item.type === 'serialized-product');
@@ -532,12 +538,15 @@ const getFilteredInventoryItems = () => {
     filteredItems = filteredItems.filter(item => item.type === 'generic-product');
     // Sort by quantity descending to ascending
     filteredItems = filteredItems.sort((a, b) => getItemQuantity(b) - getItemQuantity(a));
-  } else if (inventoryFilter === 'Services') {
-    filteredItems = filteredItems.filter(item => item.type === 'service');
-    // Sort services by name ascending
-    filteredItems = filteredItems.sort((a, b) => a.itemName.localeCompare(b.itemName));
+  } else if (inventoryFilter === 'All') {
+    // Show only serialized and generic products (not services)
+    filteredItems = filteredItems.filter(item =>
+      item.type === 'serialized-product' || item.type === 'generic-product'
+    );
+    // Sort by quantity descending
+    filteredItems = filteredItems.sort((a, b) => getItemQuantity(b) - getItemQuantity(a));
   }
-  
+
   return filteredItems;
 };
 
@@ -1011,8 +1020,25 @@ const fetchFreshWorkOrders = async () => {
     handleTabChange('pending-approval-projects');
     return;
   } else if (workOrder.status === 'completed') {
-    // Redirect to pending-approval-projects tab
-    handleTabChange('completed');
+    // For completed projects, open ProjectDetailsModal (manager's modal)
+    try {
+      const response = await fetch(`${SummaryApi.getWorkOrderDetails.url}/${workOrder.customerId}/${workOrder.orderId}`, {
+        method: SummaryApi.getWorkOrderDetails.method,
+        credentials: 'include'
+      });
+
+      const data = await response.json();
+
+      if (data.success && data.data) {
+        setSelectedCompletedProject(data.data);
+      } else {
+        setSelectedCompletedProject(workOrder);
+      }
+    } catch (err) {
+      console.error('Error fetching detailed work order:', err);
+      setSelectedCompletedProject(workOrder);
+    }
+    setShowProjectDetailsModal(true);
     return;
   } else if (workOrder.status === 'paused') {
     // For paused projects, open the modal
@@ -1029,9 +1055,9 @@ const fetchFreshWorkOrders = async () => {
           method: SummaryApi.getWorkOrderDetails.method,
           credentials: 'include'
         });
-        
+
         const data = await response.json();
-        
+
         if (data.success && data.data) {
           // अपडेटेड वर्क ऑर्डर को सेट करें
           setSelectedWorkOrder(data.data);
@@ -1047,7 +1073,7 @@ const fetchFreshWorkOrders = async () => {
       // अगर कोई पेमेंट नहीं है तो सीधे सेट करें
       setSelectedWorkOrder(workOrder);
     }
-    
+
     setShowWorkOrderModal(true);
   };
 
@@ -1292,7 +1318,8 @@ const fetchFreshWorkOrders = async () => {
                 </div>
 
                 {/* Completed */}
-                <div className="bg-green-50 border border-green-200 rounded-lg p-2">
+                <div className="bg-green-50 border border-green-200 rounded-lg p-2 
+                cursor-pointer" onClick={() => handleTabChange('completed')}>
                   <div className="w-6 h-6 bg-green-600 rounded-lg flex items-center justify-center mb-1">
                     <Check size={12} className="text-white" />
                   </div>
@@ -1483,6 +1510,16 @@ const fetchFreshWorkOrders = async () => {
       {/* Filter Tabs */}
       <div className="flex gap-2 mb-3">
         <button
+          onClick={() => setInventoryFilter('All')}
+          className={`px-3 py-1 rounded-full text-xs font-medium ${
+            inventoryFilter === 'All'
+              ? 'bg-blue-100 text-blue-700'
+              : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+          }`}
+        >
+          All
+        </button>
+        <button
           onClick={() => setInventoryFilter('Serialized')}
           className={`px-3 py-1 rounded-full text-xs font-medium ${
             inventoryFilter === 'Serialized'
@@ -1501,16 +1538,6 @@ const fetchFreshWorkOrders = async () => {
           }`}
         >
           Generic
-        </button>
-        <button
-          onClick={() => setInventoryFilter('Services')}
-          className={`px-3 py-1 rounded-full text-xs font-medium ${
-            inventoryFilter === 'Services'
-              ? 'bg-blue-100 text-blue-700'
-              : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-          }`}
-        >
-          Services
         </button>
       </div>
 
@@ -2634,7 +2661,7 @@ const fetchFreshWorkOrders = async () => {
       )}
       
 {showWorkOrderModal && (
-  <WorkOrderDetailsModal 
+  <WorkOrderDetailsModal
     isOpen={showWorkOrderModal}
     onClose={() => {
       setShowWorkOrderModal(false);
@@ -2649,6 +2676,22 @@ const fetchFreshWorkOrders = async () => {
     darkMode={darkMode}
   />
 )}
+
+      {showProjectDetailsModal && selectedCompletedProject && (
+        <ProjectDetailsModal
+          isOpen={showProjectDetailsModal}
+          onClose={() => {
+            setShowProjectDetailsModal(false);
+            setSelectedCompletedProject(null);
+          }}
+          project={selectedCompletedProject}
+          onProjectApproved={() => {
+            setShowProjectDetailsModal(false);
+            setSelectedCompletedProject(null);
+            fetchWorkOrders();
+          }}
+        />
+      )}
 
       {showReturnModal && (
         <ReturnInventoryModal

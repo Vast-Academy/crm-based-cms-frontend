@@ -1,7 +1,18 @@
 import React, { useState, useEffect } from 'react';
-import { X, Search, Camera, FileText, ArrowRight, CheckCircle, ArrowLeft, AlertCircle } from 'lucide-react';
+import { X, Search, Camera, FileText, ArrowRight, CheckCircle, ArrowLeft, AlertCircle, DollarSign, Smartphone, TrendingUp, FileCheck, CreditCard } from 'lucide-react';
 import SummaryApi from '../../common';
 import { QRCodeCanvas } from 'qrcode.react';
+import LoadingSpinner from '../../components/LoadingSpinner';
+
+// List of Indian Banks
+const INDIAN_BANKS = [
+  'State Bank of India (SBI)', 'Punjab National Bank (PNB)', 'Bank of Baroda (BoB)',
+  'Canara Bank', 'Union Bank of India', 'Indian Bank', 'Bank of India (BOI)',
+  'Central Bank of India', 'UCO Bank', 'Bank of Maharashtra', 'Punjab & Sind Bank',
+  'HDFC Bank', 'ICICI Bank', 'Axis Bank', 'Kotak Mahindra Bank', 'IndusInd Bank',
+  'Yes Bank', 'IDFC FIRST Bank', 'Federal Bank', 'City Union Bank', 'DCB Bank',
+  'RBL Bank', 'Bandhan Bank'
+];
 
 const GenerateBillModal = ({ isOpen, onClose, workOrder, onBillGenerated, onDone }) => {
   // Main state variables
@@ -22,6 +33,28 @@ const GenerateBillModal = ({ isOpen, onClose, workOrder, onBillGenerated, onDone
   const [showServicesModal, setShowServicesModal] = useState(false);
 const [availableServices, setAvailableServices] = useState([]);
 const [selectedServices, setSelectedServices] = useState([]);
+
+  // Enhanced payment states for multiple payment methods
+  const [selectedBankAccount, setSelectedBankAccount] = useState(null);
+  const [bankAccounts, setBankAccounts] = useState([]);
+  const [fetchingBankAccounts, setFetchingBankAccounts] = useState(false);
+  const [showBankSelection, setShowBankSelection] = useState(false);
+  const [paymentFormData, setPaymentFormData] = useState({
+    // Bank Transfer
+    utrNumber: '',
+    bankName: '',
+    transferDate: '',
+    receivedAmount: '',
+    // Cheque
+    chequeNumber: '',
+    chequeBank: '',
+    chequeIfsc: '',
+    chequeDate: '',
+    chequeAmount: '',
+    drawerName: '',
+    // UPI
+    upiTransactionId: ''
+  });
   
   // Navigation and view states - key change for single modal approach
   const [currentStep, setCurrentStep] = useState('select-items'); // Possible values: select-items, bill-summary, payment-options, payment-success
@@ -47,10 +80,29 @@ const [selectedServices, setSelectedServices] = useState([]);
     setPaymentMethod('');
     setTransactionId('');
     setCashAmount(0);
+    setPaidAmount(0);
+    setDueAmount(0);
     setShowQRCode(false);
     setManualEntryMode(false);
     setManualCode('');
     setBillId(null);
+    // Reset enhanced payment states
+    setSelectedBankAccount(null);
+    setBankAccounts([]);
+    setShowBankSelection(false);
+    setPaymentFormData({
+      utrNumber: '',
+      bankName: '',
+      transferDate: '',
+      receivedAmount: '',
+      chequeNumber: '',
+      chequeBank: '',
+      chequeIfsc: '',
+      chequeDate: '',
+      chequeAmount: '',
+      drawerName: '',
+      upiTransactionId: ''
+    });
   };
   
   // Fetch technician's inventory
@@ -184,9 +236,109 @@ const handleSearch = () => {
   setSearchResults(results);
 };
 
+// Fetch bank accounts for UPI payment
+const fetchBankAccounts = async () => {
+  setFetchingBankAccounts(true);
+  setError(null);
+
+  try {
+    const response = await fetch(SummaryApi.getBankAccounts.url, {
+      method: SummaryApi.getBankAccounts.method,
+      credentials: 'include',
+      headers: {
+        'Content-Type': 'application/json',
+      }
+    });
+
+    const data = await response.json();
+
+    if (data.success) {
+      setBankAccounts(data.data);
+      // Auto-select primary account if available
+      const primaryAccount = data.data.find(account => account.isPrimary);
+      if (primaryAccount) {
+        setSelectedBankAccount(primaryAccount);
+      }
+    } else {
+      setError(data.message || 'Failed to fetch bank accounts');
+    }
+  } catch (err) {
+    console.error('Error fetching bank accounts:', err);
+    setError('Failed to load bank accounts. Please try again later.');
+  } finally {
+    setFetchingBankAccounts(false);
+  }
+};
+
+// Handle payment method selection
+const handlePaymentMethodSelect = (method) => {
+  setPaymentMethod(method);
+  setShowQRCode(false);
+  setShowBankSelection(false);
+  setSelectedBankAccount(null);
+
+  if (method === 'upi') {
+    setShowBankSelection(true);
+    fetchBankAccounts();
+  }
+};
+
+// Handle UPI continue after bank selection
+const handleUPIContinue = () => {
+  if (selectedBankAccount) {
+    setShowBankSelection(false);
+    setShowQRCode(true);
+  }
+};
+
 // Show payment confirmation screen
 const showPaymentConfirmation = () => {
-  // Just move to confirmation step without creating bill
+  // Validate before showing confirmation
+  if (paymentMethod === 'upi') {
+    if (!paymentFormData.upiTransactionId.trim()) {
+      setError('UPI Transaction ID is required');
+      return;
+    }
+    if (paymentFormData.upiTransactionId.trim().length < 12) {
+      setError('Please enter a valid UPI Transaction ID (minimum 12 characters)');
+      return;
+    }
+    // Set paid amount for UPI (always full payment)
+    setPaidAmount(calculateTotal());
+  }
+
+  if (paymentMethod === 'bank_transfer') {
+    if (!paymentFormData.utrNumber.trim()) {
+      setError('UTR Number is required');
+      return;
+    }
+    if (!paymentFormData.receivedAmount || parseFloat(paymentFormData.receivedAmount) <= 0) {
+      setError('Please enter the received amount');
+      return;
+    }
+    // Set paid amount from received amount
+    setPaidAmount(parseFloat(paymentFormData.receivedAmount));
+  }
+
+  if (paymentMethod === 'cheque') {
+    if (!paymentFormData.chequeNumber.trim()) {
+      setError('Cheque number is required');
+      return;
+    }
+    if (!paymentFormData.chequeAmount || parseFloat(paymentFormData.chequeAmount) <= 0) {
+      setError('Please enter the cheque amount');
+      return;
+    }
+    // Set paid amount from cheque amount
+    setPaidAmount(parseFloat(paymentFormData.chequeAmount));
+  }
+
+  if (paymentMethod === 'cash' && paidAmount <= 0) {
+    setError('Please enter a valid paid amount');
+    return;
+  }
+
+  // Move to confirmation step
   setCurrentStep('payment-confirmation');
   setError(null);
 };
@@ -390,13 +542,7 @@ const getGroupedItems = () => {
       setLoading(false);
     }
   };
-  
-  // Handle selecting payment method
-  const handlePaymentMethodSelect = (method) => {
-    setPaymentMethod(method);
-    setShowQRCode(method === 'online');
-  };
-  
+
   // Generate UPI payment string for QR code
   const generateUpiString = () => {
     // This is a simplified example - in production, you'd use your company's UPI ID
@@ -413,18 +559,94 @@ const getGroupedItems = () => {
       setLoading(true);
       setError(null);
 
-      // Validate transaction ID for online payments
-      if (paymentMethod === 'online' && (!transactionId || transactionId.length < 12)) {
-        setError('Please enter a valid UPI transaction ID (min 12 characters)');
+      // Enhanced validation for each payment method
+      if (paymentMethod === 'upi') {
+        if (!paymentFormData.upiTransactionId.trim()) {
+          setError('UPI Transaction ID is required');
+          setLoading(false);
+          return;
+        }
+        if (paymentFormData.upiTransactionId.trim().length < 12) {
+          setError('Please enter a valid UPI Transaction ID (minimum 12 characters)');
+          setLoading(false);
+          return;
+        }
+        if (!selectedBankAccount) {
+          setError('Please select a bank account for UPI payment');
+          setLoading(false);
+          return;
+        }
+      }
+
+      if (paymentMethod === 'bank_transfer') {
+        if (!paymentFormData.utrNumber.trim()) {
+          setError('UTR Number is required for bank transfer');
+          setLoading(false);
+          return;
+        }
+        if (!paymentFormData.receivedAmount || parseFloat(paymentFormData.receivedAmount) <= 0) {
+          setError('Please enter the received amount');
+          setLoading(false);
+          return;
+        }
+      }
+
+      if (paymentMethod === 'cheque') {
+        if (!paymentFormData.chequeNumber.trim()) {
+          setError('Cheque number is required');
+          setLoading(false);
+          return;
+        }
+        if (!paymentFormData.chequeAmount || parseFloat(paymentFormData.chequeAmount) <= 0) {
+          setError('Please enter the cheque amount');
+          setLoading(false);
+          return;
+        }
+      }
+
+      if (paymentMethod === 'cash' && paidAmount <= 0) {
+        setError('Please enter a valid paid amount');
         setLoading(false);
         return;
+      }
+
+      // Build payment details based on method
+      let paymentDetails = {};
+      let receivedAmount = paidAmount;
+
+      switch(paymentMethod) {
+        case 'upi':
+          paymentDetails.upiTransactionId = paymentFormData.upiTransactionId;
+          if (selectedBankAccount) {
+            paymentDetails.selectedBankAccount = selectedBankAccount._id;
+          }
+          receivedAmount = calculateTotal(); // UPI always full payment
+          break;
+        case 'bank_transfer':
+          paymentDetails.utrNumber = paymentFormData.utrNumber;
+          paymentDetails.bankName = paymentFormData.bankName;
+          paymentDetails.transferDate = paymentFormData.transferDate;
+          receivedAmount = parseFloat(paymentFormData.receivedAmount);
+          break;
+        case 'cheque':
+          paymentDetails.chequeNumber = paymentFormData.chequeNumber;
+          paymentDetails.chequeBank = paymentFormData.chequeBank;
+          paymentDetails.chequeIfsc = paymentFormData.chequeIfsc;
+          paymentDetails.chequeDate = paymentFormData.chequeDate;
+          paymentDetails.chequeAmount = parseFloat(paymentFormData.chequeAmount);
+          paymentDetails.drawerName = paymentFormData.drawerName || workOrder.customerName;
+          receivedAmount = parseFloat(paymentFormData.chequeAmount);
+          break;
+        case 'cash':
+          // Cash uses paidAmount directly
+          break;
       }
 
       // Create bill items array for API
       const billItems = selectedItems.map(item => {
         return {
           itemId: item.itemId || item.id || item._id,
-          name: item.itemName || item.name, // Send name for fallback matching
+          name: item.itemName || item.name,
           quantity: item.quantity,
           serialNumber: item.selectedSerialNumber || null,
           price: item.salePrice || 0,
@@ -459,7 +681,7 @@ const getGroupedItems = () => {
       const newBillId = createData.data.billId || createData.data._id;
       setBillId(newBillId);
 
-      // API call to confirm payment
+      // API call to confirm payment with enhanced payload
       const confirmResponse = await fetch(SummaryApi.confirmWorkOrderBill.url, {
         method: SummaryApi.confirmWorkOrderBill.method,
         headers: {
@@ -469,8 +691,11 @@ const getGroupedItems = () => {
         body: JSON.stringify({
           billId: newBillId,
           paymentMethod,
-          transactionId: paymentMethod === 'online' ? transactionId : null,
-          paidAmount: paymentMethod === 'cash' ? paidAmount : null
+          paidAmount: receivedAmount,
+          receivedAmount: receivedAmount,
+          transactionId: paymentMethod === 'upi' ? paymentFormData.upiTransactionId :
+                        (paymentMethod === 'bank_transfer' ? paymentFormData.utrNumber : undefined),
+          paymentDetails: Object.keys(paymentDetails).length > 0 ? paymentDetails : undefined
         })
       });
 
@@ -574,11 +799,22 @@ const addServicesToBill = () => {
   // Handle going back to previous step
   const handleBack = () => {
     setError(null);
-    
+
     if (currentStep === 'bill-summary') {
       setCurrentStep('select-items');
     } else if (currentStep === 'payment-options') {
-      setCurrentStep('bill-summary');
+      // If payment method is selected, go back to method selection
+      if (paymentMethod && !showBankSelection) {
+        setPaymentMethod('');
+        setShowQRCode(false);
+      } else if (showBankSelection) {
+        // If in bank selection for UPI, go back to method selection
+        setShowBankSelection(false);
+        setPaymentMethod('');
+      } else {
+        // No payment method selected, go back to bill summary
+        setCurrentStep('bill-summary');
+      }
     }
     else if (currentStep === 'payment-confirmation') {
         setCurrentStep('payment-options');
@@ -950,107 +1186,537 @@ const addServicesToBill = () => {
             </div>
           )}
           
-          {/* Step 3: Payment Options */}
-          {currentStep === 'payment-options' && (
+          {/* Step 3: Payment Options - Method Selection */}
+          {currentStep === 'payment-options' && !paymentMethod && (
             <div className="p-4">
-              <div className="mb-4">
-                <p className="text-sm text-gray-600 mb-2">Amount Due: ₹{calculateTotal().toFixed(2)}</p>
-                <div className="space-y-2">
-                  <button 
-                    className={`w-full p-3 rounded-md flex items-center justify-between ${
-                      paymentMethod === 'online' ? 'bg-blue-50 border-blue-500 border' : 'bg-gray-50 border'
-                    }`}
-                    onClick={() => handlePaymentMethodSelect('online')}
-                  >
-                    <span>Payment via Online</span>
-                    {paymentMethod === 'online' && (
-                      <CheckCircle className="text-blue-500" size={20} />
-                    )}
-                  </button>
-                  
-                  <button 
-                    className={`w-full p-3 rounded-md flex items-center justify-between ${
-                      paymentMethod === 'cash' ? 'bg-blue-50 border-blue-500 border' : 'bg-gray-50 border'
-                    }`}
-                    onClick={() => handlePaymentMethodSelect('cash')}
-                  >
-                    <span>Payment via Cash</span>
-                    {paymentMethod === 'cash' && (
-                      <CheckCircle className="text-blue-500" size={20} />
-                    )}
-                  </button>
-                </div>
-              </div>
-              
-              {/* Online Payment with QR Code */}
-              {showQRCode && (
-                <div className="text-center mb-4">
-                  <p className="font-medium mb-3">Scan this QR code to pay</p>
-                  <div className="bg-white p-3 rounded-md inline-block mb-3">
-                    <QRCodeCanvas 
-                      value={generateUpiString()} 
-                      size={180} 
-                      level="H"
-                      includeMargin={true}
-                    />
+              <h4 className="text-lg font-semibold text-gray-900 text-center mb-4">
+                Select Payment Method
+              </h4>
+              <p className="text-sm text-gray-600 mb-4 text-center">
+                Total Amount: ₹{calculateTotal().toFixed(2)}
+              </p>
+
+              <div className="grid grid-cols-2 gap-3">
+                {/* Cash Payment */}
+                <button
+                  onClick={() => handlePaymentMethodSelect('cash')}
+                  className="p-4 border-2 border-gray-200 hover:border-green-400 rounded-xl flex flex-col items-center space-y-2 transition-colors"
+                >
+                  <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
+                    <DollarSign className="text-green-600" size={24} />
                   </div>
-                  <p className="text-sm text-gray-600 mb-2">Once payment is complete, enter the UPI transaction ID below:</p>
-                  <input
-                    type="text"
-                    className="w-full px-3 py-2 border rounded-md mb-3"
-                    placeholder="Enter UPI Transaction ID (min 12 characters)"
-                    value={transactionId}
-                    onChange={(e) => setTransactionId(e.target.value)}
-                    minLength={12}
-                  />
-                  <p className="text-xs text-gray-500">Enter a valid transaction ID with minimum 12 digits</p>
+                  <div className="text-center">
+                    <h5 className="font-semibold text-gray-900 text-sm">Cash</h5>
+                    <p className="text-xs text-gray-600">Partial allowed</p>
+                  </div>
+                </button>
+
+                {/* UPI Payment */}
+                <button
+                  onClick={() => handlePaymentMethodSelect('upi')}
+                  className="p-4 border-2 border-gray-200 hover:border-blue-400 rounded-xl flex flex-col items-center space-y-2 transition-colors"
+                >
+                  <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
+                    <Smartphone className="text-blue-600" size={24} />
+                  </div>
+                  <div className="text-center">
+                    <h5 className="font-semibold text-gray-900 text-sm">UPI</h5>
+                    <p className="text-xs text-gray-600">QR Code scan</p>
+                  </div>
+                </button>
+
+                {/* Bank Transfer */}
+                <button
+                  onClick={() => handlePaymentMethodSelect('bank_transfer')}
+                  className="p-4 border-2 border-gray-200 hover:border-purple-400 rounded-xl flex flex-col items-center space-y-2 transition-colors"
+                >
+                  <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center">
+                    <TrendingUp className="text-purple-600" size={24} />
+                  </div>
+                  <div className="text-center">
+                    <h5 className="font-semibold text-gray-900 text-sm">Bank Transfer</h5>
+                    <p className="text-xs text-gray-600">IMPS/NEFT</p>
+                  </div>
+                </button>
+
+                {/* Cheque Payment */}
+                <button
+                  onClick={() => handlePaymentMethodSelect('cheque')}
+                  className="p-4 border-2 border-gray-200 hover:border-orange-400 rounded-xl flex flex-col items-center space-y-2 transition-colors"
+                >
+                  <div className="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center">
+                    <FileCheck className="text-orange-600" size={24} />
+                  </div>
+                  <div className="text-center">
+                    <h5 className="font-semibold text-gray-900 text-sm">Cheque</h5>
+                    <p className="text-xs text-gray-600">Bank cheque</p>
+                  </div>
+                </button>
+              </div>
+
+              {error && (
+                <div className="mt-4 bg-red-50 text-red-600 p-3 rounded-md text-sm">
+                  {error}
                 </div>
               )}
-              
+            </div>
+          )}
+
+          {/* Step 3.1: Bank Selection for UPI */}
+          {currentStep === 'payment-options' && paymentMethod === 'upi' && showBankSelection && (
+            <div className="p-4">
+              <div className="text-center mb-4">
+                <h4 className="text-lg font-semibold text-gray-900 mb-2">
+                  Select Bank Account
+                </h4>
+                <p className="text-gray-600 text-sm">
+                  Choose which account to receive payment
+                </p>
+              </div>
+
+              {fetchingBankAccounts ? (
+                <div className="flex justify-center py-8">
+                  <LoadingSpinner />
+                  <span className="ml-2 text-gray-600">Loading bank accounts...</span>
+                </div>
+              ) : bankAccounts.length === 0 ? (
+                <div className="text-center py-8">
+                  <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <CreditCard className="w-8 h-8 text-gray-400" />
+                  </div>
+                  <h3 className="text-lg font-semibold text-gray-800 mb-2">No Bank Accounts Found</h3>
+                  <p className="text-gray-600 mb-4">
+                    Please contact admin to add bank accounts for receiving online payments.
+                  </p>
+                  <button
+                    onClick={() => {
+                      setPaymentMethod('');
+                      setShowBankSelection(false);
+                    }}
+                    className="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300"
+                  >
+                    Go Back
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Select Bank Account
+                    </label>
+                    <select
+                      value={selectedBankAccount?._id || ''}
+                      onChange={(e) => {
+                        const account = bankAccounts.find(acc => acc._id === e.target.value);
+                        setSelectedBankAccount(account);
+                      }}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-300 focus:border-blue-400"
+                    >
+                      <option value="">Choose a bank account...</option>
+                      {bankAccounts.map((account) => (
+                        <option key={account._id} value={account._id}>
+                          {account.bankName} - {account.accountHolderName}
+                          {account.isPrimary ? ' (Primary)' : ''}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {selectedBankAccount && (
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                      <div className="flex items-center space-x-3 mb-3">
+                        <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                          selectedBankAccount.isPrimary ? 'bg-yellow-100' : 'bg-blue-100'
+                        }`}>
+                          <CreditCard className={`${
+                            selectedBankAccount.isPrimary ? 'text-yellow-600' : 'text-blue-600'
+                          }`} />
+                        </div>
+                        <div className="flex-1">
+                          <div className="flex items-center space-x-2">
+                            <h5 className="font-semibold text-blue-900">{selectedBankAccount.bankName}</h5>
+                            {selectedBankAccount.isPrimary && (
+                              <span className="px-2 py-1 bg-yellow-100 text-yellow-800 text-xs rounded-full font-medium">
+                                Primary
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-sm text-blue-700">
+                            {selectedBankAccount.accountHolderName}
+                          </p>
+                        </div>
+                      </div>
+
+                      {selectedBankAccount.upiId ? (
+                        <div className="bg-green-50 border border-green-200 rounded p-2">
+                          <p className="text-xs text-green-700 font-medium">
+                            ✓ UPI ID: {selectedBankAccount.upiId}
+                          </p>
+                        </div>
+                      ) : (
+                        <div className="bg-orange-50 border border-orange-200 rounded p-2">
+                          <p className="text-xs text-orange-700 font-medium">
+                            ⚠ No UPI ID configured
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  <div className="flex space-x-3 mt-6">
+                    <button
+                      onClick={() => {
+                        setPaymentMethod('');
+                        setShowBankSelection(false);
+                      }}
+                      className="flex-1 py-3 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 font-medium"
+                    >
+                      Back
+                    </button>
+                    <button
+                      onClick={handleUPIContinue}
+                      disabled={!selectedBankAccount}
+                      className="flex-1 py-3 bg-blue-500 disabled:bg-gray-300 text-white rounded-lg font-medium"
+                    >
+                      Continue
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Step 3.2: Payment Details for Selected Method */}
+          {currentStep === 'payment-options' && paymentMethod && !showBankSelection && (
+            <div className="p-4 space-y-4">
+              <div className="text-center">
+                <h4 className="text-lg font-semibold text-gray-900 mb-2">
+                  {paymentMethod === 'cash' ? 'Cash Payment' :
+                   paymentMethod === 'upi' ? 'UPI Payment' :
+                   paymentMethod === 'bank_transfer' ? 'Bank Transfer' :
+                   paymentMethod === 'cheque' ? 'Cheque Payment' : 'Payment'}
+                </h4>
+                <p className="text-gray-600">Total Amount: ₹{calculateTotal().toFixed(2)}</p>
+              </div>
+
               {/* Cash Payment */}
               {paymentMethod === 'cash' && (
-                <div className="mb-4">
-                  <p className="font-medium mb-3">Cash Payment</p>
-                  <div className="mb-3">
-                    <label className="block text-gray-700 font-medium mb-1">Total Amount</label>
-                    <input
-                      type="number"
-                      className="w-full px-3 py-2 border rounded-md bg-gray-100 cursor-not-allowed"
-                      value={calculateTotal().toFixed(2)}
-                      readOnly
-                    />
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Amount Received</label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">₹</span>
+                      <input
+                        type="number"
+                        value={paidAmount}
+                        onChange={(e) => {
+                          const val = parseFloat(e.target.value) || 0;
+                          setPaidAmount(Math.max(0, val));
+                          setDueAmount(calculateTotal() - Math.max(0, val));
+                        }}
+                        min="0"
+                        step="0.01"
+                        className="w-full pl-8 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-300"
+                        placeholder="0.00"
+                      />
+                    </div>
                   </div>
-                  <div className="mb-3">
-                    <label className="block text-gray-700 font-medium mb-1">Paid Amount</label>
-                    <input
-                      type="number"
-                      className="w-full px-3 py-2 border rounded-md"
-                      value={paidAmount}
-                      onChange={(e) => {
-                        const val = parseFloat(e.target.value);
-                        if (!isNaN(val) && val >= 0 && val <= calculateTotal()) {
-                          setPaidAmount(val);
-                          setDueAmount(calculateTotal() - val);
-                        }
-                      }}
-                      min={0}
-                      max={calculateTotal()}
-                    />
-                  </div>
-                  <div className="mb-3">
-                    <label className="block text-gray-700 font-medium mb-1">Due Amount</label>
-                    <input
-                      type="number"
-                      className="w-full px-3 py-2 border rounded-md bg-gray-100 cursor-not-allowed"
-                      value={dueAmount.toFixed(2)}
-                      readOnly
-                    />
-                  </div>
+
+                  {dueAmount > 0 && (
+                    <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+                      <p className="text-sm text-yellow-800">
+                        <strong>Due Amount: ₹{dueAmount.toFixed(2)}</strong>
+                      </p>
+                      <p className="text-xs text-yellow-700 mt-1">
+                        This will be recorded as a partial payment
+                      </p>
+                    </div>
+                  )}
+
+                  {dueAmount === 0 && paidAmount > 0 && (
+                    <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+                      <p className="text-sm text-green-800">
+                        <strong>✓ Fully Paid</strong>
+                      </p>
+                    </div>
+                  )}
                 </div>
               )}
-              
+
+              {/* UPI Payment with QR Code */}
+              {paymentMethod === 'upi' && selectedBankAccount && showQRCode && (
+                <div className="space-y-4">
+                  {/* Selected Bank Account Info */}
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                    <div className="flex items-center space-x-3">
+                      <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                        <CreditCard className="text-blue-600 text-sm" />
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-sm font-medium text-blue-900">
+                          {selectedBankAccount.bankName}
+                        </p>
+                        <p className="text-xs text-blue-700">
+                          {selectedBankAccount.accountHolderName}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* QR Code Display */}
+                  <div className="text-center">
+                    <h5 className="font-medium mb-3">Scan QR Code to Pay</h5>
+                    <div className="inline-block p-4 bg-white rounded-lg border-2 border-gray-200">
+                      <QRCodeCanvas
+                        value={selectedBankAccount.upiId ?
+                          `upi://pay?pa=${selectedBankAccount.upiId}&pn=${encodeURIComponent(selectedBankAccount.accountHolderName)}&am=${calculateTotal()}&tn=Work-Order-Bill-${workOrder.orderId}` :
+                          `upi://pay?pa=${selectedBankAccount.accountNumber}&pn=${encodeURIComponent(selectedBankAccount.accountHolderName)}&am=${calculateTotal()}&tn=Work-Order-Bill-${workOrder.orderId}`
+                        }
+                        size={200}
+                        level="H"
+                        includeMargin={true}
+                      />
+                    </div>
+                    <div className="mt-3">
+                      <p className="text-sm font-medium text-gray-900">
+                        Pay ₹{calculateTotal().toFixed(2)} to {selectedBankAccount.accountHolderName}
+                      </p>
+                      {selectedBankAccount.upiId && (
+                        <p className="text-xs text-green-600 font-medium">
+                          UPI ID: {selectedBankAccount.upiId}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      UPI Transaction ID (Enter after payment) <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={paymentFormData.upiTransactionId}
+                      onChange={(e) => setPaymentFormData(prev => ({...prev, upiTransactionId: e.target.value}))}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-300"
+                      placeholder="Enter UPI transaction ID (min 12 characters)"
+                      minLength={12}
+                    />
+                    <p className="text-xs text-gray-500 mt-1">
+                      Transaction ID must be at least 12 characters long
+                    </p>
+                  </div>
+
+                  <button
+                    onClick={() => {
+                      setShowQRCode(false);
+                      setShowBankSelection(true);
+                    }}
+                    className="w-full bg-gray-500 hover:bg-gray-600 text-white py-2 px-4 rounded-lg font-medium"
+                  >
+                    Change Bank Account
+                  </button>
+                </div>
+              )}
+
+              {/* Bank Transfer */}
+              {paymentMethod === 'bank_transfer' && (
+                <div className="space-y-4">
+                  <div className="bg-purple-50 border border-purple-200 rounded-lg p-3">
+                    <h5 className="font-medium text-purple-900 mb-1">Bank Transfer (IMPS/NEFT)</h5>
+                    <p className="text-sm text-purple-700">Transfer money and enter details below</p>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      UTR Number <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={paymentFormData.utrNumber}
+                      onChange={(e) => setPaymentFormData(prev => ({...prev, utrNumber: e.target.value}))}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-300"
+                      placeholder="Enter UTR/Reference number"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Sender Bank Name
+                    </label>
+                    <select
+                      value={paymentFormData.bankName}
+                      onChange={(e) => setPaymentFormData(prev => ({...prev, bankName: e.target.value}))}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-purple-300"
+                    >
+                      <option value="">Select sender bank</option>
+                      {INDIAN_BANKS.map((bank) => (
+                        <option key={bank} value={bank}>{bank}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Transfer Date
+                    </label>
+                    <input
+                      type="date"
+                      value={paymentFormData.transferDate}
+                      onChange={(e) => setPaymentFormData(prev => ({...prev, transferDate: e.target.value}))}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-300"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Received Amount <span className="text-red-500">*</span>
+                    </label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">₹</span>
+                      <input
+                        type="number"
+                        value={paymentFormData.receivedAmount}
+                        onChange={(e) => {
+                          const amount = parseFloat(e.target.value) || 0;
+                          setPaymentFormData(prev => ({...prev, receivedAmount: e.target.value}));
+                          setPaidAmount(amount);
+                          setDueAmount(calculateTotal() - amount);
+                        }}
+                        min="0"
+                        step="0.01"
+                        className="w-full pl-8 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-300"
+                        placeholder="Amount received in your account"
+                      />
+                    </div>
+                    <p className="text-xs text-gray-500 mt-1">
+                      This may differ from transfer amount due to bank charges
+                    </p>
+                  </div>
+
+                  {dueAmount > 0 && paidAmount > 0 && (
+                    <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+                      <p className="text-sm text-yellow-800">
+                        <strong>Due Amount: ₹{dueAmount.toFixed(2)}</strong>
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Cheque Payment */}
+              {paymentMethod === 'cheque' && (
+                <div className="space-y-4">
+                  <div className="bg-orange-50 border border-orange-200 rounded-lg p-3">
+                    <h5 className="font-medium text-orange-900 mb-1">Cheque Payment</h5>
+                    <p className="text-sm text-orange-700">Enter cheque details for record keeping</p>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Cheque Number <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={paymentFormData.chequeNumber}
+                        onChange={(e) => setPaymentFormData(prev => ({...prev, chequeNumber: e.target.value}))}
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-300"
+                        placeholder="Cheque number"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Cheque Amount <span className="text-red-500">*</span>
+                      </label>
+                      <div className="relative">
+                        <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">₹</span>
+                        <input
+                          type="number"
+                          value={paymentFormData.chequeAmount}
+                          onChange={(e) => {
+                            const amount = parseFloat(e.target.value) || 0;
+                            setPaymentFormData(prev => ({...prev, chequeAmount: e.target.value}));
+                            setPaidAmount(amount);
+                            setDueAmount(calculateTotal() - amount);
+                          }}
+                          min="0"
+                          step="0.01"
+                          className="w-full pl-8 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-300"
+                          placeholder="0.00"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Bank Name
+                    </label>
+                    <select
+                      value={paymentFormData.chequeBank}
+                      onChange={(e) => setPaymentFormData(prev => ({...prev, chequeBank: e.target.value}))}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-orange-300"
+                    >
+                      <option value="">Select bank name on cheque</option>
+                      {INDIAN_BANKS.map((bank) => (
+                        <option key={bank} value={bank}>{bank}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        IFSC Code
+                      </label>
+                      <input
+                        type="text"
+                        value={paymentFormData.chequeIfsc}
+                        onChange={(e) => setPaymentFormData(prev => ({...prev, chequeIfsc: e.target.value.toUpperCase()}))}
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-300"
+                        placeholder="IFSC Code"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Cheque Date
+                      </label>
+                      <input
+                        type="date"
+                        value={paymentFormData.chequeDate}
+                        onChange={(e) => setPaymentFormData(prev => ({...prev, chequeDate: e.target.value}))}
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-300"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Drawer Name
+                    </label>
+                    <input
+                      type="text"
+                      value={paymentFormData.drawerName}
+                      onChange={(e) => setPaymentFormData(prev => ({...prev, drawerName: e.target.value}))}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-300"
+                      placeholder={`Name on cheque (default: ${workOrder.customerName})`}
+                    />
+                  </div>
+
+                  {dueAmount > 0 && paidAmount > 0 && (
+                    <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+                      <p className="text-sm text-yellow-800">
+                        <strong>Due Amount: ₹{dueAmount.toFixed(2)}</strong>
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
+
               {error && (
-                <div className="mb-4 bg-red-50 text-red-600 p-3 rounded-md text-sm">
+                <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
                   {error}
                 </div>
               )}
@@ -1065,31 +1731,98 @@ const addServicesToBill = () => {
         <AlertCircle size={32} className="text-yellow-500" />
       </div>
     </div>
-    
+
     <h3 className="text-xl font-medium text-center mb-4">Please Verify Payment Details</h3>
-    
+
     <div className="bg-gray-50 p-4 rounded-lg mb-6">
       <div className="mb-3">
         <p className="text-sm text-gray-600">Payment Method:</p>
-        <p className="font-medium">{paymentMethod === 'online' ? 'Online Payment' : 'Cash Payment'}</p>
+        <p className="font-medium capitalize">
+          {paymentMethod === 'upi' ? 'UPI' :
+           paymentMethod === 'bank_transfer' ? 'Bank Transfer' :
+           paymentMethod === 'cheque' ? 'Cheque' :
+           paymentMethod === 'cash' ? 'Cash' : paymentMethod}
+        </p>
       </div>
-      
+
+      <div className="mb-3">
+        <p className="text-sm text-gray-600">Total Bill Amount:</p>
+        <p className="font-medium">₹{calculateTotal().toFixed(2)}</p>
+      </div>
+
       <div className="mb-3">
         <p className="text-sm text-gray-600">Paid Amount:</p>
         <p className="font-medium">₹{paidAmount.toFixed(2)}</p>
       </div>
-      
-      {paymentMethod === 'online' && (
-        <div>
-          <p className="text-sm text-gray-600">Transaction ID:</p>
-          <p className="font-medium break-all">{transactionId}</p>
+
+      {(calculateTotal() - paidAmount) > 0 && (
+        <div className="mb-3">
+          <p className="text-sm text-gray-600">Due Amount:</p>
+          <p className="font-medium text-red-600">₹{(calculateTotal() - paidAmount).toFixed(2)}</p>
         </div>
       )}
+
+      {/* UPI Details */}
+      {paymentMethod === 'upi' && (
+        <>
+          <div className="mb-3">
+            <p className="text-sm text-gray-600">Bank Account:</p>
+            <p className="font-medium">{selectedBankAccount?.bankName} - {selectedBankAccount?.accountHolderName}</p>
+          </div>
+          <div>
+            <p className="text-sm text-gray-600">UPI Transaction ID:</p>
+            <p className="font-medium break-all">{paymentFormData.upiTransactionId}</p>
+          </div>
+        </>
+      )}
+
+      {/* Bank Transfer Details */}
+      {paymentMethod === 'bank_transfer' && (
+        <>
+          <div className="mb-3">
+            <p className="text-sm text-gray-600">UTR Number:</p>
+            <p className="font-medium break-all">{paymentFormData.utrNumber}</p>
+          </div>
+          {paymentFormData.bankName && (
+            <div className="mb-3">
+              <p className="text-sm text-gray-600">Sender Bank:</p>
+              <p className="font-medium">{paymentFormData.bankName}</p>
+            </div>
+          )}
+          {paymentFormData.transferDate && (
+            <div>
+              <p className="text-sm text-gray-600">Transfer Date:</p>
+              <p className="font-medium">{paymentFormData.transferDate}</p>
+            </div>
+          )}
+        </>
+      )}
+
+      {/* Cheque Details */}
+      {paymentMethod === 'cheque' && (
+        <>
+          <div className="mb-3">
+            <p className="text-sm text-gray-600">Cheque Number:</p>
+            <p className="font-medium">{paymentFormData.chequeNumber}</p>
+          </div>
+          {paymentFormData.chequeBank && (
+            <div className="mb-3">
+              <p className="text-sm text-gray-600">Bank Name:</p>
+              <p className="font-medium">{paymentFormData.chequeBank}</p>
+            </div>
+          )}
+          {paymentFormData.chequeDate && (
+            <div>
+              <p className="text-sm text-gray-600">Cheque Date:</p>
+              <p className="font-medium">{paymentFormData.chequeDate}</p>
+            </div>
+          )}
+        </>
+      )}
     </div>
-    
+
     <p className="text-center text-sm text-gray-600 mb-4">
       Please confirm that all payment details are correct before proceeding.
-      {paymentMethod === 'online' && " Verify that the transaction ID is accurate."}
     </p>
   </div>
 )}
@@ -1104,22 +1837,43 @@ const addServicesToBill = () => {
       <h2 className="text-xl font-semibold mb-2">Payment Successful!</h2>
       
       {/* Different messages based on payment method */}
-      {paymentMethod === 'online' ? (
+      {paymentMethod === 'upi' || paymentMethod === 'bank_transfer' ? (
         <p className="text-gray-600 mb-4">
           Your payment has been initiated successfully. We are currently verifying it from our end. You will receive a confirmation shortly.
+        </p>
+      ) : paymentMethod === 'cheque' ? (
+        <p className="text-gray-600 mb-4">
+          Cheque details have been recorded successfully. Payment will be updated after cheque clearance.
         </p>
       ) : (
         <p className="text-gray-600 mb-4">
           Thanks! We've received your cash payment through our technician. It will be updated shortly.
         </p>
       )}
-      
+
       <div className="bg-gray-50 p-4 rounded-lg text-left mb-4">
         <p className="text-sm mb-1"><span className="font-medium">Customer:</span> {workOrder.customerName}</p>
         <p className="text-sm mb-1"><span className="font-medium">Project:</span> {workOrder.projectType}</p>
-        <p className="text-sm mb-1"><span className="font-medium">Payment Method:</span> {paymentMethod === 'online' ? 'Online Payment' : 'Cash Payment'}</p>
-        {paymentMethod === 'online' && transactionId && (
-          <p className="text-sm"><span className="font-medium">Transaction ID:</span> {transactionId}</p>
+        <p className="text-sm mb-1">
+          <span className="font-medium">Payment Method:</span> {
+            paymentMethod === 'upi' ? 'UPI' :
+            paymentMethod === 'bank_transfer' ? 'Bank Transfer' :
+            paymentMethod === 'cheque' ? 'Cheque' :
+            paymentMethod === 'cash' ? 'Cash' : paymentMethod
+          }
+        </p>
+        <p className="text-sm mb-1"><span className="font-medium">Amount Paid:</span> ₹{paidAmount.toFixed(2)}</p>
+        {(calculateTotal() - paidAmount) > 0 && (
+          <p className="text-sm mb-1"><span className="font-medium">Due Amount:</span> ₹{(calculateTotal() - paidAmount).toFixed(2)}</p>
+        )}
+        {paymentMethod === 'upi' && paymentFormData.upiTransactionId && (
+          <p className="text-sm"><span className="font-medium">Transaction ID:</span> {paymentFormData.upiTransactionId}</p>
+        )}
+        {paymentMethod === 'bank_transfer' && paymentFormData.utrNumber && (
+          <p className="text-sm"><span className="font-medium">UTR Number:</span> {paymentFormData.utrNumber}</p>
+        )}
+        {paymentMethod === 'cheque' && paymentFormData.chequeNumber && (
+          <p className="text-sm"><span className="font-medium">Cheque Number:</span> {paymentFormData.chequeNumber}</p>
         )}
       </div>
     </div>
@@ -1157,20 +1911,27 @@ const addServicesToBill = () => {
     </div>
   )}
   
- {/* Update the payment-options button */}
+ {/* Updated payment-options buttons */}
 {currentStep === 'payment-options' && (
   <div className="flex space-x-3">
-    <button 
+    <button
       className="flex-1 py-2 bg-gray-200 rounded-md"
       onClick={handleBack}
       disabled={loading}
     >
       Back
     </button>
-    <button 
-      className="flex-1 py-2 bg-green-500 text-white rounded-md flex items-center justify-center"
+    <button
+      className="flex-1 py-2 bg-green-500 text-white rounded-md flex items-center justify-center disabled:bg-gray-400"
       onClick={showPaymentConfirmation}
-      disabled={loading || (paymentMethod === 'online' && transactionId.length < 12) || !paymentMethod}
+      disabled={
+        loading ||
+        !paymentMethod ||
+        (paymentMethod === 'upi' && (!showQRCode || !paymentFormData.upiTransactionId)) ||
+        (paymentMethod === 'bank_transfer' && (!paymentFormData.utrNumber || !paymentFormData.receivedAmount)) ||
+        (paymentMethod === 'cheque' && (!paymentFormData.chequeNumber || !paymentFormData.chequeAmount)) ||
+        (paymentMethod === 'cash' && paidAmount <= 0)
+      }
     >
       {loading ? 'Processing...' : (
         <>

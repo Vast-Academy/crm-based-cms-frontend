@@ -762,7 +762,6 @@ const handleViewProjectDetails = async (project) => {
                       className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 flex items-center"
                       onClick={() => setShowBillingModal(true)}
                     >
-                      <FiDollarSign className="mr-1" size={16} />
                       New Bill
                     </button>
                   )}
@@ -839,9 +838,17 @@ const handleViewProjectDetails = async (project) => {
         <tbody className="bg-white divide-y divide-gray-200">
         {allItems.map((item, index) => (
               <React.Fragment key={index}>
-            <tr 
-            onClick={() => setExpandedRow(expandedRow === (item._id || item.projectId) ? null : (item._id || item.projectId))}
-            className={`hover:bg-gray-50 cursor-pointer ${
+            <tr
+            onClick={() => {
+              // If it's a workOrder, open ProjectDetailsModal directly
+              if (item.type === 'workOrder') {
+                handleViewProjectDetails(item);
+              } else {
+                // For completed projects, toggle expanded row
+                setExpandedRow(expandedRow === (item._id || item.projectId) ? null : (item._id || item.projectId));
+              }
+            }}
+            className={`hover:bg-gray-100 cursor-pointer ${
               expandedRow === (item._id || item.projectId) ? 'bg-gray-50' : ''
             } ${item.isHistorical ? 'bg-purple-25 border-l-4 border-purple-400' : ''}`}
             >

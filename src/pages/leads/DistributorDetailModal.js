@@ -9,6 +9,7 @@ import LoadingSpinner from '../../components/LoadingSpinner';
 import BillHistoryTable from '../../components/BillHistoryTable';
 import TransactionHistory from '../../components/TransactionHistory';
 import { useNotification } from '../../context/NotificationContext';
+import BillingModal from './BillingModal';
 
 // List of Indian Banks
 const INDIAN_BANKS = [
@@ -91,6 +92,10 @@ export default function DistributorDetailModal({ isOpen, onClose, distributorId,
   const [billView, setBillView] = useState('list'); // 'list' or 'detail'
   const [selectedBill, setSelectedBill] = useState(null);
   const printRef = useRef();
+
+  // Billing modal states
+  const [showBillingModal, setShowBillingModal] = useState(false);
+  const [selectedBillingCustomer, setSelectedBillingCustomer] = useState(null);
 
   // Reset tab to details when modal opens
   useEffect(() => {
@@ -395,7 +400,7 @@ export default function DistributorDetailModal({ isOpen, onClose, distributorId,
     if (!newRemark.trim()) return;
 
     setAddingRemark(true);
-    
+
     try {
       const response = await fetch(`${SummaryApi.addDistributorRemark.url}/${distributorId}`, {
         method: SummaryApi.addDistributorRemark.method,
@@ -405,9 +410,9 @@ export default function DistributorDetailModal({ isOpen, onClose, distributorId,
         },
         body: JSON.stringify({ text: newRemark.trim() })
       });
-      
+
       const data = await response.json();
-      
+
       if (data.success) {
         setDistributor(data.data);
         setNewRemark('');
@@ -420,6 +425,28 @@ export default function DistributorDetailModal({ isOpen, onClose, distributorId,
       console.error('Error adding remark:', err);
     } finally {
       setAddingRemark(false);
+    }
+  };
+
+  // Handle opening billing modal for distributor
+  const handleCreateBill = (customer) => {
+    // Add contactType property if not present
+    const customerWithType = {
+      ...customer,
+      contactType: 'distributor'
+    };
+    setSelectedBillingCustomer(customerWithType);
+    setShowBillingModal(true);
+  };
+
+  // Handle successful bill creation
+  const handleBillCreated = (billData) => {
+    console.log('Bill created successfully:', billData);
+    setShowBillingModal(false);
+    setSelectedBillingCustomer(null);
+    // Refresh bills if on bills tab
+    if (activeTab === 'bills' || activeTab === 'payment') {
+      fetchDistributorBills();
     }
   };
 
@@ -638,10 +665,21 @@ export default function DistributorDetailModal({ isOpen, onClose, distributorId,
                 {/* Left Column - Basic Info */}
                 <div className="lg:col-span-2">
                   <div className="bg-gray-50 rounded-lg p-4 mb-6">
-                    <h4 className="font-medium text-gray-900 mb-4 flex items-center">
-                      <FiUser className="mr-2 text-teal-500" />
-                      Basic Information
-                    </h4>
+                    <div className="flex items-center justify-between mb-4">
+                      <h4 className="font-medium text-gray-900 flex items-center">
+                        <FiUser className="mr-2 text-teal-500" />
+                        Basic Information
+                      </h4>
+                      {/* New Bill Button - Only show if manager */}
+                      {user.role === 'manager' && (
+                        <button
+                          onClick={() => handleCreateBill(distributor)}
+                          className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-teal-500 hover:bg-teal-600 transition-colors"
+                        >
+                          New Bill
+                        </button>
+                      )}
+                    </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
@@ -1362,6 +1400,14 @@ export default function DistributorDetailModal({ isOpen, onClose, distributorId,
           </div>
         </div>
       )}
+
+      {/* Billing Modal */}
+      <BillingModal
+        isOpen={showBillingModal}
+        onClose={() => setShowBillingModal(false)}
+        customer={selectedBillingCustomer}
+        onBillCreated={handleBillCreated}
+      />
     </div>
   );
 }

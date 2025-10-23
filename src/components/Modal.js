@@ -48,50 +48,43 @@ const Modal = ({ isOpen, onClose, title, children, size = 'md' }) => {
   };
   
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto">
-      <div className="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
-        {/* Background overlay */}
-        <div 
-          className="fixed inset-0 transition-opacity" 
-          aria-hidden="true"
-          onClick={() => {
-            // मॉडल को बंद करें, और onClose कॉल करें
-            onClose();
-          }}
-        >
-          <div className="absolute inset-0 bg-gray-500 opacity-75"></div>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      {/* Background overlay */}
+      <div
+        className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"
+        aria-hidden="true"
+        onClick={() => {
+          // मॉडल को बंद करें, और onClose कॉल करें
+          onClose();
+        }}
+      />
+
+      {/* Modal panel */}
+      <div
+        className={`relative bg-white rounded-lg shadow-xl transform transition-all w-full ${sizeClasses[size]} max-h-[90vh] flex flex-col`}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="modal-headline"
+      >
+        {/* Modal header */}
+        <div className="flex justify-between items-center bg-gray-50 px-6 py-4 border-b flex-shrink-0">
+          <h3
+            className="text-lg font-medium text-gray-900"
+            id="modal-headline"
+          >
+            {title}
+          </h3>
+          <button
+            onClick={onClose}
+            className="text-gray-400 hover:text-gray-500 focus:outline-none"
+          >
+            <FiX className="h-6 w-6" />
+          </button>
         </div>
-        
-        {/* Center modal */}
-        <span className="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
-        
-        {/* Modal panel */}
-        <div 
-          className={`inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:w-full ${sizeClasses[size]}`}
-          role="dialog" 
-          aria-modal="true" 
-          aria-labelledby="modal-headline"
-        >
-          {/* Modal header */}
-          <div className="flex justify-between items-center bg-gray-50 px-6 py-4 border-b">
-            <h3 
-              className="text-lg font-medium text-gray-900" 
-              id="modal-headline"
-            >
-              {title}
-            </h3>
-            <button 
-              onClick={onClose} 
-              className="text-gray-400 hover:text-gray-500 focus:outline-none"
-            >
-              <FiX className="h-6 w-6" />
-            </button>
-          </div>
-          
-          {/* Modal content */}
-          <div className="px-6 py-4">
-            {children}
-          </div>
+
+        {/* Modal content with scroll */}
+        <div className="px-6 py-4 overflow-y-auto flex-1">
+          {children}
         </div>
       </div>
     </div>

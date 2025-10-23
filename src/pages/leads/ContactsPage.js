@@ -797,125 +797,45 @@ const handleFilterChange = (type, status = 'all') => {
                           <td colSpan="7" className="px-6 py-4 bg-gray-50 border-b">
                             <div className="flex space-x-3">
                               {contact.contactType === 'lead' ? (
-                                <>
-                                  <button 
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleViewLead(contact._id);
-                                    }}
-                                    className="inline-flex items-center px-4 py-1.5 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-500 hover:bg-blue-600"
-                                  >
-                                    View Details
-                                  </button>
-                                  {/* Only show Convert to Customer button if not admin */}
-                                  {user.role !== 'admin' && (
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleConvertLead(contact);
-                                    }}
-                                    className="inline-flex items-center px-4 py-1.5 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-500 hover:bg-green-600"
-                                  >
-                                    Convert
-                                  </button>
-                                  )}
-                                </>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleViewLead(contact._id);
+                                  }}
+                                  className="inline-flex items-center px-4 py-1.5 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-500 hover:bg-blue-600"
+                                >
+                                  View Details
+                                </button>
                               ) : contact.contactType === 'customer' ? (
-                                <>
-                                  <button 
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleViewCustomer(contact._id);
-                                    }}
-                                    className="inline-flex items-center px-4 py-1.5 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-500 hover:bg-blue-600"
-                                  >
-                                    View Details
-                                  </button>
-                                  {/* Only show these buttons if not admin */}
-                                  {user.role !== 'admin' && (
-                                    <>
-                                  <button 
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      setSelectedCustomerId(contact._id);
-                                      setShowComplaintModal(true);
-                                    }}
-                                    className="inline-flex items-center px-4 py-1.5 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-orange-500 hover:bg-orange-600"
-                                  >
-                                    New Complaint
-                                  </button>
-                                  <button 
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleCreateProject(contact._id);
-                                    }}
-                                    className="inline-flex items-center px-4 py-1.5 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-500 hover:bg-green-600"
-                                  >
-                                    New Project
-                                  </button>
-                                  {/* Only show New Bill button if manager */}
-                                  {user.role === 'manager' && (
-                                    <button 
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        handleCreateCustomerBill(contact);
-                                      }}
-                                      className="inline-flex items-center px-4 py-1.5 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-purple-500 hover:bg-purple-600"
-                                    >
-                                      New Bill
-                                    </button>
-                                  )}
-                                  </>
-                                  )}
-                                </>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleViewCustomer(contact._id);
+                                  }}
+                                  className="inline-flex items-center px-4 py-1.5 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-500 hover:bg-blue-600"
+                                >
+                                  View Details
+                                </button>
                               ) : contact.contactType === 'dealer' ? (
-                                <>
-                                  <button 
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleViewDealer(contact._id);
-                                    }}
-                                    className="inline-flex items-center px-4 py-1.5 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-500 hover:bg-blue-600"
-                                  >
-                                    View Details
-                                  </button>
-                                  {/* Only show New Bill button if manager */}
-                                  {user.role === 'manager' && (
-                                    <button 
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        handleCreateBill(contact);
-                                      }}
-                                      className="inline-flex items-center px-4 py-1.5 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-500 hover:bg-green-600"
-                                    >
-                                      New Bill
-                                    </button>
-                                  )}
-                                </>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleViewDealer(contact._id);
+                                  }}
+                                  className="inline-flex items-center px-4 py-1.5 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-500 hover:bg-blue-600"
+                                >
+                                  View Details
+                                </button>
                               ) : contact.contactType === 'distributor' ? (
-                                <>
-                                  <button 
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleViewDistributor(contact._id);
-                                    }}
-                                    className="inline-flex items-center px-4 py-1.5 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-500 hover:bg-blue-600"
-                                  >
-                                    View Details
-                                  </button>
-                                  {/* Only show New Bill button if manager */}
-                                  {user.role === 'manager' && (
-                                    <button 
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        handleCreateBill(contact);
-                                      }}
-                                      className="inline-flex items-center px-4 py-1.5 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-500 hover:bg-green-600"
-                                    >
-                                      New Bill
-                                    </button>
-                                  )}
-                                </>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleViewDistributor(contact._id);
+                                  }}
+                                  className="inline-flex items-center px-4 py-1.5 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-500 hover:bg-blue-600"
+                                >
+                                  View Details
+                                </button>
                               ) : null}
                             </div>
                           </td>

@@ -20,6 +20,10 @@ const ProjectDetailsModal = ({ isOpen, onClose, project, onProjectApproved }) =>
   const [rejectLoading, setRejectLoading] = useState(false);
   const [showRejectConfirmPopup, setShowRejectConfirmPopup] = useState(false);
 
+  // New states for approve popup
+  const [showApprovePopup, setShowApprovePopup] = useState(false);
+  const [showApproveConfirmPopup, setShowApproveConfirmPopup] = useState(false);
+
   const modalContentRef = useRef(null);
 
   useEffect(() => {
@@ -604,7 +608,7 @@ const ProjectDetailsModal = ({ isOpen, onClose, project, onProjectApproved }) =>
                 </div>
                 
                 <div className="mt-4 flex justify-end">
-                  <button 
+                  <button
                     onClick={() => setShowBillSummary(false)}
                     className="px-4 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300"
                   >
@@ -614,39 +618,10 @@ const ProjectDetailsModal = ({ isOpen, onClose, project, onProjectApproved }) =>
               </div>
             </div>
           )}
-          
-          {/* Approval Section - For Pending Approval Projects */}
+
+          {/* Approval Buttons - After Payment Information */}
           {project.status === 'pending-approval' && (
-            <div className="mt-8 border-t pt-6">
-              <h3 className="text-lg font-medium mb-4">Project Approval</h3>
-              
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Approval Note* <span className="text-xs text-gray-500">(minimum 3 words required)</span>
-                </label>
-                <textarea
-                  value={approvalRemark}
-                  onChange={(e) => setApprovalRemark(e.target.value)}
-                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 ${
-                    remarkError ? 'border-red-300 focus:ring-red-300' : 'focus:ring-blue-500'
-                  }`}
-                  rows="3"
-                  placeholder="Enter any notes for this approval (min 3 words)..."
-                ></textarea>
-                
-                <div className="mt-1 flex justify-between">
-                  <div className="text-xs text-gray-500">
-                  Word Count: {countWords(approvalRemark)}
-                  </div>
-                  
-                  {remarkError && (
-                    <div className="text-xs text-red-500 flex items-center">
-                      <FiAlertCircle className="mr-1" /> {remarkError}
-                    </div>
-                  )}
-                </div>
-              </div>
-              
+            <div className="mb-6">
               {/* Show message if bill is already rejected */}
               {hasRejectedBill() && (
                 <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-md">
@@ -661,21 +636,14 @@ const ProjectDetailsModal = ({ isOpen, onClose, project, onProjectApproved }) =>
 
               <div className="flex justify-end space-x-3">
                 <button
-                  onClick={handleApproveProject}
-                  disabled={loading || remarkError || countWords(approvalRemark) < 3}
-                  className={`px-6 py-2 text-white rounded-md flex items-center ${
-                    loading || remarkError || countWords(approvalRemark) < 3
-                      ? 'bg-gray-400 cursor-not-allowed'
-                      : 'bg-green-500 hover:bg-green-600'
-                  }`}
+                  onClick={() => {
+                    setApprovalRemark('');
+                    setRemarkError('');
+                    setShowApprovePopup(true);
+                  }}
+                  className="px-6 py-2 bg-green-500 text-white rounded-md hover:bg-green-600 flex items-center"
                 >
-                  {loading ? (
-                    <>Processing...</>
-                  ) : (
-                    <>
-                      <FiCheckCircle className="mr-2" /> Approve Project
-                    </>
-                  )}
+                  <FiCheckCircle className="mr-2" /> Approve Project
                 </button>
 
                 {/* Reject Project Button - disabled if bill already rejected */}
@@ -813,6 +781,131 @@ const ProjectDetailsModal = ({ isOpen, onClose, project, onProjectApproved }) =>
                     className="px-4 py-2 bg-red-500 text-white rounded-md hover:bg-red-600 flex items-center"
                   >
                     {rejectLoading ? (
+                      <LoadingSpinner size={20} />
+                    ) : (
+                      'Yes'
+                    )}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Approve Project Popup */}
+          {showApprovePopup && (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 p-4">
+              <div className="bg-white rounded-lg shadow-lg w-full max-w-md p-6">
+                <h3 className="text-lg font-semibold mb-4">Approve Project</h3>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Approval Note* <span className="text-xs text-gray-500">(minimum 3 words required)</span>
+                </label>
+                <textarea
+                  value={approvalRemark}
+                  onChange={(e) => setApprovalRemark(e.target.value)}
+                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 ${
+                    remarkError ? 'border-red-300 focus:ring-red-300' : 'focus:ring-blue-500'
+                  }`}
+                  rows="4"
+                  placeholder="Enter any notes for this approval (min 3 words)..."
+                ></textarea>
+
+                <div className="mt-1 flex justify-between items-center">
+                  <div className="text-xs text-gray-500">
+                    Word Count: {countWords(approvalRemark)}
+                  </div>
+
+                  {remarkError && (
+                    <div className="text-xs text-red-500 flex items-center">
+                      <FiAlertCircle className="mr-1" /> {remarkError}
+                    </div>
+                  )}
+                </div>
+
+                <div className="mt-6 flex justify-end space-x-3">
+                  <button
+                    onClick={() => setShowApprovePopup(false)}
+                    className="px-4 py-2 bg-gray-200 rounded-md hover:bg-gray-300"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={() => {
+                      if (!remarkError && countWords(approvalRemark) >= 3) {
+                        setShowApprovePopup(false);
+                        setShowApproveConfirmPopup(true);
+                      }
+                    }}
+                    disabled={remarkError || countWords(approvalRemark) < 3}
+                    className={`px-4 py-2 text-white rounded-md ${
+                      remarkError || countWords(approvalRemark) < 3
+                        ? 'bg-gray-400 cursor-not-allowed'
+                        : 'bg-green-500 hover:bg-green-600'
+                    }`}
+                  >
+                    Confirm
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Approve Confirmation Popup */}
+          {showApproveConfirmPopup && (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 p-4">
+              <div className="bg-white rounded-lg shadow-lg w-full max-w-md p-6">
+                <h3 className="text-lg font-semibold mb-4">Confirm Approval</h3>
+                <p className="mb-6">
+                  {user.firstName} {user.lastName ? user.lastName : ''}, are you sure you want to approve this project?
+                </p>
+                <div className="flex justify-end space-x-3">
+                  <button
+                    onClick={() => setShowApproveConfirmPopup(false)}
+                    className="px-4 py-2 bg-gray-200 rounded-md hover:bg-gray-300"
+                  >
+                    No
+                  </button>
+                  <button
+                    onClick={async () => {
+                      try {
+                        setLoading(true);
+                        setError(null);
+
+                        const response = await fetch(SummaryApi.approveWorkOrder.url, {
+                          method: 'POST',
+                          headers: {
+                            'Content-Type': 'application/json',
+                          },
+                          credentials: 'include',
+                          body: JSON.stringify({
+                            customerId: project.customerId,
+                            orderId: project.orderId,
+                            remark: approvalRemark
+                          })
+                        });
+
+                        const data = await response.json();
+
+                        if (data.success) {
+                          if (onProjectApproved) {
+                            onProjectApproved(data.data);
+                          }
+                          setShowApproveConfirmPopup(false);
+                          setShowApprovePopup(false);
+                          setApprovalRemark('');
+                        } else {
+                          setError(data.message || 'Failed to approve project');
+                        }
+                      } catch (err) {
+                        setError('Server error. Please try again.');
+                        console.error('Error approving project:', err);
+                      } finally {
+                        setLoading(false);
+                      }
+                    }}
+                    disabled={loading}
+                    className="px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600 flex items-center"
+                  >
+                    {loading ? (
                       <LoadingSpinner size={20} />
                     ) : (
                       'Yes'
