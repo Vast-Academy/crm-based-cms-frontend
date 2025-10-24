@@ -407,6 +407,9 @@ const renderProjectContent = () => {
           </h3>
           <div className="bg-white border rounded-lg p-3 space-y-2">
             <p className="font-medium">{workOrder.customerName}</p>
+            {workOrder.customerFirmName && (
+              <p className="text-sm text-gray-600"><span className='font-bold'>Company :</span> {workOrder.customerFirmName}</p>
+            )}
             {workOrder.customerAddress && (
               <p className="flex items-start text-sm">
                 <FiMapPin className="mr-2 text-gray-500 mt-1" />
@@ -557,6 +560,9 @@ const renderProjectContent = () => {
             </h3>
             <div className="bg-white border rounded-lg p-3 space-y-2">
               <p className="font-medium">{workOrder.customerName}</p>
+              {workOrder.customerFirmName && (
+                <p className="text-sm text-gray-600"><span className='font-bold'>Company :</span> {workOrder.customerFirmName}</p>
+              )}
               {workOrder.customerAddress && (
                 <p className="flex items-start text-sm">
                   <FiMapPin className="mr-2 text-gray-500 mt-1" />
@@ -574,7 +580,7 @@ const renderProjectContent = () => {
                 Project Requirements
               </h3>
               <div className="bg-white border rounded-lg p-3">
-                <p className="text-sm">{workOrder.initialRemark}</p>
+                <p className="text-sm" style={{ whiteSpace: 'pre-line' }}>{workOrder.initialRemark}</p>
               </div>
             </div>
           )}
@@ -587,7 +593,7 @@ const renderProjectContent = () => {
                 Special Instructions
               </h3>
               <div className="bg-white border rounded-lg p-3">
-                <p className="text-sm">{workOrder.instructions}</p>
+                <p className="text-sm" style={{ whiteSpace: 'pre-line' }}>{workOrder.instructions}</p>
               </div>
             </div>
           )}
@@ -715,9 +721,12 @@ const renderProjectContent = () => {
             <FiUser className="mr-2" />
             Customer Information
           </h3>
-          
-          <div className="bg-white border rounded-lg p-3 space-y-2">
+
+          <div className="bg-white border rounded-lg p-3 ">
             <p className="font-medium">{workOrder.customerName}</p>
+            {workOrder.customerFirmName && (
+              <p className="text-sm text-gray-600 mb-2"><span className='font-bold'>Company :</span> {workOrder.customerFirmName}</p>
+            )}
             {workOrder.customerAddress && (
               <p className="flex items-start text-sm">
                 <FiMapPin className="mr-2 text-gray-500 mt-1" />
@@ -799,11 +808,11 @@ const renderProjectContent = () => {
    <FiInfo className="mr-2" />
    Project Requirements
  </h3>
- 
+
  <div className="bg-white border rounded-lg p-3">
-   <p className="text-sm">{workOrder.initialRemark}</p>
+   <p className="text-sm" style={{ whiteSpace: 'pre-line' }}>{workOrder.initialRemark}</p>
  </div>
-</div> 
+</div>
 )}
 
 {/* Special Instructions - only show if available */}
@@ -813,9 +822,9 @@ const renderProjectContent = () => {
       <FiInfo className="mr-2" />
       Special Instructions
     </h3>
-    
+
     <div className="bg-white border rounded-lg p-3">
-      <p className="text-sm">{workOrder.instructions}</p>
+      <p className="text-sm" style={{ whiteSpace: 'pre-line' }}>{workOrder.instructions}</p>
     </div>
   </div>
 )}

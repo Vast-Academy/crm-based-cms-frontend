@@ -159,6 +159,12 @@ const DashboardLayout = () => {
             icon: FiPackage,
             path: '/inventory-items'
           },
+          {
+            name: 'Services',
+            icon: FiPackage,
+            path: '/services',
+            color: 'text-purple-500'
+          },
         ];
       }
       
@@ -190,6 +196,12 @@ const DashboardLayout = () => {
             name: 'Inventory',
             path: '/inventory',
             icon: FiPackage
+          },
+          {
+            name: 'Services',
+            icon: FiPackage,
+            path: '/services',
+            color: 'text-purple-500'
           },
           { name: 'Returned Inventory', path: '/returned-inventory', icon: FiRepeat },
           { name: 'Replacement Warranty', path: '/replacement-warranty', icon: FiShield  },

@@ -36,7 +36,7 @@ import ReturnInventoryModal from './ReturnInventoryModal';
 import ReturnRequestDetailsModal from './ReturnRequestDetailsModal';
 import ReturnLogsModal from './ReturnLogsModal';
 import GenerateBillModal from './GenerateBillModal';
-import { FiPause } from 'react-icons/fi';
+import { FiMapPin, FiPause } from 'react-icons/fi';
 import UserSettingsModal from '../users/UserSettingsModal';
 import ChangeProfilePictureModal from '../../components/ChangeProfilePictureModal';
 import ImagePreviewModal from '../../components/ImagePreviewModal';
@@ -1674,8 +1674,14 @@ const fetchFreshWorkOrders = async () => {
             {/* Customer Contact */}
             <div className="bg-white rounded-lg shadow-md p-3">
               <h3 className="text-sm font-bold text-gray-800 mb-1">{activeProject.customerName}</h3>
+              {activeProject.customerFirmName && (
+                <p className="text-xs text-gray-600 mb-1"><span className='font-bold'>Company :</span> {activeProject.customerFirmName}</p>
+              )}
               {activeProject.customerAddress && (
-                <p className="text-xs text-gray-600 mb-3">{activeProject.customerAddress}</p>
+                <p className="flex items-start text-xs text-gray-600 mb-3">
+                  <FiMapPin className="mr-2 text-gray-500 mt-1" />
+                  <span>{activeProject.customerAddress}</span>
+                  </p>
               )}
 
               <div className="flex gap-2">
@@ -1798,7 +1804,7 @@ const fetchFreshWorkOrders = async () => {
                 {formatDate(activeProject.assignedAt || activeProject.createdAt).split(',')[0]}
               </p>
             </div>
-            <p className="text-sm">
+            <p className="text-sm" style={{ whiteSpace: 'pre-line' }}>
               {activeProject.initialRemark || 'Assignment created for ' + activeProject.projectType}
             </p>
             <span className="text-xs opacity-70 flex justify-end">

@@ -2,7 +2,6 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import SerializedProductsList from './SerializedProductsList';
 import GenericProductsList from './GenericProductsList';
-import ServicesList from './ServicesList';
 import AllInventoryItems from './AllInventoryItems';
 import UnifiedInventoryAssignmentModal from './UnifiedInventoryAssignmentModal';
 import SelectTechnicianModal from '../technician/SelectTechnicianModal';
@@ -48,7 +47,6 @@ const InventoryManagement = () => {
       case 'all': return 'All';
       case 'serialized': return 'Serialized';
       case 'generic': return 'Generic';
-      case 'services': return 'Services';
       default: return 'All';
     }
   };
@@ -121,8 +119,6 @@ const InventoryManagement = () => {
         return <SerializedProductsList searchTerm={searchTerm} refreshTrigger={refreshCount} branch={branch} sortField={sortField} sortOrder={sortOrder} />;
       case 'generic':
         return <GenericProductsList searchTerm={searchTerm} refreshTrigger={refreshCount} branch={branch} sortField={sortField} sortOrder={sortOrder} />;
-      case 'services':
-        return <ServicesList searchTerm={searchTerm} refreshTrigger={refreshCount} branch={branch} />;
       default:
         return <AllInventoryItems searchTerm={searchTerm} refreshTrigger={refreshCount} branch={branch} sortField={sortField} sortOrder={sortOrder} />;
     }
@@ -205,24 +201,13 @@ const InventoryManagement = () => {
                           <span className="text-teal-600">✓</span>
                         )}
                       </button>
-                      <button
-                        onClick={() => handleFilterChange('services')}
-                        className={`flex items-center justify-between w-full px-4 py-2 text-sm text-left hover:bg-gray-100 ${
-                          activeFilter === 'services' ? 'bg-gray-50 text-teal-600 font-medium' : 'text-gray-700'
-                        }`}
-                      >
-                        <span>Services</span>
-                        {activeFilter === 'services' && (
-                          <span className="text-teal-600">✓</span>
-                        )}
-                      </button>
                     </div>
                   </div>
                 )}
               </div>
 
-              {/* Sort Dropdown - Only show for non-service filters */}
-              {activeFilter !== 'services' && (
+              {/* Sort Dropdown */}
+              {(
                 <div className="relative" ref={sortDropdownRef}>
                   <button
                     onClick={() => setIsSortDropdownOpen(!isSortDropdownOpen)}

@@ -389,11 +389,11 @@ const fetchFreshWorkOrders = async (isBackground = false) => {
                               {order.initialRemark && (
                                 <div>
                                   <h4 className="font-semibold">
-                                    {order.projectCategory === 'Repair' 
-                                      ? 'Complaint Details:' 
+                                    {order.projectCategory === 'Repair'
+                                      ? 'Complaint Details:'
                                       : 'Initial Requirements:'}
                                   </h4>
-                                  <p className="mt-1 text-gray-600">{order.initialRemark}</p>
+                                  <p className="mt-1 text-gray-600" style={{ whiteSpace: 'pre-line' }}>{order.initialRemark}</p>
                                 </div>
                               )}
                               

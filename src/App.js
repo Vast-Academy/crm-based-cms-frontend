@@ -37,6 +37,7 @@ import Test from './pages/test';
 import ManagerDetail from './pages/users/ManagerDetail';
 import BranchDetails from './pages/branches/BranchDetails';
 import InventoryPage from './pages/inventory/InventoryPage';
+import ServicesPage from './pages/services/ServicesPage';
 import ResetDefaultPage from './pages/ResetDefaultPage';
 import SettingsPage from './pages/SettingsPage';
 
@@ -250,6 +251,15 @@ function App() {
               element={
                 <ProtectedRoute allowedRoles={['admin']}>
                   <InventoryPage />
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="services"
+              element={
+                <ProtectedRoute allowedRoles={['admin', 'manager']}>
+                  <ServicesPage />
                 </ProtectedRoute>
               }
             />

@@ -51,7 +51,6 @@ const ContactsPage = () => {
   const [selectedCustomerForBilling, setSelectedCustomerForBilling] = useState(null);
   const [initialPhone, setInitialPhone] = useState('');
   const [initialType, setInitialType] = useState('lead');
-  const [expandedRow, setExpandedRow] = useState(null);
   const [openInConvertMode, setOpenInConvertMode] = useState(false);
   const [showComplaintModal, setShowComplaintModal] = useState(false);
   const [lastRefreshTime, setLastRefreshTime] = useState(0);
@@ -66,9 +65,17 @@ const handleComplaintSuccess = (data) => {
   setShowComplaintModal(false);
 };
 
-  const handleRowClick = (contactId) => {
-    // अगर पहले से ही expanded है तो collapse करें, अन्यथा expand करें
-    setExpandedRow(expandedRow === contactId ? null : contactId);
+  const handleRowClick = (contact) => {
+    // Directly open the appropriate detail modal based on contact type
+    if (contact.contactType === 'lead') {
+      handleViewLead(contact._id);
+    } else if (contact.contactType === 'customer') {
+      handleViewCustomer(contact._id);
+    } else if (contact.contactType === 'dealer') {
+      handleViewDealer(contact._id);
+    } else if (contact.contactType === 'distributor') {
+      handleViewDistributor(contact._id);
+    }
   };
   
   // Fetch contacts function
@@ -704,25 +711,17 @@ const handleFilterChange = (type, status = 'all') => {
                 <tbody className="bg-white divide-y divide-gray-200">
                   {filteredContacts.map((contact, index) => (
                     <React.Fragment key={`${contact.contactType}-${contact._id}`}>
-                      <tr 
+                      <tr
                         className={`cursor-pointer ${
-                          expandedRow === `${contact.contactType}-${contact._id}` 
-                            ? contact.contactType === 'customer' 
-                              ? 'bg-purple-50' 
-                              : contact.contactType === 'dealer'
-                              ? 'bg-orange-50'
-                              : contact.contactType === 'distributor'
-                              ? 'bg-teal-50'
-                              : 'bg-blue-50'
-                            : contact.contactType === 'customer'
+                          contact.contactType === 'customer'
                             ? 'hover:bg-purple-50/50 bg-purple-50/20'
                             : contact.contactType === 'dealer'
-                            ? 'hover:bg-orange-50/50 bg-orange-50/20' 
+                            ? 'hover:bg-orange-50/50 bg-orange-50/20'
                             : contact.contactType === 'distributor'
                             ? 'hover:bg-teal-50/50 bg-teal-50/20'
                             : 'hover:bg-blue-50/50 bg-blue-50/20'
                         }`}
-                        onClick={() => handleRowClick(`${contact.contactType}-${contact._id}`)}
+                        onClick={() => handleRowClick(contact)}
                       >
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-medium ${
@@ -790,57 +789,6 @@ const handleFilterChange = (type, status = 'all') => {
                           )}
                         </td> */}
                       </tr>
-                      
-                      {/* Expanded row - only show when expanded */}
-                      {expandedRow === `${contact.contactType}-${contact._id}` && (
-                        <tr>
-                          <td colSpan="7" className="px-6 py-4 bg-gray-50 border-b">
-                            <div className="flex space-x-3">
-                              {contact.contactType === 'lead' ? (
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleViewLead(contact._id);
-                                  }}
-                                  className="inline-flex items-center px-4 py-1.5 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-500 hover:bg-blue-600"
-                                >
-                                  View Details
-                                </button>
-                              ) : contact.contactType === 'customer' ? (
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleViewCustomer(contact._id);
-                                  }}
-                                  className="inline-flex items-center px-4 py-1.5 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-500 hover:bg-blue-600"
-                                >
-                                  View Details
-                                </button>
-                              ) : contact.contactType === 'dealer' ? (
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleViewDealer(contact._id);
-                                  }}
-                                  className="inline-flex items-center px-4 py-1.5 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-500 hover:bg-blue-600"
-                                >
-                                  View Details
-                                </button>
-                              ) : contact.contactType === 'distributor' ? (
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleViewDistributor(contact._id);
-                                  }}
-                                  className="inline-flex items-center px-4 py-1.5 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-500 hover:bg-blue-600"
-                                >
-                                  View Details
-                                </button>
-                              ) : null}
-                            </div>
-                          </td>
-                        </tr>
-                      )}
                     </React.Fragment>
                   ))}
                 </tbody>
@@ -856,28 +804,28 @@ const handleFilterChange = (type, status = 'all') => {
                   {isValidPhoneSearch(searchQuery) && (
                     <div className="flex justify-center space-x-4">
                       <button
-                        onClick={() => handleAddNew(searchQuery, 'lead')}
+                        onClick={() => handleAddNew(searchQuery, 'Lead')}
                         className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-1.5 rounded-md inline-flex items-center text-sm"
                       >
                         <FiUserPlus className="mr-2" />
                         Add as New Lead
                       </button>
                       <button
-                        onClick={() => handleAddNew(searchQuery, 'customer')}
+                        onClick={() => handleAddNew(searchQuery, 'Customer')}
                         className="bg-purple-500 hover:bg-purple-600 text-white px-4 py-1.5 rounded-md inline-flex items-center text-sm"
                       >
                         <FiUserPlus className="mr-2" />
                         Add as New Customer
                       </button>
                       <button
-                        onClick={() => handleAddNew(searchQuery, 'dealer')}
+                        onClick={() => handleAddNew(searchQuery, 'Dealer')}
                         className="bg-orange-500 hover:bg-orange-600 text-white px-4 py-1.5 rounded-md inline-flex items-center text-sm"
                       >
                         <FiUserPlus className="mr-2" />
                         Add as New Dealer
                       </button>
                       <button
-                        onClick={() => handleAddNew(searchQuery, 'distributor')}
+                        onClick={() => handleAddNew(searchQuery, 'Distributor')}
                         className="bg-teal-500 hover:bg-teal-600 text-white px-4 py-1.5 rounded-md inline-flex items-center text-sm"
                       >
                         <FiUserPlus className="mr-2" />

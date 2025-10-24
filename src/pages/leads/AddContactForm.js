@@ -40,6 +40,20 @@ export default function AddContactForm({ initialPhone = '', initialType = 'lead'
     { code: '+49', country: 'Germany' },
   ];
 
+  // Update phone field and leadType when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      // Update phone if initialPhone is provided
+      if (initialPhone) {
+        const phoneWithoutCode = initialPhone.replace(/^\+91/, "");
+        setForm((f) => ({ ...f, phone: phoneWithoutCode, leadType: initialType || 'Lead' }));
+      } else {
+        // Reset phone field when modal opens without initial phone
+        setForm((f) => ({ ...f, phone: "", leadType: initialType || 'Lead' }));
+      }
+    }
+  }, [isOpen, initialPhone, initialType]);
+
   // Sync WhatsApp with phone if checkbox is ON
   useEffect(() => {
     if (form.sameAsPhone) {

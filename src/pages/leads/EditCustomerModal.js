@@ -11,11 +11,10 @@ const EditCustomerModal = ({ isOpen, onClose, customerId, onSuccess }) => {
 
   const [formData, setFormData] = useState({
     name: '',
+    firmName: '',
     phoneNumber: '',
     whatsappNumber: '',
-    email: '',
     address: '',
-    age: '',
     branch: '',
     status: 'active'
   });
@@ -47,11 +46,10 @@ const EditCustomerModal = ({ isOpen, onClose, customerId, onSuccess }) => {
       if (data.success) {
         setFormData({
           name: data.data.name || '',
+          firmName: data.data.firmName || '',
           phoneNumber: data.data.phoneNumber || '',
           whatsappNumber: data.data.whatsappNumber || '',
-          email: data.data.email || '',
           address: data.data.address || '',
-          age: data.data.age || '',
           branch: data.data.branch && data.data.branch._id ? data.data.branch._id : (data.data.branch || ''),
           status: data.data.status || 'active'
         });
@@ -99,14 +97,8 @@ const EditCustomerModal = ({ isOpen, onClose, customerId, onSuccess }) => {
   };
 
   const validateForm = () => {
-    if (!formData.name || !formData.email) {
+    if (!formData.name) {
       setError('Please fill in all required fields');
-      return false;
-    }
-
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(formData.email)) {
-      setError('Please enter a valid email address');
       return false;
     }
 
@@ -170,7 +162,7 @@ const EditCustomerModal = ({ isOpen, onClose, customerId, onSuccess }) => {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
               <label className="block text-gray-700 mb-2" htmlFor="name">
-                Name*
+                Customer Name*
               </label>
               <input
                 id="name"
@@ -179,24 +171,23 @@ const EditCustomerModal = ({ isOpen, onClose, customerId, onSuccess }) => {
                 value={formData.name}
                 onChange={handleChange}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                placeholder="Enter name"
+                placeholder="Enter customer name"
                 required
               />
             </div>
 
             <div>
-              <label className="block text-gray-700 mb-2" htmlFor="email">
-                Email*
+              <label className="block text-gray-700 mb-2" htmlFor="firmName">
+                Company Name
               </label>
               <input
-                id="email"
-                name="email"
-                type="email"
-                value={formData.email}
+                id="firmName"
+                name="firmName"
+                type="text"
+                value={formData.firmName}
                 onChange={handleChange}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                placeholder="Enter email"
-                required
+                placeholder="Enter company name"
               />
             </div>
 
@@ -230,34 +221,18 @@ const EditCustomerModal = ({ isOpen, onClose, customerId, onSuccess }) => {
               />
             </div>
 
-            <div>
+            <div className="md:col-span-2">
               <label className="block text-gray-700 mb-2" htmlFor="address">
                 Address
               </label>
-              <input
+              <textarea
                 id="address"
                 name="address"
-                type="text"
                 value={formData.address}
                 onChange={handleChange}
+                rows="3"
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                 placeholder="Enter address"
-              />
-            </div>
-
-            <div>
-              <label className="block text-gray-700 mb-2" htmlFor="age">
-                Age
-              </label>
-              <input
-                id="age"
-                name="age"
-                type="number"
-                value={formData.age}
-                onChange={handleChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                placeholder="Enter age"
-                min="0"
               />
             </div>
 

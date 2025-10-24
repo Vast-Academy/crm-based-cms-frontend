@@ -19,10 +19,10 @@ const GenerateBillModal = ({ isOpen, onClose, workOrder, onBillGenerated, onDone
   const [searchQuery, setSearchQuery] = useState('');
   const [technicianInventory, setTechnicianInventory] = useState([]);
   const [selectedItems, setSelectedItems] = useState([]);
-  const [searchResults, setSearchResults] = useState([]);
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
   const [billId, setBillId] = useState(null);
+  const [activeTab, setActiveTab] = useState('products'); // 'products' or 'services'
   
   // Payment related states
   const [paymentMethod, setPaymentMethod] = useState('');
@@ -30,9 +30,7 @@ const GenerateBillModal = ({ isOpen, onClose, workOrder, onBillGenerated, onDone
   const [cashAmount, setCashAmount] = useState(0);
   const [paidAmount, setPaidAmount] = useState(0);
   const [dueAmount, setDueAmount] = useState(0);
-  const [showServicesModal, setShowServicesModal] = useState(false);
-const [availableServices, setAvailableServices] = useState([]);
-const [selectedServices, setSelectedServices] = useState([]);
+  const [availableServices, setAvailableServices] = useState([]);
 
   // Enhanced payment states for multiple payment methods
   const [selectedBankAccount, setSelectedBankAccount] = useState(null);
@@ -65,6 +63,8 @@ const [selectedServices, setSelectedServices] = useState([]);
   // Reset states when modal opens
   useEffect(() => {
     if (isOpen) {
+      console.log('GenerateBillModal workOrder:', workOrder);
+      console.log('Customer Firm Name:', workOrder?.customerFirmName);
       resetAllStates();
       fetchTechnicianInventory();
     }
@@ -74,9 +74,9 @@ const [selectedServices, setSelectedServices] = useState([]);
   const resetAllStates = () => {
     setSearchQuery('');
     setSelectedItems([]);
-    setSearchResults([]);
     setError(null);
     setCurrentStep('select-items');
+    setActiveTab('products');
     setPaymentMethod('');
     setTransactionId('');
     setCashAmount(0);
@@ -152,89 +152,95 @@ const fetchAvailableServices = async () => {
   }
 };
   
-  // Real-time search as user types
-  useEffect(() => {
-    if (searchQuery.trim().length > 0) {
-      handleSearch();
-    } else {
-      setSearchResults([]);
-    }
-  }, [searchQuery]);
-  
-const handleSearch = () => {
-  if (!searchQuery.trim()) {
-    setSearchResults([]);
-    return;
-  }
-  
-  const results = [];
-  const query = searchQuery.toLowerCase();
-  const addedSerialNumbers = new Set(); // Track added serial numbers
-  
-  // First, collect all already selected serial numbers
-  selectedItems.forEach(item => {
-    if (item.type === 'serialized-product' && item.selectedSerialNumber) {
-      addedSerialNumbers.add(item.selectedSerialNumber);
-    }
-  });
-  
-  // Search in inventory items - EXCLUDE SERVICES
-  technicianInventory.forEach(item => {
-    // Skip services completely - they should not appear in search results
-    if (item.type === 'service') {
-      return; // Skip this iteration
-    }
-    
-    if (item.type === 'serialized-product') {
-      // For serialized items, search by serial number or by product name
-      const activeSerials = item.serializedItems?.filter(
-        serial => (
-          serial.status === 'active' && 
-          !addedSerialNumbers.has(serial.serialNumber) // Prevent duplicates
-        )
+  // Get filtered items based on active tab and search query
+  const getFilteredItems = () => {
+    const query = searchQuery.toLowerCase().trim();
+    const addedSerialNumbers = new Set();
+
+    // Collect already selected serial numbers
+    selectedItems.forEach(item => {
+      if (item.type === 'serialized-product' && item.selectedSerialNumber) {
+        addedSerialNumbers.add(item.selectedSerialNumber);
+      }
+    });
+
+    if (activeTab === 'products') {
+      // Filter products (serialized + generic)
+      const products = technicianInventory.filter(item =>
+        item.type === 'serialized-product' || item.type === 'generic-product'
       );
-      
-      const serialMatches = activeSerials?.filter(serial => serial.serialNumber.toLowerCase().includes(query)) || [];
-      const nameMatch = item.itemName.toLowerCase().includes(query);
-      
-      if (serialMatches.length > 0) {
-        serialMatches.forEach(serialItem => {
-          results.push({
-            ...item,
-            selectedSerialNumber: serialItem.serialNumber,
-            quantity: 1,
-            unit: item.unit || 'Piece'
-          });
+
+      if (!query) {
+        // Show all products when no search query
+        const allProducts = [];
+        products.forEach(item => {
+          if (item.type === 'serialized-product') {
+            const activeSerials = item.serializedItems?.filter(
+              serial => serial.status === 'active' && !addedSerialNumbers.has(serial.serialNumber)
+            ) || [];
+            activeSerials.forEach(serialItem => {
+              allProducts.push({
+                ...item,
+                selectedSerialNumber: serialItem.serialNumber,
+                quantity: 1,
+                unit: item.unit || 'Piece'
+              });
+            });
+          } else if (item.type === 'generic-product' && item.genericQuantity > 0) {
+            allProducts.push({
+              ...item,
+              quantity: 1,
+              unit: item.unit || 'Piece'
+            });
+          }
         });
-      } 
-      
-      if (nameMatch) {
-        // Add all active serials for this product when name matches
-        activeSerials.forEach(serialItem => {
-          results.push({
-            ...item,
-            selectedSerialNumber: serialItem.serialNumber,
-            quantity: 1,
-            unit: item.unit || 'Piece'
-          });
-        });
+        return allProducts;
       }
-    } else if (item.type === 'generic-product') {
-      // For generic items, search by name and only show if quantity > 0
-      const nameMatch = item.itemName.toLowerCase().includes(query);
-      if (nameMatch && item.genericQuantity > 0) {
-        results.push({
-          ...item,
-          quantity: 1,
-          unit: item.unit || 'Piece'
-        });
+
+      // Search in products
+      const results = [];
+      products.forEach(item => {
+        if (item.type === 'serialized-product') {
+          const activeSerials = item.serializedItems?.filter(
+            serial => serial.status === 'active' && !addedSerialNumbers.has(serial.serialNumber)
+          ) || [];
+
+          const serialMatches = activeSerials.filter(serial =>
+            serial.serialNumber.toLowerCase().includes(query)
+          );
+          const nameMatch = item.itemName.toLowerCase().includes(query);
+
+          if (nameMatch || serialMatches.length > 0) {
+            (nameMatch ? activeSerials : serialMatches).forEach(serialItem => {
+              results.push({
+                ...item,
+                selectedSerialNumber: serialItem.serialNumber,
+                quantity: 1,
+                unit: item.unit || 'Piece'
+              });
+            });
+          }
+        } else if (item.type === 'generic-product' && item.genericQuantity > 0) {
+          if (item.itemName.toLowerCase().includes(query)) {
+            results.push({
+              ...item,
+              quantity: 1,
+              unit: item.unit || 'Piece'
+            });
+          }
+        }
+      });
+      return results;
+    } else {
+      // Filter services
+      if (!query) {
+        return availableServices; // Show all services
       }
+      return availableServices.filter(service =>
+        (service.itemName || service.name).toLowerCase().includes(query)
+      );
     }
-    // Note: Removed the service search logic completely
-  });
-  
-  setSearchResults(results);
-};
+  };
 
 // Fetch bank accounts for UPI payment
 const fetchBankAccounts = async () => {
@@ -373,28 +379,33 @@ const updateWorkOrderStatus = async () => {
   // Add item to the selected items list
   // Add item to the selected items list
 const addItemToSelection = (item) => {
-  // Ensure the item has a price
+  // Ensure the item has a price and quantity
   const itemWithPrice = {
     ...item,
     salePrice: item.salePrice || 0,  // Default to 0 if not present
+    quantity: item.quantity || 1,  // Ensure quantity is always set
     // Add available quantity for generic products
-    availableQuantity: item.type === 'generic-product' ? item.genericQuantity : 1
+    availableQuantity: item.type === 'generic-product' ? item.genericQuantity :
+                       item.type === 'service' ? 1 : 1
   };
   
-  // Handle services differently - they don't have quantities to check
+  // Handle services like generic items - allow multiple additions
   if (item.type === 'service') {
-    // Check if this service is already added
+    // Check if this service already exists
     const existingIndex = selectedItems.findIndex(
-      selectedItem => selectedItem.type === 'service' && 
+      selectedItem => selectedItem.type === 'service' &&
       selectedItem.itemId === item.itemId
     );
-    
+
     if (existingIndex >= 0) {
-      setError('This service is already added');
-      return;
+      // Increment the quantity
+      const updatedItems = [...selectedItems];
+      updatedItems[existingIndex].quantity += 1;
+      setSelectedItems(updatedItems);
+    } else {
+      // Add new service
+      setSelectedItems([...selectedItems, itemWithPrice]);
     }
-    
-    setSelectedItems([...selectedItems, itemWithPrice]);
   }
   // Check if this item is already in the list (for serialized items)
   else if (item.type === 'serialized-product') {
@@ -432,10 +443,6 @@ const addItemToSelection = (item) => {
       setSelectedItems([...selectedItems, itemWithPrice]);
     }
   }
-  
-  // Clear search results and query
-  setSearchResults([]);
-  setSearchQuery('');
 };
   
   // Update item quantity
@@ -448,11 +455,13 @@ const updateItemQuantity = (index, newQuantity) => {
     return;
   }
 
+  // For generic products, check available quantity
   if (item.type === 'generic-product' && newQuantity > item.availableQuantity) {
     setError(`Maximum available quantity (${item.availableQuantity}) reached for this item`);
     return;
   }
 
+  // For services, no maximum limit - technician can add as many as needed
   // Update the quantity
   const updatedItems = [...selectedItems];
   updatedItems[index].quantity = newQuantity;
@@ -477,7 +486,6 @@ const updateItemQuantity = (index, newQuantity) => {
       setManualEntryMode(false);
       setSearchQuery(result);
       setManualCode('');
-      handleSearch();
     }
   };
   
@@ -754,32 +762,6 @@ const getGroupedItems = () => {
   }
 };
 
-const addServicesToBill = () => {
-  // Filter only the services that are checked
-  const servicesToAdd = availableServices.filter(service => 
-    selectedServices.includes(service.itemId || service._id)
-  );
-  
-  // Format services and add them to selected items
-  const formattedServices = servicesToAdd.map(service => ({
-    ...service,
-    quantity: 1,
-    type: 'service',
-    availableQuantity: 1,
-    unit: 'Service',
-    // Ensure these properties are set correctly
-    itemId: service.itemId || service._id,
-    itemName: service.itemName || service.name,
-    salePrice: service.salePrice || 0
-  }));
-  
-  // Add to selected items
-  setSelectedItems([...selectedItems, ...formattedServices]);
-  
-  // Close the modal and reset selections
-  setShowServicesModal(false);
-  setSelectedServices([]);
-};
   
   // Handle closing the modal with different behaviors based on current step
   const handleModalClose = async () => {
@@ -905,111 +887,57 @@ const addServicesToBill = () => {
               ) : (
                 <>
                   <h3 className="text-md font-medium mb-3">Select Items for Billing</h3>
-                  
+
                   {/* Basic info */}
                   <div className="bg-gray-50 p-3 rounded-md mb-4 text-sm">
                     <p><span className="font-medium">Customer:</span> {workOrder.customerName}</p>
+                    {workOrder.customerFirmName && workOrder.customerFirmName.trim() !== '' && (
+                      <p><span className="font-medium">Company:</span> {workOrder.customerFirmName}</p>
+                    )}
                     <p><span className="font-medium">Project:</span> {workOrder.projectType}</p>
                   </div>
-                  
-                  {/* Search and Scan */}
-                  <div className="flex mb-3">
-  <div className="relative flex-1 mr-2">
-    <input
-      type="text"
-      placeholder="Search by name or serial number"
-      className="w-full pl-10 pr-2 py-2 border rounded-md"
-      value={searchQuery}
-      onChange={(e) => setSearchQuery(e.target.value)}
-    />
-    <Search className="absolute left-3 top-2.5 text-gray-400" size={18} />
-  </div>
-  <button
-    onClick={() => setShowServicesModal(true)}
-    className="px-3 py-2 bg-purple-500 text-white rounded-md"
-  >
-    Add Service
-  </button>
-</div>
 
-{/* Services Selection Modal */}
-{showServicesModal && (
-  <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center p-4">
-    <div className="bg-white rounded-xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-hidden">
-      <div className="flex justify-between items-center p-4 border-b">
-        <h3 className="font-bold text-lg">Select Services</h3>
-        <button 
-          onClick={() => setShowServicesModal(false)}
-          className="p-1"
-        >
-          <X size={20} />
-        </button>
-      </div>
-      
-      <div className="overflow-y-auto p-4" style={{ maxHeight: "60vh" }}>
-        {availableServices.length > 0 ? (
-          <table className="w-full">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">S.No</th>
-                <th className="py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Service</th>
-                <th className="py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Price</th>
-                <th className="py-2 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Select</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200">
-              {availableServices.map((service, index) => (
-                <tr key={service.itemId || service._id} className="hover:bg-gray-50">
-                  <td className="py-3 text-sm">{index + 1}</td>
-                  <td className="py-3">
-                    <p className="font-medium">{service.itemName || service.name}</p>
-                  </td>
-                  <td className="py-3 text-right">
-                    ₹{service.salePrice?.toFixed(2) || "0.00"}
-                  </td>
-                  <td className="py-3 text-center">
-                    <input
-                      type="checkbox"
-                      className="h-5 w-5 text-blue-600 rounded"
-                      checked={selectedServices.includes(service.itemId || service._id)}
-                      onChange={() => {
-                        if (selectedServices.includes(service.itemId || service._id)) {
-                          setSelectedServices(selectedServices.filter(id => id !== (service.itemId || service._id)));
-                        } else {
-                          setSelectedServices([...selectedServices, service.itemId || service._id]);
-                        }
+                  {/* Tab Buttons */}
+                  <div className="flex gap-2 mb-3">
+                    <button
+                      onClick={() => {
+                        setActiveTab('products');
+                        setSearchQuery('');
                       }}
+                      className={`flex-1 py-2 px-4 rounded-md font-medium transition-colors ${
+                        activeTab === 'products'
+                          ? 'bg-blue-500 text-white'
+                          : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                      }`}
+                    >
+                      Products
+                    </button>
+                    <button
+                      onClick={() => {
+                        setActiveTab('services');
+                        setSearchQuery('');
+                      }}
+                      className={`flex-1 py-2 px-4 rounded-md font-medium transition-colors ${
+                        activeTab === 'services'
+                          ? 'bg-purple-500 text-white'
+                          : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                      }`}
+                    >
+                      Services
+                    </button>
+                  </div>
+                  
+                  {/* Search Bar */}
+                  <div className="relative mb-3">
+                    <input
+                      type="text"
+                      placeholder={activeTab === 'products' ? 'Search products by name or serial number...' : 'Search services by name...'}
+                      className="w-full pl-10 pr-4 py-2 border rounded-md"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
                     />
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        ) : (
-          <div className="text-center py-4 text-gray-500">
-            No services available
-          </div>
-        )}
-      </div>
-      
-      <div className="p-4 border-t flex justify-end space-x-3">
-        <button
-          onClick={() => setShowServicesModal(false)}
-          className="px-4 py-2 border rounded-md text-gray-700"
-        >
-          Cancel
-        </button>
-        <button
-          onClick={addServicesToBill}
-          className="px-4 py-2 bg-purple-500 text-white rounded-md"
-          disabled={selectedServices.length === 0}
-        >
-          Add to Bill
-        </button>
-      </div>
-    </div>
-  </div>
-)}
+                    <Search className="absolute left-3 top-2.5 text-gray-400" size={18} />
+                  </div>
                   
                   {/* Error Message */}
                   {error && (
@@ -1017,30 +945,110 @@ const addServicesToBill = () => {
                       {error}
                     </div>
                   )}
-                  
-                  {/* Search Results */}
-                  {searchResults.length > 0 && (
-                    <div className="mb-3 border rounded-md p-2 bg-gray-50">
-                      <p className="text-sm font-medium mb-2">Search Results:</p>
-                      {searchResults.map((item, index) => (
-                        <div 
-                          key={index}
-                          className="flex justify-between items-center p-2 hover:bg-gray-100 cursor-pointer rounded"
-                          onClick={() => addItemToSelection(item)}
-                        >
-                          <div>
-                            <p className="font-medium">{item.itemName}</p>
-                            <p className="text-xs text-gray-500">
-                              {item.type === 'serialized-product' 
-                                ? `S/N: ${item.selectedSerialNumber} - ₹${item.salePrice?.toFixed(2) || '0.00'}` 
-                                : `Generic Item - ₹${item.salePrice?.toFixed(2) || '0.00'}`}
-                            </p>
-                          </div>
-                          <button className="text-blue-500 text-sm">Add</button>
-                        </div>
-                      ))}
+
+                  {/* Available Items Display */}
+                  <div className="mb-3 border rounded-md overflow-hidden">
+                    <div className="max-h-64 overflow-y-auto">
+                      {activeTab === 'products' ? (
+                        <>
+                          {getFilteredItems().length > 0 ? (
+                            <>
+                              {/* Serialized Products */}
+                              {getFilteredItems().filter(item => item.type === 'serialized-product').length > 0 && (
+                                <div>
+                                  <div className="bg-blue-50 px-3 py-2 text-xs font-medium text-blue-700 sticky top-0">
+                                    Serialized Products
+                                  </div>
+                                  {getFilteredItems().filter(item => item.type === 'serialized-product').map((item, index) => (
+                                    <div
+                                      key={`serial-${index}`}
+                                      className="flex justify-between items-center p-3 hover:bg-gray-50 border-b last:border-b-0"
+                                    >
+                                      <div className="flex-1">
+                                        <p className="font-medium text-sm">{item.itemName}</p>
+                                        <p className="text-xs text-gray-500">
+                                          S/N: {item.selectedSerialNumber} | ₹{item.salePrice?.toFixed(2) || '0.00'}
+                                        </p>
+                                      </div>
+                                      <button
+                                        onClick={() => addItemToSelection(item)}
+                                        className="ml-2 px-3 py-1 bg-blue-500 text-white rounded-md text-sm hover:bg-blue-600"
+                                      >
+                                        Add +
+                                      </button>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+
+                              {/* Generic Products */}
+                              {getFilteredItems().filter(item => item.type === 'generic-product').length > 0 && (
+                                <div>
+                                  <div className="bg-green-50 px-3 py-2 text-xs font-medium text-green-700 sticky top-0">
+                                    Generic Products
+                                  </div>
+                                  {getFilteredItems().filter(item => item.type === 'generic-product').map((item, index) => (
+                                    <div
+                                      key={`generic-${index}`}
+                                      className="flex justify-between items-center p-3 hover:bg-gray-50 border-b last:border-b-0"
+                                    >
+                                      <div className="flex-1">
+                                        <p className="font-medium text-sm">{item.itemName}</p>
+                                        <p className="text-xs text-gray-500">
+                                          Stock: {item.genericQuantity} {item.unit || 'pcs'} | ₹{item.salePrice?.toFixed(2) || '0.00'} each
+                                        </p>
+                                      </div>
+                                      <button
+                                        onClick={() => addItemToSelection(item)}
+                                        className="ml-2 px-3 py-1 bg-green-500 text-white rounded-md text-sm hover:bg-green-600"
+                                      >
+                                        Add +
+                                      </button>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            </>
+                          ) : (
+                            <div className="text-center py-8 text-gray-500">
+                              {searchQuery ? 'No products found matching your search' : 'No products available'}
+                            </div>
+                          )}
+                        </>
+                      ) : (
+                        <>
+                          {/* Services */}
+                          {getFilteredItems().length > 0 ? (
+                            <div>
+                              {getFilteredItems().map((service, index) => (
+                                <div
+                                  key={`service-${index}`}
+                                  className="flex justify-between items-center p-3 hover:bg-purple-50 border-b last:border-b-0"
+                                >
+                                  <div className="flex-1">
+                                    <p className="font-medium text-sm">{service.itemName || service.name}</p>
+                                    <p className="text-lg font-semibold text-gray-700 mt-1">
+                                      ₹{service.salePrice?.toFixed(2) || '0.00'}
+                                    </p>
+                                  </div>
+                                  <button
+                                    onClick={() => addItemToSelection(service)}
+                                    className="ml-2 px-3 py-1 bg-purple-500 text-white rounded-md text-sm hover:bg-purple-600"
+                                  >
+                                    Add +
+                                  </button>
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <div className="text-center py-8 text-gray-500">
+                              {searchQuery ? 'No services found matching your search' : 'No services available'}
+                            </div>
+                          )}
+                        </>
+                      )}
                     </div>
-                  )}
+                  </div>
                   
                   {/* Selected Items List */}
                   <div className="mb-3">
@@ -1055,6 +1063,15 @@ const addServicesToBill = () => {
                                 <p className="text-xs text-gray-500">
                                   S/N: {item.selectedSerialNumber} - ₹{item.salePrice?.toFixed(2) || '0.00'}
                                 </p>
+                              ) : item.type === 'service' ? (
+                                <div>
+                                  <p className="text-xs text-gray-500">
+                                    ₹{item.salePrice?.toFixed(2) || '0.00'} per Service
+                                  </p>
+                                  <p className="text-xs text-gray-500">
+                                    Quantity: {item.quantity} Service{item.quantity > 1 ? 's' : ''}
+                                  </p>
+                                </div>
                               ) : (
                                 <div>
                                   <p className="text-xs text-gray-500">
@@ -1066,9 +1083,9 @@ const addServicesToBill = () => {
                                 </div>
                               )}
                             </div>
-                            
-                            {/* Quantity controls for generic products */}
-{item.type === 'generic-product' && (
+
+                            {/* Quantity controls for generic products and services */}
+{(item.type === 'generic-product' || item.type === 'service') && (
   <div className="flex items-center mr-2">
     <button 
       onClick={() => updateItemQuantity(index, item.quantity - 1)}
@@ -1080,7 +1097,7 @@ const addServicesToBill = () => {
     <input
       type="number"
       min={0}
-      max={item.availableQuantity}
+      max={item.type === 'service' ? undefined : item.availableQuantity}
       value={item.quantity}
       onChange={(e) => {
         const val = e.target.value;
@@ -1094,10 +1111,10 @@ const addServicesToBill = () => {
       }}
       className="w-12 h-8 text-center border-t border-b outline-none"
     />
-    <button 
+    <button
       onClick={() => updateItemQuantity(index, item.quantity + 1)}
       className="w-8 h-8 flex items-center justify-center border rounded-r-md"
-      disabled={item.quantity >= item.availableQuantity}
+      disabled={item.type === 'generic-product' && item.quantity >= item.availableQuantity}
     >
       +
     </button>
@@ -1159,7 +1176,7 @@ const addServicesToBill = () => {
                         )}
                       </td>
                       <td className="py-3 text-center">
-                        {item.quantity} {item.unit}
+                        {item.quantity} {item.type === 'service' ? (item.quantity > 1 ? 'Services' : 'Service') : item.unit}
                       </td>
                       <td className="py-3 text-right">
                         ₹{item.price.toFixed(2)}

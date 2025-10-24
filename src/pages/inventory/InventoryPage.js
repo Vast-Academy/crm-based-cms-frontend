@@ -101,8 +101,8 @@ const [isImportModalOpen, setIsImportModalOpen] = useState(false);
     }
     
     try {
-      // सभी तीन प्रकार के इंवेंटरी आइटम्स को पैरेलल में फेच करें
-      const [serializedResponse, genericResponse, servicesResponse] = await Promise.all([
+      // दो प्रकार के इंवेंटरी आइटम्स को पैरेलल में फेच करें
+      const [serializedResponse, genericResponse] = await Promise.all([
         fetch(`${SummaryApi.getInventoryByType.url}/serialized-product`, {
           method: SummaryApi.getInventoryByType.method,
           credentials: 'include'
@@ -110,25 +110,19 @@ const [isImportModalOpen, setIsImportModalOpen] = useState(false);
         fetch(`${SummaryApi.getInventoryByType.url}/generic-product`, {
           method: SummaryApi.getInventoryByType.method,
           credentials: 'include'
-        }),
-        fetch(`${SummaryApi.getInventoryByType.url}/service`, {
-          method: SummaryApi.getInventoryByType.method,
-          credentials: 'include'
         })
       ]);
-      
+
       // सभी रिस्पॉन्स पार्स करें
-      const [serializedData, genericData, servicesData] = await Promise.all([
+      const [serializedData, genericData] = await Promise.all([
         serializedResponse.json(),
-        genericResponse.json(),
-        servicesResponse.json()
+        genericResponse.json()
       ]);
-      
+
       // सभी आइटम्स को कम्बाइन करें और टाइप प्रॉपर्टी जोड़ें
       const combinedItems = [
         ...(serializedData.success ? serializedData.items : []),
-        ...(genericData.success ? genericData.items : []),
-        ...(servicesData.success ? servicesData.items : [])
+        ...(genericData.success ? genericData.items : [])
       ];
       
       setInventoryItems(combinedItems);
@@ -389,20 +383,19 @@ const getStockDisplay = (item) => {
       // Convert from filter button names to actual type values in data
       const filterTypeMap = {
         'Serialized': 'serialized-product',
-        'Generic': 'generic-product',
-        'Services': 'service'
+        'Generic': 'generic-product'
       };
-      
+
       if (item.type !== filterTypeMap[activeFilter]) {
         return false;
       }
     }
-    
+
     // Then apply search term filter
     if (searchTerm) {
       return item.name.toLowerCase().includes(searchTerm.toLowerCase());
     }
-    
+
     return true;
   });
 
@@ -464,29 +457,23 @@ const getStockDisplay = (item) => {
           
           {/* Filter Buttons */}
           <div className="flex flex-wrap gap-2">
-            <button 
+            <button
               onClick={() => setActiveFilter('All')}
               className={`px-4 py-2 ${activeFilter === 'All' ? 'bg-teal-500 text-white' : 'bg-gray-200 text-gray-800'} rounded-full text-sm hover:bg-teal-600 hover:text-white transition-colors`}
             >
               All
             </button>
-            <button 
+            <button
               onClick={() => setActiveFilter('Serialized')}
               className={`px-4 py-2 ${activeFilter === 'Serialized' ? 'bg-teal-500 text-white' : 'bg-gray-200 text-gray-800'} rounded-full text-sm hover:bg-teal-600 hover:text-white transition-colors`}
             >
               Serialized
             </button>
-            <button 
+            <button
               onClick={() => setActiveFilter('Generic')}
               className={`px-4 py-2 ${activeFilter === 'Generic' ? 'bg-teal-500 text-white' : 'bg-gray-200 text-gray-800'} rounded-full text-sm hover:bg-teal-600 hover:text-white transition-colors`}
             >
               Generic
-            </button>
-            <button 
-              onClick={() => setActiveFilter('Services')}
-              className={`px-4 py-2 ${activeFilter === 'Services' ? 'bg-teal-500 text-white' : 'bg-gray-200 text-gray-800'} rounded-full text-sm hover:bg-teal-600 hover:text-white transition-colors`}
-            >
-              Services
             </button>
           </div>
         </div>
@@ -683,7 +670,7 @@ const getStockDisplay = (item) => {
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Item Type *
                   </label>
-                  <div className="grid grid-cols-3 gap-4">
+                  <div className="grid grid-cols-2 gap-4">
                     <label className="inline-flex items-center">
                       <input
                         type="radio"
@@ -705,17 +692,6 @@ const getStockDisplay = (item) => {
                         className="h-4 w-4 text-teal-600 border-gray-300 focus:ring-teal-500"
                       />
                       <span className="ml-2">Generic Product</span>
-                    </label>
-                    <label className="inline-flex items-center">
-                      <input
-                        type="radio"
-                        name="type"
-                        value="service"
-                        checked={newItem.type === 'service'}
-                        onChange={handleItemInputChange}
-                        className="h-4 w-4 text-teal-600 border-gray-300 focus:ring-teal-500"
-                      />
-                      <span className="ml-2">Service</span>
                     </label>
                   </div>
                 </div>
@@ -911,7 +887,7 @@ const getStockDisplay = (item) => {
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Item Type
             </label>
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-2 gap-4">
               <label className="inline-flex items-center">
                 <input
                   type="radio"
@@ -935,18 +911,6 @@ const getStockDisplay = (item) => {
                   className="h-4 w-4 text-teal-600 border-gray-300 focus:ring-teal-500"
                 />
                 <span className="ml-2">Generic Product</span>
-              </label>
-              <label className="inline-flex items-center">
-                <input
-                  type="radio"
-                  name="type"
-                  value="service"
-                  checked={selectedItem.type === 'service'}
-                  onChange={handleEditItemChange}
-                  disabled={selectedItem.type === 'serialized-product' || selectedItem.type === 'generic-product'}
-                  className="h-4 w-4 text-teal-600 border-gray-300 focus:ring-teal-500"
-                />
-                <span className="ml-2">Service</span>
               </label>
             </div>
             {(selectedItem.type === 'serialized-product' || selectedItem.type === 'generic-product') && (

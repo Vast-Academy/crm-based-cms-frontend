@@ -78,9 +78,9 @@ const [saveLoading, setSaveLoading] = useState(false);
  // बैकग्राउंड में ताज़ा डेटा फेच करने का फंक्शन
 const fetchFreshItemsInBackground = async () => {
   try {
-    // तीनों प्रकार के इन्वेंटरी आइटम्स को पैरेलल में फेच करें
+    // दो प्रकार के इन्वेंटरी आइटम्स को पैरेलल में फेच करें (services को छोड़कर)
     const branchQuery = branch ? `?branch=${branch}` : '';
-    const [serializedResponse, genericResponse, servicesResponse] = await Promise.all([
+    const [serializedResponse, genericResponse] = await Promise.all([
       fetch(`${SummaryApi.getInventoryByType.url}/serialized-product${branchQuery}`, {
         method: SummaryApi.getInventoryByType.method,
         credentials: 'include'
@@ -88,25 +88,19 @@ const fetchFreshItemsInBackground = async () => {
       fetch(`${SummaryApi.getInventoryByType.url}/generic-product${branchQuery}`, {
         method: SummaryApi.getInventoryByType.method,
         credentials: 'include'
-      }),
-      fetch(`${SummaryApi.getInventoryByType.url}/service${branchQuery}`, {
-        method: SummaryApi.getInventoryByType.method,
-        credentials: 'include'
       })
     ]);
-    
+
     // सभी रिस्पांस को पार्स करें
-    const [serializedData, genericData, servicesData] = await Promise.all([
+    const [serializedData, genericData] = await Promise.all([
       serializedResponse.json(),
-      genericResponse.json(),
-      servicesResponse.json()
+      genericResponse.json()
     ]);
-    
-    // सभी आइटम्स को कम्बाइन करें और टाइप प्रॉपर्टी जोड़ें
+
+    // सभी आइटम्स को कम्बाइन करें और टाइप प्रॉपर्टी जोड़ें (services को छोड़कर)
     const combinedItems = [
       ...(serializedData.success ? serializedData.items.map(item => ({ ...item, itemType: 'serialized' })) : []),
-      ...(genericData.success ? genericData.items.map(item => ({ ...item, itemType: 'generic' })) : []),
-      ...(servicesData.success ? servicesData.items.map(item => ({ ...item, itemType: 'service' })) : [])
+      ...(genericData.success ? genericData.items.map(item => ({ ...item, itemType: 'generic' })) : [])
     ];
     
     // नया टाइमस्टैम्प सेट करें
@@ -129,8 +123,8 @@ const fetchFreshItemsInBackground = async () => {
 const fetchFreshItems = async () => {
   try {
     const branchQuery = branch ? `?branch=${branch}` : '';
-    // तीनों प्रकार के इन्वेंटरी आइटम्स को पैरेलल में फेच करें
-    const [serializedResponse, genericResponse, servicesResponse] = await Promise.all([
+    // दो प्रकार के इन्वेंटरी आइटम्स को पैरेलल में फेच करें (services को छोड़कर)
+    const [serializedResponse, genericResponse] = await Promise.all([
       fetch(`${SummaryApi.getInventoryByType.url}/serialized-product${branchQuery}`, {
         method: SummaryApi.getInventoryByType.method,
         credentials: 'include'
@@ -138,25 +132,19 @@ const fetchFreshItems = async () => {
       fetch(`${SummaryApi.getInventoryByType.url}/generic-product${branchQuery}`, {
         method: SummaryApi.getInventoryByType.method,
         credentials: 'include'
-      }),
-      fetch(`${SummaryApi.getInventoryByType.url}/service${branchQuery}`, {
-        method: SummaryApi.getInventoryByType.method,
-        credentials: 'include'
       })
     ]);
-    
+
     // सभी रिस्पांस को पार्स करें
-    const [serializedData, genericData, servicesData] = await Promise.all([
+    const [serializedData, genericData] = await Promise.all([
       serializedResponse.json(),
-      genericResponse.json(),
-      servicesResponse.json()
+      genericResponse.json()
     ]);
-    
-    // सभी आइटम्स को कम्बाइन करें और टाइप प्रॉपर्टी जोड़ें
+
+    // सभी आइटम्स को कम्बाइन करें और टाइप प्रॉपर्टी जोड़ें (services को छोड़कर)
     const combinedItems = [
       ...(serializedData.success ? serializedData.items.map(item => ({ ...item, itemType: 'serialized' })) : []),
-      ...(genericData.success ? genericData.items.map(item => ({ ...item, itemType: 'generic' })) : []),
-      ...(servicesData.success ? servicesData.items.map(item => ({ ...item, itemType: 'service' })) : [])
+      ...(genericData.success ? genericData.items.map(item => ({ ...item, itemType: 'generic' })) : [])
     ];
     
     // नया टाइमस्टैम्प सेट करें
