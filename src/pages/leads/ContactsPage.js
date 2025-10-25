@@ -256,10 +256,11 @@ const handleFilterChange = (type, status = 'all') => {
   
   // Apply search query
   if (searchQuery.trim() !== '') {
-    filtered = filtered.filter(contact => 
+    filtered = filtered.filter(contact =>
       (contact.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       contact.phoneNumber.includes(searchQuery) ||
-      (contact.email && contact.email.toLowerCase().includes(searchQuery.toLowerCase())))
+      (contact.email && contact.email.toLowerCase().includes(searchQuery.toLowerCase())) ||
+      (contact.firmName && contact.firmName.toLowerCase().includes(searchQuery.toLowerCase())))
     );
   }
   
@@ -517,10 +518,11 @@ const handleFilterChange = (type, status = 'all') => {
     
     // Apply search query
     if (searchQuery.trim() !== '') {
-      filtered = filtered.filter(contact => 
+      filtered = filtered.filter(contact =>
         (contact.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         contact.phoneNumber.includes(searchQuery) ||
-        (contact.email && contact.email.toLowerCase().includes(searchQuery.toLowerCase())))
+        (contact.email && contact.email.toLowerCase().includes(searchQuery.toLowerCase())) ||
+        (contact.firmName && contact.firmName.toLowerCase().includes(searchQuery.toLowerCase())))
       );
     }
     
