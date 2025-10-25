@@ -1624,7 +1624,7 @@ const getGroupedItems = () => {
                         type="button"
                       >
                         <Share size={18} />
-                        Share QR Code
+                        Share QR
                       </button>
 
                       {/* WhatsApp Direct Share (only if phone available) */}
