@@ -49,9 +49,9 @@ const WorkOrderModal = ({ isOpen, onClose, customerId, initialProjectCategory = 
       
       if (data.success && data.data) {
         // Filter active projects for this specific customer only
-        const activeProjects = data.data.filter(project => 
-          project.customerId === customerId && 
-          !['completed', 'rejected'].includes(project.status)
+        const activeProjects = data.data.filter(project =>
+          project.customerId === customerId &&
+          !['completed', 'rejected', 'job-closed', 'cancelled'].includes(project.status)
         );
         
         if (activeProjects.length > 0) {

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Search, Camera, FileText, ArrowRight, CheckCircle, ArrowLeft, AlertCircle, DollarSign, Smartphone, TrendingUp, FileCheck, CreditCard } from 'lucide-react';
+import { X, Search, Camera, FileText, ArrowRight, CheckCircle, ArrowLeft, AlertCircle, DollarSign, Smartphone, TrendingUp, FileCheck, CreditCard, Share, MessageCircle } from 'lucide-react';
 import SummaryApi from '../../common';
 import { QRCodeCanvas } from 'qrcode.react';
 import LoadingSpinner from '../../components/LoadingSpinner';
@@ -557,10 +557,119 @@ const getGroupedItems = () => {
     const upiId = 'itindia.asr@okicici';
     const amount = calculateTotal();
     const purpose = `Bill-${workOrder.orderId}`;
-    
+
     return `upi://pay?pa=${upiId}&pn=Your%20Company&am=${amount}&tn=${purpose}`;
   };
-  
+
+  // Handle Share QR Code
+  const handleShareQR = async () => {
+    try {
+      const canvas = document.getElementById('qr-code-canvas');
+      if (!canvas) {
+        setError('QR Code not found');
+        return;
+      }
+
+      canvas.toBlob(async (blob) => {
+        if (!blob) {
+          setError('Failed to generate QR image');
+          return;
+        }
+
+        const file = new File([blob], `payment-qr-${workOrder.orderId}.png`, { type: 'image/png' });
+
+        // Check if Web Share API is supported
+        if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+          try {
+            await navigator.share({
+              title: 'Payment QR Code',
+              text: `Payment Request - ₹${calculateTotal().toFixed(2)} to ${selectedBankAccount.accountHolderName}`,
+              files: [file]
+            });
+          } catch (err) {
+            if (err.name !== 'AbortError') {
+              console.error('Share failed:', err);
+              // Fallback to download
+              downloadQR();
+            }
+          }
+        } else {
+          // Fallback to download
+          downloadQR();
+        }
+      });
+    } catch (err) {
+      console.error('Error sharing QR:', err);
+      setError('Failed to share QR code');
+    }
+  };
+
+  // Download QR Code (Fallback)
+  const downloadQR = () => {
+    const canvas = document.getElementById('qr-code-canvas');
+    if (!canvas) return;
+
+    const url = canvas.toDataURL('image/png');
+    const link = document.createElement('a');
+    link.download = `payment-qr-${workOrder.orderId}.png`;
+    link.href = url;
+    link.click();
+  };
+
+  // Share to WhatsApp
+  const shareToWhatsApp = async () => {
+    try {
+      const canvas = document.getElementById('qr-code-canvas');
+      if (!canvas) {
+        setError('QR Code not found');
+        return;
+      }
+
+      // Get customer phone number
+      const customerPhone = workOrder.customerPhone || workOrder.phoneNumber || workOrder.phone;
+      if (!customerPhone) {
+        setError('Customer phone number not available');
+        return;
+      }
+
+      canvas.toBlob((blob) => {
+        if (!blob) {
+          setError('Failed to generate QR image');
+          return;
+        }
+
+        // Download QR first
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.download = `payment-qr-${workOrder.orderId}.png`;
+        link.href = url;
+        link.click();
+
+        // Format phone number (remove special characters)
+        const formattedPhone = customerPhone.replace(/[^0-9]/g, '');
+        const phoneWithCountry = formattedPhone.startsWith('91') ? formattedPhone : `91${formattedPhone}`;
+
+        // Create WhatsApp message
+        const message = `🔔 Payment Request\n\n` +
+          `Amount: ₹${calculateTotal().toFixed(2)}\n` +
+          `Account: ${selectedBankAccount.accountHolderName}\n` +
+          `${selectedBankAccount.upiId ? `UPI ID: ${selectedBankAccount.upiId}\n` : ''}` +
+          `Order ID: ${workOrder.orderId}\n\n` +
+          `Please scan the QR code image to complete the payment.`;
+
+        const whatsappUrl = `https://wa.me/${phoneWithCountry}?text=${encodeURIComponent(message)}`;
+
+        // Open WhatsApp after a short delay (to ensure download completes)
+        setTimeout(() => {
+          window.open(whatsappUrl, '_blank');
+        }, 500);
+      });
+    } catch (err) {
+      console.error('Error sharing to WhatsApp:', err);
+      setError('Failed to share on WhatsApp');
+    }
+  };
+
   // Handle processing payment
   const handleProcessPayment = async () => {
     try {
@@ -1485,6 +1594,7 @@ const getGroupedItems = () => {
                     <h5 className="font-medium mb-3">Scan QR Code to Pay</h5>
                     <div className="inline-block p-4 bg-white rounded-lg border-2 border-gray-200">
                       <QRCodeCanvas
+                        id="qr-code-canvas"
                         value={selectedBankAccount.upiId ?
                           `upi://pay?pa=${selectedBankAccount.upiId}&pn=${encodeURIComponent(selectedBankAccount.accountHolderName)}&am=${calculateTotal()}&tn=Work-Order-Bill-${workOrder.orderId}` :
                           `upi://pay?pa=${selectedBankAccount.accountNumber}&pn=${encodeURIComponent(selectedBankAccount.accountHolderName)}&am=${calculateTotal()}&tn=Work-Order-Bill-${workOrder.orderId}`
@@ -1502,6 +1612,31 @@ const getGroupedItems = () => {
                         <p className="text-xs text-green-600 font-medium">
                           UPI ID: {selectedBankAccount.upiId}
                         </p>
+                      )}
+                    </div>
+
+                    {/* Share QR Code Buttons */}
+                    <div className="mt-4 flex gap-3">
+                      {/* Universal Share Button */}
+                      <button
+                        onClick={handleShareQR}
+                        className="flex-1 bg-blue-500 hover:bg-blue-600 text-white py-2.5 px-4 rounded-lg font-medium flex items-center justify-center gap-2 transition-colors"
+                        type="button"
+                      >
+                        <Share size={18} />
+                        Share QR Code
+                      </button>
+
+                      {/* WhatsApp Direct Share (only if phone available) */}
+                      {(workOrder.customerPhone || workOrder.phoneNumber || workOrder.phone) && (
+                        <button
+                          onClick={shareToWhatsApp}
+                          className="flex-1 bg-green-500 hover:bg-green-600 text-white py-2.5 px-4 rounded-lg font-medium flex items-center justify-center gap-2 transition-colors"
+                          type="button"
+                        >
+                          <MessageCircle size={18} />
+                          Send on Wapp
+                        </button>
                       )}
                     </div>
                   </div>
