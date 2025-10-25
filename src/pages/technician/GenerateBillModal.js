@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Search, Camera, FileText, ArrowRight, CheckCircle, ArrowLeft, AlertCircle, DollarSign, Smartphone, TrendingUp, FileCheck, CreditCard, Share, MessageCircle } from 'lucide-react';
+import { X, Search, Camera, FileText, ArrowRight, CheckCircle, ArrowLeft, AlertCircle, DollarSign, Smartphone, TrendingUp, FileCheck, CreditCard, Share } from 'lucide-react';
 import SummaryApi from '../../common';
 import { QRCodeCanvas } from 'qrcode.react';
 import LoadingSpinner from '../../components/LoadingSpinner';
@@ -283,17 +283,20 @@ const handlePaymentMethodSelect = (method) => {
   setShowBankSelection(false);
   setSelectedBankAccount(null);
 
-  if (method === 'upi') {
+  if (method === 'upi' || method === 'bank_transfer') {
     setShowBankSelection(true);
     fetchBankAccounts();
   }
 };
 
-// Handle UPI continue after bank selection
+// Handle UPI/Bank Transfer continue after bank selection
 const handleUPIContinue = () => {
   if (selectedBankAccount) {
     setShowBankSelection(false);
-    setShowQRCode(true);
+    if (paymentMethod === 'upi') {
+      setShowQRCode(true);
+    }
+    // For bank_transfer, just proceed to form (no QR code)
   }
 };
 
@@ -578,12 +581,20 @@ const getGroupedItems = () => {
 
         const file = new File([blob], `payment-qr-${workOrder.orderId}.png`, { type: 'image/png' });
 
+        // Create formatted message
+        const message = `🔔 Payment Request\n\n` +
+          `Amount: ₹${calculateTotal().toFixed(2)}\n` +
+          `Account: ${selectedBankAccount.accountHolderName}\n` +
+          `${selectedBankAccount.upiId ? `UPI ID: ${selectedBankAccount.upiId}\n` : ''}` +
+          `Order ID: ${workOrder.orderId}\n\n` +
+          `Please scan the QR code to complete the payment.`;
+
         // Check if Web Share API is supported
         if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
           try {
             await navigator.share({
               title: 'Payment QR Code',
-              text: `Payment Request - ₹${calculateTotal().toFixed(2)} to ${selectedBankAccount.accountHolderName}`,
+              text: message,
               files: [file]
             });
           } catch (err) {
@@ -616,57 +627,71 @@ const getGroupedItems = () => {
     link.click();
   };
 
-  // Share to WhatsApp
-  const shareToWhatsApp = async () => {
+  // Share Bank Details
+  const shareBankDetails = async () => {
     try {
-      const canvas = document.getElementById('qr-code-canvas');
-      if (!canvas) {
-        setError('QR Code not found');
+      if (!selectedBankAccount) {
+        setError('Please select a bank account first');
         return;
       }
 
-      // Get customer phone number
-      const customerPhone = workOrder.customerPhone || workOrder.phoneNumber || workOrder.phone;
-      if (!customerPhone) {
-        setError('Customer phone number not available');
-        return;
-      }
+      // Format bank details - Simple and clean
+      const bankDetails = `${selectedBankAccount.bankName}\n` +
+        `Account Holder: ${selectedBankAccount.accountHolderName}\n` +
+        `Account Number: ${selectedBankAccount.accountNumber}\n` +
+        `IFSC Code: ${selectedBankAccount.ifscCode}` +
+        `${selectedBankAccount.upiId ? `\nUPI ID: ${selectedBankAccount.upiId}` : ''}` +
+        `${selectedBankAccount.branchName ? `\nBranch: ${selectedBankAccount.branchName}` : ''}`;
 
-      canvas.toBlob((blob) => {
-        if (!blob) {
-          setError('Failed to generate QR image');
-          return;
+      // Check if Web Share API is supported
+      if (navigator.share) {
+        try {
+          await navigator.share({
+            title: 'Bank Account Details',
+            text: bankDetails
+          });
+        } catch (err) {
+          if (err.name !== 'AbortError') {
+            console.error('Share failed:', err);
+            // Fallback - copy to clipboard
+            copyBankDetailsToClipboard(bankDetails);
+          }
         }
-
-        // Download QR first
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.download = `payment-qr-${workOrder.orderId}.png`;
-        link.href = url;
-        link.click();
-
-        // Format phone number (remove special characters)
-        const formattedPhone = customerPhone.replace(/[^0-9]/g, '');
-        const phoneWithCountry = formattedPhone.startsWith('91') ? formattedPhone : `91${formattedPhone}`;
-
-        // Create WhatsApp message
-        const message = `🔔 Payment Request\n\n` +
-          `Amount: ₹${calculateTotal().toFixed(2)}\n` +
-          `Account: ${selectedBankAccount.accountHolderName}\n` +
-          `${selectedBankAccount.upiId ? `UPI ID: ${selectedBankAccount.upiId}\n` : ''}` +
-          `Order ID: ${workOrder.orderId}\n\n` +
-          `Please scan the QR code image to complete the payment.`;
-
-        const whatsappUrl = `https://wa.me/${phoneWithCountry}?text=${encodeURIComponent(message)}`;
-
-        // Open WhatsApp after a short delay (to ensure download completes)
-        setTimeout(() => {
-          window.open(whatsappUrl, '_blank');
-        }, 500);
-      });
+      } else {
+        // Fallback - copy to clipboard
+        copyBankDetailsToClipboard(bankDetails);
+      }
     } catch (err) {
-      console.error('Error sharing to WhatsApp:', err);
-      setError('Failed to share on WhatsApp');
+      console.error('Error sharing bank details:', err);
+      setError('Failed to share bank details');
+    }
+  };
+
+  // Copy bank details to clipboard (Fallback)
+  const copyBankDetailsToClipboard = (text) => {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text)
+        .then(() => {
+          alert('Bank details copied to clipboard!');
+        })
+        .catch((err) => {
+          console.error('Failed to copy:', err);
+          setError('Failed to copy bank details');
+        });
+    } else {
+      // Old browser fallback
+      const textArea = document.createElement('textarea');
+      textArea.value = text;
+      document.body.appendChild(textArea);
+      textArea.select();
+      try {
+        document.execCommand('copy');
+        alert('Bank details copied to clipboard!');
+      } catch (err) {
+        console.error('Failed to copy:', err);
+        setError('Failed to copy bank details');
+      }
+      document.body.removeChild(textArea);
     }
   };
 
@@ -743,6 +768,9 @@ const getGroupedItems = () => {
           paymentDetails.utrNumber = paymentFormData.utrNumber;
           paymentDetails.bankName = paymentFormData.bankName;
           paymentDetails.transferDate = paymentFormData.transferDate;
+          if (selectedBankAccount) {
+            paymentDetails.selectedBankAccount = selectedBankAccount._id;
+          }
           receivedAmount = parseFloat(paymentFormData.receivedAmount);
           break;
         case 'cheque':
@@ -1388,8 +1416,8 @@ const getGroupedItems = () => {
             </div>
           )}
 
-          {/* Step 3.1: Bank Selection for UPI */}
-          {currentStep === 'payment-options' && paymentMethod === 'upi' && showBankSelection && (
+          {/* Step 3.1: Bank Selection for UPI and Bank Transfer */}
+          {currentStep === 'payment-options' && (paymentMethod === 'upi' || paymentMethod === 'bank_transfer') && showBankSelection && (
             <div className="p-4">
               <div className="text-center mb-4">
                 <h4 className="text-lg font-semibold text-gray-900 mb-2">
@@ -1615,29 +1643,16 @@ const getGroupedItems = () => {
                       )}
                     </div>
 
-                    {/* Share QR Code Buttons */}
-                    <div className="mt-4 flex gap-3">
-                      {/* Universal Share Button */}
+                    {/* Share QR Code Button */}
+                    <div className="mt-4">
                       <button
                         onClick={handleShareQR}
-                        className="flex-1 bg-blue-500 hover:bg-blue-600 text-white py-2.5 px-4 rounded-lg font-medium flex items-center justify-center gap-2 transition-colors"
+                        className="w-full bg-blue-500 hover:bg-blue-600 text-white py-2.5 px-4 rounded-lg font-medium flex items-center justify-center gap-2 transition-colors"
                         type="button"
                       >
                         <Share size={18} />
-                        Share QR
+                        Share QR Code
                       </button>
-
-                      {/* WhatsApp Direct Share (only if phone available) */}
-                      {(workOrder.customerPhone || workOrder.phoneNumber || workOrder.phone) && (
-                        <button
-                          onClick={shareToWhatsApp}
-                          className="flex-1 bg-green-500 hover:bg-green-600 text-white py-2.5 px-4 rounded-lg font-medium flex items-center justify-center gap-2 transition-colors"
-                          type="button"
-                        >
-                          <MessageCircle size={18} />
-                          Send on Wapp
-                        </button>
-                      )}
                     </div>
                   </div>
 
@@ -1671,11 +1686,35 @@ const getGroupedItems = () => {
               )}
 
               {/* Bank Transfer */}
-              {paymentMethod === 'bank_transfer' && (
+              {paymentMethod === 'bank_transfer' && selectedBankAccount && !showBankSelection && (
                 <div className="space-y-4">
+                  {/* Selected Bank Account Info */}
                   <div className="bg-purple-50 border border-purple-200 rounded-lg p-3">
-                    <h5 className="font-medium text-purple-900 mb-1">Bank Transfer (IMPS/NEFT)</h5>
-                    <p className="text-sm text-purple-700">Transfer money and enter details below</p>
+                    <div className="flex items-center space-x-3 mb-2">
+                      <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center">
+                        <CreditCard className="text-purple-600 text-sm" />
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-sm font-medium text-purple-900">
+                          {selectedBankAccount.bankName}
+                        </p>
+                        <p className="text-xs text-purple-700">
+                          {selectedBankAccount.accountHolderName}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Share Bank Details Button */}
+                  <div>
+                    <button
+                      onClick={shareBankDetails}
+                      className="w-full bg-blue-500 hover:bg-blue-600 text-white py-2.5 px-4 rounded-lg font-medium flex items-center justify-center gap-2 transition-colors"
+                      type="button"
+                    >
+                      <Share size={18} />
+                      Share Bank Details
+                    </button>
                   </div>
 
                   <div>
@@ -1752,6 +1791,15 @@ const getGroupedItems = () => {
                       </p>
                     </div>
                   )}
+
+                  <button
+                    onClick={() => {
+                      setShowBankSelection(true);
+                    }}
+                    className="w-full bg-gray-500 hover:bg-gray-600 text-white py-2 px-4 rounded-lg font-medium"
+                  >
+                    Change Bank Account
+                  </button>
                 </div>
               )}
 
@@ -2080,7 +2128,7 @@ const getGroupedItems = () => {
         loading ||
         !paymentMethod ||
         (paymentMethod === 'upi' && (!showQRCode || !paymentFormData.upiTransactionId)) ||
-        (paymentMethod === 'bank_transfer' && (!paymentFormData.utrNumber || !paymentFormData.receivedAmount)) ||
+        (paymentMethod === 'bank_transfer' && (!selectedBankAccount || !paymentFormData.utrNumber || !paymentFormData.receivedAmount)) ||
         (paymentMethod === 'cheque' && (!paymentFormData.chequeNumber || !paymentFormData.chequeAmount)) ||
         (paymentMethod === 'cash' && paidAmount <= 0)
       }
