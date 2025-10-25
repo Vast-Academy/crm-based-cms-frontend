@@ -564,7 +564,7 @@ const getGroupedItems = () => {
     return `upi://pay?pa=${upiId}&pn=Your%20Company&am=${amount}&tn=${purpose}`;
   };
 
-  // Handle Share QR Code
+  // Handle Share QR Code - Try to share image + message together
   const handleShareQR = async () => {
     try {
       const canvas = document.getElementById('qr-code-canvas');
@@ -579,6 +579,7 @@ const getGroupedItems = () => {
           return;
         }
 
+        // Create file from blob
         const file = new File([blob], `payment-qr-${workOrder.orderId}.png`, { type: 'image/png' });
 
         // Create formatted message
@@ -589,24 +590,61 @@ const getGroupedItems = () => {
           `Order ID: ${workOrder.orderId}\n\n` +
           `Please scan the QR code to complete the payment.`;
 
-        // Check if Web Share API is supported
-        if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+        // Try Web Share API with both file and text
+        if (navigator.share) {
           try {
-            await navigator.share({
-              title: 'Payment QR Code',
-              text: message,
-              files: [file]
-            });
+            // Check if we can share files
+            if (navigator.canShare && navigator.canShare({ files: [file] })) {
+              // Try sharing with BOTH text and file
+              await navigator.share({
+                title: 'Payment QR Code',
+                text: message,
+                files: [file]
+              });
+              console.log('✅ Share successful with text + file');
+            } else {
+              // Can't share files, fallback to text only + download
+              const url = URL.createObjectURL(blob);
+              const link = document.createElement('a');
+              link.download = `payment-qr-${workOrder.orderId}.png`;
+              link.href = url;
+              link.click();
+
+              await navigator.share({
+                title: 'Payment QR Code',
+                text: message
+              });
+
+              alert('⚠️ QR downloaded! Please attach it manually.\n(Your browser/app doesn\'t support auto-attach)');
+            }
           } catch (err) {
             if (err.name !== 'AbortError') {
               console.error('Share failed:', err);
-              // Fallback to download
-              downloadQR();
+              // Fallback - download + copy message
+              const url = URL.createObjectURL(blob);
+              const link = document.createElement('a');
+              link.download = `payment-qr-${workOrder.orderId}.png`;
+              link.href = url;
+              link.click();
+
+              if (navigator.clipboard) {
+                await navigator.clipboard.writeText(message);
+                alert('⚠️ Message copied! QR downloaded!\nPlease paste and attach manually.');
+              }
             }
           }
         } else {
-          // Fallback to download
-          downloadQR();
+          // No Web Share API - download + copy
+          const url = URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.download = `payment-qr-${workOrder.orderId}.png`;
+          link.href = url;
+          link.click();
+
+          if (navigator.clipboard) {
+            await navigator.clipboard.writeText(message);
+            alert('⚠️ Message copied! QR downloaded!\nPlease paste and attach manually.');
+          }
         }
       });
     } catch (err) {
