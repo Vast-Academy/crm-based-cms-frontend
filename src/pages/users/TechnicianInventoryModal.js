@@ -5,35 +5,37 @@ import SummaryApi from '../../common';
 
 const TechnicianInventoryModal = ({ isOpen, onClose, technician }) => {
   const [transfers, setTransfers] = useState([]);
+  const [currentInventory, setCurrentInventory] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [filterType, setFilterType] = useState('current'); // Default to current
-  
+
   // Reference to the most recent timestamp for each serial number or item
   const [latestTransfers, setLatestTransfers] = useState({});
 
-  // Fetch technician's inventory transfers
+  // Fetch technician's inventory transfers and current inventory
   useEffect(() => {
     if (isOpen && technician) {
       fetchTechnicianInventoryHistory();
+      fetchTechnicianCurrentInventory();
     }
   }, [isOpen, technician]);
 
   const fetchTechnicianInventoryHistory = async () => {
     try {
       setLoading(true);
-      
+
       // Call backend API for technician's inventory
       const response = await fetch(`${SummaryApi.getTechnicianInventoryHistory.url}/${technician._id}`, {
         method: SummaryApi.getTechnicianInventoryHistory.method,
         credentials: 'include'
       });
-      
+
       const data = await response.json();
-      
+
       if (data.success) {
         setTransfers(data.data);
-        
+
         // Calculate latest transfers for each item/serial
         calculateLatestTransfers(data.data);
       } else {
@@ -44,6 +46,28 @@ const TechnicianInventoryModal = ({ isOpen, onClose, technician }) => {
       console.error('Error fetching inventory history:', err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Fetch technician's current inventory from TechnicianInventory model
+  const fetchTechnicianCurrentInventory = async () => {
+    try {
+      // Create a temporary auth token for the technician to fetch their inventory
+      // We'll use a different approach - pass technician ID to a manager endpoint
+      const response = await fetch(`${SummaryApi.getTechnicianInventory.url}?technicianId=${technician._id}`, {
+        method: SummaryApi.getTechnicianInventory.method,
+        credentials: 'include'
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        setCurrentInventory(data.data);
+      } else {
+        console.error('Failed to load current inventory:', data.message);
+      }
+    } catch (err) {
+      console.error('Error fetching current inventory:', err);
     }
   };
   
@@ -177,61 +201,41 @@ const TechnicianInventoryModal = ({ isOpen, onClose, technician }) => {
     return true;
   });
   
-  // Calculate current inventory using latest transfers only
+  // Calculate current inventory using actual TechnicianInventory data
   const calculateCurrentStock = () => {
     const stock = [];
-    const itemMap = {}; // To group serial numbers by item
-    
-    // Process latest transfers
-    Object.values(latestTransfers).forEach(({ transfer, isWithTechnician, isReturnedByTechnician }) => {
-      // Only include items that are currently with the technician (latest action was assignment TO technician)
-      // AND not returned/sold by technician
-      if (isWithTechnician && !isReturnedByTechnician) {
-        if (transfer.type === 'serialized-product' && transfer.serialNumber) {
-          // For serialized products, group by item ID
-          const itemId = transfer.itemId;
-          
-          if (!itemMap[itemId]) {
-            itemMap[itemId] = {
-              id: itemId,
-              name: transfer.itemName,
-              type: transfer.type,
-              serialNumbers: [],
-              quantity: 0
-            };
-          }
-          
-          // Add this serial number to the item
-          itemMap[itemId].serialNumbers.push(transfer.serialNumber);
-          itemMap[itemId].quantity++;
-        } else if (transfer.type === 'generic-product') {
-          // For generic products, check if we have a entry already
-          const existingItemIndex = stock.findIndex(item => 
-            item.id === transfer.itemId && item.type === 'generic-product'
-          );
-          
-          if (existingItemIndex >= 0) {
-            // Update existing item quantity
-            stock[existingItemIndex].quantity += transfer.quantity;
-          } else {
-            // Add as new item
-            stock.push({
-              id: transfer.itemId,
-              name: transfer.itemName,
-              type: transfer.type,
-              quantity: transfer.quantity,
-              serialNumbers: []
-            });
-          }
+
+    // Process current inventory items
+    currentInventory.forEach(item => {
+      if (item.type === 'serialized-product') {
+        // For serialized products, count active serial numbers
+        const activeSerials = item.serializedItems?.filter(si => si.status === 'active') || [];
+
+        if (activeSerials.length > 0) {
+          stock.push({
+            id: item.itemId,
+            name: item.itemName,
+            type: item.type,
+            unit: item.unit || 'Piece',
+            serialNumbers: activeSerials.map(si => si.serialNumber),
+            quantity: activeSerials.length
+          });
+        }
+      } else if (item.type === 'generic-product') {
+        // For generic products, use the quantity
+        if (item.genericQuantity > 0) {
+          stock.push({
+            id: item.itemId,
+            name: item.itemName,
+            type: item.type,
+            unit: item.unit || 'Piece',
+            quantity: item.genericQuantity,
+            serialNumbers: []
+          });
         }
       }
     });
-    
-    // Add grouped serialized items to stock
-    Object.values(itemMap).forEach(item => {
-      stock.push(item);
-    });
-    
+
     return stock;
   };
   
@@ -353,7 +357,7 @@ const TechnicianInventoryModal = ({ isOpen, onClose, technician }) => {
                               )}
                             </div>
                             <div className="px-2 py-1 bg-purple-800/50 rounded-md text-xs">
-                              {item.quantity} pcs
+                              {item.quantity} {item.unit || 'pcs'}
                             </div>
                           </div>
                         ))}
