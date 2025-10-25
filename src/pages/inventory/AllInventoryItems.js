@@ -660,7 +660,7 @@ const handleRefresh = () => {
 };
 
 // Form for adding serialized product stock
-const SerializedStockForm = ({ item, onClose, showNotification, onSuccess, onPrepareForSaving }) => {
+export const SerializedStockForm = ({ item, onClose, showNotification, onSuccess, onPrepareForSaving }) => {
     const [error, setError] = useState(null);
     const [remark, setRemark] = useState('');
     const [stockEntries, setStockEntries] = useState([
@@ -1103,7 +1103,7 @@ const SerializedStockForm = ({ item, onClose, showNotification, onSuccess, onPre
   };
 
   // Form for adding generic product stock
-const GenericStockForm = ({ item, onClose, showNotification, onSuccess, onPrepareForSaving  }) => {
+export const GenericStockForm = ({ item, onClose, showNotification, onSuccess, onPrepareForSaving  }) => {
     const [error, setError] = useState(null);
     const [loading, setLoading] = useState(false);
     const [stockEntries, setStockEntries] = useState([

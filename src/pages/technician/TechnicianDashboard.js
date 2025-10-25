@@ -220,7 +220,7 @@ const handleStopProject = (project) => {
 };
 
 // कन्फर्मेशन के बाद पॉज़ का लॉजिक
-const confirmPauseProject = async (project) => {
+const confirmPauseProject = async (project, refresh = false) => {
   try {
     setLoading(true);
     
@@ -256,7 +256,7 @@ const confirmPauseProject = async (project) => {
       setPauseProjectRemark('');
       
       // Navigate back to home
-      handleTabChange('home');
+      handleTabChange('home', { refreshWorkOrders: true });
     } else {
       alert(data.message || 'Failed to pause project');
     }
@@ -453,11 +453,15 @@ const formatDate = (dateString) => {
 
 
    // Function to handle tab changes
-   const handleTabChange = (tab) => {
-    setActiveTab(tab);
-    // Store the active tab in sessionStorage
-    sessionStorage.setItem('technicianDashboardActiveTab', tab);
-  };
+const handleTabChange = async (tab, options = {}) => {
+  const { refreshWorkOrders = false } = options;
+  setActiveTab(tab);
+  sessionStorage.setItem('technicianDashboardActiveTab', tab);
+
+  if (tab === 'home' && refreshWorkOrders) {
+    await fetchWorkOrders(true);
+  }
+};
   
   // Load theme preference from localStorage on component mount
   useEffect(() => {
@@ -1639,6 +1643,30 @@ const fetchFreshWorkOrders = async () => {
         activeProject.statusHistory.length > 0 ?
         activeProject.statusHistory[activeProject.statusHistory.length - 1] : null;
 
+      const getUpdaterId = (entry) => {
+        if (!entry || !entry.updatedBy) return null;
+        if (typeof entry.updatedBy === 'string') return entry.updatedBy;
+        if (entry.updatedBy._id) return entry.updatedBy._id.toString();
+        return null;
+      };
+
+      const currentUserId = user?._id ? user._id.toString() : null;
+
+      const isTechnicianEntry = (entry) => {
+        const updaterId = getUpdaterId(entry);
+        return updaterId && currentUserId && updaterId === currentUserId;
+      };
+
+      const getUpdaterRoleLabel = (entry) => isTechnicianEntry(entry) ? 'Technician' : 'Manager';
+
+      const formatHistoryRemark = (entry) => {
+        if (!entry) return '';
+        if (entry.status === 'instruction') {
+          return entry.remark ? `Instruction: ${entry.remark}` : 'Manager shared a special instruction';
+        }
+        return entry.remark || `Status changed to ${entry.status}`;
+      };
+
       return (
         <>
           {/* Active Projects Card */}
@@ -1738,10 +1766,10 @@ const fetchFreshWorkOrders = async () => {
                     <div className="w-1 h-full bg-blue-400 rounded-full mr-3 float-left mt-1"></div>
                     <div className="ml-4">
                       <p className="text-sm font-medium text-gray-800">
-                        {recentUpdate.updatedBy && recentUpdate.updatedBy.toString() === user._id.toString() ? 'Technician' : 'Manager'}
+                        {getUpdaterRoleLabel(recentUpdate)}
                       </p>
                       <p className="text-xs text-gray-600">
-                        {recentUpdate.remark || `Status changed to ${recentUpdate.status}`}
+                        {formatHistoryRemark(recentUpdate)}
                       </p>
                     </div>
                   </div>
@@ -1833,7 +1861,7 @@ const fetchFreshWorkOrders = async () => {
        
         {/* Status history as chat messages */}
         {activeProject.statusHistory && activeProject.statusHistory.map((history, index) => {
-          const isTechnician = history.updatedBy && history.updatedBy.toString() === user._id.toString();
+          const isTechnician = isTechnicianEntry(history);
           return (
             <div
               key={index}
@@ -1853,7 +1881,7 @@ const fetchFreshWorkOrders = async () => {
                   </p>
                 </div>
                 <p className="text-sm">
-                  {history.remark || `Status changed to ${history.status}`}
+                  {formatHistoryRemark(history)}
                 </p>
                 <span className="text-xs opacity-70 flex justify-end">
                   {formatDate(history.updatedAt).split(',')[1]}

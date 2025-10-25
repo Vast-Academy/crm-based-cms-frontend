@@ -15,6 +15,8 @@ const rowBackgroundColors = {
 
 const WorkOrdersPage = () => {
   const { user } = useAuth();
+  const managerName = `${user?.firstName || 'Manager'} ${user?.lastName || ''}`.trim();
+  const canCancelWorkOrder = user?.role === 'manager' || user?.role === 'admin';
   const [workOrders, setWorkOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -29,6 +31,12 @@ const WorkOrdersPage = () => {
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [expandedRow, setExpandedRow] = useState(null);
   const [lastRefreshTime, setLastRefreshTime] = useState(0);
+  const [showCancelModal, setShowCancelModal] = useState(false);
+  const [showCancelConfirmModal, setShowCancelConfirmModal] = useState(false);
+  const [selectedCancelOrder, setSelectedCancelOrder] = useState(null);
+  const [cancelReason, setCancelReason] = useState('');
+  const [cancelError, setCancelError] = useState('');
+  const [cancelLoading, setCancelLoading] = useState(false);
   
   const fetchWorkOrders = async (forceFresh = false) => {
     try {
@@ -152,6 +160,77 @@ const fetchFreshWorkOrders = async (isBackground = false) => {
     console.log("Assigning order:", order);
     setSelectedOrder(order);
     setShowAssignModal(true);
+  };
+
+  const handleCancelClick = (order) => {
+    setSelectedCancelOrder(order);
+    setCancelReason('');
+    setCancelError('');
+    setShowCancelModal(true);
+    setShowCancelConfirmModal(false);
+  };
+
+  const closeCancelModals = () => {
+    setShowCancelModal(false);
+    setShowCancelConfirmModal(false);
+    setSelectedCancelOrder(null);
+    setCancelReason('');
+    setCancelError('');
+    setCancelLoading(false);
+  };
+
+  const proceedToCancelConfirmation = () => {
+    if (!cancelReason.trim()) {
+      setCancelError('Please provide a cancellation reason.');
+      return;
+    }
+    setCancelError('');
+    setShowCancelModal(false);
+    setShowCancelConfirmModal(true);
+  };
+
+  const handleCancelOrder = async () => {
+    if (!selectedCancelOrder) return;
+
+    try {
+      setCancelLoading(true);
+      setCancelError('');
+
+      const response = await fetch(SummaryApi.cancelWorkOrder.url, {
+        method: SummaryApi.cancelWorkOrder.method,
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          customerId: selectedCancelOrder.customerId,
+          orderId: selectedCancelOrder.orderId,
+          reason: cancelReason.trim()
+        })
+      });
+
+      const data = await response.json();
+
+      if (!data.success) {
+        throw new Error(data.message || 'Failed to cancel work order');
+      }
+
+      const updatedOrders = workOrders.filter(order =>
+        !(order.orderId === selectedCancelOrder.orderId && order.customerId === selectedCancelOrder.customerId)
+      );
+
+      setWorkOrders(updatedOrders);
+      applyFilters(updatedOrders, categoryFilter);
+      localStorage.setItem('workOrdersData', JSON.stringify(updatedOrders));
+      closeCancelModals();
+      await fetchFreshWorkOrders(true);
+      alert('Work order cancelled successfully.');
+    } catch (error) {
+      console.error('Error cancelling work order:', error);
+      setCancelError(error.message || 'Server error. Please try again.');
+    } finally {
+      setCancelLoading(false);
+    }
   };
   
   const handleAssignmentSuccess = (updatedOrder) => {
@@ -333,6 +412,9 @@ const fetchFreshWorkOrders = async (isBackground = false) => {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="font-medium text-gray-900">{order.customerName}</div>
+                          {order.customerFirmName && (
+                            <div className="text-xs text-gray-400">{order.customerFirmName}</div>
+                          )}
                           <div className="text-xs text-gray-400">{order.orderId}</div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
@@ -398,7 +480,7 @@ const fetchFreshWorkOrders = async (isBackground = false) => {
                               )}
                               
                               {/* Assignment button */}
-                              <div className="flex">
+                              <div className="flex gap-3 flex-wrap">
                                 <button 
                                   onClick={(e) => {
                                     e.stopPropagation();
@@ -409,6 +491,17 @@ const fetchFreshWorkOrders = async (isBackground = false) => {
                                   <FiUser className="mr-2" />
                                   Assign Engineer
                                 </button>
+                                {canCancelWorkOrder && (
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleCancelClick(order);
+                                    }}
+                                    className="inline-flex items-center px-4 py-1.5 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-red-500 hover:bg-red-600"
+                                  >
+                                    Cancel Work Order
+                                  </button>
+                                )}
                               </div>
                             </div>
                           </td>
@@ -450,6 +543,80 @@ const fetchFreshWorkOrders = async (isBackground = false) => {
         workOrder={selectedOrder}
         onSuccess={handleAssignmentSuccess}
       />
+
+      {/* Cancel Work Order Reason Modal */}
+      {canCancelWorkOrder && showCancelModal && selectedCancelOrder && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 p-4">
+          <div className="bg-white rounded-lg w-full max-w-md p-6">
+            <h3 className="text-lg font-semibold mb-4">Cancel Work Order</h3>
+            <p className="text-sm text-gray-600 mb-4">
+              Please provide a reason for cancelling work order <strong>{selectedCancelOrder.orderId}</strong>.
+            </p>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Cancellation Reason*
+            </label>
+            <textarea
+              value={cancelReason}
+              onChange={(e) => setCancelReason(e.target.value)}
+              rows={4}
+              className="w-full border rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-red-400"
+              placeholder="Enter cancellation reason..."
+            ></textarea>
+            {cancelError && (
+              <p className="text-sm text-red-600 mt-2">{cancelError}</p>
+            )}
+            <div className="mt-6 flex justify-end space-x-3">
+              <button
+                onClick={closeCancelModals}
+                className="px-4 py-2 bg-gray-200 rounded-md hover:bg-gray-300"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={proceedToCancelConfirmation}
+                className="px-4 py-2 bg-red-500 text-white rounded-md hover:bg-red-600"
+              >
+                OK
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Cancel Work Order Confirmation Modal */}
+      {canCancelWorkOrder && showCancelConfirmModal && selectedCancelOrder && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 p-4">
+          <div className="bg-white rounded-lg w-full max-w-md p-6">
+            <h3 className="text-lg font-semibold mb-4">Confirm Cancellation</h3>
+            <p className="mb-4 text-sm text-gray-700">
+              {managerName}, are you sure you want to cancel work order{' '}
+              <strong>{selectedCancelOrder.orderId}</strong> for {selectedCancelOrder.customerName}?
+            </p>
+            <p className="text-sm text-gray-600 mb-4">
+              Reason: <span className="font-medium text-gray-800">{cancelReason}</span>
+            </p>
+            {cancelError && (
+              <p className="text-sm text-red-600 mb-4">{cancelError}</p>
+            )}
+            <div className="flex justify-end space-x-3">
+              <button
+                onClick={closeCancelModals}
+                className="px-4 py-2 bg-gray-200 rounded-md hover:bg-gray-300"
+                disabled={cancelLoading}
+              >
+                No
+              </button>
+              <button
+                onClick={handleCancelOrder}
+                disabled={cancelLoading}
+                className={`px-4 py-2 rounded-md text-white ${cancelLoading ? 'bg-red-300 cursor-not-allowed' : 'bg-red-500 hover:bg-red-600'}`}
+              >
+                {cancelLoading ? 'Cancelling...' : 'Yes, Cancel'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -249,6 +249,14 @@ const SummaryApi = {
         url : `${backendDomain}/api/approve-order`,
         method: "post"
       },
+      cancelWorkOrder: {
+        url : `${backendDomain}/api/cancel-work-order`,
+        method: "post"
+      },
+      addManagerInstruction: {
+        url : `${backendDomain}/api/add-manager-instruction`,
+        method: "post"
+      },
       rejectBill: {
         url : `${backendDomain}/api/reject-bill`,
         method: "post"

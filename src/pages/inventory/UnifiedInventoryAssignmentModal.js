@@ -4,6 +4,7 @@ import Modal from '../../components/Modal';
 import SummaryApi from '../../common';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import { useNotification } from '../../context/NotificationContext';
+import { SerializedStockForm, GenericStockForm } from './AllInventoryItems';
 
 const UnifiedInventoryAssignmentModal = ({ isOpen, onClose, technician, onSuccess }) => {
   const { showNotification } = useNotification();
@@ -17,6 +18,12 @@ const UnifiedInventoryAssignmentModal = ({ isOpen, onClose, technician, onSucces
   const [showConfirmation, setShowConfirmation] = useState(false);
   const searchInputRef = useRef(null);
   const [selectedSerialNumbers, setSelectedSerialNumbers] = useState({});
+  const [showAddStockModal, setShowAddStockModal] = useState(false);
+  const [stockModalItem, setStockModalItem] = useState(null);
+  const [stockEntriesToSave, setStockEntriesToSave] = useState([]);
+  const [currentStockItem, setCurrentStockItem] = useState(null);
+  const [showStockSaveConfirmation, setShowStockSaveConfirmation] = useState(false);
+  const [stockSaveLoading, setStockSaveLoading] = useState(false);
 
   // Add states for serial number search dropdown
   const [matchingSerialNumbers, setMatchingSerialNumbers] = useState([]);
@@ -36,6 +43,12 @@ const UnifiedInventoryAssignmentModal = ({ isOpen, onClose, technician, onSucces
       setMatchingSerialNumbers([]);
       setIsDropdownOpen(false);
       setHighlightedIndex(-1);
+      setShowAddStockModal(false);
+      setStockModalItem(null);
+      setStockEntriesToSave([]);
+      setCurrentStockItem(null);
+      setShowStockSaveConfirmation(false);
+      setStockSaveLoading(false);
     }
   }, [isOpen]);
 
@@ -106,6 +119,31 @@ const UnifiedInventoryAssignmentModal = ({ isOpen, onClose, technician, onSucces
       ...prev,
       [productId]: serialNumber
     }));
+  };
+
+  const openAddStockModal = (product) => {
+    const normalizedItem = {
+      ...product,
+      itemType: product.type === 'serialized-product' ? 'serialized' :
+        product.type === 'generic-product' ? 'generic' : product.type
+    };
+    setStockModalItem(normalizedItem);
+    setShowAddStockModal(true);
+  };
+
+  const closeAddStockModal = () => {
+    setShowAddStockModal(false);
+    setStockModalItem(null);
+    setStockEntriesToSave([]);
+    setCurrentStockItem(null);
+    setShowStockSaveConfirmation(false);
+    setStockSaveLoading(false);
+  };
+
+  const handlePrepareForSaving = (entries, item) => {
+    setStockEntriesToSave(entries);
+    setCurrentStockItem(item);
+    setShowStockSaveConfirmation(true);
   };
 
   // Handle keyboard navigation for serial number dropdown
@@ -194,6 +232,45 @@ const UnifiedInventoryAssignmentModal = ({ isOpen, onClose, technician, onSucces
     }
   };
 
+  const handleSaveStock = async () => {
+    if (!currentStockItem || stockEntriesToSave.length === 0) {
+      setShowStockSaveConfirmation(false);
+      return;
+    }
+
+    try {
+      setStockSaveLoading(true);
+
+      for (const entry of stockEntriesToSave) {
+        const response = await fetch(SummaryApi.addInventoryStock.url, {
+          method: SummaryApi.addInventoryStock.method,
+          credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            itemId: currentStockItem.id,
+            ...entry
+          })
+        });
+
+        const data = await response.json();
+
+        if (!data.success) {
+          throw new Error(data.message || 'Failed to add stock');
+        }
+      }
+
+      showNotification('success', 'Stock added successfully');
+      closeAddStockModal();
+      await fetchProducts(true);
+    } catch (err) {
+      showNotification('error', err.message || 'Failed to add stock');
+    } finally {
+      setStockSaveLoading(false);
+    }
+  };
+
 
   // All products combined (for display)
   const allProducts = [...serializedProducts, ...genericProducts].map(product => ({
@@ -203,17 +280,30 @@ const UnifiedInventoryAssignmentModal = ({ isOpen, onClose, technician, onSucces
 
   // Filter products based on search term - includes both name and serial number search
   const filteredProducts = allProducts.filter(product => {
-    const query = searchTerm.toLowerCase();
-    // Search by product name
-    if (product.name.toLowerCase().includes(query)) {
-      return true;
-    }
-    // Search by serial number for serialized products
+    if (!searchTerm.trim()) return true;
+
+    const query = searchTerm.trim().toLowerCase();
+    const queryWords = query.split(/\s+/);
+
+    const nameMatch = queryWords.every(word =>
+      product.name?.toLowerCase().includes(word)
+    );
+    if (nameMatch) return true;
+
     if (product.type === 'serialized-product' && product.stock) {
-      return product.stock.some(stock =>
+      const serialMatch = product.stock.some(stock =>
         stock.serialNumber && stock.serialNumber.toLowerCase().includes(query)
       );
+      if (serialMatch) return true;
     }
+
+    if (product.category) {
+      const categoryMatch = queryWords.every(word =>
+        product.category.toLowerCase().includes(word)
+      );
+      if (categoryMatch) return true;
+    }
+
     return false;
   });
 
@@ -586,24 +676,40 @@ const UnifiedInventoryAssignmentModal = ({ isOpen, onClose, technician, onSucces
                                   ))}
                                 </select>
                               </div>
-                              <button
-                                onClick={() => handleSelectProduct(product)}
-                                disabled={!selectedSerialNumbers[product.id]}
-                                className="w-full py-2 px-4 bg-blue-500 hover:bg-blue-600 disabled:bg-gray-300 text-white rounded font-medium"
-                              >
-                                Add
-                              </button>
+                              <div className="flex flex-col sm:flex-row gap-2">
+                                <button
+                                  onClick={() => handleSelectProduct(product)}
+                                  disabled={!selectedSerialNumbers[product.id]}
+                                  className="flex-1 py-2 px-4 bg-blue-500 hover:bg-blue-600 disabled:bg-gray-300 text-white rounded font-medium"
+                                >
+                                  Add
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => openAddStockModal(product)}
+                                  className="flex-1 py-2 px-4 bg-green-500 hover:bg-green-600 text-white rounded font-medium"
+                                >
+                                  Add Stock
+                                </button>
+                              </div>
                             </div>
                           )}
 
                           {/* For generic products, show add button directly */}
                           {product.type === 'generic-product' && (
-                            <div className="mt-3">
+                            <div className="mt-3 flex flex-col sm:flex-row gap-2">
                               <button
                                 onClick={() => handleSelectProduct(product)}
-                                className="w-full py-2 px-4 bg-blue-500 hover:bg-blue-600 text-white rounded font-medium"
+                                className="flex-1 py-2 px-4 bg-blue-500 hover:bg-blue-600 text-white rounded font-medium"
                               >
                                 Add
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => openAddStockModal(product)}
+                                className="flex-1 py-2 px-4 bg-green-500 hover:bg-green-600 text-white rounded font-medium"
+                              >
+                                Add Stock
                               </button>
                             </div>
                           )}
@@ -775,6 +881,78 @@ const UnifiedInventoryAssignmentModal = ({ isOpen, onClose, technician, onSucces
           )}
         </>
       )}
+
+      {/* Add Stock Modal */}
+      <Modal
+        isOpen={showAddStockModal}
+        onClose={closeAddStockModal}
+        title={`Add Stock for ${stockModalItem?.name || ''}`}
+        size="lg"
+      >
+        {stockModalItem && (
+          stockModalItem.itemType === 'serialized' ? (
+            <SerializedStockForm
+              item={stockModalItem}
+              onClose={closeAddStockModal}
+              showNotification={showNotification}
+              onSuccess={async () => {
+                closeAddStockModal();
+                await fetchProducts(true);
+              }}
+              onPrepareForSaving={handlePrepareForSaving}
+            />
+          ) : stockModalItem.itemType === 'generic' ? (
+            <GenericStockForm
+              item={stockModalItem}
+              onClose={closeAddStockModal}
+              showNotification={showNotification}
+              onSuccess={async () => {
+                closeAddStockModal();
+                await fetchProducts(true);
+              }}
+              onPrepareForSaving={handlePrepareForSaving}
+            />
+          ) : (
+            <div className="p-6 text-center text-gray-500">
+              Stock cannot be added to this item type.
+            </div>
+          )
+        )}
+      </Modal>
+
+      {/* Confirm Save Stock Modal */}
+      <Modal
+        isOpen={showStockSaveConfirmation}
+        onClose={() => setShowStockSaveConfirmation(false)}
+        title="Confirm Stock Save"
+        size="md"
+      >
+        <div className="py-4">
+          <p className="text-center text-gray-600 mb-6">
+            {currentStockItem?.itemType === 'serialized' ? (
+              <>You are about to save <span className="font-bold">{stockEntriesToSave.length}</span> serial number{stockEntriesToSave.length !== 1 ? 's' : ''} for <span className="font-bold">{currentStockItem?.name}</span>.</>
+            ) : (
+              <>You are about to save <span className="font-bold">{stockEntriesToSave.reduce((sum, entry) => sum + Number(entry.quantity || 0), 0)}</span> {currentStockItem?.unit || 'items'} for <span className="font-bold">{currentStockItem?.name}</span>.</>
+            )}
+          </p>
+          <div className="flex justify-end space-x-3">
+            <button
+              onClick={() => setShowStockSaveConfirmation(false)}
+              className="px-4 py-2 border border-gray-300 rounded-md text-gray-700"
+              disabled={stockSaveLoading}
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleSaveStock}
+              disabled={stockSaveLoading}
+              className={`px-4 py-2 rounded-md text-white ${stockSaveLoading ? 'bg-green-300 cursor-not-allowed' : 'bg-green-500 hover:bg-green-600'}`}
+            >
+              {stockSaveLoading ? 'Saving...' : 'Save Stock'}
+            </button>
+          </div>
+        </div>
+      </Modal>
     </Modal>
   );
 };

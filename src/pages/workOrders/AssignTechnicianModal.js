@@ -150,6 +150,9 @@ useEffect(() => {
                 <p><span className="font-medium">Project:</span> {workOrder.projectType}</p>
               )}
               <p><span className="font-medium">Customer:</span> {workOrder.customerName}</p>
+              {workOrder.customerFirmName && (
+                <p className="text-sm text-gray-600"><span>Company:</span> {workOrder.customerFirmName}</p>
+              )}
               
               {workOrder.initialRemark && (
                 <p className="mt-2">

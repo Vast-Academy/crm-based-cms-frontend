@@ -23,6 +23,11 @@ const ProjectDetailsModal = ({ isOpen, onClose, project, onProjectApproved }) =>
   // New states for approve popup
   const [showApprovePopup, setShowApprovePopup] = useState(false);
   const [showApproveConfirmPopup, setShowApproveConfirmPopup] = useState(false);
+  const [statusHistory, setStatusHistory] = useState(project?.statusHistory || []);
+  const [showInstructionModal, setShowInstructionModal] = useState(false);
+  const [instructionText, setInstructionText] = useState('');
+  const [instructionError, setInstructionError] = useState('');
+  const [instructionLoading, setInstructionLoading] = useState(false);
 
   const modalContentRef = useRef(null);
 
@@ -30,6 +35,10 @@ const ProjectDetailsModal = ({ isOpen, onClose, project, onProjectApproved }) =>
     if (project && project.billingInfo) {
       console.log('Debug: project.billingInfo:', project.billingInfo);
     }
+  }, [project]);
+  
+  useEffect(() => {
+    setStatusHistory(project?.statusHistory || []);
   }, [project]);
   
   useEffect(() => {
@@ -90,7 +99,8 @@ const ProjectDetailsModal = ({ isOpen, onClose, project, onProjectApproved }) =>
       console.log("Status History:", project.statusHistory);
     }
   }, [project]);
-  
+  const canSendInstruction = user && ['manager', 'admin'].includes(user.role);
+
   if (!isOpen || !project) return null;
   
   const formatDate = (dateString) => {
@@ -175,16 +185,16 @@ const ProjectDetailsModal = ({ isOpen, onClose, project, onProjectApproved }) =>
   };
 
   const getLatestRemark = () => {
-    if (project.statusHistory && project.statusHistory.length > 0) {
-      const latestEntry = project.statusHistory[0];
+    if (statusHistory && statusHistory.length > 0) {
+      const latestEntry = statusHistory[0];
       return latestEntry.remark || 'No remark provided';
     }
     return 'No status updates available';
   };
   
   const getCompletionEntry = () => {
-    if (project.statusHistory) {
-      return project.statusHistory.find(entry => 
+    if (statusHistory) {
+      return statusHistory.find(entry => 
         entry.status === 'completed' || entry.status === 'pending-approval'
       );
     }
@@ -203,6 +213,10 @@ const ProjectDetailsModal = ({ isOpen, onClose, project, onProjectApproved }) =>
         return 'bg-orange-100 text-orange-800';
       case 'completed':
         return 'bg-green-100 text-green-800';
+      case 'cancelled':
+        return 'bg-red-100 text-red-800';
+      case 'instruction':
+        return 'bg-indigo-100 text-indigo-800';
       default:
         return 'bg-gray-100 text-gray-800';
     }
@@ -218,6 +232,45 @@ const ProjectDetailsModal = ({ isOpen, onClose, project, onProjectApproved }) =>
       return project.bills.some(bill => bill.status === 'rejected');
     }
     return false;
+  };
+
+  const handleInstructionSubmit = async () => {
+    if (!instructionText.trim()) {
+      setInstructionError('Instruction is required');
+      return;
+    }
+
+    try {
+      setInstructionLoading(true);
+      setInstructionError('');
+
+      const response = await fetch(SummaryApi.addManagerInstruction.url, {
+        method: SummaryApi.addManagerInstruction.method,
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          customerId: project.customerId,
+          orderId: project.orderId,
+          instruction: instructionText.trim()
+        })
+      });
+
+      const data = await response.json();
+
+      if (!data.success) {
+        throw new Error(data.message || 'Failed to send instruction');
+      }
+
+      setStatusHistory(data.data.statusHistory || []);
+      setInstructionText('');
+      setShowInstructionModal(false);
+    } catch (err) {
+      setInstructionError(err.message || 'Server error. Please try again.');
+    } finally {
+      setInstructionLoading(false);
+    }
   };
   
   return (
@@ -358,43 +411,61 @@ const ProjectDetailsModal = ({ isOpen, onClose, project, onProjectApproved }) =>
           )}
           
           {/* Status History */}
-          {project.statusHistory && project.statusHistory.length > 0 && (
-  <div className="mb-6">
-    <h3 className="text-md font-medium mb-3">Status History</h3>
-    
-    <div className="bg-white border rounded-lg p-4">
-      <div className="space-y-4">
-        {/* Sort the statusHistory array by date (newest first) before rendering */}
-        {[...project.statusHistory]
-          .sort((a, b) => new Date(a.updatedAt) - new Date(b.updatedAt))
-          .map((history, index) => (
-            <div key={index} className="border-l-2 border-blue-500 pl-4 pb-4">
-              <div className="flex justify-between">
-                <span className={`px-2 py-1 rounded-full text-xs capitalize ${getStatusBadge(history.status)}`}>
-                  {history.status}
-                </span>
-                <span className="text-sm text-gray-500">{formatDate(history.updatedAt)}</span>
-              </div>
-              {history.remark && (
-                <p className="mt-2 text-sm">{history.remark}</p>
-              )}
-              {history.updatedBy && (
-                <p className="mt-1 text-xs text-gray-500">
-                  By: {
-                    history.updatedBy.firstName
-                      ? `${history.updatedBy.firstName} ${history.updatedBy.lastName || ''}`
-                      : history.updatedBy._id
-                        ? `User (ID: ${history.updatedBy._id})`
-                        : 'System'
-                  }
-                </p>
+          <div className="mb-6">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-md font-medium">Status History</h3>
+              {canSendInstruction && (
+                <button
+                  onClick={() => {
+                    setInstructionText('');
+                    setInstructionError('');
+                    setShowInstructionModal(true);
+                  }}
+                  className="px-3 py-1.5 rounded-md text-sm font-medium bg-indigo-500 text-white hover:bg-indigo-600"
+                >
+                  Manager Special Instruction
+                </button>
               )}
             </div>
-          ))}
-      </div>
-    </div>
-  </div>
-)}
+            
+            <div className="bg-white border rounded-lg p-4">
+              {statusHistory && statusHistory.length > 0 ? (
+                <div className="space-y-4">
+                  {[...statusHistory]
+                    .sort((a, b) => new Date(a.updatedAt) - new Date(b.updatedAt))
+                    .map((history, index) => (
+                      <div key={index} className="border-l-2 border-blue-500 pl-4 pb-4">
+                        <div className="flex justify-between">
+                          <span className={`px-2 py-1 rounded-full text-xs capitalize ${getStatusBadge(history.status)}`}>
+                            {history.status === 'instruction' ? 'Instruction' : history.status}
+                          </span>
+                          <span className="text-sm text-gray-500">{formatDate(history.updatedAt)}</span>
+                        </div>
+                        {history.status === 'instruction' && (
+                          <p className="mt-2 text-xs font-medium text-indigo-700">Manager Special Instruction</p>
+                        )}
+                        {history.remark && (
+                          <p className="mt-2 text-sm whitespace-pre-line">{history.remark}</p>
+                        )}
+                        {history.updatedBy && (
+                          <p className="mt-1 text-xs text-gray-500">
+                            By: {
+                              history.updatedBy.firstName
+                                ? `${history.updatedBy.firstName} ${history.updatedBy.lastName || ''}`
+                                : history.updatedBy._id
+                                  ? `User (ID: ${history.updatedBy._id})`
+                                  : 'System'
+                            }
+                          </p>
+                        )}
+                      </div>
+                    ))}
+                </div>
+              ) : (
+                <p className="text-sm text-gray-500">No status updates available yet.</p>
+              )}
+            </div>
+          </div>
           
           {/* Payment & Billing Information */}
 {project.bills && project.bills.length > 0 && (
@@ -785,6 +856,52 @@ const ProjectDetailsModal = ({ isOpen, onClose, project, onProjectApproved }) =>
                     ) : (
                       'Yes'
                     )}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Instruction Modal */}
+          {showInstructionModal && (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 p-4">
+              <div className="bg-white rounded-lg shadow-lg w-full max-w-md p-6">
+                <h3 className="text-lg font-semibold mb-4">Manager Special Instruction</h3>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Instruction*
+                </label>
+                <textarea
+                  value={instructionText}
+                  onChange={(e) => setInstructionText(e.target.value)}
+                  rows={4}
+                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 ${
+                    instructionError ? 'border-red-300 focus:ring-red-300' : 'focus:ring-indigo-500'
+                  }`}
+                  placeholder="Write your instruction for the technician..."
+                />
+                {instructionError && (
+                  <p className="text-sm text-red-600 mt-2">{instructionError}</p>
+                )}
+                <div className="mt-6 flex justify-end space-x-3">
+                  <button
+                    onClick={() => {
+                      setShowInstructionModal(false);
+                      setInstructionText('');
+                      setInstructionError('');
+                    }}
+                    className="px-4 py-2 bg-gray-200 rounded-md hover:bg-gray-300"
+                    disabled={instructionLoading}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleInstructionSubmit}
+                    disabled={instructionLoading}
+                    className={`px-4 py-2 text-white rounded-md ${
+                      instructionLoading ? 'bg-indigo-300 cursor-not-allowed' : 'bg-indigo-500 hover:bg-indigo-600'
+                    }`}
+                  >
+                    {instructionLoading ? 'Sending...' : 'Send'}
                   </button>
                 </div>
               </div>
