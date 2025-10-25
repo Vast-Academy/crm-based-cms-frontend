@@ -79,6 +79,7 @@ export default function AddContactForm({ initialPhone = '', initialType = 'lead'
       { value: "CCTV Camera", label: "CCTV Camera" },
       { value: "Attendance System", label: "Attendance System" },
       { value: "Safe and Locks", label: "Safe and Locks" },
+      { value: "Lift & Elevator Solutions", label: "Lift & Elevator Solutions" },
       { value: "Home/Office Automation", label: "Home/Office Automation" },
       { value: "IT & Networking Services", label: "IT & Networking Services" },
       { value: "Software & Website Development", label: "Software & Website Development" },
