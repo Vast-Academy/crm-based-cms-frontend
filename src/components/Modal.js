@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react';
 import { FiX } from 'react-icons/fi';
 
-const Modal = ({ isOpen, onClose, title, children, size = 'md' }) => {
+const Modal = ({ isOpen, onClose, title, children, size = 'md', zIndex = 'z-50' }) => {
   // Close modal when Escape key is pressed
   useEffect(() => {
     const handleEsc = (event) => {
@@ -48,7 +48,7 @@ const Modal = ({ isOpen, onClose, title, children, size = 'md' }) => {
   };
   
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div className={`fixed inset-0 ${zIndex} flex items-center justify-center p-4`}>
       {/* Background overlay */}
       <div
         className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"

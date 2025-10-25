@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { FiArrowRight, FiX, FiPackage } from 'react-icons/fi';
 import SummaryApi from '../../common';
 
-const TechnicianInventoryModal = ({ isOpen, onClose, technician }) => {
+const TechnicianInventoryModal = ({ isOpen, onClose, technician, onAssignInventory }) => {
   const [transfers, setTransfers] = useState([]);
   const [currentInventory, setCurrentInventory] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -253,7 +253,7 @@ const TechnicianInventoryModal = ({ isOpen, onClose, technician }) => {
   }
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto">
+    <div className="fixed inset-0 z-[60] overflow-y-auto">
       {/* Modal backdrop */}
       <div className="fixed inset-0 bg-black opacity-50" onClick={onClose}></div>
       
@@ -276,36 +276,48 @@ const TechnicianInventoryModal = ({ isOpen, onClose, technician }) => {
 
           {/* Filter Buttons at top */}
           <div className="border-b">
-            <div className="flex px-6 py-2">
-              <button 
-                onClick={() => setFilterType('current')}
-                className={`px-4 py-2 rounded-full text-sm font-medium mr-2 ${
-                  filterType === 'current' 
-                    ? 'bg-blue-500 text-white' 
-                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                }`}
+            <div className="flex justify-between items-center px-6 py-2">
+              {/* Left side - Filter buttons */}
+              <div className="flex">
+                <button
+                  onClick={() => setFilterType('current')}
+                  className={`px-4 py-2 rounded-full text-sm font-medium mr-2 ${
+                    filterType === 'current'
+                      ? 'bg-blue-500 text-white'
+                      : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                  }`}
+                >
+                  Current Stock
+                </button>
+                <button
+                  onClick={() => setFilterType('assigned')}
+                  className={`px-4 py-2 rounded-full text-sm font-medium mr-2 ${
+                    filterType === 'assigned'
+                      ? 'bg-blue-500 text-white'
+                      : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                  }`}
+                >
+                  Assigned
+                </button>
+                <button
+                  onClick={() => setFilterType('returned')}
+                  className={`px-4 py-2 rounded-full text-sm font-medium ${
+                    filterType === 'returned'
+                      ? 'bg-blue-500 text-white'
+                      : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                  }`}
+                >
+                  Returned
+                </button>
+              </div>
+
+              {/* Right side - Assign Inventory button */}
+              <button
+                onClick={() => onAssignInventory && onAssignInventory(technician)}
+                className="px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600 flex items-center text-sm font-medium"
               >
-                Current Stock
-              </button>
-              <button 
-                onClick={() => setFilterType('assigned')}
-                className={`px-4 py-2 rounded-full text-sm font-medium mr-2 ${
-                  filterType === 'assigned' 
-                    ? 'bg-blue-500 text-white' 
-                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                }`}
-              >
-                Assigned
-              </button>
-              <button 
-                onClick={() => setFilterType('returned')}
-                className={`px-4 py-2 rounded-full text-sm font-medium ${
-                  filterType === 'returned' 
-                    ? 'bg-blue-500 text-white' 
-                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                }`}
-              >
-                Returned
+                <FiPackage className="mr-2" />
+                Assign Inventory
               </button>
             </div>
           </div>

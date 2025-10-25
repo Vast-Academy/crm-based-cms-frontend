@@ -20,11 +20,10 @@ const TechnicianUsers = () => {
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [selectedTechnicianId, setSelectedTechnicianId] = useState(null);
   
-  // States for expanded rows and inventory assignment
-  const [expandedTechnician, setExpandedTechnician] = useState(null);
+  // States for inventory assignment
   const [showAssignInventoryModal, setShowAssignInventoryModal] = useState(false);
   const [selectedTechnician, setSelectedTechnician] = useState(null);
-  
+
   // New state for technician inventory modal
   const [showInventoryModal, setShowInventoryModal] = useState(false);
   const [selectedTechnicianForInventory, setSelectedTechnicianForInventory] = useState(null);
@@ -35,10 +34,6 @@ const TechnicianUsers = () => {
   // Cache staleness time - 15 minutes
   const CACHE_STALENESS_TIME = 15 * 60 * 1000;
 
-  const handleRowClick = (technicianId) => {
-    setExpandedTechnician(expandedTechnician === technicianId ? null : technicianId);
-  };
-  
   const fetchTechnicians = async (forceFresh = false) => {
     try {
       // Get branch from URL params first, then fallback to user.selectedBranch
@@ -323,11 +318,9 @@ const TechnicianUsers = () => {
                 <tbody className="bg-white divide-y divide-gray-200">
                   {filteredTechnicians.map((technician, index) => (
                     <React.Fragment key={technician._id}>
-                      <tr 
-                        className={`hover:bg-gray-50 cursor-pointer ${
-                          expandedTechnician === technician._id ? 'bg-gray-50' : ''
-                        }`}
-                        onClick={() => handleRowClick(technician._id)}
+                      <tr
+                        className="hover:bg-gray-50 cursor-pointer"
+                        onClick={() => handleViewDetails(technician._id)}
                       >
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="w-8 h-8 rounded-full bg-pink-600 flex items-center justify-center text-white font-medium">
@@ -365,53 +358,6 @@ const TechnicianUsers = () => {
                           </span>
                         </td>
                       </tr>
-                      
-                      {/* Expanded row with action buttons */}
-                      {expandedTechnician === technician._id && (
-                        <tr>
-                          <td colSpan="5" className="px-6 py-4 bg-gray-50 border-b">
-                            <div className="flex space-x-4">
-                              <button 
-                                className="px-4 py-1.5 bg-blue-500 text-white rounded-md hover:bg-blue-600 flex items-center text-sm"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleViewDetails(technician._id);
-                                }}
-                              >
-                                <FiUser className="mr-2" />
-                                View Details
-                              </button>
-                              
-                              {user.role === 'manager' && (
-                                <>
-                                  <button 
-                                    className="px-4 py-1.5 bg-green-500 text-white rounded-md hover:bg-green-600 flex items-center text-sm"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleAssignInventory(technician);
-                                    }}
-                                  >
-                                    <FiPackage className="mr-2" />
-                                    Assign Inventory
-                                  </button>
-                                  
-                                  {/* View Inventory button */}
-                                  <button 
-                                    className="px-4 py-1.5 bg-purple-500 text-white rounded-md hover:bg-purple-600 flex items-center text-sm"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleViewInventory(technician);
-                                    }}
-                                  >
-                                    <FiList className="mr-2" />
-                                    View Inventory
-                                  </button>
-                                </>
-                              )}
-                            </div>
-                          </td>
-                        </tr>
-                      )}
                     </React.Fragment>
                   ))}
                 </tbody>
@@ -422,7 +368,7 @@ const TechnicianUsers = () => {
       </div>
 
       {/* Add the TechnicianDetailModal */}
-      <TechnicianDetailModal 
+      <TechnicianDetailModal
         isOpen={showDetailModal}
         onClose={() => setShowDetailModal(false)}
         technicianId={selectedTechnicianId}
@@ -430,6 +376,14 @@ const TechnicianUsers = () => {
           // Invalidate cache
           localStorage.removeItem('technicianUsersData');
           fetchFreshTechnicians();
+        }}
+        onAssignInventory={(technician) => {
+          // Don't close detail modal, just open assign inventory modal
+          handleAssignInventory(technician);
+        }}
+        onViewInventory={(technician) => {
+          // Don't close detail modal, just open view inventory modal
+          handleViewInventory(technician);
         }}
       />
       
@@ -459,6 +413,10 @@ const TechnicianUsers = () => {
           isOpen={showInventoryModal}
           onClose={() => setShowInventoryModal(false)}
           technician={selectedTechnicianForInventory}
+          onAssignInventory={(technician) => {
+            // Open assign inventory modal when button is clicked in inventory modal
+            handleAssignInventory(technician);
+          }}
         />
       )}
     </div>

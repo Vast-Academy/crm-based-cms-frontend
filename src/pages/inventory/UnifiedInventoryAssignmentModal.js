@@ -573,6 +573,7 @@ const UnifiedInventoryAssignmentModal = ({ isOpen, onClose, technician, onSucces
       onClose={onClose}
       title={`Assign Inventory to ${technician?.firstName} ${technician?.lastName}`}
       size="xl"
+      zIndex="z-[70]"
     >
       {error && (
         <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
@@ -888,6 +889,7 @@ const UnifiedInventoryAssignmentModal = ({ isOpen, onClose, technician, onSucces
         onClose={closeAddStockModal}
         title={`Add Stock for ${stockModalItem?.name || ''}`}
         size="lg"
+        zIndex="z-[80]"
       >
         {stockModalItem && (
           stockModalItem.itemType === 'serialized' ? (
@@ -926,6 +928,7 @@ const UnifiedInventoryAssignmentModal = ({ isOpen, onClose, technician, onSucces
         onClose={() => setShowStockSaveConfirmation(false)}
         title="Confirm Stock Save"
         size="md"
+        zIndex="z-[90]"
       >
         <div className="py-4">
           <p className="text-center text-gray-600 mb-6">

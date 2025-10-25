@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { FiEdit2, FiEye } from 'react-icons/fi';
+import { FiEdit2, FiEye, FiPackage, FiList } from 'react-icons/fi';
 import SummaryApi from '../../common';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import { useAuth } from '../../context/AuthContext';
@@ -7,7 +7,7 @@ import Modal from '../../components/Modal';
 import ProjectDetailsModal from '../manager/ProjectDetailsModal';
 import EditTechnicianModal from '../users/EditTechnicianModal';
 
-const TechnicianDetailModal = ({ isOpen, onClose, technicianId, onTechnicianUpdated }) => {
+const TechnicianDetailModal = ({ isOpen, onClose, technicianId, onTechnicianUpdated, onAssignInventory, onViewInventory }) => {
   const { user } = useAuth();
   const [technician, setTechnician] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -190,6 +190,7 @@ const handleTechnicianUpdated = () => {
       onClose={onClose} 
       title="Technician Details"
       size="xl"
+      zIndex="z-[40]"
     >
       {loading && !technician ? (
         <div className="p-6 flex justify-center">
@@ -276,8 +277,31 @@ const handleTechnicianUpdated = () => {
           {/* Projects panel - Right side */}
           <div className="lg:col-span-2 bg-white rounded-lg overflow-hidden border border-gray-200">
   <div className="p-6">
-    <h2 className="text-xl font-semibold mb-6">Projects</h2>
-    
+    <div className="flex justify-between items-center mb-6">
+      <h2 className="text-xl font-semibold">Projects</h2>
+
+      {/* Inventory Action Buttons */}
+      {user.role === 'manager' && (
+        <div className="flex space-x-3">
+          <button
+            className="px-4 py-1.5 bg-green-500 text-white rounded-md hover:bg-green-600 flex items-center text-sm"
+            onClick={() => onAssignInventory && onAssignInventory(technician)}
+          >
+            <FiPackage className="mr-2" />
+            Assign Inventory
+          </button>
+
+          <button
+            className="px-4 py-1.5 bg-purple-500 text-white rounded-md hover:bg-purple-600 flex items-center text-sm"
+            onClick={() => onViewInventory && onViewInventory(technician)}
+          >
+            <FiList className="mr-2" />
+            View Inventory
+          </button>
+        </div>
+      )}
+    </div>
+
     {/* Projects table */}
     {projectsData.inProgressProjects.length === 0 && 
      projectsData.pendingApprovalProjects.length === 0 && 
