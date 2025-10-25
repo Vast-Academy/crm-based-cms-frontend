@@ -564,7 +564,7 @@ const getGroupedItems = () => {
     return `upi://pay?pa=${upiId}&pn=Your%20Company&am=${amount}&tn=${purpose}`;
   };
 
-  // Handle Share QR Code - Try to share image + message together
+  // Handle Share QR Code - Auto-copy message + Share QR image
   const handleShareQR = async () => {
     try {
       const canvas = document.getElementById('qr-code-canvas');
@@ -590,20 +590,38 @@ const getGroupedItems = () => {
           `Order ID: ${workOrder.orderId}\n\n` +
           `Please scan the QR code to complete the payment.`;
 
-        // Try Web Share API with both file and text
+        // STEP 1: Copy message to clipboard FIRST
+        let messageCopied = false;
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          try {
+            await navigator.clipboard.writeText(message);
+            messageCopied = true;
+            console.log('✅ Message copied to clipboard');
+          } catch (err) {
+            console.error('Clipboard copy failed:', err);
+          }
+        }
+
+        // STEP 2: Share QR image
         if (navigator.share) {
           try {
             // Check if we can share files
             if (navigator.canShare && navigator.canShare({ files: [file] })) {
-              // Try sharing with BOTH text and file
+              // Share QR image (with text attempt, but might be ignored)
               await navigator.share({
                 title: 'Payment QR Code',
                 text: message,
                 files: [file]
               });
-              console.log('✅ Share successful with text + file');
+
+              // Show helpful message after share
+              if (messageCopied) {
+                setTimeout(() => {
+                  alert('✅ QR shared!\n💡 Message copied to clipboard - just PASTE it!');
+                }, 300);
+              }
             } else {
-              // Can't share files, fallback to text only + download
+              // Can't share files, fallback to download
               const url = URL.createObjectURL(blob);
               const link = document.createElement('a');
               link.download = `payment-qr-${workOrder.orderId}.png`;
@@ -615,35 +633,37 @@ const getGroupedItems = () => {
                 text: message
               });
 
-              alert('⚠️ QR downloaded! Please attach it manually.\n(Your browser/app doesn\'t support auto-attach)');
+              if (messageCopied) {
+                alert('✅ Message shared!\n💡 QR downloaded - please attach it manually.');
+              }
             }
           } catch (err) {
             if (err.name !== 'AbortError') {
               console.error('Share failed:', err);
-              // Fallback - download + copy message
+              // Fallback - download QR
               const url = URL.createObjectURL(blob);
               const link = document.createElement('a');
               link.download = `payment-qr-${workOrder.orderId}.png`;
               link.href = url;
               link.click();
 
-              if (navigator.clipboard) {
-                await navigator.clipboard.writeText(message);
-                alert('⚠️ Message copied! QR downloaded!\nPlease paste and attach manually.');
+              if (messageCopied) {
+                alert('✅ Message copied!\n✅ QR downloaded!\n💡 Paste message and attach QR manually.');
               }
             }
           }
         } else {
-          // No Web Share API - download + copy
+          // No Web Share API - download QR
           const url = URL.createObjectURL(blob);
           const link = document.createElement('a');
           link.download = `payment-qr-${workOrder.orderId}.png`;
           link.href = url;
           link.click();
 
-          if (navigator.clipboard) {
-            await navigator.clipboard.writeText(message);
-            alert('⚠️ Message copied! QR downloaded!\nPlease paste and attach manually.');
+          if (messageCopied) {
+            alert('✅ Message copied to clipboard!\n✅ QR downloaded!\n💡 Paste message and attach QR manually.');
+          } else {
+            alert('✅ QR downloaded!\n⚠️ Please copy the payment message manually.');
           }
         }
       });
@@ -2149,8 +2169,13 @@ const getGroupedItems = () => {
     </div>
   )}
   
- {/* Updated payment-options buttons */}
-{currentStep === 'payment-options' && (
+ {/* Updated payment-options buttons - Only show when payment details are filled */}
+{currentStep === 'payment-options' &&
+ paymentMethod &&
+ ((paymentMethod === 'cash' && paidAmount > 0) ||
+  (paymentMethod === 'upi' && showQRCode && paymentFormData.upiTransactionId) ||
+  (paymentMethod === 'bank_transfer' && selectedBankAccount && paymentFormData.utrNumber && paymentFormData.receivedAmount) ||
+  (paymentMethod === 'cheque' && paymentFormData.chequeNumber && paymentFormData.chequeAmount)) && (
   <div className="flex space-x-3">
     <button
       className="flex-1 py-2 bg-gray-200 rounded-md"
@@ -2162,14 +2187,7 @@ const getGroupedItems = () => {
     <button
       className="flex-1 py-2 bg-green-500 text-white rounded-md flex items-center justify-center disabled:bg-gray-400"
       onClick={showPaymentConfirmation}
-      disabled={
-        loading ||
-        !paymentMethod ||
-        (paymentMethod === 'upi' && (!showQRCode || !paymentFormData.upiTransactionId)) ||
-        (paymentMethod === 'bank_transfer' && (!selectedBankAccount || !paymentFormData.utrNumber || !paymentFormData.receivedAmount)) ||
-        (paymentMethod === 'cheque' && (!paymentFormData.chequeNumber || !paymentFormData.chequeAmount)) ||
-        (paymentMethod === 'cash' && paidAmount <= 0)
-      }
+      disabled={loading}
     >
       {loading ? 'Processing...' : (
         <>
