@@ -162,10 +162,51 @@ const usePushNotifications = () => {
       if (!messaging) return;
 
       unsubscribe = onMessage(messaging, (payload) => {
-        const { title, body } = payload.notification || {};
+        const title =
+          payload.notification?.title ||
+          payload.data?.title ||
+          'Notification';
+        const body =
+          payload.notification?.body ||
+          payload.data?.body ||
+          '';
+        const iconPath =
+          payload.notification?.icon ||
+          payload.data?.icon ||
+          '/logo192.png';
+        const icon = iconPath.startsWith('http')
+          ? iconPath
+          : `${window.location.origin}${iconPath.startsWith('/') ? '' : '/'}${iconPath}`;
+
         const message = [title, body].filter(Boolean).join(' - ');
         if (message) {
           showNotification('info', message);
+        }
+
+        if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+          try {
+            const desktopNotification = new Notification(title, {
+              body,
+              icon,
+              tag: payload.data?.tag || payload.data?.orderId,
+              data: payload.data,
+            });
+
+            desktopNotification.onclick = () => {
+              window.focus();
+              const destination = payload.data?.url;
+              if (destination) {
+                if (destination.startsWith('http')) {
+                  window.location.href = destination;
+                } else {
+                  window.location.href = `${window.location.origin}${destination.startsWith('/') ? '' : '/'}${destination}`;
+                }
+              }
+              desktopNotification.close();
+            };
+          } catch (error) {
+            console.error('Foreground notification failed', error);
+          }
         }
       });
     })();

@@ -43,6 +43,13 @@ const getStoredConfig = async () => {
 
 let messagingInstance = null;
 
+const resolveAssetUrl = (path) => {
+  if (!path) return `${self.location.origin}/logo192.png`;
+  if (path.startsWith('http')) return path;
+  if (path.startsWith('/')) return `${self.location.origin}${path}`;
+  return `${self.location.origin}/${path}`;
+};
+
 const ensureMessaging = async (config) => {
   if (messagingInstance) {
     return messagingInstance;
@@ -59,15 +66,28 @@ const ensureMessaging = async (config) => {
   messagingInstance = firebase.messaging();
 
   messagingInstance.onBackgroundMessage((payload) => {
-    const notificationTitle = payload.notification?.title || 'Notification';
+    const notificationTitle =
+      payload.notification?.title ||
+      payload.data?.title ||
+      'Notification';
+    const body =
+      payload.notification?.body ||
+      payload.data?.body ||
+      '';
+    const icon = resolveAssetUrl(
+      payload.notification?.icon ||
+      payload.data?.icon
+    );
+
     const notificationOptions = {
-      body: payload.notification?.body,
+      body,
       data: {
         ...payload.data,
         url: payload.data?.url || '/dashboard',
       },
-      icon: '/logo192.png',
-      badge: '/logo192.png',
+      icon,
+      badge: resolveAssetUrl('/logo192.png'),
+      tag: payload.data?.tag || payload.data?.orderId || undefined,
     };
 
     self.registration.showNotification(notificationTitle, notificationOptions);
