@@ -479,8 +479,16 @@ const SummaryApi = {
         url: `${backendDomain}/api/upload-profile-picture`,
         method: "post"
       },
-      deleteProfilePicture: {
+    deleteProfilePicture: {
         url: `${backendDomain}/api/delete-profile-picture`,
+        method: "delete"
+      },
+      registerNotificationToken: {
+        url: `${backendDomain}/api/notifications/token`,
+        method: "post"
+      },
+      removeNotificationToken: {
+        url: `${backendDomain}/api/notifications/token`,
         method: "delete"
       },
 

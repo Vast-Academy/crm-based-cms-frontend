@@ -17,9 +17,11 @@ import UserSettingsModal from '../pages/users/UserSettingsModal';
 import ChangeProfilePictureModal from './ChangeProfilePictureModal';
 import ImagePreviewModal from './ImagePreviewModal';
 // import GlobalSearch from './GlobalSearch';
+import usePushNotifications from '../hooks/usePushNotifications';
 
 const DashboardLayout = () => {
   const { user, logout } = useAuth();
+  usePushNotifications();
   const location = useLocation();
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
