@@ -1186,7 +1186,7 @@ const fetchFreshWorkOrders = async () => {
                   {user?.firstName}
                 </span> */}
                 <span className="text-sm text-gray-200 capitalize">
-                  {getDisplayRole(user?.role) || 'User'}
+                  {user?.firstName} 
                 </span>
               </div>
 

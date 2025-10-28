@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import { FiBox, FiX, FiSave, FiSearch, FiTrash2, FiUpload } from 'react-icons/fi';
+import React, { useState, useEffect, useRef } from 'react';
+import { FiBox, FiX, FiSave, FiSearch, FiTrash2, FiUpload, FiFilter, FiChevronDown } from 'react-icons/fi';
+import { LuArrowUpDown, LuArrowDownUp } from 'react-icons/lu';
 import SummaryApi from '../../common';
 import { useNotification } from '../../context/NotificationContext';
 import { useAuth } from '../../context/AuthContext';
@@ -34,6 +35,14 @@ const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
 const [itemToDelete, setItemToDelete] = useState(null);
 const [isImportModalOpen, setIsImportModalOpen] = useState(false);
 
+  // Sorting and filter states
+  const [sortOrder, setSortOrder] = useState('asc');
+  const [sortField, setSortField] = useState('name');
+  const [isSortDropdownOpen, setIsSortDropdownOpen] = useState(false);
+  const [isFilterDropdownOpen, setIsFilterDropdownOpen] = useState(false);
+  const sortDropdownRef = useRef(null);
+  const filterDropdownRef = useRef(null);
+
   // New item form state
   const [newItem, setNewItem] = useState({
     type: 'serialized-product',
@@ -50,6 +59,23 @@ const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   // Fetch inventory items on component mount
   useEffect(() => {
     fetchInventoryItems();
+  }, []);
+
+  // Close dropdowns when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (sortDropdownRef.current && !sortDropdownRef.current.contains(event.target)) {
+        setIsSortDropdownOpen(false);
+      }
+      if (filterDropdownRef.current && !filterDropdownRef.current.contains(event.target)) {
+        setIsFilterDropdownOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
   }, []);
 
   // Fetch all inventory items from API
@@ -234,10 +260,56 @@ const handleEditItemChange = (e) => {
   // Handle input change for new item form
   const handleItemInputChange = (e) => {
     const { name, value } = e.target;
-    setNewItem({
-      ...newItem,
-      [name]: value
-    });
+
+    // If changing type to generic-product, set warranty to 'No Warranty'
+    if (name === 'type' && value === 'generic-product') {
+      setNewItem({
+        ...newItem,
+        [name]: value,
+        warranty: 'No Warranty'
+      });
+    } else {
+      setNewItem({
+        ...newItem,
+        [name]: value
+      });
+    }
+  };
+
+  // Handle sort option selection
+  const handleSortSelection = (field) => {
+    if (sortField === field) {
+      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortOrder('asc');
+    }
+    setIsSortDropdownOpen(false);
+  };
+
+  // Get display text for sort field
+  const getSortFieldLabel = (field) => {
+    switch (field) {
+      case 'name': return 'Name';
+      case 'warranty': return 'Warranty';
+      case 'mrp': return 'MRP';
+      case 'purchasePrice': return 'Purchase Price';
+      case 'customerPrice': return 'Customer Price';
+      case 'dealerPrice': return 'Dealer Price';
+      case 'distributorPrice': return 'Distributor Price';
+      case 'stock': return 'Stock';
+      default: return 'Name';
+    }
+  };
+
+  // Get filter label
+  const getFilterLabel = (filter) => {
+    switch (filter) {
+      case 'All': return 'All';
+      case 'Serialized': return 'Serialized';
+      case 'Generic': return 'Generic';
+      default: return 'All';
+    }
   };
 
   // Validate new item form
@@ -399,6 +471,61 @@ const getStockDisplay = (item) => {
     return true;
   });
 
+  // Sort filtered items
+  const sortedAndFilteredItems = [...filteredItems].sort((a, b) => {
+    let aValue, bValue;
+
+    switch (sortField) {
+      case 'name':
+        aValue = a.name?.toLowerCase() || '';
+        bValue = b.name?.toLowerCase() || '';
+        break;
+      case 'warranty':
+        aValue = a.warranty || '';
+        bValue = b.warranty || '';
+        break;
+      case 'mrp':
+        aValue = parseFloat(a.mrp) || 0;
+        bValue = parseFloat(b.mrp) || 0;
+        break;
+      case 'purchasePrice':
+        aValue = parseFloat(a.purchasePrice) || 0;
+        bValue = parseFloat(b.purchasePrice) || 0;
+        break;
+      case 'customerPrice':
+        aValue = parseFloat(a.pricing?.customerPrice) || 0;
+        bValue = parseFloat(b.pricing?.customerPrice) || 0;
+        break;
+      case 'dealerPrice':
+        aValue = parseFloat(a.pricing?.dealerPrice) || 0;
+        bValue = parseFloat(b.pricing?.dealerPrice) || 0;
+        break;
+      case 'distributorPrice':
+        aValue = parseFloat(a.pricing?.distributorPrice) || 0;
+        bValue = parseFloat(b.pricing?.distributorPrice) || 0;
+        break;
+      case 'stock':
+        aValue = getStockDisplay(a);
+        bValue = getStockDisplay(b);
+        if (aValue === 'N/A') aValue = 0;
+        if (bValue === 'N/A') bValue = 0;
+        break;
+      default:
+        aValue = a.name?.toLowerCase() || '';
+        bValue = b.name?.toLowerCase() || '';
+    }
+
+    if (typeof aValue === 'string') {
+      return sortOrder === 'asc'
+        ? aValue.localeCompare(bValue)
+        : bValue.localeCompare(aValue);
+    } else {
+      return sortOrder === 'asc'
+        ? aValue - bValue
+        : bValue - aValue;
+    }
+  });
+
   // Get display type value
   const getDisplayType = (type) => {
     switch(type) {
@@ -454,27 +581,95 @@ const getStockDisplay = (item) => {
       </svg>
     </button>
   </div>
-          
-          {/* Filter Buttons */}
-          <div className="flex flex-wrap gap-2">
-            <button
-              onClick={() => setActiveFilter('All')}
-              className={`px-4 py-2 ${activeFilter === 'All' ? 'bg-teal-500 text-white' : 'bg-gray-200 text-gray-800'} rounded-full text-sm hover:bg-teal-600 hover:text-white transition-colors`}
-            >
-              All
-            </button>
-            <button
-              onClick={() => setActiveFilter('Serialized')}
-              className={`px-4 py-2 ${activeFilter === 'Serialized' ? 'bg-teal-500 text-white' : 'bg-gray-200 text-gray-800'} rounded-full text-sm hover:bg-teal-600 hover:text-white transition-colors`}
-            >
-              Serialized
-            </button>
-            <button
-              onClick={() => setActiveFilter('Generic')}
-              className={`px-4 py-2 ${activeFilter === 'Generic' ? 'bg-teal-500 text-white' : 'bg-gray-200 text-gray-800'} rounded-full text-sm hover:bg-teal-600 hover:text-white transition-colors`}
-            >
-              Generic
-            </button>
+
+          {/* Filter and Sort Dropdowns */}
+          <div className="flex space-x-2 items-center">
+            {/* Filter Dropdown */}
+            <div className="relative" ref={filterDropdownRef}>
+              <button
+                onClick={() => setIsFilterDropdownOpen(!isFilterDropdownOpen)}
+                className="flex items-center px-4 py-2 rounded-full text-sm font-medium bg-gray-100 text-gray-600 hover:bg-gray-200"
+              >
+                <FiFilter className="h-4 w-4 mr-2" />
+                Filter: {getFilterLabel(activeFilter)}
+                <FiChevronDown className="ml-2 h-4 w-4" />
+              </button>
+
+              {isFilterDropdownOpen && (
+                <div className="absolute left-0 mt-2 w-48 bg-white rounded-md shadow-lg z-50 border border-gray-200">
+                  <div className="py-1">
+                    <button
+                      onClick={() => { setActiveFilter('All'); setIsFilterDropdownOpen(false); }}
+                      className={`flex items-center justify-between w-full px-4 py-2 text-sm text-left hover:bg-gray-100 ${
+                        activeFilter === 'All' ? 'bg-gray-50 text-teal-600 font-medium' : 'text-gray-700'
+                      }`}
+                    >
+                      <span>All</span>
+                      {activeFilter === 'All' && <span className="text-teal-600">✓</span>}
+                    </button>
+                    <button
+                      onClick={() => { setActiveFilter('Serialized'); setIsFilterDropdownOpen(false); }}
+                      className={`flex items-center justify-between w-full px-4 py-2 text-sm text-left hover:bg-gray-100 ${
+                        activeFilter === 'Serialized' ? 'bg-gray-50 text-teal-600 font-medium' : 'text-gray-700'
+                      }`}
+                    >
+                      <span>Serialized</span>
+                      {activeFilter === 'Serialized' && <span className="text-teal-600">✓</span>}
+                    </button>
+                    <button
+                      onClick={() => { setActiveFilter('Generic'); setIsFilterDropdownOpen(false); }}
+                      className={`flex items-center justify-between w-full px-4 py-2 text-sm text-left hover:bg-gray-100 ${
+                        activeFilter === 'Generic' ? 'bg-gray-50 text-teal-600 font-medium' : 'text-gray-700'
+                      }`}
+                    >
+                      <span>Generic</span>
+                      {activeFilter === 'Generic' && <span className="text-teal-600">✓</span>}
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Sort Dropdown */}
+            <div className="relative" ref={sortDropdownRef}>
+              <button
+                onClick={() => setIsSortDropdownOpen(!isSortDropdownOpen)}
+                className="flex items-center px-4 py-2 rounded-full text-sm font-medium bg-gray-100 text-gray-600 hover:bg-gray-200"
+              >
+                {sortOrder === 'asc' ? (
+                  <LuArrowDownUp className="h-4 w-4 mr-2" />
+                ) : (
+                  <LuArrowUpDown className="h-4 w-4 mr-2" />
+                )}
+                Sort
+                <FiChevronDown className="ml-2 h-4 w-4" />
+              </button>
+
+              {isSortDropdownOpen && (
+                <div className="absolute right-0 mt-2 w-56 bg-white rounded-md shadow-lg z-50 border border-gray-200">
+                  <div className="py-1">
+                    {['name', 'warranty', 'mrp', 'purchasePrice', 'customerPrice', 'dealerPrice', 'distributorPrice', 'stock'].map(field => (
+                      <button
+                        key={field}
+                        onClick={() => handleSortSelection(field)}
+                        className={`flex items-center justify-between w-full px-4 py-2 text-sm text-left hover:bg-gray-100 ${
+                          sortField === field ? 'bg-gray-50 text-teal-600 font-medium' : 'text-gray-700'
+                        }`}
+                      >
+                        <span>{getSortFieldLabel(field)}</span>
+                        {sortField === field && (
+                          sortOrder === 'asc' ? (
+                            <LuArrowDownUp className="h-4 w-4" />
+                          ) : (
+                            <LuArrowUpDown className="h-4 w-4" />
+                          )
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         </div>
         
@@ -499,51 +694,41 @@ const getStockDisplay = (item) => {
               <tr className="text-left bg-gray-100">
                 <th className="px-4 py-3 text-xs text-gray-600 font-medium">S.NO</th>
                 <th className="px-4 py-3 text-xs text-gray-600 font-medium">NAME</th>
-                <th className="px-4 py-3 text-xs text-gray-600 font-medium">TYPE</th>
-                <th className="px-4 py-3 text-xs text-gray-600 font-medium">UNIT</th>
                 <th className="px-4 py-3 text-xs text-gray-600 font-medium">WARRANTY</th>
                 <th className="px-4 py-3 text-xs text-gray-600 font-medium">MRP</th>
                 <th className="px-4 py-3 text-xs text-gray-600 font-medium">PURCHASE PRICE</th>
-                <th className="px-4 py-3 text-xs text-gray-600 font-medium">SALE PRICE</th>
+                <th className="px-4 py-3 text-xs text-gray-600 font-medium">CUSTOMER PRICE</th>
+                <th className="px-4 py-3 text-xs text-gray-600 font-medium">DEALER PRICE</th>
+                <th className="px-4 py-3 text-xs text-gray-600 font-medium">DISTRIBUTOR PRICE</th>
                 <th className="px-4 py-3 text-xs text-gray-600 font-medium">STOCK</th>
               </tr>
             </thead>
             <tbody>
-  {filteredItems.map((item, index) => (
+  {sortedAndFilteredItems.map((item, index) => (
     <React.Fragment key={item.id}>
-      <tr 
+      <tr
         className={`${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'} hover:bg-gray-100 cursor-pointer`}
         onClick={() => toggleRowExpansion(item.id)}
       >
         <td className="px-4 py-3 border-t">
-          <div className="flex items-center justify-center w-8 h-8 bg-teal-500 text-white rounded-full">
+          <div className={`flex items-center justify-center w-8 h-8 rounded-full text-white ${
+            item.type === 'serialized-product' ? 'bg-blue-500' : 'bg-teal-500'
+          }`}>
             {index + 1}
           </div>
         </td>
-        <td className="px-4 py-3 border-t">{item.name}</td>
-        <td className="px-4 py-3 border-t">
-          <span className={`px-2 py-1 rounded text-xs ${
-            item.type === 'serialized-product' ? 'bg-blue-100 text-blue-800' : 
-            item.type === 'generic-product' ? 'bg-green-100 text-green-800' : 
-            'bg-purple-100 text-purple-800'
-          }`}>
-            {getDisplayType(item.type)}
-          </span>
-        </td>
-        <td className="px-4 py-3 border-t">{item.unit || 'N/A'}</td>
+        <td className={`px-4 py-3 border-t font-medium`}>{item.name}</td>
         <td className="px-4 py-3 border-t">{item.warranty || 'N/A'}</td>
-        <td className="px-4 py-3 border-t">{item.mrp || 'N/A'}</td>
-        <td className="px-4 py-3 border-t">{item.purchasePrice || 'N/A'}</td>
-        <td className="px-4 py-3 border-t">
-          <div className="space-y-1">
-            <div className="text-xs text-gray-400">C: ₹{item.pricing?.customerPrice || 0}</div>
-            <div className="text-xs text-gray-400">D: ₹{item.pricing?.dealerPrice || 0}</div>
-            <div className="text-xs text-gray-400">Dist: ₹{item.pricing?.distributorPrice || 0}</div>
-          </div>
-        </td>
+        <td className="px-4 py-3 border-t">₹{item.mrp || 'N/A'}</td>
+        <td className="px-4 py-3 border-t">₹{item.purchasePrice || 'N/A'}</td>
+        <td className="px-4 py-3 border-t">₹{item.pricing?.customerPrice || 'N/A'}</td>
+        <td className="px-4 py-3 border-t">₹{item.pricing?.dealerPrice || 'N/A'}</td>
+        <td className="px-4 py-3 border-t">₹{item.pricing?.distributorPrice || 'N/A'}</td>
         <td className="px-4 py-3 border-t">
           {item.type !== 'service' ? (
-            <span className="px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+            <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+              item.type === 'serialized-product' ? 'bg-blue-100 text-blue-800' : 'bg-teal-100 text-teal-800'
+            }`}>
               {item.totalStock !== undefined ? item.totalStock : getStockDisplay(item)} {item.unit}
             </span>
           ) : (
@@ -559,7 +744,9 @@ const getStockDisplay = (item) => {
             <div className="flex space-x-3">
               <button
                 onClick={() => openEditModal(item)}
-                className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-teal-500 hover:bg-teal-600"
+                className={`inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white ${
+                  item.type === 'serialized-product' ? 'bg-blue-500 hover:bg-blue-600' : 'bg-teal-500 hover:bg-teal-600'
+                }`}
               >
                 <FiSave className="mr-2" />
                 Edit Item
@@ -632,7 +819,7 @@ const getStockDisplay = (item) => {
       />
     </React.Fragment>
   ))}
-  {filteredItems.length === 0 && (
+  {sortedAndFilteredItems.length === 0 && (
     <tr>
       <td colSpan="9" className="px-4 py-8 text-center text-gray-500">
         {loading ? 'Loading inventory items...' : 'No inventory items found'}
@@ -929,19 +1116,16 @@ const getStockDisplay = (item) => {
               name="name"
               value={selectedItem.name}
               onChange={handleEditItemChange}
-              readOnly={selectedItem.type === 'serialized-product' || selectedItem.type === 'generic-product'}
               className={`w-full p-2 border rounded-md ${
                 (selectedItem.type === 'serialized-product' || selectedItem.type === 'generic-product') 
-                ? 'bg-gray-200 cursor-not-allowed' : ''
               }`}
               placeholder="Item name"
-              disabled
             />
-            {(selectedItem.type === 'serialized-product' || selectedItem.type === 'generic-product') && (
+            {/* {(selectedItem.type === 'serialized-product' || selectedItem.type === 'generic-product') && (
               <p className="mt-1 text-xs text-gray-500">
                 Product name cannot be changed after creation
               </p>
-            )}
+            )} */}
           </div>
           
           {(selectedItem.type === 'serialized-product' || selectedItem.type === 'generic-product') && (
