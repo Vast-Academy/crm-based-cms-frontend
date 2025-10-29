@@ -672,8 +672,13 @@ const UnifiedInventoryAssignmentModal = ({ isOpen, onClose, technician, onSucces
                                   className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-300"
                                 >
                                   <option value="">Select serial number...</option>
-                                  {getAvailableSerialNumbers(product).map(serial => (
-                                    <option key={serial} value={serial}>{serial}</option>
+                                  {getAvailableSerialNumbers(product).map((serial, index) => (
+                                    <option
+                                      key={`${product.id || product._id || 'product'}-${serial}-${index}`}
+                                      value={serial}
+                                    >
+                                      {serial}
+                                    </option>
                                   ))}
                                 </select>
                               </div>
@@ -759,8 +764,11 @@ const UnifiedInventoryAssignmentModal = ({ isOpen, onClose, technician, onSucces
                         {item.type === 'serialized-product' && (
                           <div className="mt-2">
                             <div className="text-sm font-medium">Serial Numbers:</div>
-                            {item.serialNumbers.map(sn => (
-                              <div key={sn} className="flex justify-between items-center text-sm mt-1">
+                            {item.serialNumbers.map((sn, index) => (
+                              <div
+                                key={`${item.id || item._id || 'item'}-${sn}-${index}`}
+                                className="flex justify-between items-center text-sm mt-1"
+                              >
                                 <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs">
                                   {sn}
                                 </span>

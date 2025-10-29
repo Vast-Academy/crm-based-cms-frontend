@@ -149,6 +149,65 @@ const ReturnInventoryModal = ({ isOpen, onClose, onInventoryReturned, darkMode =
       item => item.itemId === itemId && item.serialNumber === serialNumber
     );
   };
+
+  // Get active serial numbers for an item
+  const getActiveSerialNumbers = (item) => {
+    return item.serializedItems
+      ?.filter(serialItem => serialItem.status === 'active')
+      ?.map(serialItem => serialItem.serialNumber) || [];
+  };
+
+  // Check if all active serials are selected for an item
+  const areAllSerialsSelected = (item) => {
+    const itemKey = item._id || item.itemId || item.id;
+    const activeSerials = getActiveSerialNumbers(item);
+    if (activeSerials.length === 0) return false;
+
+    return activeSerials.every(serial =>
+      isSerialItemSelected(itemKey, serial)
+    );
+  };
+
+  // Toggle select all serial numbers for an item
+  const toggleSelectAllSerials = (item) => {
+    const itemKey = item._id || item.itemId || item.id;
+    const activeSerials = getActiveSerialNumbers(item);
+
+    if (activeSerials.length === 0) return;
+
+    setSelectedItems(prevSelected => {
+      const allSelected = activeSerials.every(serial =>
+        prevSelected.some(sel => sel.itemId === itemKey && sel.serialNumber === serial)
+      );
+
+      if (allSelected) {
+        // Deselect all active serial numbers
+        return prevSelected.filter(
+          sel => !(sel.itemId === itemKey && activeSerials.includes(sel.serialNumber))
+        );
+      }
+
+      // Add any missing serial numbers
+      const updated = [...prevSelected];
+
+      activeSerials.forEach(serial => {
+        const alreadySelected = updated.some(
+          sel => sel.itemId === itemKey && sel.serialNumber === serial
+        );
+
+        if (!alreadySelected) {
+          updated.push({
+            itemId: itemKey,
+            itemName: item.itemName,
+            type: 'serialized-product',
+            serialNumber: serial
+          });
+        }
+      });
+
+      return updated;
+    });
+  };
   
   // Get selected quantity for generic item
   const getSelectedQuantity = (itemId) => {
@@ -184,38 +243,41 @@ const ReturnInventoryModal = ({ isOpen, onClose, onInventoryReturned, darkMode =
     try {
       setLoading(true);
       setShowConfirmation(false); // Hide confirmation
-      
-      // Process each item separately
-      for (const item of selectedItems) {
-        console.log("Sending return request:", item);
-        const response = await fetch(SummaryApi.returnInventoryToManager.url, {
-          method: SummaryApi.returnInventoryToManager.method,
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          credentials: 'include',
-          body: JSON.stringify(item)
-        });
-        
-        const data = await response.json();
-        
-        if (!data.success) {
-          setError(data.message || 'Failed to return some items');
-          // Continue with other items
-        }
+
+      // Send ALL items in a SINGLE API call as a batch
+      console.log("Sending batch return request with", selectedItems.length, "items");
+      const response = await fetch(SummaryApi.returnInventoryToManager.url, {
+        method: SummaryApi.returnInventoryToManager.method,
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          items: selectedItems // Send all items as an array
+        })
+      });
+
+      const data = await response.json();
+
+      if (!data.success) {
+        setError(data.message || 'Failed to return items');
+        setLoading(false);
+        return;
       }
-      
+
+      console.log("Batch return successful:", data);
+
       // Refresh inventory after return
       await fetchInventory();
-      
+
       // Notify parent component
       if (onInventoryReturned) {
         onInventoryReturned();
       }
-      
+
       // Reset selections
       setSelectedItems([]);
-      
+
       // Close modal
       onClose();
     } catch (err) {
@@ -285,6 +347,7 @@ const ReturnInventoryModal = ({ isOpen, onClose, onInventoryReturned, darkMode =
                 const itemKey = item._id || item.itemId || item.id;
                 const itemCount = getItemQuantity(item);
                 const isExpanded = expandedItems.includes(itemKey);
+                const activeSerialNumbers = getActiveSerialNumbers(item);
                 
                 return (
                   <div key={itemKey}>
@@ -356,25 +419,47 @@ const ReturnInventoryModal = ({ isOpen, onClose, onInventoryReturned, darkMode =
                     {item.type === 'serialized-product' && isExpanded && (
                       <div className={`px-4 pb-4 ${darkMode ? 'bg-gray-700/30' : 'bg-gray-50'}`}>
                         <div className="ml-11 border-l-2 border-teal-500 pl-4 space-y-2">
-                          {item.serializedItems
-                            .filter(s => s.status === 'active')
-                            .map((serialItem) => (
+                          <div className="flex items-center justify-between">
+                            <label className="flex items-center text-sm font-medium cursor-pointer">
+                              <input
+                                type="checkbox"
+                                className={`mr-2 ${darkMode ? 'text-teal-500' : 'text-teal-600'}`}
+                                checked={areAllSerialsSelected(item)}
+                                onChange={() => toggleSelectAllSerials(item)}
+                              />
+                              <span className={darkMode ? 'text-gray-200' : 'text-gray-700'}>
+                                 Serial Numbers
+                                {activeSerialNumbers.length > 0 && ` (${activeSerialNumbers.length})`}
+                              </span>
+                            </label>
+                            {areAllSerialsSelected(item) && (
+                              <button
+                                type="button"
+                                onClick={() => toggleSelectAllSerials(item)}
+                                className={`text-xs ${darkMode ? 'text-teal-300 hover:text-teal-200' : 'text-teal-600 hover:text-teal-700'}`}
+                              >
+                                Clear Selection
+                              </button>
+                            )}
+                          </div>
+
+                          {activeSerialNumbers.map((serialNumber) => (
                               <div 
-                                key={serialItem.serialNumber}
+                                key={serialNumber}
                                 className={`flex items-center p-2 rounded cursor-pointer ${
-                                  isSerialItemSelected(itemKey, serialItem.serialNumber) 
+                                  isSerialItemSelected(itemKey, serialNumber) 
                                     ? `${darkMode ? 'bg-teal-600/40' : 'bg-teal-100'} ${darkMode ? 'border-teal-500' : 'border-teal-500'}` 
                                     : `${darkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-100'} border`
                                 }`}
-                                onClick={() => toggleSerialItemSelection(item, serialItem.serialNumber)}
+                                onClick={() => toggleSerialItemSelection(item, serialNumber)}
                               >
                                 <input 
                                   type="checkbox"
                                   className={`mr-2 ${darkMode ? 'text-teal-500' : ''}`}
-                                  checked={isSerialItemSelected(itemKey, serialItem.serialNumber)}
+                                  checked={isSerialItemSelected(itemKey, serialNumber)}
                                   onChange={() => {}} // React requires onChange with checked
                                 />
-                                <span className={darkMode ? 'text-gray-200' : 'text-gray-800'}>{serialItem.serialNumber}</span>
+                                <span className={darkMode ? 'text-gray-200' : 'text-gray-800'}>{serialNumber}</span>
                               </div>
                             ))
                           }
