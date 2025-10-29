@@ -33,6 +33,22 @@ const WorkOrderModal = ({ isOpen, onClose, customerId, initialProjectCategory = 
   useEffect(() => {
     setProjectCategory(initialProjectCategory);
   }, [initialProjectCategory]);
+
+  // Handle ESC key to close modal
+  useEffect(() => {
+    const handleEscKey = (event) => {
+      if (event.key === 'Escape' && isOpen) {
+        if (showConfirmation) {
+          handleConfirmCancel();
+        } else {
+          onClose();
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleEscKey);
+    return () => window.removeEventListener('keydown', handleEscKey);
+  }, [isOpen, showConfirmation, onClose]);
   
   // Check for existing active projects
   const checkExistingProjects = async () => {
@@ -148,8 +164,14 @@ const WorkOrderModal = ({ isOpen, onClose, customerId, initialProjectCategory = 
   // Confirmation popup for existing projects
   if (showConfirmation) {
     return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-        <div className="bg-white rounded-lg w-full max-w-lg p-6">
+      <div
+        className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50"
+        onClick={handleConfirmCancel}
+      >
+        <div
+          className="bg-white rounded-lg w-full max-w-lg p-6"
+          onClick={(e) => e.stopPropagation()}
+        >
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-xl font-semibold text-red-600">
               Active Project Found!
@@ -198,8 +220,14 @@ const WorkOrderModal = ({ isOpen, onClose, customerId, initialProjectCategory = 
   }
   
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-      <div className="bg-white rounded-lg w-full max-w-md p-6">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50"
+      onClick={onClose}
+    >
+      <div
+        className="bg-white rounded-lg w-full max-w-md p-6"
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-xl font-semibold">
             {projectCategory === 'Repair' ? 'Create Complaint' : 'Create Work Order'}

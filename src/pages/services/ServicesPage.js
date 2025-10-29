@@ -30,6 +30,23 @@ const ServicesPage = () => {
     fetchServices();
   }, []);
 
+  // Handle ESC key to close modal
+  useEffect(() => {
+    const handleEscKey = (event) => {
+      if (event.key === 'Escape') {
+        if (isModalOpen) {
+          setIsModalOpen(false);
+        }
+        if (isEditModalOpen) {
+          setIsEditModalOpen(false);
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleEscKey);
+    return () => window.removeEventListener('keydown', handleEscKey);
+  }, [isModalOpen, isEditModalOpen]);
+
   // Fetch all services from API
   const fetchServices = async (forceFresh = false) => {
     try {
@@ -397,8 +414,14 @@ const ServicesPage = () => {
 
       {/* Add Service Modal */}
       {isModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white max-h-[600px] overflow-y-auto rounded-lg shadow-xl w-full max-w-md">
+        <div
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+          onClick={() => setIsModalOpen(false)}
+        >
+          <div
+            className="bg-white max-h-[600px] overflow-y-auto rounded-lg shadow-xl w-full max-w-md"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="flex items-center justify-between bg-purple-100 px-6 py-4">
               <h2 className="text-xl font-semibold text-purple-800">Add New Service</h2>
               <button
@@ -486,8 +509,14 @@ const ServicesPage = () => {
 
       {/* Edit Service Modal */}
       {isEditModalOpen && selectedService && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white max-h-[600px] overflow-y-auto rounded-lg shadow-xl w-full max-w-md">
+        <div
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+          onClick={() => setIsEditModalOpen(false)}
+        >
+          <div
+            className="bg-white max-h-[600px] overflow-y-auto rounded-lg shadow-xl w-full max-w-md"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="flex items-center justify-between bg-purple-100 px-6 py-4">
               <h2 className="text-xl font-semibold text-purple-800">Edit Service: {selectedService.name}</h2>
               <button

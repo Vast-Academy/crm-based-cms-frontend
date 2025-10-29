@@ -54,6 +54,18 @@ const AssignTechnicianModal = ({ isOpen, onClose, workOrder, onSuccess }) => {
     }
   }, [isOpen]);
 
+  // Handle ESC key to close modal
+  useEffect(() => {
+    const handleEscKey = (event) => {
+      if (event.key === 'Escape' && isOpen) {
+        onClose();
+      }
+    };
+
+    window.addEventListener('keydown', handleEscKey);
+    return () => window.removeEventListener('keydown', handleEscKey);
+  }, [isOpen, onClose]);
+
   // कहीं useEffect imports के बाद और component के अंदर
 useEffect(() => {
   if (isOpen && workOrder) {
@@ -107,9 +119,15 @@ useEffect(() => {
   const isComplaint = workOrder.projectCategory === 'Repair';
   
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50"
+      onClick={onClose}
+    >
       {/* Added max-height and overflow-y-auto for scrolling */}
-      <div className="bg-white rounded-lg w-full max-w-md max-h-[90vh] flex flex-col">
+      <div
+        className="bg-white rounded-lg w-full max-w-md max-h-[90vh] flex flex-col"
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="flex justify-between items-center p-6 border-b">
           <h2 className="text-xl font-semibold">
             {isComplaint ? 'Assign Engineer to Complaint' : 'Assign Engineer'}

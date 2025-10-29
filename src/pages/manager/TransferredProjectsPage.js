@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { FiArrowLeft, FiUser, FiSearch, FiRefreshCw, FiEye } from 'react-icons/fi';
+import { FiUser, FiSearch, FiRefreshCw, FiEye } from 'react-icons/fi';
 import SummaryApi from '../../common';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import { useAuth } from '../../context/AuthContext';
@@ -16,7 +16,6 @@ const TransferredProjectsPage = () => {
   const [filteredProjects, setFilteredProjects] = useState([]);
   const [showTransferModal, setShowTransferModal] = useState(false);
   const [selectedProject, setSelectedProject] = useState(null);
-  const [expandedProject, setExpandedProject] = useState(null);
   const [approvedProjects, setApprovedProjects] = useState([]);
 
   // Fetch transferred projects
@@ -110,14 +109,6 @@ const TransferredProjectsPage = () => {
     return new Date(dateString).toLocaleDateString(undefined, options);
   };
   
-  // Handle row click to expand/collapse details
-  const handleRowClick = (projectId) => {
-    if (expandedProject === projectId) {
-      setExpandedProject(null);
-    } else {
-      setExpandedProject(projectId);
-    }
-  };
   
   // Handle transferring project
   const handleTransferProject = async (project) => {
@@ -234,11 +225,9 @@ const TransferredProjectsPage = () => {
                 <tbody className="divide-y divide-gray-200">
                   {filteredProjects.map((project, index) => (
                     <React.Fragment key={`${project.customerId}-${project.orderId}`}>
-                      <tr 
-                        className={`hover:bg-gray-50 cursor-pointer ${
-                          expandedProject === `${project.customerId}-${project.orderId}` ? 'bg-gray-50' : ''
-                        }`}
-                        onClick={() => handleRowClick(`${project.customerId}-${project.orderId}`)}
+                      <tr
+                        className="hover:bg-gray-50 cursor-pointer"
+                        onClick={() => handleTransferProject(project)}
                       >
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="w-8 h-8 rounded-full bg-red-500 flex items-center justify-center text-white font-medium">
@@ -280,27 +269,6 @@ const TransferredProjectsPage = () => {
                           </span>
                         </td>
                       </tr>
-                      
-                      {/* Expanded row */}
-                      {expandedProject === `${project.customerId}-${project.orderId}` && (
-                        <tr>
-                          <td colSpan="8" className="px-6 py-4 bg-gray-50 border-b">
-                            <div className="flex ">
-                              
-                            <button 
-  onClick={(e) => {
-    e.stopPropagation();
-    handleTransferProject(project);
-  }}
-  className="inline-flex items-center px-4 py-1.5 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-500 hover:bg-blue-600"
->
-  <FiArrowLeft className="mr-2" /> 
-  {project.status === 'transferring' ? 'View Details & Approve' : 'View Details'}
-</button>
-                            </div>
-                          </td>
-                        </tr>
-                      )}
                     </React.Fragment>
                   ))}
                 </tbody>
