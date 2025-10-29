@@ -133,6 +133,10 @@ const SummaryApi = {
         url: `${backendDomain}/api/stock-history`,
         method: "get"
     },
+    getInventoryCurrentStock: {
+        url: `${backendDomain}/api/inventory-current-stock`,
+        method: "get"
+    },
     getManagerTechnician: {
         url : `${backendDomain}/api/manager-get-technician`,
         method: "get"
