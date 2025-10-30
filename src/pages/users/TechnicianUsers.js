@@ -27,7 +27,10 @@ const TechnicianUsers = () => {
   // New state for technician inventory modal
   const [showInventoryModal, setShowInventoryModal] = useState(false);
   const [selectedTechnicianForInventory, setSelectedTechnicianForInventory] = useState(null);
-  
+
+  // Refresh trigger for TechnicianInventoryModal
+  const [inventoryRefreshTrigger, setInventoryRefreshTrigger] = useState(0);
+
   // Last refresh time tracking
   const [lastRefreshTime, setLastRefreshTime] = useState(0);
   
@@ -403,6 +406,8 @@ const TechnicianUsers = () => {
           onSuccess={() => {
             // Refresh the technicians list after successful assignment
             fetchFreshTechnicians();
+            // Trigger refresh of TechnicianInventoryModal
+            setInventoryRefreshTrigger(prev => prev + 1);
           }}
         />
       )}
@@ -413,6 +418,7 @@ const TechnicianUsers = () => {
           isOpen={showInventoryModal}
           onClose={() => setShowInventoryModal(false)}
           technician={selectedTechnicianForInventory}
+          refreshTrigger={inventoryRefreshTrigger}
           onAssignInventory={(technician) => {
             // Open assign inventory modal when button is clicked in inventory modal
             handleAssignInventory(technician);

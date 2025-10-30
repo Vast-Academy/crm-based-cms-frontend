@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { FiArrowRight, FiX, FiPackage } from 'react-icons/fi';
 import SummaryApi from '../../common';
 
-const TechnicianInventoryModal = ({ isOpen, onClose, technician, onAssignInventory }) => {
+const TechnicianInventoryModal = ({ isOpen, onClose, technician, onAssignInventory, refreshTrigger = 0 }) => {
   const [transfers, setTransfers] = useState([]);
   const [currentInventory, setCurrentInventory] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -19,7 +19,7 @@ const TechnicianInventoryModal = ({ isOpen, onClose, technician, onAssignInvento
       fetchTechnicianInventoryHistory();
       fetchTechnicianCurrentInventory();
     }
-  }, [isOpen, technician]);
+  }, [isOpen, technician, refreshTrigger]);
 
   const fetchTechnicianInventoryHistory = async () => {
     try {

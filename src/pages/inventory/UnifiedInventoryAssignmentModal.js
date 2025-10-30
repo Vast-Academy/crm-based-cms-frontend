@@ -574,6 +574,7 @@ const UnifiedInventoryAssignmentModal = ({ isOpen, onClose, technician, onSucces
       title={`Assign Inventory to ${technician?.firstName} ${technician?.lastName}`}
       size="xl"
       zIndex="z-[70]"
+      draggable={true}
     >
       {error && (
         <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
@@ -593,21 +594,33 @@ const UnifiedInventoryAssignmentModal = ({ isOpen, onClose, technician, onSucces
               {/* Left side - Product list */}
               <div className="w-full md:w-2/3 flex flex-col border-r">
                 <div className="p-4 border-b">
-                  <div className="relative">
-                    <input
-                      ref={searchInputRef}
-                      type="text"
-                      placeholder="Search by product name or serial number..."
-                      className="w-full p-3 border rounded pl-10"
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                      onKeyDown={handleKeyDown}
-                    />
-                    <FiSearch className="absolute left-3 top-[14px] text-gray-400" />
+                  <div className="flex items-center gap-2">
+                    <div className="relative flex-1">
+                      <input
+                        ref={searchInputRef}
+                        type="text"
+                        placeholder="Search by product name or serial number..."
+                        className="w-full p-3 border rounded pl-10"
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        onKeyDown={handleKeyDown}
+                      />
+                      <FiSearch className="absolute left-3 top-[14px] text-gray-400" />
+                    </div>
+                    <button
+                      onClick={() => fetchProducts()}
+                      className="p-3 bg-blue-500 hover:bg-blue-600 text-white rounded transition-colors flex-shrink-0"
+                      title="Refresh Products"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/>
+                      </svg>
+                    </button>
+                  </div>
 
-                    {/* Serial Number Dropdown */}
-                    {isDropdownOpen && (
-                      <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-y-auto">
+                  {/* Serial Number Dropdown */}
+                  {isDropdownOpen && (
+                    <div className="absolute z-10 left-4 right-20 mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-y-auto">
                         {matchingSerialNumbers.map((item, index) => (
                           <div
                             key={index}
@@ -621,11 +634,10 @@ const UnifiedInventoryAssignmentModal = ({ isOpen, onClose, technician, onSucces
                             <div className="text-xs text-gray-500">{item.productName}</div>
                           </div>
                         ))}
-                      </div>
-                    )}
-                  </div>
+                    </div>
+                  )}
                 </div>
-                
+
                 <div className="flex-1 overflow-y-auto p-4">
                   <h3 className="font-medium mb-2">Available Products</h3>
                   <div className="grid grid-cols-1 gap-2">
@@ -684,18 +696,18 @@ const UnifiedInventoryAssignmentModal = ({ isOpen, onClose, technician, onSucces
                               </div>
                               <div className="flex flex-col sm:flex-row gap-2">
                                 <button
-                                  onClick={() => handleSelectProduct(product)}
-                                  disabled={!selectedSerialNumbers[product.id]}
-                                  className="flex-1 py-2 px-4 bg-blue-500 hover:bg-blue-600 disabled:bg-gray-300 text-white rounded font-medium"
-                                >
-                                  Add
-                                </button>
-                                <button
                                   type="button"
                                   onClick={() => openAddStockModal(product)}
                                   className="flex-1 py-2 px-4 bg-green-500 hover:bg-green-600 text-white rounded font-medium"
                                 >
                                   Add Stock
+                                </button>
+                                <button
+                                  onClick={() => handleSelectProduct(product)}
+                                  disabled={!selectedSerialNumbers[product.id]}
+                                  className="flex-1 py-2 px-4 bg-blue-500 hover:bg-blue-600 disabled:bg-gray-300 text-white rounded font-medium"
+                                >
+                                  Add
                                 </button>
                               </div>
                             </div>
@@ -705,17 +717,17 @@ const UnifiedInventoryAssignmentModal = ({ isOpen, onClose, technician, onSucces
                           {product.type === 'generic-product' && (
                             <div className="mt-3 flex flex-col sm:flex-row gap-2">
                               <button
-                                onClick={() => handleSelectProduct(product)}
-                                className="flex-1 py-2 px-4 bg-blue-500 hover:bg-blue-600 text-white rounded font-medium"
-                              >
-                                Add
-                              </button>
-                              <button
                                 type="button"
                                 onClick={() => openAddStockModal(product)}
                                 className="flex-1 py-2 px-4 bg-green-500 hover:bg-green-600 text-white rounded font-medium"
                               >
                                 Add Stock
+                              </button>
+                              <button
+                                onClick={() => handleSelectProduct(product)}
+                                className="flex-1 py-2 px-4 bg-blue-500 hover:bg-blue-600 text-white rounded font-medium"
+                              >
+                                Add
                               </button>
                             </div>
                           )}
@@ -898,6 +910,7 @@ const UnifiedInventoryAssignmentModal = ({ isOpen, onClose, technician, onSucces
         title={`Add Stock for ${stockModalItem?.name || ''}`}
         size="lg"
         zIndex="z-[80]"
+        draggable={true}
       >
         {stockModalItem && (
           stockModalItem.itemType === 'serialized' ? (
@@ -937,6 +950,7 @@ const UnifiedInventoryAssignmentModal = ({ isOpen, onClose, technician, onSucces
         title="Confirm Stock Save"
         size="md"
         zIndex="z-[90]"
+        draggable={true}
       >
         <div className="py-4">
           <p className="text-center text-gray-600 mb-6">

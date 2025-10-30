@@ -415,13 +415,13 @@ const getStockDisplay = (item) => {
         
         // Store current type
         const currentType = newItem.type;
-        
-        // Reset form but keep the selected type
+
+        // Reset form but keep the selected type and appropriate warranty
         setNewItem({
           type: currentType,
           name: '',
           unit: 'Piece',
-          warranty: '1 year',
+          warranty: currentType === 'generic-product' ? 'No Warranty' : '1 year',
           mrp: '',
           purchasePrice: '',
           customerPrice: '',
