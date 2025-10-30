@@ -1,6 +1,9 @@
 import React, { useMemo, useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { FiX } from 'react-icons/fi';
+import DatePicker from "react-datepicker";
+import "react-datepicker/dist/react-datepicker.css";
+import "../../styles/datepicker-custom.css";
 import SummaryApi from '../../common';
 import { useAuth } from '../../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
@@ -863,15 +866,53 @@ function SelectField({ label, value, onChange, options, error, colorScheme }) {
 }
 
 function DateField({ label, value, onChange, error, colorScheme }) {
+  const [selectedDate, setSelectedDate] = useState(value ? new Date(value) : null);
+
+  const handleDateChange = (date) => {
+    setSelectedDate(date);
+    if (date) {
+      // Format date as YYYY-MM-DD for backend
+      const formattedDate = date.toISOString().split('T')[0];
+      onChange(formattedDate);
+    } else {
+      onChange('');
+    }
+  };
+
+  // Update selectedDate when value prop changes
+  useEffect(() => {
+    if (value) {
+      setSelectedDate(new Date(value));
+    } else {
+      setSelectedDate(null);
+    }
+  }, [value]);
+
   return (
     <label className="block">
       <span className="block text-xs font-medium text-gray-700 mb-1">{label}</span>
-      <input 
-        type="date" 
-        className={`w-full rounded-lg border ${error ? "border-red-400" : (colorScheme?.inputBorder || "border-gray-300")} bg-gradient-to-r from-white to-gray-50 focus:outline-none focus:ring-2 ${colorScheme?.inputRing || 'focus:ring-green-300 focus:border-green-400'} transition p-1 text-gray-900 text-sm`} 
-        value={value} 
-        onChange={(e) => onChange(e.target.value)} 
-      />
+      <div className="relative">
+        <DatePicker
+          selected={selectedDate}
+          onChange={handleDateChange}
+          dateFormat="dd/MM/yyyy"
+          className={`w-full rounded-lg border ${error ? "border-red-400" : (colorScheme?.inputBorder || "border-gray-300")} bg-gradient-to-r from-white to-gray-50 focus:outline-none focus:ring-2 ${colorScheme?.inputRing || 'focus:ring-green-300 focus:border-green-400'} transition p-1 pr-8 text-gray-900 text-sm`}
+          placeholderText="dd/mm/yyyy"
+          showMonthDropdown
+          showYearDropdown
+          dropdownMode="select"
+          maxDate={new Date()}
+          autoComplete="off"
+        />
+        <svg
+          className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+        </svg>
+      </div>
       {error && <span className="text-xs text-red-600 mt-1 inline-block">{error}</span>}
     </label>
   );

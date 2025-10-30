@@ -1,5 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { FiX } from 'react-icons/fi';
+import DatePicker from "react-datepicker";
+import "react-datepicker/dist/react-datepicker.css";
+import "../../styles/datepicker-custom.css";
 import SummaryApi from '../../common';
 
 // Project types for customers
@@ -19,6 +22,7 @@ const AddOldProjectModal = ({ isOpen, onClose, customerId, onSuccess }) => {
   const [error, setError] = useState(null);
   const [projectType, setProjectType] = useState('');
   const [completionDate, setCompletionDate] = useState('');
+  const [selectedDate, setSelectedDate] = useState(null);
   const [installedBy, setInstalledBy] = useState('');
   const [remarks, setRemarks] = useState('');
 
@@ -27,6 +31,7 @@ const AddOldProjectModal = ({ isOpen, onClose, customerId, onSuccess }) => {
     if (!isOpen) {
       setProjectType('');
       setCompletionDate('');
+      setSelectedDate(null);
       setInstalledBy('');
       setRemarks('');
       setError(null);
@@ -151,14 +156,37 @@ const AddOldProjectModal = ({ isOpen, onClose, customerId, onSuccess }) => {
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Completion Date*
             </label>
-            <input
-              type="date"
-              value={completionDate}
-              onChange={(e) => setCompletionDate(e.target.value)}
-              max={new Date().toISOString().split('T')[0]} // Allow only past dates
-              className="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-indigo-500"
-              required
-            />
+            <div className="relative">
+              <DatePicker
+                selected={selectedDate}
+                onChange={(date) => {
+                  setSelectedDate(date);
+                  if (date) {
+                    const formattedDate = date.toISOString().split('T')[0];
+                    setCompletionDate(formattedDate);
+                  } else {
+                    setCompletionDate('');
+                  }
+                }}
+                dateFormat="dd/MM/yyyy"
+                className="w-full p-2 pr-10 border rounded focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                placeholderText="dd/mm/yyyy"
+                showMonthDropdown
+                showYearDropdown
+                dropdownMode="select"
+                maxDate={new Date()}
+                autoComplete="off"
+                required
+              />
+              <svg
+                className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+            </div>
           </div>
 
           <div className="mb-4">
