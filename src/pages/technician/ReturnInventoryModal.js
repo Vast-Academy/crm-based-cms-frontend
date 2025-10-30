@@ -388,7 +388,7 @@ const ReturnInventoryModal = ({ isOpen, onClose, onInventoryReturned, darkMode =
                         </div>
                       ) : (
                         <div className="flex items-center">
-                        <button 
+                        <button
                           onClick={() => handleQuantityChange(item, Math.max(0, getSelectedQuantity(itemKey) - 1))}
                           className={`w-8 h-8 flex items-center justify-center rounded-l-md ${darkMode ? 'bg-gray-700 text-white' : 'bg-gray-200 text-gray-800'}`}
                         >
@@ -399,13 +399,18 @@ const ReturnInventoryModal = ({ isOpen, onClose, onInventoryReturned, darkMode =
                           min="0"
                           max={item.genericQuantity}
                           value={getSelectedQuantity(itemKey)}
-                          readOnly
-                          className={`w-16 text-center py-1 appearance-none 
+                          onChange={(e) => {
+                            const value = e.target.value === '' ? 0 : parseInt(e.target.value);
+                            if (!isNaN(value)) {
+                              handleQuantityChange(item, value);
+                            }
+                          }}
+                          className={`w-16 text-center py-1 appearance-none
                             ${darkMode ? 'bg-gray-700 text-white border-gray-600' : 'bg-gray-100 text-gray-800'}
-                            [&::-webkit-inner-spin-button]:appearance-none 
+                            [&::-webkit-inner-spin-button]:appearance-none
                             [&::-webkit-outer-spin-button]:appearance-none`}
                         />
-                        <button 
+                        <button
                           onClick={() => handleQuantityChange(item, Math.min(item.genericQuantity, getSelectedQuantity(itemKey) + 1))}
                           className={`w-8 h-8 flex items-center justify-center rounded-r-md ${darkMode ? 'bg-gray-700 text-white' : 'bg-gray-200 text-gray-800'}`}
                         >

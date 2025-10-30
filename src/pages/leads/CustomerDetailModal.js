@@ -8,6 +8,7 @@ import { useAuth } from '../../context/AuthContext';
 import Modal from '../../components/Modal';
 import WorkOrderModal from '../customers/WorkOrderModal';
 import ComplaintModal from '../customers/ComplaintModal';
+import AddOldProjectModal from '../customers/AddOldProjectModal';
 import ProjectDetailsModal from '../manager/ProjectDetailsModal';
 import EditCustomerModal from './EditCustomerModal';
 import CustomerBillingModal from './CustomerBillingModal';
@@ -21,6 +22,7 @@ const CustomerDetailModal = ({ isOpen, onClose, customerId, onCustomerUpdated })
   const [error, setError] = useState(null);
   const [showWorkOrderModal, setShowWorkOrderModal] = useState(false);
   const [showComplaintModal, setShowComplaintModal] = useState(false);
+  const [showOldProjectModal, setShowOldProjectModal] = useState(false);
   const [initialProjectCategory, setInitialProjectCategory] = useState('New Installation');
   const [showProjectDetailsModal, setShowProjectDetailsModal] = useState(false);
 const [selectedProject, setSelectedProject] = useState(null);
@@ -558,7 +560,18 @@ const handleViewProjectDetails = async (project) => {
     // Refresh customer data after adding new complaint
     fetchCustomer();
     setShowComplaintModal(false);
-    
+
+    // Notify parent component of the update
+    if (onCustomerUpdated) {
+      onCustomerUpdated(data.customer);
+    }
+  };
+
+  const handleOldProjectSuccess = (data) => {
+    // Refresh customer data after adding old project
+    fetchCustomer();
+    setShowOldProjectModal(false);
+
     // Notify parent component of the update
     if (onCustomerUpdated) {
       onCustomerUpdated(data.customer);
@@ -738,25 +751,33 @@ const handleViewProjectDetails = async (project) => {
           {/* Projects and Activity panel */}
           <div className="lg:col-span-2 bg-white rounded-lg overflow-hidden border border-gray-200">
             <div className="p-6">
-              <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center justify-between mb-5">
                 <h2 className="text-xl font-semibold">Work Orders & Complaints</h2>
-                
+                </div>
+
                 {user.role !== 'admin' && (
-                <div className="flex gap-2">
+                <div className="flex gap-2 mb-4">
                   <button
                     className="px-4 py-2 bg-orange-500 text-white rounded-md hover:bg-orange-600"
                     onClick={handleNewComplaint}
                   >
                     New Complaint
                   </button>
-                  
+
                   <button
                     className="px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600"
                     onClick={() => setShowWorkOrderModal(true)}
                   >
                     New Project
                   </button>
-                  
+
+                  <button
+                    className="px-4 py-2 bg-indigo-500 text-white rounded-md hover:bg-indigo-600"
+                    onClick={() => setShowOldProjectModal(true)}
+                  >
+                    Add Project
+                  </button>
+
                   {user.role === 'manager' && (
                     <button
                       className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 flex items-center"
@@ -767,7 +788,7 @@ const handleViewProjectDetails = async (project) => {
                   )}
                 </div>
                 )}
-              </div>
+              
               
               {/* Work Order/Complaint Status */}
               {(() => {
@@ -1550,6 +1571,14 @@ const handleViewProjectDetails = async (project) => {
         onClose={() => setShowComplaintModal(false)}
         customerId={customerId}
         onSuccess={handleComplaintSuccess}
+      />
+
+      {/* Old Project Modal */}
+      <AddOldProjectModal
+        isOpen={showOldProjectModal}
+        onClose={() => setShowOldProjectModal(false)}
+        customerId={customerId}
+        onSuccess={handleOldProjectSuccess}
       />
 
       {showProjectDetailsModal && selectedProject && (

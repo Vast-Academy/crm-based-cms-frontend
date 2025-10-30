@@ -97,6 +97,10 @@ const SummaryApi = {
         url : `${backendDomain}/api/update-customer`,
         method: "post"
     },
+    addOldProject: {
+        url: `${backendDomain}/api/add-old-project`,
+        method: "post"
+    },
     getAllInventoryItems: {
         url : `${backendDomain}/api/get-all-inventory`,
         method: "get"

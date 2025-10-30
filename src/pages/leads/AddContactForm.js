@@ -214,8 +214,9 @@ export default function AddContactForm({ initialPhone = '', initialType = 'lead'
     if (form.leadType === "Customer" && !form.customerStatus) e.customerStatus = "Select one";
     if (form.leadType === "Customer" && form.customerStatus === "Existing" && !form.installDate) e.installDate = "Required";
 
-    // Project type is not required for dealers and distributors
-    if (!form.projectType && !isDealer && !isDistributor) e.projectType = "Select a project";
+    // Project type is not required for dealers, distributors, and billing customers
+    const isBillingCustomer = form.leadType === "Customer" && form.customerStatus === "Billing";
+    if (!form.projectType && !isDealer && !isDistributor && !isBillingCustomer) e.projectType = "Select a project";
     if (form.leadType === "Customer" && form.customerStatus === "Existing" && !form.installedBy) e.installedBy = "Select who installed";
 
     return e;
@@ -349,8 +350,8 @@ export default function AddContactForm({ initialPhone = '', initialType = 'lead'
           
           if (data.success) {
             setSubmitted(true);
-            
-            if (form.customerStatus === "Existing") {
+
+            if (form.customerStatus === "Existing" || form.customerStatus === "Billing") {
               setTimeout(() => {
                 if (onSuccess) onSuccess(data.data);
               }, 1500);
@@ -381,6 +382,7 @@ export default function AddContactForm({ initialPhone = '', initialType = 'lead'
   const isExisting = form.leadType === "Customer" && form.customerStatus === "Existing";
   const isLead = form.leadType === "Lead";
   const isNewCustomer = form.leadType === "Customer" && form.customerStatus === "New";
+  const isBillingCustomer = form.leadType === "Customer" && form.customerStatus === "Billing";
   const isDealer = form.leadType === "Dealer";
   const isDistributor = form.leadType === "Distributor";
   
@@ -407,6 +409,17 @@ export default function AddContactForm({ initialPhone = '', initialType = 'lead'
         button: 'from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700',
         accent: 'from-purple-50 to-purple-100',
         text: 'text-purple-900'
+      };
+    } else if (isBillingCustomer) {
+      return {
+        bg: 'from-white to-white',
+        borderTop: 'border-t-pink-500',
+        borderAll: 'border-pink-500',
+        inputBorder: 'border-pink-300',
+        inputRing: 'focus:ring-pink-300 focus:border-pink-400',
+        button: 'from-pink-500 to-pink-600 hover:from-pink-600 hover:to-pink-700',
+        accent: 'from-pink-50 to-pink-100',
+        text: 'text-pink-900'
       };
     } else if (isExisting) {
       return {
@@ -688,15 +701,16 @@ export default function AddContactForm({ initialPhone = '', initialType = 'lead'
               <AnimatePresence initial={false}>
                 {form.leadType === "Customer" && (
                   <motion.div key="customerStatus" variants={fieldVariants} initial="hidden" animate="show" exit="exit" transition={{ duration: 0.22, ease: "easeOut" }}>
-                    <SelectField 
-                      label="Customer Status" 
-                      value={form.customerStatus} 
-                      onChange={(v) => update("customerStatus", v)} 
+                    <SelectField
+                      label="Customer Status"
+                      value={form.customerStatus}
+                      onChange={(v) => update("customerStatus", v)}
                       options={[
-                        { value: "", label: "Choose..." }, 
-                        { value: "New", label: "New" }, 
-                        { value: "Existing", label: "Existing" }
-                      ]} 
+                        { value: "", label: "Choose..." },
+                        { value: "Billing", label: "Billing" },
+                        { value: "Existing", label: "Existing" },
+                        { value: "New", label: "New" }
+                      ]}
                       error={errors.customerStatus}
                       colorScheme={colorScheme}
                     />
@@ -715,16 +729,16 @@ export default function AddContactForm({ initialPhone = '', initialType = 'lead'
             </AnimatePresence>
           </div>
 
-          {/* Project Type / Inquire For - Only show for Leads and Customers */}
-          {!isDealer && !isDistributor && (
+          {/* Project Type / Inquire For - Only show for Leads and Customers (except Billing) */}
+          {!isDealer && !isDistributor && !isBillingCustomer && (
             <div className="mt-8 mb-6">
               <SectionTitle title={isLead ? "Inquire For" : "Project Type"} subtle />
               <div className="w-full">
-                <SelectField 
-                  label={isLead ? "Inquire For" : "Choose Service"} 
-                  value={form.projectType} 
-                  onChange={(v) => update("projectType", v)} 
-                  options={[{ value: "", label: "Choose..." }, ...services]} 
+                <SelectField
+                  label={isLead ? "Inquire For" : "Choose Service"}
+                  value={form.projectType}
+                  onChange={(v) => update("projectType", v)}
+                  options={[{ value: "", label: "Choose..." }, ...services]}
                   error={errors.projectType}
                   colorScheme={colorScheme}
                 />
@@ -759,8 +773,8 @@ export default function AddContactForm({ initialPhone = '', initialType = 'lead'
               disabled={loading}
               className="inline-flex items-center justify-center rounded-xl bg-white text-gray-700 px-6 py-2 h-12 font-semibold shadow-lg hover:shadow-xl transition-all duration-300 border-2 border-gray-200 hover:text-white"
               style={{
-                '--hover-from': isLead ? '#3b82f6' : isNewCustomer ? '#a855f7' : isExisting ? '#6366f1' : isDealer ? '#f97316' : isDistributor ? '#14b8a6' : '#3b82f6',
-                '--hover-to': isLead ? '#1d4ed8' : isNewCustomer ? '#9333ea' : isExisting ? '#4f46e5' : isDealer ? '#ea580c' : isDistributor ? '#0f766e' : '#1d4ed8'
+                '--hover-from': isLead ? '#3b82f6' : isNewCustomer ? '#a855f7' : isBillingCustomer ? '#ec4899' : isExisting ? '#6366f1' : isDealer ? '#f97316' : isDistributor ? '#14b8a6' : '#3b82f6',
+                '--hover-to': isLead ? '#1d4ed8' : isNewCustomer ? '#9333ea' : isBillingCustomer ? '#db2777' : isExisting ? '#4f46e5' : isDealer ? '#ea580c' : isDistributor ? '#0f766e' : '#1d4ed8'
               }}
               onMouseEnter={(e) => {
                 if (!loading) {
