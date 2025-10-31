@@ -45,8 +45,6 @@ export default function BillingModal({ isOpen, onClose, customer, onBillCreated 
   const [cart, setCart] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [searchType, setSearchType] = useState('name'); // 'name', 'serial'
   const [showItemSelector, setShowItemSelector] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   
@@ -257,7 +255,6 @@ export default function BillingModal({ isOpen, onClose, customer, onBillCreated 
     setCart([]);
     setCurrentStep('items');
     setError(null);
-    setSearchQuery('');
     setShowItemSelector(false);
     setShowPaymentModal(false);
     setSubtotal(0);
@@ -413,6 +410,8 @@ export default function BillingModal({ isOpen, onClose, customer, onBillCreated 
                 onUpdateQuantity={updateCartItemQuantity}
                 onRemoveItem={removeFromCart}
                 colors={colors}
+                onRefreshItems={fetchInventoryItems}
+                isRefreshing={loading}
               />
             )}
 

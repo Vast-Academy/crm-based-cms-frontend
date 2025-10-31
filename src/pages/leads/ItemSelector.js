@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { FiSearch, FiPlus, FiMinus, FiTrash2, FiPackage, FiHash } from 'react-icons/fi';
+import { FiSearch, FiPlus, FiMinus, FiTrash2, FiPackage, FiHash, FiRefreshCw } from 'react-icons/fi';
 
 export default function ItemSelector({ 
   items, 
@@ -8,10 +8,11 @@ export default function ItemSelector({
   cart, 
   onUpdateQuantity, 
   onRemoveItem, 
-  colors 
+  colors,
+  onRefreshItems,
+  isRefreshing = false
 }) {
   const [searchQuery, setSearchQuery] = useState('');
-  const [searchType, setSearchType] = useState('name'); // 'name', 'serial'
   const [filteredItems, setFilteredItems] = useState(items || []);
   const [selectedSerialNumbers, setSelectedSerialNumbers] = useState({});
   const [quantities, setQuantities] = useState({});
@@ -32,19 +33,15 @@ export default function ItemSelector({
 
     const query = searchQuery.toLowerCase();
     const filtered = items.filter(item => {
-      if (searchType === 'serial') {
-        // Search in serial numbers
-        return item.stock?.some(stock => 
-          stock.serialNumber?.toLowerCase().includes(query)
-        );
-      } else {
-        // Search in item name
-        return item.name.toLowerCase().includes(query);
-      }
+      const nameMatch = item.name?.toLowerCase().includes(query);
+      const serialMatch = item.stock?.some(stock =>
+        stock.serialNumber?.toLowerCase().includes(query)
+      );
+      return nameMatch || serialMatch;
     });
 
     setFilteredItems(filtered);
-  }, [searchQuery, searchType, items]);
+  }, [searchQuery, items]);
 
   const getCustomerPrice = (item) => {
     if (item.pricing) {
@@ -135,6 +132,11 @@ export default function ItemSelector({
     return cartItem?.quantity || 0;
   };
 
+  const handleRefreshItems = () => {
+    if (!onRefreshItems || isRefreshing) return;
+    onRefreshItems();
+  };
+
   return (
     <div className="space-y-6">
       {/* Search Section */}
@@ -145,21 +147,29 @@ export default function ItemSelector({
               <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
               <input
                 type="text"
-                placeholder={searchType === 'serial' ? 'Search by serial number...' : 'Search by item name...'}
+                placeholder="Search by item name or serial number..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-300 focus:border-blue-400"
               />
             </div>
           </div>
-          <select
-            value={searchType}
-            onChange={(e) => setSearchType(e.target.value)}
-            className="px-4 py-2 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-300"
-          >
-            <option value="name">By Name</option>
-            <option value="serial">By Serial Number</option>
-          </select>
+          {onRefreshItems && (
+            <button
+              type="button"
+              onClick={handleRefreshItems}
+              className={`p-2.5 rounded-lg transition-colors ${
+                isRefreshing
+                  ? 'bg-blue-400 text-white cursor-wait'
+                  : 'bg-blue-500 hover:bg-blue-600 text-white'
+              }`}
+              aria-label="Refresh items"
+              title="Refresh items"
+              disabled={isRefreshing}
+            >
+              <FiRefreshCw className={`w-5 h-5 ${isRefreshing ? 'animate-spin' : ''}`} />
+            </button>
+          )}
         </div>
       </div>
 

@@ -425,7 +425,6 @@ const fetchFreshWorkOrders = async (isBackground = false) => {
       localStorage.setItem('workOrdersData', JSON.stringify(updatedOrders));
       closeCancelModals();
       await fetchFreshWorkOrders(true);
-      alert('Work order cancelled successfully.');
     } catch (error) {
       console.error('Error cancelling work order:', error);
       setCancelError(error.message || 'Server error. Please try again.');

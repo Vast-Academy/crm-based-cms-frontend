@@ -23,7 +23,6 @@ const TechnicianDetailModal = ({ isOpen, onClose, technicianId, onTechnicianUpda
   const [showProjectDetailsModal, setShowProjectDetailsModal] = useState(false);
   const [selectedProject, setSelectedProject] = useState(null);
   const [showEditModal, setShowEditModal] = useState(false);
-  const [expandedRow, setExpandedRow] = useState(null);
 
   const fetchTechnician = async () => {
     if (!technicianId) return;
@@ -345,10 +344,8 @@ const handleTechnicianUpdated = () => {
     return (
       <React.Fragment key={projectId}>
         <tr 
-          onClick={() => setExpandedRow(expandedRow === projectId ? null : projectId)}
-          className={`hover:bg-gray-50 cursor-pointer ${
-            expandedRow === projectId ? 'bg-gray-50' : ''
-          }`}
+          onClick={() => handleViewProject(project)}
+          className="hover:bg-gray-50 cursor-pointer"
         >
           <td className="px-2 py-3 whitespace-nowrap">
             <div className="w-8 h-8 rounded-full bg-pink-600 flex items-center justify-center text-white font-medium">
@@ -391,23 +388,6 @@ const handleTechnicianUpdated = () => {
             )}
           </td>
         </tr>
-        {expandedRow === projectId && (
-          <tr>
-            <td colSpan="5" className="px-6 py-4 bg-gray-50 border-b">
-              <div className="flex space-x-3">
-                <button 
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleViewProject(project);
-                  }}
-                  className="inline-flex items-center px-4 py-1.5 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-500 hover:bg-blue-600"
-                >
-                  View Details
-                </button>
-              </div>
-            </td>
-          </tr>
-        )}
       </React.Fragment>
     );
   })

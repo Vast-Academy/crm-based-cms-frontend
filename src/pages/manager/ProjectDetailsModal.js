@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { FiX, FiUser, FiCalendar, FiMapPin, FiInfo, FiFileText, FiCheckCircle, FiClock, FiEye, FiAlertCircle } from 'react-icons/fi';
+import { FiX, FiUser, FiCalendar, FiMapPin, FiInfo, FiFileText, FiCheckCircle, FiClock, FiEye, FiAlertCircle, FiRefreshCw } from 'react-icons/fi';
 import SummaryApi from '../../common';
 import { useAuth } from '../../context/AuthContext';
 import { useNotification } from '../../context/NotificationContext';
@@ -10,9 +10,10 @@ if (!window.__modalRegistry) {
   window.__modalRegistry = new Set();
 }
 
-const ProjectDetailsModal = ({ isOpen, onClose, project, onProjectApproved }) => {
+const ProjectDetailsModal = ({ isOpen, onClose, project: projectProp, onProjectApproved }) => {
   const { user } = useAuth();
   const { showNotification } = useNotification();
+  const [project, setProject] = useState(projectProp);
 
   // Modal registry setup
   const modalId = useRef(Math.random().toString(36).substr(2, 9));
@@ -38,6 +39,7 @@ const ProjectDetailsModal = ({ isOpen, onClose, project, onProjectApproved }) =>
     return numericZIndex.current >= highestZIndex;
   };
   const [loading, setLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState(null);
   const [approvalRemark, setApprovalRemark] = useState('');
   const [remarkError, setRemarkError] = useState('');
@@ -61,6 +63,10 @@ const ProjectDetailsModal = ({ isOpen, onClose, project, onProjectApproved }) =>
   const [instructionLoading, setInstructionLoading] = useState(false);
 
   const modalContentRef = useRef(null);
+
+  useEffect(() => {
+    setProject(projectProp);
+  }, [projectProp]);
 
   useEffect(() => {
     if (project && project.billingInfo) {
@@ -319,6 +325,37 @@ const ProjectDetailsModal = ({ isOpen, onClose, project, onProjectApproved }) =>
     return text.trim().split(/\s+/).filter(word => word.length > 0).length;
   };
 
+  const refreshProjectDetails = async () => {
+    if (!project?.customerId || !project?.orderId) {
+      return;
+    }
+
+    try {
+      setRefreshing(true);
+      setError(null);
+
+      const response = await fetch(`${SummaryApi.getWorkOrderDetails.url}/${project.customerId}/${project.orderId}`, {
+        method: 'GET',
+        credentials: 'include'
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        setProject(data.data);
+        setStatusHistory(data.data?.statusHistory || []);
+        showNotification('success', 'Project details refreshed', 2000);
+      } else {
+        setError(data.message || 'Failed to refresh project details');
+      }
+    } catch (err) {
+      setError('Server error. Please try again.');
+      console.error('Error refreshing project details:', err);
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
   // Check if any bill has rejected status
   const hasRejectedBill = () => {
     if (project.bills && project.bills.length > 0) {
@@ -377,12 +414,28 @@ const ProjectDetailsModal = ({ isOpen, onClose, project, onProjectApproved }) =>
               {project.status === 'pending-approval' ? 'Pending Approval' : project.status}
             </span>
           </h2>
-          <button 
-            onClick={onClose}
-            className="p-1 rounded-full hover:bg-gray-100"
-          >
-            <FiX size={24} />
-          </button>
+          <div className="flex items-center space-x-2">
+            <button
+              onClick={refreshProjectDetails}
+              className={`p-2 rounded-full transition-colors ${
+                refreshing
+                  ? 'bg-blue-400 text-white cursor-wait'
+                  : 'bg-blue-500 hover:bg-blue-600 text-white'
+              }`}
+              aria-label="Refresh project details"
+              title="Refresh project details"
+              disabled={refreshing}
+            >
+              <FiRefreshCw className={refreshing ? 'animate-spin' : ''} size={18} />
+            </button>
+            <button 
+              onClick={onClose}
+              className="p-1 rounded-full hover:bg-gray-100"
+              aria-label="Close project details"
+            >
+              <FiX size={24} />
+            </button>
+          </div>
         </div>
         
         <div 

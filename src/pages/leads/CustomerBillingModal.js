@@ -21,8 +21,6 @@ export default function CustomerBillingModal({ isOpen, onClose, customer, onBill
   const [cart, setCart] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [searchType, setSearchType] = useState('name'); // 'name', 'serial'
   const [showItemSelector, setShowItemSelector] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
 
@@ -257,7 +255,6 @@ export default function CustomerBillingModal({ isOpen, onClose, customer, onBill
     setCart([]);
     setCurrentStep('items');
     setError(null);
-    setSearchQuery('');
   };
 
   // Handle overlay click - requires double click to close
@@ -380,6 +377,8 @@ export default function CustomerBillingModal({ isOpen, onClose, customer, onBill
                 onUpdateQuantity={updateCartItemQuantity}
                 onRemoveItem={removeFromCart}
                 colors={colors}
+                onRefreshItems={fetchInventoryItems}
+                isRefreshing={loading}
               />
             )}
 
