@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FiX, FiShoppingCart, FiSearch, FiPlus, FiMinus, FiTrash2, FiDollarSign } from 'react-icons/fi';
 import SummaryApi from '../../common';
@@ -6,9 +6,16 @@ import { useAuth } from '../../context/AuthContext';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import ItemSelector from './ItemSelector';
 import PaymentModal from './PaymentModal';
+import { useNotification } from '../../context/NotificationContext';
+
+// Ensure global modal registry exists
+if (!window.__modalRegistry) {
+  window.__modalRegistry = new Set();
+}
 
 export default function CustomerBillingModal({ isOpen, onClose, customer, onBillCreated }) {
   const { user } = useAuth();
+  const { showNotification } = useNotification();
   const [currentStep, setCurrentStep] = useState('items'); // 'items', 'summary', 'payment'
   const [items, setItems] = useState([]);
   const [cart, setCart] = useState([]);
@@ -22,6 +29,95 @@ export default function CustomerBillingModal({ isOpen, onClose, customer, onBill
   // Bill totals
   const [subtotal, setSubtotal] = useState(0);
   const [total, setTotal] = useState(0);
+
+  // Modal registry setup
+  const modalId = useRef(Math.random().toString(36).substr(2, 9));
+  const numericZIndex = useRef(60); // z-[60] - higher than parent modals (50)
+
+  // Double ESC and double click states
+  const [escPressCount, setEscPressCount] = useState(0);
+  const [escPressTimer, setEscPressTimer] = useState(null);
+  const [clickCount, setClickCount] = useState(0);
+  const [clickTimer, setClickTimer] = useState(null);
+
+  // Check if this modal is the topmost modal
+  const isTopmostModal = () => {
+    if (!window.__modalRegistry || window.__modalRegistry.size === 0) return true;
+
+    let highestZIndex = 0;
+    window.__modalRegistry.forEach(modal => {
+      if (modal.zIndex > highestZIndex) {
+        highestZIndex = modal.zIndex;
+      }
+    });
+
+    return numericZIndex.current >= highestZIndex;
+  };
+
+  // Register/unregister modal in global registry
+  useEffect(() => {
+    if (isOpen) {
+      window.__modalRegistry.add({
+        id: modalId.current,
+        zIndex: numericZIndex.current
+      });
+    } else {
+      window.__modalRegistry.forEach(modal => {
+        if (modal.id === modalId.current) {
+          window.__modalRegistry.delete(modal);
+        }
+      });
+    }
+
+    return () => {
+      window.__modalRegistry.forEach(modal => {
+        if (modal.id === modalId.current) {
+          window.__modalRegistry.delete(modal);
+        }
+      });
+    };
+  }, [isOpen]);
+
+  // Reset ESC and click counters when modal opens/closes
+  useEffect(() => {
+    if (!isOpen) {
+      setEscPressCount(0);
+      setClickCount(0);
+      if (escPressTimer) clearTimeout(escPressTimer);
+      if (clickTimer) clearTimeout(clickTimer);
+    }
+  }, [isOpen]);
+
+  // Double ESC handler
+  useEffect(() => {
+    const handleEsc = (event) => {
+      if (event.key === 'Escape' && isOpen && isTopmostModal()) {
+        if (escPressCount === 0) {
+          setEscPressCount(1);
+          const timer = setTimeout(() => {
+            showNotification('info', 'To close the popup, press ESC twice', 3000);
+            setEscPressCount(0);
+          }, 800);
+          setEscPressTimer(timer);
+        } else if (escPressCount === 1) {
+          clearTimeout(escPressTimer);
+          setEscPressCount(0);
+          handleClose();
+        }
+      }
+    };
+
+    if (isOpen) {
+      document.addEventListener('keydown', handleEsc);
+      document.body.style.overflow = 'hidden';
+    }
+
+    return () => {
+      document.removeEventListener('keydown', handleEsc);
+      document.body.style.overflow = 'unset';
+      if (escPressTimer) clearTimeout(escPressTimer);
+    };
+  }, [isOpen, escPressCount, escPressTimer, showNotification]);
 
   // Fetch inventory items on modal open
   useEffect(() => {
@@ -164,6 +260,24 @@ export default function CustomerBillingModal({ isOpen, onClose, customer, onBill
     setSearchQuery('');
   };
 
+  // Handle overlay click - requires double click to close
+  const handleOverlayClick = () => {
+    if (!isTopmostModal()) return;
+
+    if (clickCount === 0) {
+      setClickCount(1);
+      const timer = setTimeout(() => {
+        showNotification('info', 'To close the popup, click twice on the background', 3000);
+        setClickCount(0);
+      }, 800);
+      setClickTimer(timer);
+    } else if (clickCount === 1) {
+      if (clickTimer) clearTimeout(clickTimer);
+      setClickCount(0);
+      handleClose();
+    }
+  };
+
   const handleClose = () => {
     resetModal();
     onClose();
@@ -172,20 +286,23 @@ export default function CustomerBillingModal({ isOpen, onClose, customer, onBill
   if (!isOpen || !customer) return null;
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto">
+    <div className="fixed inset-0 z-[60] overflow-y-auto">
       <div className="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
         {/* Background overlay */}
         <div
           className="fixed inset-0 transition-opacity bg-gray-500 opacity-75"
           aria-hidden="true"
-          onClick={handleClose}
+          onClick={handleOverlayClick}
         />
 
         {/* Center modal */}
         <span className="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
 
         {/* Modal panel */}
-        <div className={`inline-block align-bottom bg-white rounded-3xl text-left shadow-2xl transform transition-all sm:my-12 sm:align-middle sm:w-full sm:max-w-6xl mx-4 border ${colors.border} overflow-hidden border-t-4 ${colors.borderT}`}>
+        <div
+          className={`inline-block align-bottom bg-white rounded-3xl text-left shadow-2xl transform transition-all sm:my-12 sm:align-middle sm:w-full sm:max-w-6xl mx-4 border ${colors.border} overflow-hidden border-t-4 ${colors.borderT}`}
+          onClick={(e) => e.stopPropagation()}
+        >
           {/* Header */}
           <div className={`flex justify-between items-center bg-gradient-to-r ${colors.bg} px-6 py-4 border-b ${colors.border}`}>
             <div className="flex items-center space-x-3">

@@ -1,13 +1,49 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { FiX, FiSave, FiSearch, FiTrash2, FiPlusCircle } from 'react-icons/fi';
 import SummaryApi from '../../common';
 import { useNotification } from '../../context/NotificationContext';
 import { useAuth } from '../../context/AuthContext';
 import ConfirmationDialog from '../../components/ConfirmationDialog';
 
+// Ensure global modal registry exists
+if (!window.__modalRegistry) {
+  window.__modalRegistry = new Set();
+}
+
 const ServicesPage = () => {
   const { showNotification } = useNotification();
   const { user } = useAuth();
+
+  // Modal registry setup
+  const addModalId = useRef(Math.random().toString(36).substr(2, 9));
+  const editModalId = useRef(Math.random().toString(36).substr(2, 9));
+  const numericZIndex = useRef(50); // z-50 from the modal divs
+
+  // Double ESC and double click states for Add modal
+  const [escPressCountAdd, setEscPressCountAdd] = useState(0);
+  const [escPressTimerAdd, setEscPressTimerAdd] = useState(null);
+  const [clickCountAdd, setClickCountAdd] = useState(0);
+  const [clickTimerAdd, setClickTimerAdd] = useState(null);
+
+  // Double ESC and double click states for Edit modal
+  const [escPressCountEdit, setEscPressCountEdit] = useState(0);
+  const [escPressTimerEdit, setEscPressTimerEdit] = useState(null);
+  const [clickCountEdit, setClickCountEdit] = useState(0);
+  const [clickTimerEdit, setClickTimerEdit] = useState(null);
+
+  // Check if this modal is the topmost modal
+  const isTopmostModal = () => {
+    if (!window.__modalRegistry || window.__modalRegistry.size === 0) return true;
+
+    let highestZIndex = 0;
+    window.__modalRegistry.forEach(modal => {
+      if (modal.zIndex > highestZIndex) {
+        highestZIndex = modal.zIndex;
+      }
+    });
+
+    return numericZIndex.current >= highestZIndex;
+  };
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -30,22 +66,167 @@ const ServicesPage = () => {
     fetchServices();
   }, []);
 
-  // Handle ESC key to close modal
+  // Register/unregister Add modal in global registry
   useEffect(() => {
-    const handleEscKey = (event) => {
-      if (event.key === 'Escape') {
-        if (isModalOpen) {
+    if (isModalOpen) {
+      window.__modalRegistry.add({
+        id: addModalId.current,
+        zIndex: numericZIndex.current
+      });
+    } else {
+      window.__modalRegistry.forEach(modal => {
+        if (modal.id === addModalId.current) {
+          window.__modalRegistry.delete(modal);
+        }
+      });
+    }
+
+    return () => {
+      window.__modalRegistry.forEach(modal => {
+        if (modal.id === addModalId.current) {
+          window.__modalRegistry.delete(modal);
+        }
+      });
+    };
+  }, [isModalOpen]);
+
+  // Register/unregister Edit modal in global registry
+  useEffect(() => {
+    if (isEditModalOpen) {
+      window.__modalRegistry.add({
+        id: editModalId.current,
+        zIndex: numericZIndex.current
+      });
+    } else {
+      window.__modalRegistry.forEach(modal => {
+        if (modal.id === editModalId.current) {
+          window.__modalRegistry.delete(modal);
+        }
+      });
+    }
+
+    return () => {
+      window.__modalRegistry.forEach(modal => {
+        if (modal.id === editModalId.current) {
+          window.__modalRegistry.delete(modal);
+        }
+      });
+    };
+  }, [isEditModalOpen]);
+
+  // Reset ESC and click counters for Add modal
+  useEffect(() => {
+    if (!isModalOpen) {
+      setEscPressCountAdd(0);
+      setClickCountAdd(0);
+      if (escPressTimerAdd) clearTimeout(escPressTimerAdd);
+      if (clickTimerAdd) clearTimeout(clickTimerAdd);
+    }
+  }, [isModalOpen]);
+
+  // Reset ESC and click counters for Edit modal
+  useEffect(() => {
+    if (!isEditModalOpen) {
+      setEscPressCountEdit(0);
+      setClickCountEdit(0);
+      if (escPressTimerEdit) clearTimeout(escPressTimerEdit);
+      if (clickTimerEdit) clearTimeout(clickTimerEdit);
+    }
+  }, [isEditModalOpen]);
+
+  // Double ESC handler for Add modal
+  useEffect(() => {
+    const handleEsc = (event) => {
+      if (event.key === 'Escape' && isModalOpen && isTopmostModal()) {
+        if (escPressCountAdd === 0) {
+          setEscPressCountAdd(1);
+          const timer = setTimeout(() => {
+            showNotification('info', 'To close the popup, press ESC twice', 3000);
+            setEscPressCountAdd(0);
+          }, 800);
+          setEscPressTimerAdd(timer);
+        } else if (escPressCountAdd === 1) {
+          clearTimeout(escPressTimerAdd);
+          setEscPressCountAdd(0);
           setIsModalOpen(false);
         }
-        if (isEditModalOpen) {
+      }
+    };
+
+    if (isModalOpen) {
+      document.addEventListener('keydown', handleEsc);
+    }
+
+    return () => {
+      document.removeEventListener('keydown', handleEsc);
+      if (escPressTimerAdd) clearTimeout(escPressTimerAdd);
+    };
+  }, [isModalOpen, escPressCountAdd, escPressTimerAdd, showNotification]);
+
+  // Double ESC handler for Edit modal
+  useEffect(() => {
+    const handleEsc = (event) => {
+      if (event.key === 'Escape' && isEditModalOpen && isTopmostModal()) {
+        if (escPressCountEdit === 0) {
+          setEscPressCountEdit(1);
+          const timer = setTimeout(() => {
+            showNotification('info', 'To close the popup, press ESC twice', 3000);
+            setEscPressCountEdit(0);
+          }, 800);
+          setEscPressTimerEdit(timer);
+        } else if (escPressCountEdit === 1) {
+          clearTimeout(escPressTimerEdit);
+          setEscPressCountEdit(0);
           setIsEditModalOpen(false);
         }
       }
     };
 
-    window.addEventListener('keydown', handleEscKey);
-    return () => window.removeEventListener('keydown', handleEscKey);
-  }, [isModalOpen, isEditModalOpen]);
+    if (isEditModalOpen) {
+      document.addEventListener('keydown', handleEsc);
+    }
+
+    return () => {
+      document.removeEventListener('keydown', handleEsc);
+      if (escPressTimerEdit) clearTimeout(escPressTimerEdit);
+    };
+  }, [isEditModalOpen, escPressCountEdit, escPressTimerEdit, showNotification]);
+
+  // Handle overlay click for Add modal - requires double click to close
+  const handleOverlayClickAdd = () => {
+    if (!isTopmostModal()) return;
+
+    if (clickCountAdd === 0) {
+      setClickCountAdd(1);
+      const timer = setTimeout(() => {
+        showNotification('info', 'To close the popup, click twice on the background', 3000);
+        setClickCountAdd(0);
+      }, 800);
+      setClickTimerAdd(timer);
+    } else if (clickCountAdd === 1) {
+      if (clickTimerAdd) clearTimeout(clickTimerAdd);
+      setClickCountAdd(0);
+      setIsModalOpen(false);
+    }
+  };
+
+  // Handle overlay click for Edit modal - requires double click to close
+  const handleOverlayClickEdit = () => {
+    if (!isTopmostModal()) return;
+
+    if (clickCountEdit === 0) {
+      setClickCountEdit(1);
+      const timer = setTimeout(() => {
+        showNotification('info', 'To close the popup, click twice on the background', 3000);
+        setClickCountEdit(0);
+      }, 800);
+      setClickTimerEdit(timer);
+    } else if (clickCountEdit === 1) {
+      if (clickTimerEdit) clearTimeout(clickTimerEdit);
+      setClickCountEdit(0);
+      setIsEditModalOpen(false);
+    }
+  };
 
   // Fetch all services from API
   const fetchServices = async (forceFresh = false) => {
@@ -416,7 +597,7 @@ const ServicesPage = () => {
       {isModalOpen && (
         <div
           className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
-          onClick={() => setIsModalOpen(false)}
+          onClick={handleOverlayClickAdd}
         >
           <div
             className="bg-white max-h-[600px] overflow-y-auto rounded-lg shadow-xl w-full max-w-md"
@@ -511,7 +692,7 @@ const ServicesPage = () => {
       {isEditModalOpen && selectedService && (
         <div
           className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
-          onClick={() => setIsEditModalOpen(false)}
+          onClick={handleOverlayClickEdit}
         >
           <div
             className="bg-white max-h-[600px] overflow-y-auto rounded-lg shadow-xl w-full max-w-md"

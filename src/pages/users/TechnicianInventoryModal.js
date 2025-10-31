@@ -1,17 +1,75 @@
 // components/technician/TechnicianInventoryModal.jsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { FiArrowRight, FiX, FiPackage } from 'react-icons/fi';
 import SummaryApi from '../../common';
+import { useNotification } from '../../context/NotificationContext';
+
+// Ensure global modal registry exists
+if (!window.__modalRegistry) {
+  window.__modalRegistry = new Set();
+}
 
 const TechnicianInventoryModal = ({ isOpen, onClose, technician, onAssignInventory, refreshTrigger = 0 }) => {
+  const { showNotification } = useNotification();
+
+  // Modal registry setup
+  const modalId = useRef(Math.random().toString(36).substr(2, 9));
+  const numericZIndex = useRef(60); // z-[60] from the modal div
+
   const [transfers, setTransfers] = useState([]);
   const [currentInventory, setCurrentInventory] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [filterType, setFilterType] = useState('current'); // Default to current
 
+  // Double ESC and double click states
+  const [escPressCount, setEscPressCount] = useState(0);
+  const [escPressTimer, setEscPressTimer] = useState(null);
+  const [clickCount, setClickCount] = useState(0);
+  const [clickTimer, setClickTimer] = useState(null);
+
+  // Check if this modal is the topmost modal
+  const isTopmostModal = () => {
+    if (!window.__modalRegistry || window.__modalRegistry.size === 0) return true;
+
+    let highestZIndex = 0;
+    window.__modalRegistry.forEach(modal => {
+      if (modal.zIndex > highestZIndex) {
+        highestZIndex = modal.zIndex;
+      }
+    });
+
+    return numericZIndex.current >= highestZIndex;
+  };
+
   // Reference to the most recent timestamp for each serial number or item
   const [latestTransfers, setLatestTransfers] = useState({});
+
+  // Register/unregister modal in global registry
+  useEffect(() => {
+    if (isOpen) {
+      window.__modalRegistry.add({
+        id: modalId.current,
+        zIndex: numericZIndex.current
+      });
+    } else {
+      // Remove this modal from registry
+      window.__modalRegistry.forEach(modal => {
+        if (modal.id === modalId.current) {
+          window.__modalRegistry.delete(modal);
+        }
+      });
+    }
+
+    return () => {
+      // Cleanup on unmount
+      window.__modalRegistry.forEach(modal => {
+        if (modal.id === modalId.current) {
+          window.__modalRegistry.delete(modal);
+        }
+      });
+    };
+  }, [isOpen]);
 
   // Fetch technician's inventory transfers and current inventory
   useEffect(() => {
@@ -20,6 +78,55 @@ const TechnicianInventoryModal = ({ isOpen, onClose, technician, onAssignInvento
       fetchTechnicianCurrentInventory();
     }
   }, [isOpen, technician, refreshTrigger]);
+
+  // Reset ESC and click counters when modal opens/closes
+  useEffect(() => {
+    if (!isOpen) {
+      setEscPressCount(0);
+      setClickCount(0);
+      if (escPressTimer) clearTimeout(escPressTimer);
+      if (clickTimer) clearTimeout(clickTimer);
+    }
+  }, [isOpen]);
+
+  // Close modal when Escape key is pressed twice within 800ms
+  useEffect(() => {
+    const handleEsc = (event) => {
+      if (event.key === 'Escape' && isOpen && isTopmostModal()) {
+        if (escPressCount === 0) {
+          // First ESC press - start timer, NO notification yet
+          setEscPressCount(1);
+
+          // Set timer to reset after 800ms and show notification
+          const timer = setTimeout(() => {
+            // Timer expired - user didn't press twice, show guide notification
+            showNotification('info', 'To close the popup, press ESC twice', 3000);
+            setEscPressCount(0);
+          }, 800);
+          setEscPressTimer(timer);
+        } else if (escPressCount === 1) {
+          // Second ESC press within time window - close popup, NO notification
+          clearTimeout(escPressTimer);
+          setEscPressCount(0);
+          onClose();
+        }
+      }
+    };
+
+    if (isOpen) {
+      document.addEventListener('keydown', handleEsc);
+      document.body.style.overflow = 'hidden';
+    }
+
+    return () => {
+      document.removeEventListener('keydown', handleEsc);
+      document.body.style.overflow = 'unset';
+      // Clear timer on cleanup
+      if (escPressTimer) {
+        clearTimeout(escPressTimer);
+      }
+    };
+  }, [isOpen, onClose, escPressCount, escPressTimer, showNotification]);
 
   const fetchTechnicianInventoryHistory = async () => {
     try {
@@ -247,6 +354,32 @@ const TechnicianInventoryModal = ({ isOpen, onClose, technician, onAssignInvento
     return currentStock.reduce((sum, item) => sum + item.quantity, 0);
   };
 
+  // Handle overlay click - requires double click to close
+  const handleOverlayClick = () => {
+    // Only handle click if this is the topmost modal
+    if (!isTopmostModal()) return;
+
+    if (clickCount === 0) {
+      // First click - start timer, NO notification yet
+      setClickCount(1);
+
+      // Set timer to reset after 800ms and show notification
+      const timer = setTimeout(() => {
+        // Timer expired - user didn't click twice, show guide notification
+        showNotification('info', 'To close the popup, click twice on the background', 3000);
+        setClickCount(0);
+      }, 800);
+      setClickTimer(timer);
+    } else if (clickCount === 1) {
+      // Second click within time window - close popup, NO notification
+      if (clickTimer) {
+        clearTimeout(clickTimer);
+      }
+      setClickCount(0);
+      onClose();
+    }
+  };
+
   // Don't render anything if the modal is not open
   if (!isOpen) {
     return null;
@@ -255,7 +388,7 @@ const TechnicianInventoryModal = ({ isOpen, onClose, technician, onAssignInvento
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
       {/* Modal backdrop */}
-      <div className="fixed inset-0 bg-black opacity-50" onClick={onClose}></div>
+      <div className="fixed inset-0 bg-black opacity-50" onClick={handleOverlayClick}></div>
 
       {/* Modal content */}
       <div className="relative bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[85vh] flex flex-col overflow-hidden">

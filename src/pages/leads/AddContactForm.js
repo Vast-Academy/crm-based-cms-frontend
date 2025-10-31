@@ -7,11 +7,19 @@ import "../../styles/datepicker-custom.css";
 import SummaryApi from '../../common';
 import { useAuth } from '../../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
+import { useNotification } from '../../context/NotificationContext';
 
 export default function AddContactForm({ initialPhone = '', initialType = 'lead', onSuccess, onCancel, isOpen = false }) {
   const { user } = useAuth();
   const navigate = useNavigate();
-  
+  const { showNotification } = useNotification();
+
+  // Double ESC and double click states
+  const [escPressCount, setEscPressCount] = useState(0);
+  const [escPressTimer, setEscPressTimer] = useState(null);
+  const [clickCount, setClickCount] = useState(0);
+  const [clickTimer, setClickTimer] = useState(null);
+
   const [form, setForm] = useState({
     customerName: "",
     companyName: "",
@@ -187,24 +195,77 @@ export default function AddContactForm({ initialPhone = '', initialType = 'lead'
     update("whatsapp", value);
   };
 
-  // Close modal when Escape key is pressed
+  // Handle overlay click - requires double click to close
+  const handleOverlayClick = () => {
+    if (clickCount === 0) {
+      // First click - start timer, NO notification yet
+      setClickCount(1);
+
+      // Set timer to reset after 800ms and show notification
+      const timer = setTimeout(() => {
+        // Timer expired - user didn't click twice, show guide notification
+        showNotification('info', 'To close the popup, click twice on the background', 3000);
+        setClickCount(0);
+      }, 800);
+      setClickTimer(timer);
+    } else if (clickCount === 1) {
+      // Second click within time window - close popup, NO notification
+      if (clickTimer) {
+        clearTimeout(clickTimer);
+      }
+      setClickCount(0);
+      onCancel();
+    }
+  };
+
+  // Reset ESC and click counters when modal opens/closes
+  useEffect(() => {
+    if (!isOpen) {
+      setEscPressCount(0);
+      setClickCount(0);
+      if (escPressTimer) clearTimeout(escPressTimer);
+      if (clickTimer) clearTimeout(clickTimer);
+    }
+  }, [isOpen]);
+
+  // Close modal when Escape key is pressed twice within 800ms
   useEffect(() => {
     const handleEsc = (event) => {
       if (event.key === 'Escape' && isOpen) {
-        onCancel();
+        if (escPressCount === 0) {
+          // First ESC press - start timer, NO notification yet
+          setEscPressCount(1);
+
+          // Set timer to reset after 800ms and show notification
+          const timer = setTimeout(() => {
+            // Timer expired - user didn't press twice, show guide notification
+            showNotification('info', 'To close the popup, press ESC twice', 3000);
+            setEscPressCount(0);
+          }, 800);
+          setEscPressTimer(timer);
+        } else if (escPressCount === 1) {
+          // Second ESC press within time window - close popup, NO notification
+          clearTimeout(escPressTimer);
+          setEscPressCount(0);
+          onCancel();
+        }
       }
     };
-    
+
     if (isOpen) {
       document.addEventListener('keydown', handleEsc);
       document.body.style.overflow = 'hidden';
     }
-    
+
     return () => {
       document.removeEventListener('keydown', handleEsc);
       document.body.style.overflow = 'unset';
+      // Clear timer on cleanup
+      if (escPressTimer) {
+        clearTimeout(escPressTimer);
+      }
     };
-  }, [isOpen, onCancel]);
+  }, [isOpen, onCancel, escPressCount, escPressTimer, showNotification]);
 
   function validate() {
     const e = {};
@@ -478,10 +539,10 @@ export default function AddContactForm({ initialPhone = '', initialType = 'lead'
     <div className="fixed inset-0 z-50 overflow-y-auto">
       <div className="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
         {/* Background overlay */}
-        <div 
-          className="fixed inset-0 transition-opacity bg-gray-500 opacity-75" 
+        <div
+          className="fixed inset-0 transition-opacity bg-gray-500 opacity-75"
           aria-hidden="true"
-          onClick={onCancel}
+          onClick={handleOverlayClick}
         />
         
         {/* Center modal */}

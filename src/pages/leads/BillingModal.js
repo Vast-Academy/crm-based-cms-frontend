@@ -1,14 +1,45 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FiX, FiShoppingCart, FiSearch, FiPlus, FiMinus, FiTrash2, FiDollarSign } from 'react-icons/fi';
 import SummaryApi from '../../common';
 import { useAuth } from '../../context/AuthContext';
+import { useNotification } from '../../context/NotificationContext';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import ItemSelector from './ItemSelector';
 import PaymentModal from './PaymentModal';
 
+// Ensure global modal registry exists
+if (!window.__modalRegistry) {
+  window.__modalRegistry = new Set();
+}
+
 export default function BillingModal({ isOpen, onClose, customer, onBillCreated }) {
   const { user } = useAuth();
+  const { showNotification } = useNotification();
+
+  // Modal registry setup
+  const modalId = useRef(Math.random().toString(36).substr(2, 9));
+  const numericZIndex = useRef(60); // z-[60] - higher than parent modals (50)
+
+  // Double ESC and double click states
+  const [escPressCount, setEscPressCount] = useState(0);
+  const [escPressTimer, setEscPressTimer] = useState(null);
+  const [clickCount, setClickCount] = useState(0);
+  const [clickTimer, setClickTimer] = useState(null);
+
+  // Check if this modal is the topmost modal
+  const isTopmostModal = () => {
+    if (!window.__modalRegistry || window.__modalRegistry.size === 0) return true;
+
+    let highestZIndex = 0;
+    window.__modalRegistry.forEach(modal => {
+      if (modal.zIndex > highestZIndex) {
+        highestZIndex = modal.zIndex;
+      }
+    });
+
+    return numericZIndex.current >= highestZIndex;
+  };
   const [currentStep, setCurrentStep] = useState('items'); // 'items', 'summary', 'payment'
   const [items, setItems] = useState([]);
   const [cart, setCart] = useState([]);
@@ -22,6 +53,81 @@ export default function BillingModal({ isOpen, onClose, customer, onBillCreated 
   // Bill totals
   const [subtotal, setSubtotal] = useState(0);
   const [total, setTotal] = useState(0);
+
+  // Register/unregister modal in global registry
+  useEffect(() => {
+    if (isOpen) {
+      window.__modalRegistry.add({
+        id: modalId.current,
+        zIndex: numericZIndex.current
+      });
+    } else {
+      // Remove this modal from registry
+      window.__modalRegistry.forEach(modal => {
+        if (modal.id === modalId.current) {
+          window.__modalRegistry.delete(modal);
+        }
+      });
+    }
+
+    return () => {
+      // Cleanup on unmount
+      window.__modalRegistry.forEach(modal => {
+        if (modal.id === modalId.current) {
+          window.__modalRegistry.delete(modal);
+        }
+      });
+    };
+  }, [isOpen]);
+
+  // Reset ESC and click counters when modal opens/closes
+  useEffect(() => {
+    if (!isOpen) {
+      setEscPressCount(0);
+      setClickCount(0);
+      if (escPressTimer) clearTimeout(escPressTimer);
+      if (clickTimer) clearTimeout(clickTimer);
+    }
+  }, [isOpen]);
+
+  // Close modal when Escape key is pressed twice within 800ms
+  useEffect(() => {
+    const handleEsc = (event) => {
+      if (event.key === 'Escape' && isOpen && isTopmostModal()) {
+        if (escPressCount === 0) {
+          // First ESC press - start timer, NO notification yet
+          setEscPressCount(1);
+
+          // Set timer to reset after 800ms and show notification
+          const timer = setTimeout(() => {
+            // Timer expired - user didn't press twice, show guide notification
+            showNotification('info', 'To close the popup, press ESC twice', 3000);
+            setEscPressCount(0);
+          }, 800);
+          setEscPressTimer(timer);
+        } else if (escPressCount === 1) {
+          // Second ESC press within time window - close popup, NO notification
+          clearTimeout(escPressTimer);
+          setEscPressCount(0);
+          handleClose();
+        }
+      }
+    };
+
+    if (isOpen) {
+      document.addEventListener('keydown', handleEsc);
+      document.body.style.overflow = 'hidden';
+    }
+
+    return () => {
+      document.removeEventListener('keydown', handleEsc);
+      document.body.style.overflow = 'unset';
+      // Clear timer on cleanup
+      if (escPressTimer) {
+        clearTimeout(escPressTimer);
+      }
+    };
+  }, [isOpen, escPressCount, escPressTimer, showNotification]);
 
   // Fetch inventory items on modal open and reset state
   useEffect(() => {
@@ -158,6 +264,32 @@ export default function BillingModal({ isOpen, onClose, customer, onBillCreated 
     setTotal(0);
   };
 
+  // Handle overlay click - requires double click to close
+  const handleOverlayClick = () => {
+    // Only handle click if this is the topmost modal
+    if (!isTopmostModal()) return;
+
+    if (clickCount === 0) {
+      // First click - start timer, NO notification yet
+      setClickCount(1);
+
+      // Set timer to reset after 800ms and show notification
+      const timer = setTimeout(() => {
+        // Timer expired - user didn't click twice, show guide notification
+        showNotification('info', 'To close the popup, click twice on the background', 3000);
+        setClickCount(0);
+      }, 800);
+      setClickTimer(timer);
+    } else if (clickCount === 1) {
+      // Second click within time window - close popup, NO notification
+      if (clickTimer) {
+        clearTimeout(clickTimer);
+      }
+      setClickCount(0);
+      handleClose();
+    }
+  };
+
   const handleClose = () => {
     resetModal();
     onClose();
@@ -190,13 +322,13 @@ export default function BillingModal({ isOpen, onClose, customer, onBillCreated 
   const colors = colorClasses[customerTypeColor];
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto">
+    <div className="fixed inset-0 z-[60] overflow-y-auto">
       <div className="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
         {/* Background overlay */}
-        <div 
-          className="fixed inset-0 transition-opacity bg-gray-500 opacity-75" 
+        <div
+          className="fixed inset-0 transition-opacity bg-gray-500 opacity-75"
           aria-hidden="true"
-          onClick={handleClose}
+          onClick={handleOverlayClick}
         />
         
         {/* Center modal */}

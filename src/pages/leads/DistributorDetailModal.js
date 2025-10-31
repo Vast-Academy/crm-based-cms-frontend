@@ -11,6 +11,11 @@ import TransactionHistory from '../../components/TransactionHistory';
 import { useNotification } from '../../context/NotificationContext';
 import BillingModal from './BillingModal';
 
+// Ensure global modal registry exists
+if (!window.__modalRegistry) {
+  window.__modalRegistry = new Set();
+}
+
 // List of Indian Banks
 const INDIAN_BANKS = [
   'State Bank of India (SBI)',
@@ -41,6 +46,30 @@ const INDIAN_BANKS = [
 export default function DistributorDetailModal({ isOpen, onClose, distributorId, onDistributorUpdated }) {
   const { user } = useAuth();
   const { showNotification } = useNotification();
+
+  // Modal registry setup
+  const modalId = useRef(Math.random().toString(36).substr(2, 9));
+  const numericZIndex = useRef(50); // z-50 from the modal div
+
+  // Double ESC and double click states
+  const [escPressCount, setEscPressCount] = useState(0);
+  const [escPressTimer, setEscPressTimer] = useState(null);
+  const [clickCount, setClickCount] = useState(0);
+  const [clickTimer, setClickTimer] = useState(null);
+
+  // Check if this modal is the topmost modal
+  const isTopmostModal = () => {
+    if (!window.__modalRegistry || window.__modalRegistry.size === 0) return true;
+
+    let highestZIndex = 0;
+    window.__modalRegistry.forEach(modal => {
+      if (modal.zIndex > highestZIndex) {
+        highestZIndex = modal.zIndex;
+      }
+    });
+
+    return numericZIndex.current >= highestZIndex;
+  };
   const [distributor, setDistributor] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -96,6 +125,81 @@ export default function DistributorDetailModal({ isOpen, onClose, distributorId,
   // Billing modal states
   const [showBillingModal, setShowBillingModal] = useState(false);
   const [selectedBillingCustomer, setSelectedBillingCustomer] = useState(null);
+
+  // Register/unregister modal in global registry
+  useEffect(() => {
+    if (isOpen) {
+      window.__modalRegistry.add({
+        id: modalId.current,
+        zIndex: numericZIndex.current
+      });
+    } else {
+      // Remove this modal from registry
+      window.__modalRegistry.forEach(modal => {
+        if (modal.id === modalId.current) {
+          window.__modalRegistry.delete(modal);
+        }
+      });
+    }
+
+    return () => {
+      // Cleanup on unmount
+      window.__modalRegistry.forEach(modal => {
+        if (modal.id === modalId.current) {
+          window.__modalRegistry.delete(modal);
+        }
+      });
+    };
+  }, [isOpen]);
+
+  // Reset ESC and click counters when modal opens/closes
+  useEffect(() => {
+    if (!isOpen) {
+      setEscPressCount(0);
+      setClickCount(0);
+      if (escPressTimer) clearTimeout(escPressTimer);
+      if (clickTimer) clearTimeout(clickTimer);
+    }
+  }, [isOpen]);
+
+  // Close modal when Escape key is pressed twice within 800ms
+  useEffect(() => {
+    const handleEsc = (event) => {
+      if (event.key === 'Escape' && isOpen && isTopmostModal()) {
+        if (escPressCount === 0) {
+          // First ESC press - start timer, NO notification yet
+          setEscPressCount(1);
+
+          // Set timer to reset after 800ms and show notification
+          const timer = setTimeout(() => {
+            // Timer expired - user didn't press twice, show guide notification
+            showNotification('info', 'To close the popup, press ESC twice', 3000);
+            setEscPressCount(0);
+          }, 800);
+          setEscPressTimer(timer);
+        } else if (escPressCount === 1) {
+          // Second ESC press within time window - close popup, NO notification
+          clearTimeout(escPressTimer);
+          setEscPressCount(0);
+          onClose();
+        }
+      }
+    };
+
+    if (isOpen) {
+      document.addEventListener('keydown', handleEsc);
+      document.body.style.overflow = 'hidden';
+    }
+
+    return () => {
+      document.removeEventListener('keydown', handleEsc);
+      document.body.style.overflow = 'unset';
+      // Clear timer on cleanup
+      if (escPressTimer) {
+        clearTimeout(escPressTimer);
+      }
+    };
+  }, [isOpen, onClose, escPressCount, escPressTimer, showNotification]);
 
   // Reset tab to details when modal opens
   useEffect(() => {
@@ -450,6 +554,32 @@ export default function DistributorDetailModal({ isOpen, onClose, distributorId,
     }
   };
 
+  // Handle overlay click - requires double click to close
+  const handleOverlayClick = () => {
+    // Only handle click if this is the topmost modal
+    if (!isTopmostModal()) return;
+
+    if (clickCount === 0) {
+      // First click - start timer, NO notification yet
+      setClickCount(1);
+
+      // Set timer to reset after 800ms and show notification
+      const timer = setTimeout(() => {
+        // Timer expired - user didn't click twice, show guide notification
+        showNotification('info', 'To close the popup, click twice on the background', 3000);
+        setClickCount(0);
+      }, 800);
+      setClickTimer(timer);
+    } else if (clickCount === 1) {
+      // Second click within time window - close popup, NO notification
+      if (clickTimer) {
+        clearTimeout(clickTimer);
+      }
+      setClickCount(0);
+      onClose();
+    }
+  };
+
   const handleProcessPayment = async () => {
     if (!paymentAmount || parseFloat(paymentAmount) <= 0) {
       showNotification('error', 'Please enter a valid payment amount');
@@ -581,10 +711,10 @@ export default function DistributorDetailModal({ isOpen, onClose, distributorId,
     <div className="fixed inset-0 z-50 overflow-y-auto">
       <div className="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
         {/* Background overlay */}
-        <div 
-          className="fixed inset-0 transition-opacity bg-gray-500 opacity-75" 
+        <div
+          className="fixed inset-0 transition-opacity bg-gray-500 opacity-75"
           aria-hidden="true"
-          onClick={onClose}
+          onClick={handleOverlayClick}
         />
         
         {/* Center modal */}
@@ -1320,11 +1450,11 @@ export default function DistributorDetailModal({ isOpen, onClose, distributorId,
 
       {/* Payment Confirmation Modal */}
       {showPaymentModal && (
-        <div className="fixed inset-0 z-60 overflow-y-auto">
+        <div className="fixed inset-0 z-[60] overflow-y-auto">
           <div className="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
             {/* Background overlay */}
-            <div 
-              className="fixed inset-0 transition-opacity bg-gray-500 opacity-75" 
+            <div
+              className="fixed inset-0 transition-opacity bg-gray-500 opacity-75"
               onClick={() => !processingPayment && setShowPaymentModal(false)}
             />
             

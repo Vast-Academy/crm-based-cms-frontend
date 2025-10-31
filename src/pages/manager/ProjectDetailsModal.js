@@ -2,10 +2,41 @@ import React, { useState, useRef, useEffect } from 'react';
 import { FiX, FiUser, FiCalendar, FiMapPin, FiInfo, FiFileText, FiCheckCircle, FiClock, FiEye, FiAlertCircle } from 'react-icons/fi';
 import SummaryApi from '../../common';
 import { useAuth } from '../../context/AuthContext';
+import { useNotification } from '../../context/NotificationContext';
 import LoadingSpinner from '../../components/LoadingSpinner';
+
+// Ensure global modal registry exists
+if (!window.__modalRegistry) {
+  window.__modalRegistry = new Set();
+}
 
 const ProjectDetailsModal = ({ isOpen, onClose, project, onProjectApproved }) => {
   const { user } = useAuth();
+  const { showNotification } = useNotification();
+
+  // Modal registry setup
+  const modalId = useRef(Math.random().toString(36).substr(2, 9));
+  const numericZIndex = useRef(50); // z-50 from the modal div
+
+  // Double ESC and double click states
+  const [escPressCount, setEscPressCount] = useState(0);
+  const [escPressTimer, setEscPressTimer] = useState(null);
+  const [clickCount, setClickCount] = useState(0);
+  const [clickTimer, setClickTimer] = useState(null);
+
+  // Check if this modal is the topmost modal
+  const isTopmostModal = () => {
+    if (!window.__modalRegistry || window.__modalRegistry.size === 0) return true;
+
+    let highestZIndex = 0;
+    window.__modalRegistry.forEach(modal => {
+      if (modal.zIndex > highestZIndex) {
+        highestZIndex = modal.zIndex;
+      }
+    });
+
+    return numericZIndex.current >= highestZIndex;
+  };
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [approvalRemark, setApprovalRemark] = useState('');
@@ -47,29 +78,91 @@ const ProjectDetailsModal = ({ isOpen, onClose, project, onProjectApproved }) =>
     }
   }, [isOpen, project]);
 
+  // Register/unregister modal in global registry
   useEffect(() => {
-    const handleOutsideClick = (e) => {
-      if (modalContentRef.current && !modalContentRef.current.contains(e.target)) {
-        onClose();
-      }
+    if (isOpen) {
+      window.__modalRegistry.add({
+        id: modalId.current,
+        zIndex: numericZIndex.current
+      });
+    } else {
+      window.__modalRegistry.forEach(modal => {
+        if (modal.id === modalId.current) {
+          window.__modalRegistry.delete(modal);
+        }
+      });
+    }
+
+    return () => {
+      window.__modalRegistry.forEach(modal => {
+        if (modal.id === modalId.current) {
+          window.__modalRegistry.delete(modal);
+        }
+      });
     };
-    
-    const handleEscapeKey = (e) => {
-      if (e.key === 'Escape') {
-        onClose();
+  }, [isOpen]);
+
+  // Reset ESC and click counters when modal opens/closes
+  useEffect(() => {
+    if (!isOpen) {
+      setEscPressCount(0);
+      setClickCount(0);
+      if (escPressTimer) clearTimeout(escPressTimer);
+      if (clickTimer) clearTimeout(clickTimer);
+    }
+  }, [isOpen]);
+
+  // Double ESC handler
+  useEffect(() => {
+    const handleEsc = (event) => {
+      if (event.key === 'Escape' && isOpen && isTopmostModal()) {
+        if (escPressCount === 0) {
+          setEscPressCount(1);
+          const timer = setTimeout(() => {
+            showNotification('info', 'To close the popup, press ESC twice', 3000);
+            setEscPressCount(0);
+          }, 800);
+          setEscPressTimer(timer);
+        } else if (escPressCount === 1) {
+          clearTimeout(escPressTimer);
+          setEscPressCount(0);
+          onClose();
+        }
       }
     };
 
     if (isOpen) {
-      document.addEventListener('mousedown', handleOutsideClick);
-      document.addEventListener('keydown', handleEscapeKey);
+      document.addEventListener('keydown', handleEsc);
+      document.body.style.overflow = 'hidden';
     }
-    
+
     return () => {
-      document.removeEventListener('mousedown', handleOutsideClick);
-      document.removeEventListener('keydown', handleEscapeKey);
+      document.removeEventListener('keydown', handleEsc);
+      document.body.style.overflow = 'unset';
+      if (escPressTimer) clearTimeout(escPressTimer);
     };
-  }, [isOpen, onClose]);
+  }, [isOpen, onClose, escPressCount, escPressTimer, showNotification]);
+
+  // Handle overlay click - requires double click to close
+  const handleOverlayClick = (e) => {
+    // Only handle if clicked directly on overlay (not on modal content)
+    if (e.target === e.currentTarget) {
+      if (!isTopmostModal()) return;
+
+      if (clickCount === 0) {
+        setClickCount(1);
+        const timer = setTimeout(() => {
+          showNotification('info', 'To close the popup, click twice on the background', 3000);
+          setClickCount(0);
+        }, 800);
+        setClickTimer(timer);
+      } else if (clickCount === 1) {
+        if (clickTimer) clearTimeout(clickTimer);
+        setClickCount(0);
+        onClose();
+      }
+    }
+  };
 
   const validateRemark = (text) => {
     const wordCount = text.trim().split(/\s+/).filter(word => word.length > 0).length;
@@ -274,9 +367,9 @@ const ProjectDetailsModal = ({ isOpen, onClose, project, onProjectApproved }) =>
   };
   
   return (
-    <div className="fixed inset-0 bg-gray-600 bg-opacity-75 flex justify-center items-start z-50 p-2 overflow-auto">
+    <div className="fixed inset-0 bg-gray-600 bg-opacity-75 flex justify-center items-start z-50 p-2 overflow-auto" onClick={handleOverlayClick}>
       <div className="bg-white rounded-lg shadow-xl w-full max-w-3xl max-h-[90vh] overflow-hidden my-4"
-       ref={modalContentRef}>
+       ref={modalContentRef} onClick={(e) => e.stopPropagation()}>
         <div className="sticky top-0 bg-white p-4 border-b flex justify-between items-center">
           <h2 className="text-xl font-semibold flex items-center">
             Project Details 

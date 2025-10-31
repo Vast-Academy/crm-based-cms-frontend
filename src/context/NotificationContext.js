@@ -37,9 +37,9 @@ export const NotificationProvider = ({ children }) => {
 // नोटिफिकेशन्स के लिए कंटेनर कंपोनेंट
 const NotificationContainer = ({ notifications, onHide }) => {
   if (notifications.length === 0) return null;
-  
+
   return (
-    <div className="fixed top-4 right-4 z-50 space-y-4 w-72">
+    <div className="fixed top-4 right-4 z-[9999] space-y-4 w-72">
       {notifications.map(notification => (
         <Notification
           key={notification.id}

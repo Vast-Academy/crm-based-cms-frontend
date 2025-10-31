@@ -1,9 +1,15 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { FiSearch, FiUser } from 'react-icons/fi';
 import SummaryApi from '../../common';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import { useAuth } from '../../context/AuthContext';
+import { useNotification } from '../../context/NotificationContext';
 import AssignTechnicianModal from './AssignTechnicianModal';
+
+// Ensure global modal registry exists
+if (!window.__modalRegistry) {
+  window.__modalRegistry = new Set();
+}
 
 const statusColors = {
   pending: 'bg-yellow-100 text-yellow-800',
@@ -15,8 +21,41 @@ const rowBackgroundColors = {
 
 const WorkOrdersPage = () => {
   const { user } = useAuth();
+  const { showNotification } = useNotification();
   const managerName = `${user?.firstName || 'Manager'} ${user?.lastName || ''}`.trim();
   const canCancelWorkOrder = user?.role === 'manager' || user?.role === 'admin';
+
+  // Modal registry setup for cancel modals
+  const cancelModalId = useRef(Math.random().toString(36).substr(2, 9));
+  const cancelConfirmModalId = useRef(Math.random().toString(36).substr(2, 9));
+  const numericZIndex = useRef(50); // z-50 from the modal divs
+
+  // Double ESC and double click states for cancel reason modal
+  const [escPressCountReason, setEscPressCountReason] = useState(0);
+  const [escPressTimerReason, setEscPressTimerReason] = useState(null);
+  const [clickCountReason, setClickCountReason] = useState(0);
+  const [clickTimerReason, setClickTimerReason] = useState(null);
+
+  // Double ESC and double click states for cancel confirm modal
+  const [escPressCountConfirm, setEscPressCountConfirm] = useState(0);
+  const [escPressTimerConfirm, setEscPressTimerConfirm] = useState(null);
+  const [clickCountConfirm, setClickCountConfirm] = useState(0);
+  const [clickTimerConfirm, setClickTimerConfirm] = useState(null);
+
+  // Check if this modal is the topmost modal
+  const isTopmostModal = () => {
+    if (!window.__modalRegistry || window.__modalRegistry.size === 0) return true;
+
+    let highestZIndex = 0;
+    window.__modalRegistry.forEach(modal => {
+      if (modal.zIndex > highestZIndex) {
+        highestZIndex = modal.zIndex;
+      }
+    });
+
+    return numericZIndex.current >= highestZIndex;
+  };
+
   const [workOrders, setWorkOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -151,7 +190,132 @@ const fetchFreshWorkOrders = async (isBackground = false) => {
   useEffect(() => {
     fetchWorkOrders();
   }, [user.selectedBranch, window.location.search]);
-  
+
+  // Register/unregister cancel reason modal in global registry
+  useEffect(() => {
+    if (showCancelModal) {
+      window.__modalRegistry.add({
+        id: cancelModalId.current,
+        zIndex: numericZIndex.current
+      });
+    } else {
+      window.__modalRegistry.forEach(modal => {
+        if (modal.id === cancelModalId.current) {
+          window.__modalRegistry.delete(modal);
+        }
+      });
+    }
+
+    return () => {
+      window.__modalRegistry.forEach(modal => {
+        if (modal.id === cancelModalId.current) {
+          window.__modalRegistry.delete(modal);
+        }
+      });
+    };
+  }, [showCancelModal]);
+
+  // Register/unregister cancel confirm modal in global registry
+  useEffect(() => {
+    if (showCancelConfirmModal) {
+      window.__modalRegistry.add({
+        id: cancelConfirmModalId.current,
+        zIndex: numericZIndex.current
+      });
+    } else {
+      window.__modalRegistry.forEach(modal => {
+        if (modal.id === cancelConfirmModalId.current) {
+          window.__modalRegistry.delete(modal);
+        }
+      });
+    }
+
+    return () => {
+      window.__modalRegistry.forEach(modal => {
+        if (modal.id === cancelConfirmModalId.current) {
+          window.__modalRegistry.delete(modal);
+        }
+      });
+    };
+  }, [showCancelConfirmModal]);
+
+  // Reset ESC and click counters when modals open/close
+  useEffect(() => {
+    if (!showCancelModal) {
+      setEscPressCountReason(0);
+      setClickCountReason(0);
+      if (escPressTimerReason) clearTimeout(escPressTimerReason);
+      if (clickTimerReason) clearTimeout(clickTimerReason);
+    }
+  }, [showCancelModal]);
+
+  useEffect(() => {
+    if (!showCancelConfirmModal) {
+      setEscPressCountConfirm(0);
+      setClickCountConfirm(0);
+      if (escPressTimerConfirm) clearTimeout(escPressTimerConfirm);
+      if (clickTimerConfirm) clearTimeout(clickTimerConfirm);
+    }
+  }, [showCancelConfirmModal]);
+
+  // Double ESC handler for cancel reason modal
+  useEffect(() => {
+    const handleEsc = (event) => {
+      if (event.key === 'Escape' && showCancelModal && isTopmostModal()) {
+        if (escPressCountReason === 0) {
+          setEscPressCountReason(1);
+          const timer = setTimeout(() => {
+            showNotification('info', 'To close the popup, press ESC twice', 3000);
+            setEscPressCountReason(0);
+          }, 800);
+          setEscPressTimerReason(timer);
+        } else if (escPressCountReason === 1) {
+          clearTimeout(escPressTimerReason);
+          setEscPressCountReason(0);
+          closeCancelModals();
+        }
+      }
+    };
+
+    if (showCancelModal) {
+      document.addEventListener('keydown', handleEsc);
+    }
+
+    return () => {
+      document.removeEventListener('keydown', handleEsc);
+      if (escPressTimerReason) clearTimeout(escPressTimerReason);
+    };
+  }, [showCancelModal, escPressCountReason, escPressTimerReason, showNotification]);
+
+  // Double ESC handler for cancel confirm modal
+  useEffect(() => {
+    const handleEsc = (event) => {
+      if (event.key === 'Escape' && showCancelConfirmModal && isTopmostModal()) {
+        if (escPressCountConfirm === 0) {
+          setEscPressCountConfirm(1);
+          const timer = setTimeout(() => {
+            showNotification('info', 'To close the popup, press ESC twice', 3000);
+            setEscPressCountConfirm(0);
+          }, 800);
+          setEscPressTimerConfirm(timer);
+        } else if (escPressCountConfirm === 1) {
+          clearTimeout(escPressTimerConfirm);
+          setEscPressCountConfirm(0);
+          closeCancelModals();
+        }
+      }
+    };
+
+    if (showCancelConfirmModal) {
+      document.addEventListener('keydown', handleEsc);
+    }
+
+    return () => {
+      document.removeEventListener('keydown', handleEsc);
+      if (escPressTimerConfirm) clearTimeout(escPressTimerConfirm);
+    };
+  }, [showCancelConfirmModal, escPressCountConfirm, escPressTimerConfirm, showNotification]);
+
   const handleRowClick = (orderId) => {
     setExpandedRow(expandedRow === orderId ? null : orderId);
   };
@@ -168,6 +332,42 @@ const fetchFreshWorkOrders = async (isBackground = false) => {
     setCancelError('');
     setShowCancelModal(true);
     setShowCancelConfirmModal(false);
+  };
+
+  // Handle overlay click for cancel reason modal
+  const handleOverlayClickReason = () => {
+    if (!isTopmostModal()) return;
+
+    if (clickCountReason === 0) {
+      setClickCountReason(1);
+      const timer = setTimeout(() => {
+        showNotification('info', 'To close the popup, click twice on the background', 3000);
+        setClickCountReason(0);
+      }, 800);
+      setClickTimerReason(timer);
+    } else if (clickCountReason === 1) {
+      if (clickTimerReason) clearTimeout(clickTimerReason);
+      setClickCountReason(0);
+      closeCancelModals();
+    }
+  };
+
+  // Handle overlay click for cancel confirm modal
+  const handleOverlayClickConfirm = () => {
+    if (!isTopmostModal()) return;
+
+    if (clickCountConfirm === 0) {
+      setClickCountConfirm(1);
+      const timer = setTimeout(() => {
+        showNotification('info', 'To close the popup, click twice on the background', 3000);
+        setClickCountConfirm(0);
+      }, 800);
+      setClickTimerConfirm(timer);
+    } else if (clickCountConfirm === 1) {
+      if (clickTimerConfirm) clearTimeout(clickTimerConfirm);
+      setClickCountConfirm(0);
+      closeCancelModals();
+    }
   };
 
   const closeCancelModals = () => {
@@ -546,8 +746,8 @@ const fetchFreshWorkOrders = async (isBackground = false) => {
 
       {/* Cancel Work Order Reason Modal */}
       {canCancelWorkOrder && showCancelModal && selectedCancelOrder && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 p-4">
-          <div className="bg-white rounded-lg w-full max-w-md p-6">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 p-4" onClick={handleOverlayClickReason}>
+          <div className="bg-white rounded-lg w-full max-w-md p-6" onClick={(e) => e.stopPropagation()}>
             <h3 className="text-lg font-semibold mb-4">Cancel Work Order</h3>
             <p className="text-sm text-gray-600 mb-4">
               Please provide a reason for cancelling work order <strong>{selectedCancelOrder.orderId}</strong>.
@@ -585,8 +785,8 @@ const fetchFreshWorkOrders = async (isBackground = false) => {
 
       {/* Cancel Work Order Confirmation Modal */}
       {canCancelWorkOrder && showCancelConfirmModal && selectedCancelOrder && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 p-4">
-          <div className="bg-white rounded-lg w-full max-w-md p-6">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 p-4" onClick={handleOverlayClickConfirm}>
+          <div className="bg-white rounded-lg w-full max-w-md p-6" onClick={(e) => e.stopPropagation()}>
             <h3 className="text-lg font-semibold mb-4">Confirm Cancellation</h3>
             <p className="mb-4 text-sm text-gray-700">
               {managerName}, are you sure you want to cancel work order{' '}
