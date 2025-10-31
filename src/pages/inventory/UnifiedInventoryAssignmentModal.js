@@ -771,7 +771,25 @@ const UnifiedInventoryAssignmentModal = ({ isOpen, onClose, technician, onSucces
                         <div className="text-sm text-gray-500">
                           Type: {item.type === 'serialized-product' ? 'Serialized' : 'Generic'}
                         </div>
-                        
+
+                        {/* Pricing Information */}
+                        {item.pricing && (
+                          <div className="mt-2 p-2 bg-gray-50 rounded text-xs space-y-1">
+                            <div className="flex justify-between">
+                              <span className="text-gray-600">Customer Price:</span>
+                              <span className="font-medium text-green-700">₹{item.pricing.customerPrice || 0}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-gray-600">Dealer Price:</span>
+                              <span className="font-medium text-blue-700">₹{item.pricing.dealerPrice || 0}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-gray-600">Distributor Price:</span>
+                              <span className="font-medium text-purple-700">₹{item.pricing.distributorPrice || 0}</span>
+                            </div>
+                          </div>
+                        )}
+
                         {/* For serialized products, show serial numbers */}
                         {item.type === 'serialized-product' && (
                           <div className="mt-2">

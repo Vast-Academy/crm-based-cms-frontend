@@ -11,7 +11,7 @@ if (!window.__modalRegistry) {
   window.__modalRegistry = new Set();
 }
 
-const AssignTechnicianModal = ({ isOpen, onClose, workOrder, onSuccess }) => {
+const AssignTechnicianModal = ({ isOpen, onClose, workOrder, onSuccess, canCancelWorkOrder, onCancelClick }) => {
   const { user } = useAuth();
   const { showNotification } = useNotification();
 
@@ -290,9 +290,12 @@ useEffect(() => {
               )}
               <p><span className="font-medium">Customer:</span> {workOrder.customerName}</p>
               {workOrder.customerFirmName && (
-                <p className="text-sm text-gray-600"><span>Company:</span> {workOrder.customerFirmName}</p>
+                <p className="text-sm text-gray-600"><span className="font-medium">Company:</span> {workOrder.customerFirmName}</p>
               )}
-              
+              {workOrder.customerAddress && (
+                <p className="text-sm text-gray-600"><span className="font-medium">Address:</span> {workOrder.customerAddress}</p>
+              )}
+
               {workOrder.initialRemark && (
                 <p className="mt-2">
                   <span className="font-medium">
@@ -368,24 +371,43 @@ useEffect(() => {
         
         {/* Fixed footer for buttons */}
         <div className="p-6 border-t bg-gray-50">
-          <div className="flex justify-end space-x-3">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 border border-gray-300 rounded-md text-gray-700"
-            >
-              Cancel
-            </button>
-            
-            <button
-              onClick={handleSubmit}
-              disabled={loading || technicians.length === 0 || !selectedTechnician}
-              className={`px-4 py-2 text-white rounded-md hover:bg-blue-600 disabled:opacity-50 ${
-                isComplaint ? 'bg-orange-500 hover:bg-orange-600' : 'bg-blue-500 hover:bg-blue-600'
-              }`}
-            >
-              {loading ? 'Assigning...' : 'Assign Engineer'}
-            </button>
+          <div className="flex justify-between items-center">
+            {/* Left side - Cancel Work Order/Complaint button */}
+            <div>
+              {canCancelWorkOrder && onCancelClick && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    onCancelClick(workOrder);
+                    onClose(); // Close the assign modal when opening cancel modal
+                  }}
+                  className="px-4 py-2 bg-red-500 text-white rounded-md hover:bg-red-600"
+                >
+                  {isComplaint ? 'Cancel Complaint' : 'Cancel Work Order'}
+                </button>
+              )}
+            </div>
+
+            {/* Right side - Close and Assign buttons */}
+            <div className="flex space-x-3">
+              <button
+                type="button"
+                onClick={onClose}
+                className="px-4 py-2 border border-gray-300 rounded-md text-gray-700"
+              >
+                Close
+              </button>
+
+              <button
+                onClick={handleSubmit}
+                disabled={loading || technicians.length === 0 || !selectedTechnician}
+                className={`px-4 py-2 text-white rounded-md hover:bg-blue-600 disabled:opacity-50 ${
+                  isComplaint ? 'bg-orange-500 hover:bg-orange-600' : 'bg-blue-500 hover:bg-blue-600'
+                }`}
+              >
+                {loading ? 'Assigning...' : 'Assign Engineer'}
+              </button>
+            </div>
           </div>
         </div>
       </div>

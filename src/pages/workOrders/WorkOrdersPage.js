@@ -68,7 +68,6 @@ const WorkOrdersPage = () => {
   // State for assignment modal
   const [showAssignModal, setShowAssignModal] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState(null);
-  const [expandedRow, setExpandedRow] = useState(null);
   const [lastRefreshTime, setLastRefreshTime] = useState(0);
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [showCancelConfirmModal, setShowCancelConfirmModal] = useState(false);
@@ -316,10 +315,12 @@ const fetchFreshWorkOrders = async (isBackground = false) => {
     };
   }, [showCancelConfirmModal, escPressCountConfirm, escPressTimerConfirm, showNotification]);
 
-  const handleRowClick = (orderId) => {
-    setExpandedRow(expandedRow === orderId ? null : orderId);
+  const handleRowClick = (order) => {
+    // Directly open AssignTechnicianModal when row is clicked
+    setSelectedOrder(order);
+    setShowAssignModal(true);
   };
-  
+
   const handleAssignTechnician = (order) => {
     console.log("Assigning order:", order);
     setSelectedOrder(order);
@@ -593,15 +594,13 @@ const fetchFreshWorkOrders = async (isBackground = false) => {
                 <tbody className="divide-y divide-gray-200">
                   {filteredOrders.map((order, index) => (
                     <React.Fragment key={`${order.customerId}-${order.orderId}`}>
-                      <tr 
+                      <tr
                         className={`cursor-pointer hover:bg-gray-50 ${
-                          expandedRow === `${order.customerId}-${order.orderId}` 
-                            ? 'bg-gray-50' 
-                            : order.projectCategory === 'Repair' 
-                              ? 'bg-orange-50' 
-                              : 'bg-yellow-50'
+                          order.projectCategory === 'Repair'
+                            ? 'bg-orange-50'
+                            : 'bg-yellow-50'
                         }`}
-                        onClick={() => handleRowClick(`${order.customerId}-${order.orderId}`)}
+                        onClick={() => handleRowClick(order)}
                       >
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-medium ${
@@ -615,7 +614,9 @@ const fetchFreshWorkOrders = async (isBackground = false) => {
                           {order.customerFirmName && (
                             <div className="text-xs text-gray-400">{order.customerFirmName}</div>
                           )}
-                          <div className="text-xs text-gray-400">{order.orderId}</div>
+                          {order.customerAddress && (
+                            <div className="text-xs text-gray-400">{order.customerAddress}</div>
+                          )}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <span className="px-2 py-1 rounded-full text-xs bg-blue-100 text-blue-800">
@@ -643,70 +644,6 @@ const fetchFreshWorkOrders = async (isBackground = false) => {
                           <span className="text-yellow-600">Not Assigned</span>
                         </td>
                       </tr>
-                      
-                      {/* Expanded row */}
-                      {expandedRow === `${order.customerId}-${order.orderId}` && (
-                        <tr>
-                          <td colSpan="7" className="px-6 py-4 bg-gray-50 border-b">
-                            <div className="space-y-4">
-                               {/* Check if this was a transferred project */}
-        {order.statusHistory && order.statusHistory.some(history => history.status === 'transferring') && (
-          <div className="bg-red-50 p-3 rounded-lg border-l-4 border-red-500">
-            <h4 className="font-semibold text-red-700">Transferred Project</h4>
-            <p className="mt-1 text-gray-700">
-              {order.statusHistory.find(history => history.status === 'transferring')?.remark || 'No transfer reason provided'}
-            </p>
-            <p className="text-xs text-gray-500 mt-1">
-              Transfer accepted by manager: {
-                order.statusHistory.find(history => 
-                  history.status === 'pending' && 
-                  order.statusHistory.some(h => h.status === 'transferring')
-                )?.remark || 'No transfer acceptance note provided'
-              }
-            </p>
-          </div>
-        )}
-        
-                              {/* Technical details / Remarks */}
-                              {order.initialRemark && (
-                                <div>
-                                  <h4 className="font-semibold">
-                                    {order.projectCategory === 'Repair'
-                                      ? 'Complaint Details:'
-                                      : 'Initial Requirements:'}
-                                  </h4>
-                                  <p className="mt-1 text-gray-600" style={{ whiteSpace: 'pre-line' }}>{order.initialRemark}</p>
-                                </div>
-                              )}
-                              
-                              {/* Assignment button */}
-                              <div className="flex gap-3 flex-wrap">
-                                <button 
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleAssignTechnician(order);
-                                  }}
-                                  className="inline-flex items-center px-4 py-1.5 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-500 hover:bg-blue-600"
-                                >
-                                  <FiUser className="mr-2" />
-                                  Assign Engineer
-                                </button>
-                                {canCancelWorkOrder && (
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleCancelClick(order);
-                                    }}
-                                    className="inline-flex items-center px-4 py-1.5 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-red-500 hover:bg-red-600"
-                                  >
-                                    Cancel Work Order
-                                  </button>
-                                )}
-                              </div>
-                            </div>
-                          </td>
-                        </tr>
-                      )}
                     </React.Fragment>
                   ))}
                 </tbody>
@@ -737,11 +674,13 @@ const fetchFreshWorkOrders = async (isBackground = false) => {
       </div>
       
       {/* Assign Technician Modal */}
-      <AssignTechnicianModal 
+      <AssignTechnicianModal
         isOpen={showAssignModal}
         onClose={() => setShowAssignModal(false)}
         workOrder={selectedOrder}
         onSuccess={handleAssignmentSuccess}
+        canCancelWorkOrder={canCancelWorkOrder}
+        onCancelClick={handleCancelClick}
       />
 
       {/* Cancel Work Order Reason Modal */}
