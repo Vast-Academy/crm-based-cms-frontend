@@ -872,8 +872,16 @@ const UnifiedInventoryAssignmentModal = ({ isOpen, onClose, technician, onSucces
                         </td>
                         <td className="px-4 py-2 text-right">{item.quantity}</td>
                         <td className="px-4 py-2 text-right">
-                          {item.type === 'serialized-product' 
-                            ? <span className="text-blue-600">{item.serialNumbers.length} Serial Numbers</span>
+                          {item.type === 'serialized-product'
+                            ? (
+                              <div className="flex flex-col items-end gap-1">
+                                {item.serialNumbers.map((serial, idx) => (
+                                  <span key={idx} className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs font-mono">
+                                    {serial}
+                                  </span>
+                                ))}
+                              </div>
+                            )
                             : <span>{item.unit || 'units'}</span>
                           }
                         </td>

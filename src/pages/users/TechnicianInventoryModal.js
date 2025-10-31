@@ -1,6 +1,6 @@
 // components/technician/TechnicianInventoryModal.jsx
 import React, { useState, useEffect, useRef } from 'react';
-import { FiArrowRight, FiX, FiPackage } from 'react-icons/fi';
+import { FiArrowRight, FiX, FiPackage, FiSearch } from 'react-icons/fi';
 import SummaryApi from '../../common';
 import { useNotification } from '../../context/NotificationContext';
 
@@ -21,6 +21,7 @@ const TechnicianInventoryModal = ({ isOpen, onClose, technician, onAssignInvento
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [filterType, setFilterType] = useState('current'); // Default to current
+  const [searchQuery, setSearchQuery] = useState(''); // Search state
 
   // Double ESC and double click states
   const [escPressCount, setEscPressCount] = useState(0);
@@ -300,12 +301,26 @@ const TechnicianInventoryModal = ({ isOpen, onClose, technician, onAssignInvento
     return new Date(dateString).toLocaleDateString(undefined, options);
   };
 
-  // Filter transfers based on selection
+  // Filter transfers based on selection and search query
   const filteredTransfers = transfers.filter(transfer => {
-    if (filterType === 'current') return true;
-    if (filterType === 'assigned') return transfer.to === `${technician.firstName} ${technician.lastName}`;
-    if (filterType === 'returned') return transfer.from === `${technician.firstName} ${technician.lastName}`;
-    return true;
+    // Filter by type first
+    let typeMatch = true;
+    if (filterType === 'assigned') {
+      typeMatch = transfer.to === `${technician.firstName} ${technician.lastName}`;
+    } else if (filterType === 'returned') {
+      typeMatch = transfer.from === `${technician.firstName} ${technician.lastName}`;
+    }
+
+    // Then filter by search query
+    if (searchQuery.trim() === '') {
+      return typeMatch;
+    }
+
+    const query = searchQuery.toLowerCase();
+    const itemNameMatch = transfer.itemName?.toLowerCase().includes(query);
+    const serialMatch = transfer.serialNumber?.toLowerCase().includes(query);
+
+    return typeMatch && (itemNameMatch || serialMatch);
   });
   
   // Calculate current inventory using actual TechnicianInventory data
@@ -348,10 +363,25 @@ const TechnicianInventoryModal = ({ isOpen, onClose, technician, onAssignInvento
   
   // Get current stock
   const currentStock = calculateCurrentStock();
-  
-  // Get total units from current stock
+
+  // Filter current stock based on search query
+  const filteredCurrentStock = currentStock.filter(item => {
+    if (searchQuery.trim() === '') {
+      return true;
+    }
+
+    const query = searchQuery.toLowerCase();
+    const nameMatch = item.name?.toLowerCase().includes(query);
+    const serialMatch = item.serialNumbers?.some(serial =>
+      serial.toLowerCase().includes(query)
+    );
+
+    return nameMatch || serialMatch;
+  });
+
+  // Get total units from current stock (use filtered stock for display)
   const getTotalUnits = () => {
-    return currentStock.reduce((sum, item) => sum + item.quantity, 0);
+    return filteredCurrentStock.reduce((sum, item) => sum + item.quantity, 0);
   };
 
   // Handle overlay click - requires double click to close
@@ -452,6 +482,30 @@ const TechnicianInventoryModal = ({ isOpen, onClose, technician, onAssignInvento
                 Assign Inventory
               </button>
             </div>
+
+            {/* Search Bar */}
+            <div className="px-6 py-3">
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <FiSearch className="h-5 w-5 text-gray-400" />
+                </div>
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search by item name or serial number..."
+                  className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                />
+                {searchQuery && (
+                  <button
+                    onClick={() => setSearchQuery('')}
+                    className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                  >
+                    <FiX className="h-5 w-5 text-gray-400 hover:text-gray-600" />
+                  </button>
+                )}
+              </div>
+            </div>
           </div>
 
           {/* Modal body */}
@@ -464,7 +518,7 @@ const TechnicianInventoryModal = ({ isOpen, onClose, technician, onAssignInvento
                   <div className="bg-gradient-to-br from-blue-500 to-blue-600 p-4 rounded-xl shadow-md text-white">
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="text-3xl font-bold">{currentStock.length}</p>
+                        <p className="text-3xl font-bold">{filteredCurrentStock.length}</p>
                         <p className="text-sm text-blue-100 mt-1">Item Types</p>
                       </div>
                       <div className="w-12 h-12 bg-blue-700 rounded-full flex items-center justify-center">
@@ -487,14 +541,14 @@ const TechnicianInventoryModal = ({ isOpen, onClose, technician, onAssignInvento
                 </div>
 
                 {/* Current Items List */}
-                {currentStock.length > 0 ? (
+                {filteredCurrentStock.length > 0 ? (
                   <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
                     <div className="bg-gray-50 px-4 py-3 border-b border-gray-200">
                       <h4 className="text-sm font-semibold text-gray-700 uppercase">Current Inventory Items</h4>
                     </div>
 
                     <div className="divide-y divide-gray-200 max-h-[400px] overflow-y-auto">
-                      {currentStock.map((item, index) => (
+                      {filteredCurrentStock.map((item, index) => (
                         <div key={index} className="p-4 hover:bg-gray-50 transition-colors">
                           {/* Item Header */}
                           <div className="flex items-start justify-between mb-2">
@@ -546,8 +600,17 @@ const TechnicianInventoryModal = ({ isOpen, onClose, technician, onAssignInvento
                 ) : (
                   <div className="bg-gray-50 border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">
                     <FiPackage className="mx-auto h-12 w-12 text-gray-400 mb-3" />
-                    <p className="text-gray-600 font-medium">No items currently assigned</p>
-                    <p className="text-gray-500 text-sm mt-1">This technician doesn't have any inventory items at the moment</p>
+                    {searchQuery ? (
+                      <>
+                        <p className="text-gray-600 font-medium">No matching items found</p>
+                        <p className="text-gray-500 text-sm mt-1">Try adjusting your search query</p>
+                      </>
+                    ) : (
+                      <>
+                        <p className="text-gray-600 font-medium">No items currently assigned</p>
+                        <p className="text-gray-500 text-sm mt-1">This technician doesn't have any inventory items at the moment</p>
+                      </>
+                    )}
                   </div>
                 )}
               </div>
@@ -614,7 +677,14 @@ const TechnicianInventoryModal = ({ isOpen, onClose, technician, onAssignInvento
                 </div>
               ) : (
                 <div className="text-center py-8">
-                  <p className="text-gray-500">No {filterType} records found</p>
+                  <p className="text-gray-500">
+                    {searchQuery
+                      ? `No matching ${filterType} records found`
+                      : `No ${filterType} records found`}
+                  </p>
+                  {searchQuery && (
+                    <p className="text-gray-400 text-sm mt-2">Try adjusting your search query</p>
+                  )}
                 </div>
               )
             )}
