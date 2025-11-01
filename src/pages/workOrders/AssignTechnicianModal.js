@@ -278,15 +278,18 @@ useEffect(() => {
                 <div className="mb-2 p-2 bg-white rounded border border-orange-200">
                   <p className="font-medium text-orange-700 mb-1">Project Information:</p>
                   <p><span className="font-medium">Type:</span> {workOrder.projectType}</p>
-                  <p><span className="font-medium">Project ID:</span> {workOrder.projectId}</p>
+                  <p><span className="font-medium">Category:</span> {workOrder.projectCategory === 'Repair' ? 'Complaint' : 'New Installation'}</p>
                   <p><span className="font-medium">Created:</span> {
-                    workOrder.projectCreatedAt 
-                      ? new Date(workOrder.projectCreatedAt).toLocaleDateString() 
+                    workOrder.projectCreatedAt
+                      ? new Date(workOrder.projectCreatedAt).toLocaleDateString()
                       : new Date(workOrder.createdAt).toLocaleDateString()
                   }</p>
                 </div>
               ) : (
-                <p><span className="font-medium">Project:</span> {workOrder.projectType}</p>
+                <>
+                  <p><span className="font-medium">Project:</span> {workOrder.projectType}</p>
+                  <p><span className="font-medium">Category:</span> {workOrder.projectCategory === 'Repair' ? 'Complaint' : 'New Installation'}</p>
+                </>
               )}
               <p><span className="font-medium">Customer:</span> {workOrder.customerName}</p>
               {workOrder.customerFirmName && (
@@ -371,43 +374,29 @@ useEffect(() => {
         
         {/* Fixed footer for buttons */}
         <div className="p-6 border-t bg-gray-50">
-          <div className="flex justify-between items-center">
-            {/* Left side - Cancel Work Order/Complaint button */}
-            <div>
-              {canCancelWorkOrder && onCancelClick && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    onCancelClick(workOrder);
-                    onClose(); // Close the assign modal when opening cancel modal
-                  }}
-                  className="px-4 py-2 bg-red-500 text-white rounded-md hover:bg-red-600"
-                >
-                  {isComplaint ? 'Cancel Complaint' : 'Cancel Work Order'}
-                </button>
-              )}
-            </div>
-
-            {/* Right side - Close and Assign buttons */}
-            <div className="flex space-x-3">
+          <div className="flex justify-end items-center space-x-3">
+            {canCancelWorkOrder && onCancelClick && (
               <button
                 type="button"
-                onClick={onClose}
-                className="px-4 py-2 border border-gray-300 rounded-md text-gray-700"
+                onClick={() => {
+                  onCancelClick(workOrder);
+                  onClose(); // Close the assign modal when opening cancel modal
+                }}
+                className="px-4 py-2 bg-red-500 text-white rounded-md hover:bg-red-600"
               >
-                Close
+                {isComplaint ? 'Cancel Complaint' : 'Cancel Work Order'}
               </button>
+            )}
 
-              <button
-                onClick={handleSubmit}
-                disabled={loading || technicians.length === 0 || !selectedTechnician}
-                className={`px-4 py-2 text-white rounded-md hover:bg-blue-600 disabled:opacity-50 ${
-                  isComplaint ? 'bg-orange-500 hover:bg-orange-600' : 'bg-blue-500 hover:bg-blue-600'
-                }`}
-              >
-                {loading ? 'Assigning...' : 'Assign Engineer'}
-              </button>
-            </div>
+            <button
+              onClick={handleSubmit}
+              disabled={loading || technicians.length === 0 || !selectedTechnician}
+              className={`px-4 py-2 text-white rounded-md hover:bg-blue-600 disabled:opacity-50 ${
+                isComplaint ? 'bg-orange-500 hover:bg-orange-600' : 'bg-blue-500 hover:bg-blue-600'
+              }`}
+            >
+              {loading ? 'Assigning...' : 'Assign Engineer'}
+            </button>
           </div>
         </div>
       </div>

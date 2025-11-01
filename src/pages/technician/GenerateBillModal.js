@@ -286,6 +286,11 @@ const handlePaymentMethodSelect = (method) => {
   if (method === 'upi' || method === 'bank_transfer') {
     setShowBankSelection(true);
     fetchBankAccounts();
+  } else if (method === 'no_payment') {
+    // For no payment, set paid amount to 0 and go directly to confirmation
+    setPaidAmount(0);
+    setDueAmount(calculateTotal());
+    setCurrentStep('payment-confirmation');
   }
 };
 
@@ -342,7 +347,7 @@ const showPaymentConfirmation = () => {
     setPaidAmount(parseFloat(paymentFormData.chequeAmount));
   }
 
-  if (paymentMethod === 'cash' && paidAmount <= 0) {
+  if (paymentMethod === 'cash' && paidAmount < 0) {
     setError('Please enter a valid paid amount');
     return;
   }
@@ -804,7 +809,7 @@ const getGroupedItems = () => {
         }
       }
 
-      if (paymentMethod === 'cash' && paidAmount <= 0) {
+      if (paymentMethod === 'cash' && paidAmount < 0) {
         setError('Please enter a valid paid amount');
         setLoading(false);
         return;
@@ -1466,6 +1471,22 @@ const getGroupedItems = () => {
                 </button>
               </div>
 
+              {/* Create Bill Without Payment - Full Width Button */}
+              <div className="mt-4">
+                <button
+                  onClick={() => handlePaymentMethodSelect('no_payment')}
+                  className="w-full p-4 border-2 border-gray-300 hover:border-red-400 rounded-xl flex items-center justify-center space-x-3 transition-colors bg-gray-50 hover:bg-red-50"
+                >
+                  <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center">
+                    <FileText className="text-red-600" size={24} />
+                  </div>
+                  <div className="text-center">
+                    <h5 className="font-semibold text-gray-900">Create Bill Without Payment</h5>
+                    <p className="text-xs text-gray-600">Full amount will be marked as due</p>
+                  </div>
+                </button>
+              </div>
+
               {error && (
                 <div className="mt-4 bg-red-50 text-red-600 p-3 rounded-md text-sm">
                   {error}
@@ -1985,12 +2006,26 @@ const getGroupedItems = () => {
 {currentStep === 'payment-confirmation' && (
   <div className="p-4">
     <div className="mb-6 flex items-center justify-center">
-      <div className="h-16 w-16 bg-yellow-100 rounded-full flex items-center justify-center">
-        <AlertCircle size={32} className="text-yellow-500" />
+      <div className={`h-16 w-16 rounded-full flex items-center justify-center ${
+        paymentMethod === 'no_payment' ? 'bg-red-100' : 'bg-yellow-100'
+      }`}>
+        <AlertCircle size={32} className={paymentMethod === 'no_payment' ? 'text-red-500' : 'text-yellow-500'} />
       </div>
     </div>
 
-    <h3 className="text-xl font-medium text-center mb-4">Please Verify Payment Details</h3>
+    <h3 className="text-xl font-medium text-center mb-4">
+      {paymentMethod === 'no_payment'
+        ? 'Confirm Bill Creation Without Payment'
+        : 'Please Verify Payment Details'}
+    </h3>
+
+    {paymentMethod === 'no_payment' && (
+      <div className="bg-red-50 border border-red-200 p-4 rounded-lg mb-4">
+        <p className="text-center text-red-800 font-medium">
+          You are creating a bill without collecting any payment. The full amount of ₹{calculateTotal().toFixed(2)} will be marked as due.
+        </p>
+      </div>
+    )}
 
     <div className="bg-gray-50 p-4 rounded-lg mb-6">
       <div className="mb-3">
@@ -1999,7 +2034,8 @@ const getGroupedItems = () => {
           {paymentMethod === 'upi' ? 'UPI' :
            paymentMethod === 'bank_transfer' ? 'Bank Transfer' :
            paymentMethod === 'cheque' ? 'Cheque' :
-           paymentMethod === 'cash' ? 'Cash' : paymentMethod}
+           paymentMethod === 'cash' ? 'Cash' :
+           paymentMethod === 'no_payment' ? 'No Payment - Bill Created' : paymentMethod}
         </p>
       </div>
 
@@ -2092,10 +2128,16 @@ const getGroupedItems = () => {
       <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
         <CheckCircle className="text-green-500" size={32} />
       </div>
-      <h2 className="text-xl font-semibold mb-2">Payment Successful!</h2>
-      
+      <h2 className="text-xl font-semibold mb-2">
+        {paymentMethod === 'no_payment' ? 'Bill Created Successfully!' : 'Payment Successful!'}
+      </h2>
+
       {/* Different messages based on payment method */}
-      {paymentMethod === 'upi' || paymentMethod === 'bank_transfer' ? (
+      {paymentMethod === 'no_payment' ? (
+        <p className="text-gray-600 mb-4">
+          Bill has been created without payment collection. The full amount has been marked as due and will need to be collected later.
+        </p>
+      ) : paymentMethod === 'upi' || paymentMethod === 'bank_transfer' ? (
         <p className="text-gray-600 mb-4">
           Your payment has been initiated successfully. We are currently verifying it from our end. You will receive a confirmation shortly.
         </p>
@@ -2117,7 +2159,8 @@ const getGroupedItems = () => {
             paymentMethod === 'upi' ? 'UPI' :
             paymentMethod === 'bank_transfer' ? 'Bank Transfer' :
             paymentMethod === 'cheque' ? 'Cheque' :
-            paymentMethod === 'cash' ? 'Cash' : paymentMethod
+            paymentMethod === 'cash' ? 'Cash' :
+            paymentMethod === 'no_payment' ? 'No Payment - Bill Created' : paymentMethod
           }
         </p>
         <p className="text-sm mb-1"><span className="font-medium">Amount Paid:</span> ₹{paidAmount.toFixed(2)}</p>
@@ -2172,7 +2215,7 @@ const getGroupedItems = () => {
  {/* Updated payment-options buttons - Only show when payment details are filled */}
 {currentStep === 'payment-options' &&
  paymentMethod &&
- ((paymentMethod === 'cash' && paidAmount > 0) ||
+ ((paymentMethod === 'cash' && paidAmount >= 0) ||
   (paymentMethod === 'upi' && showQRCode && paymentFormData.upiTransactionId) ||
   (paymentMethod === 'bank_transfer' && selectedBankAccount && paymentFormData.utrNumber && paymentFormData.receivedAmount) ||
   (paymentMethod === 'cheque' && paymentFormData.chequeNumber && paymentFormData.chequeAmount)) && (

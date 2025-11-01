@@ -204,14 +204,28 @@ const ProjectDetailsModal = ({ isOpen, onClose, project: projectProp, onProjectA
   
   const formatDate = (dateString) => {
     if (!dateString) return 'N/A';
-    const options = { 
-      year: 'numeric', 
-      month: 'short', 
+    const options = {
+      year: 'numeric',
+      month: 'short',
       day: 'numeric',
       hour: '2-digit',
       minute: '2-digit'
     };
     return new Date(dateString).toLocaleDateString(undefined, options);
+  };
+
+  const formatPaymentMethod = (method) => {
+    if (!method) return 'N/A';
+    const methodMap = {
+      'cash': 'Cash',
+      'upi': 'UPI',
+      'bank_transfer': 'Bank Transfer',
+      'cheque': 'Cheque',
+      'online': 'Online',
+      'pending': 'Pending',
+      'no_payment': 'Bill Created Without Payment'
+    };
+    return methodMap[method] || method;
   };
   
   const handleApproveProject = async () => {
@@ -685,7 +699,7 @@ const ProjectDetailsModal = ({ isOpen, onClose, project: projectProp, onProjectA
                       <div className="bg-gray-50 p-3 rounded-md mb-2">
                         <div className="flex justify-between text-sm mb-1">
                           <span>Payment Method:</span>
-                          <span className="font-medium capitalize">{bill.paymentMethod || 'N/A'}</span>
+                          <span className="font-medium">{formatPaymentMethod(bill.paymentMethod)}</span>
                         </div>
                         <div className="flex justify-between text-sm mb-1">
                           <span>Total Amount:</span>
@@ -776,7 +790,7 @@ const ProjectDetailsModal = ({ isOpen, onClose, project: projectProp, onProjectA
                   </div>
                   <div className="bg-gray-50 p-3 rounded-md">
                     <span className="font-medium">Payment Method:</span>
-                    <p className="capitalize">{selectedBill.paymentMethod || 'N/A'}</p>
+                    <p>{formatPaymentMethod(selectedBill.paymentMethod)}</p>
                   </div>
                 </div>
                 

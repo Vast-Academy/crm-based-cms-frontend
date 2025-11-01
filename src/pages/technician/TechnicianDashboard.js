@@ -414,6 +414,9 @@ const handleBillDone = async () => {
   // Force fetch fresh work orders to reflect status changes
   await fetchWorkOrders(true);
 
+  // Force fetch fresh inventory to reflect item usage
+  await fetchInventory(true);
+
   handleTabChange('home');
 };
 
