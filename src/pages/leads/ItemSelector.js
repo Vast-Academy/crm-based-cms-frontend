@@ -1,17 +1,21 @@
 import React, { useState, useEffect } from 'react';
-import { FiSearch, FiPlus, FiMinus, FiTrash2, FiPackage, FiHash, FiRefreshCw } from 'react-icons/fi';
+import { FiSearch, FiPlus, FiMinus, FiTrash2, FiPackage, FiHash, FiRefreshCw, FiAlertCircle } from 'react-icons/fi';
+import { useNotification } from '../../context/NotificationContext';
 
-export default function ItemSelector({ 
-  items, 
-  onAddToCart, 
-  customerType, 
-  cart, 
-  onUpdateQuantity, 
-  onRemoveItem, 
+export default function ItemSelector({
+  items,
+  onAddToCart,
+  customerType,
+  cart,
+  onUpdateQuantity,
+  onRemoveItem,
   colors,
   onRefreshItems,
-  isRefreshing = false
+  isRefreshing = false,
+  onProceedToSummary,
+  openAddStockModal
 }) {
+  const { showNotification } = useNotification();
   const [searchQuery, setSearchQuery] = useState('');
   const [filteredItems, setFilteredItems] = useState(items || []);
   const [selectedSerialNumbers, setSelectedSerialNumbers] = useState({});
@@ -100,11 +104,19 @@ export default function ItemSelector({
   };
 
   const handleAddToCart = (item) => {
+    const stock = getAvailableStock(item);
+
+    // Check if item is out of stock
+    if (stock === 0) {
+      showNotification('error', 'This product is out of stock and cannot be added');
+      return;
+    }
+
     const quantity = quantities[item._id] === '' || !quantities[item._id] ? 1 : quantities[item._id];
     const serialNumber = selectedSerialNumbers[item._id] || null;
 
     if (item.type === 'serialized-product' && !serialNumber) {
-      alert('Please select a serial number for this item');
+      showNotification('error', 'Please select a serial number for this item');
       return;
     }
 
@@ -115,6 +127,41 @@ export default function ItemSelector({
     if (item.type === 'serialized-product') {
       setSelectedSerialNumbers(prev => ({ ...prev, [item._id]: '' }));
     }
+  };
+
+  const handleAddStock = (item) => {
+    if (openAddStockModal) {
+      openAddStockModal(item);
+    } else {
+      showNotification('info', 'Please add stock from Inventory Management page');
+    }
+  };
+
+  const handleUpdateQuantity = (index, newQuantity, cartItem) => {
+    if (newQuantity <= 0) {
+      onRemoveItem(index);
+      return;
+    }
+
+    // Get the original item from items list
+    const originalItem = items.find(item => item._id === cartItem.itemId);
+    if (!originalItem) {
+      onUpdateQuantity(index, newQuantity);
+      return;
+    }
+
+    // Check available stock for generic products
+    if (originalItem.type === 'generic-product') {
+      const availableStock = originalItem.stock?.reduce((total, stock) => total + stock.quantity, 0) || 0;
+
+      if (newQuantity > availableStock) {
+        showNotification('warning', `Only ${availableStock} items available in stock`);
+        return;
+      }
+    }
+
+    // Update quantity
+    onUpdateQuantity(index, newQuantity);
   };
 
   const isItemInCart = (item, serialNumber = null) => {
@@ -138,50 +185,37 @@ export default function ItemSelector({
   };
 
   return (
-    <div className="space-y-6">
-      {/* Search Section */}
-      <div className="bg-gray-50 rounded-lg p-4">
-        <div className="flex space-x-4 mb-4">
-          <div className="flex-1">
-            <div className="relative">
-              <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+    <div className="flex flex-col md:flex-row" style={{ height: '70vh' }}>
+      {/* Left side - Product list */}
+      <div className="w-full md:w-2/3 flex flex-col border-r" style={{ height: '70vh' }}>
+        <div className="p-4 border-b flex-shrink-0">
+          <div className="flex items-center gap-2">
+            <div className="relative flex-1">
               <input
                 type="text"
                 placeholder="Search by item name or serial number..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-300 focus:border-blue-400"
+                className="w-full p-3 border rounded pl-10"
               />
+              <FiSearch className="absolute left-3 top-[14px] text-gray-400" />
             </div>
+            {onRefreshItems && (
+              <button
+                onClick={handleRefreshItems}
+                className="p-3 bg-blue-500 hover:bg-blue-600 text-white rounded transition-colors flex-shrink-0"
+                title="Refresh Products"
+                disabled={isRefreshing}
+              >
+                <FiRefreshCw className={`w-5 h-5 ${isRefreshing ? 'animate-spin' : ''}`} />
+              </button>
+            )}
           </div>
-          {onRefreshItems && (
-            <button
-              type="button"
-              onClick={handleRefreshItems}
-              className={`p-2.5 rounded-lg transition-colors ${
-                isRefreshing
-                  ? 'bg-blue-400 text-white cursor-wait'
-                  : 'bg-blue-500 hover:bg-blue-600 text-white'
-              }`}
-              aria-label="Refresh items"
-              title="Refresh items"
-              disabled={isRefreshing}
-            >
-              <FiRefreshCw className={`w-5 h-5 ${isRefreshing ? 'animate-spin' : ''}`} />
-            </button>
-          )}
         </div>
-      </div>
 
-      {/* Items Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {/* Available Items */}
-        <div>
-          <h4 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-            <FiPackage className="mr-2" />
-            Available Items ({filteredItems?.length || 0})
-          </h4>
-          <div className="space-y-3 max-h-96 overflow-y-auto">
+        <div className="flex-1 overflow-y-auto p-4">
+          <h3 className="font-medium mb-2">Available Products</h3>
+          <div className="grid grid-cols-1 gap-2">
             {filteredItems?.map((item) => {
               const price = getCustomerPrice(item);
               const stock = getAvailableStock(item);
@@ -190,120 +224,107 @@ export default function ItemSelector({
               const quantity = quantities[item._id] || 1;
 
               return (
-                <div key={item._id} className="bg-white border border-gray-200 rounded-lg p-4">
-                  <div className="flex justify-between items-start mb-2">
-                    <div className="flex-1">
-                      <h5 className="font-medium text-gray-900">{item.name}</h5>
-                      <p className="text-sm text-gray-600">Type: {item.type.replace('-', ' ')}</p>
-                      <p className="text-lg font-semibold text-green-600">₹{price}</p>
+                <div
+                  key={item._id}
+                  className="border p-3 rounded hover:bg-gray-50"
+                >
+                  <div className="flex justify-between">
+                    <div>
+                      <div className="font-medium">{item.name}</div>
+                      <div className="text-sm text-gray-500">
+                        Type: {item.type.replace('-', ' ')} | Available: {stock}
+                      </div>
                     </div>
                     <div className="text-right">
-                      <span className={`px-2 py-1 rounded-full text-xs ${
-                        stock > 0 ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                      }`}>
-                        Stock: {stock}
-                      </span>
+                      <div className="font-bold text-green-600">
+                        ₹{price}
+                      </div>
                     </div>
                   </div>
 
-                  {stock > 0 && (
-                    <>
-                      {/* Serial Number Selection for Serialized Products */}
-                      {item.type === 'serialized-product' && (
-                        <div className="mb-3">
+                  {/* For serialized products, show dropdown and buttons */}
+                  {item.type === 'serialized-product' && (
+                    <div className="mt-3 space-y-2">
+                      {stock > 0 && (
+                        <div>
                           <label className="block text-sm font-medium text-gray-700 mb-1">
-                            Select Serial Number
+                            Choose Serial Number
                           </label>
                           <select
                             value={selectedSerial || ''}
                             onChange={(e) => handleSerialNumberChange(item._id, e.target.value)}
                             className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-300"
                           >
-                            <option value="">Choose serial number...</option>
+                            <option value="">Select serial number...</option>
                             {availableSerials.map(serial => (
                               <option key={serial} value={serial}>{serial}</option>
                             ))}
                           </select>
                         </div>
                       )}
-
-                      {/* Quantity Selection for Generic Products */}
-                      {item.type === 'generic-product' && (
-                        <div className="mb-3">
-                          <label className="block text-sm font-medium text-gray-700 mb-1">
-                            Quantity
-                          </label>
-                          <div className="flex items-center space-x-2">
-                            <button
-                              onClick={() => handleQuantityChange(item._id, quantity - 1)}
-                              disabled={quantity <= 1}
-                              className="w-8 h-8 rounded-full bg-gray-200 hover:bg-gray-300 disabled:opacity-50 flex items-center justify-center"
-                            >
-                              <FiMinus size={16} />
-                            </button>
-                            <input
-                              type="number"
-                              value={inputValues[item._id] !== undefined ? inputValues[item._id] : quantity}
-                              onChange={(e) => {
-                                const value = e.target.value;
-                                setInputValues(prev => ({
-                                  ...prev,
-                                  [item._id]: value
-                                }));
-
-                                if (value !== '' && !isNaN(parseInt(value))) {
-                                  handleQuantityChange(item._id, Math.max(1, parseInt(value)));
-                                }
-                              }}
-                              onBlur={(e) => {
-                                const value = e.target.value;
-                                if (value === '' || parseInt(value) < 1 || isNaN(parseInt(value))) {
-                                  handleQuantityChange(item._id, 1);
-                                  setInputValues(prev => ({
-                                    ...prev,
-                                    [item._id]: 1
-                                  }));
-                                } else {
-                                  setInputValues(prev => ({
-                                    ...prev,
-                                    [item._id]: parseInt(value)
-                                  }));
-                                }
-                              }}
-                              onFocus={(e) => {
-                                e.target.select(); // Select all text on focus for easy editing
-                              }}
-                              min="1"
-                              max={stock}
-                              className="w-16 text-center font-medium border border-gray-300 rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-300"
-                            />
-                            <button
-                              onClick={() => handleQuantityChange(item._id, quantity + 1)}
-                              disabled={quantity >= stock}
-                              className="w-8 h-8 rounded-full bg-gray-200 hover:bg-gray-300 disabled:opacity-50 flex items-center justify-center"
-                            >
-                              <FiPlus size={16} />
-                            </button>
-                          </div>
-                          <p className="text-xs text-gray-500 mt-1">Available: {stock}</p>
+                      <div className="flex flex-col sm:flex-row gap-2">
+                        <button
+                          type="button"
+                          onClick={() => handleAddStock(item)}
+                          className="flex-1 py-2 px-4 bg-green-500 hover:bg-green-600 text-white rounded font-medium"
+                        >
+                          Add Stock
+                        </button>
+                        <button
+                          onClick={() => handleAddToCart(item)}
+                          disabled={stock === 0 || !selectedSerial}
+                          className={`flex-1 py-2 px-4 ${colors.button} hover:opacity-90 disabled:bg-gray-300 text-white rounded font-medium`}
+                        >
+                          Add
+                        </button>
+                      </div>
+                      {stock === 0 && (
+                        <div className="flex items-center gap-1 text-xs text-red-600">
+                          <FiAlertCircle size={12} />
+                          <span>Out of stock - Add stock to continue</span>
                         </div>
                       )}
+                    </div>
+                  )}
 
-                      {/* Add to Cart Button */}
+                  {/* For generic products, show buttons */}
+                  {item.type === 'generic-product' && (
+                    <div className="mt-3 space-y-2">
+                      <div className="flex flex-col sm:flex-row gap-2">
+                        <button
+                          type="button"
+                          onClick={() => handleAddStock(item)}
+                          className="flex-1 py-2 px-4 bg-green-500 hover:bg-green-600 text-white rounded font-medium"
+                        >
+                          Add Stock
+                        </button>
+                        <button
+                          onClick={() => handleAddToCart(item)}
+                          disabled={stock === 0}
+                          className={`flex-1 py-2 px-4 ${colors.button} hover:opacity-90 disabled:bg-gray-300 text-white rounded font-medium`}
+                        >
+                          Add
+                        </button>
+                      </div>
+                      {stock === 0 && (
+                        <div className="flex items-center gap-1 text-xs text-red-600">
+                          <FiAlertCircle size={12} />
+                          <span>Out of stock - Add stock to continue</span>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* For service items, show add button only */}
+                  {item.type === 'service' && (
+                    <div className="mt-3">
                       <button
                         onClick={() => handleAddToCart(item)}
-                        disabled={
-                          (item.type === 'serialized-product' && !selectedSerial) ||
-                          (item.type === 'serialized-product' && isItemInCart(item, selectedSerial))
-                        }
-                        className={`w-full py-2 px-4 rounded-lg font-medium ${colors.button} disabled:bg-gray-300 text-white`}
+                        className={`w-full py-2 px-4 ${colors.button} hover:opacity-90 text-white rounded font-medium`}
                       >
-                        {item.type === 'serialized-product' && isItemInCart(item, selectedSerial)
-                          ? 'Already in Cart'
-                          : `Add to Cart - ₹${price * quantity}`
-                        }
+                        Add
                       </button>
-                    </>
+                    </div>
                   )}
                 </div>
               );
@@ -316,114 +337,102 @@ export default function ItemSelector({
             )}
           </div>
         </div>
+      </div>
 
-        {/* Shopping Cart */}
-        <div>
-          <h4 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-            <FiHash className="mr-2" />
-            Shopping Cart ({cart?.length || 0})
-          </h4>
-          <div className="bg-gray-50 rounded-lg p-4 min-h-96">
-            {(!cart || cart.length === 0) ? (
-              <div className="text-center py-12 text-gray-500">
-                <FiPackage className="mx-auto mb-2" size={32} />
-                <p>Your cart is empty</p>
-                <p className="text-sm">Add items from the list to get started</p>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {cart?.map((cartItem, index) => (
-                  <div key={index} className="bg-white border border-gray-200 rounded-lg p-3">
-                    <div className="flex justify-between items-start mb-2">
-                      <div className="flex-1">
-                        <h6 className="font-medium text-gray-900">{cartItem.itemName}</h6>
-                        {cartItem.serialNumber && (
-                          <p className="text-xs text-gray-500">Serial: {cartItem.serialNumber}</p>
-                        )}
-                        <p className="text-sm text-gray-600">₹{cartItem.unitPrice} each</p>
-                      </div>
-                      <button
-                        onClick={() => onRemoveItem(index)}
-                        className="text-red-500 hover:text-red-700 p-1"
-                      >
-                        <FiTrash2 size={16} />
-                      </button>
+      {/* Right side - Selected items */}
+      <div className="w-full md:w-1/3 flex flex-col" style={{ height: '70vh' }}>
+        <div className="p-4 bg-gray-50 border-b flex-shrink-0">
+          <h3 className="font-bold">Selected Items ({cart?.length || 0})</h3>
+        </div>
+
+        <div className="flex-1 p-4 overflow-y-auto">
+          {(!cart || cart.length === 0) ? (
+            <div className="text-center text-gray-500 py-8">
+              No items selected. Search and select products.
+            </div>
+          ) : (
+            cart?.map((cartItem, index) => (
+              <div key={index} className="mb-4 border-b pb-2">
+                <div className="flex justify-between">
+                  <div className="font-medium">{cartItem.itemName}</div>
+                  <button
+                    onClick={() => onRemoveItem(index)}
+                    className="text-red-500 hover:text-red-700"
+                  >
+                    <FiTrash2 className="w-5 h-5" />
+                  </button>
+                </div>
+
+                <div className="text-sm text-gray-500">
+                  {cartItem.serialNumber && (
+                    <div>Serial: {cartItem.serialNumber}</div>
+                  )}
+                  <div>₹{cartItem.unitPrice} × {cartItem.quantity}</div>
+                </div>
+
+                {/* Pricing Information */}
+                {cartItem.item?.pricing && (
+                  <div className="mt-2 p-2 bg-gray-50 rounded text-xs space-y-1">
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Customer:</span>
+                      <span className="font-medium text-green-700">₹{cartItem.item.pricing.customerPrice || 0}</span>
                     </div>
-                    
-                    <div className="flex justify-between items-center">
-                      <div className="flex items-center space-x-2">
-                        <button
-                          onClick={() => onUpdateQuantity(index, cartItem.quantity - 1)}
-                          disabled={cartItem.quantity <= 1 || !!cartItem.serialNumber}
-                          className="w-6 h-6 rounded-full bg-gray-200 hover:bg-gray-300 disabled:opacity-50 flex items-center justify-center"
-                        >
-                          <FiMinus size={12} />
-                        </button>
-                        {!!cartItem.serialNumber ? (
-                          <span className="w-12 text-center text-sm font-medium">{cartItem.quantity}</span>
-                        ) : (
-                          <input
-                            type="number"
-                            value={cartInputValues[index] !== undefined ? cartInputValues[index] : cartItem.quantity}
-                            onChange={(e) => {
-                              const value = e.target.value;
-                              setCartInputValues(prev => ({
-                                ...prev,
-                                [index]: value
-                              }));
-
-                              if (value !== '' && !isNaN(parseInt(value))) {
-                                onUpdateQuantity(index, Math.max(1, parseInt(value)));
-                              }
-                            }}
-                            onBlur={(e) => {
-                              const value = e.target.value;
-                              if (value === '' || parseInt(value) < 1 || isNaN(parseInt(value))) {
-                                onUpdateQuantity(index, 1);
-                                setCartInputValues(prev => ({
-                                  ...prev,
-                                  [index]: 1
-                                }));
-                              } else {
-                                setCartInputValues(prev => ({
-                                  ...prev,
-                                  [index]: parseInt(value)
-                                }));
-                              }
-                            }}
-                            onFocus={(e) => {
-                              e.target.select(); // Select all text on focus for easy editing
-                            }}
-                            min="1"
-                            className="w-12 text-center text-sm font-medium border border-gray-300 rounded px-1 py-0.5 focus:outline-none focus:ring-1 focus:ring-blue-300"
-                          />
-                        )}
-                        <button
-                          onClick={() => onUpdateQuantity(index, cartItem.quantity + 1)}
-                          disabled={!!cartItem.serialNumber}
-                          className="w-6 h-6 rounded-full bg-gray-200 hover:bg-gray-300 disabled:opacity-50 flex items-center justify-center"
-                        >
-                          <FiPlus size={12} />
-                        </button>
-                      </div>
-                      <div className="text-right">
-                        <p className="font-semibold text-gray-900">₹{cartItem.totalPrice}</p>
-                      </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Dealer:</span>
+                      <span className="font-medium text-blue-700">₹{cartItem.item.pricing.dealerPrice || 0}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Distributor:</span>
+                      <span className="font-medium text-purple-700">₹{cartItem.item.pricing.distributorPrice || 0}</span>
                     </div>
                   </div>
-                ))}
-                
-                <div className="border-t pt-3 mt-4">
-                  <div className="flex justify-between items-center">
-                    <span className="font-semibold text-gray-900">Total:</span>
-                    <span className="text-xl font-bold text-green-600">
-                      ₹{cart?.reduce((sum, item) => sum + item.totalPrice, 0) || 0}
-                    </span>
+                )}
+
+                {/* For generic products, show quantity controls */}
+                {!cartItem.serialNumber && (
+                  <div className="mt-2 flex items-center">
+                    <button
+                      onClick={() => handleUpdateQuantity(index, cartItem.quantity - 1, cartItem)}
+                      className="bg-gray-200 hover:bg-gray-300 w-8 h-8 rounded-l flex items-center justify-center"
+                    >
+                      <FiMinus />
+                    </button>
+                    <input
+                      type="number"
+                      min="1"
+                      value={cartItem.quantity}
+                      onChange={(e) => handleUpdateQuantity(index, parseInt(e.target.value) || 0, cartItem)}
+                      className="w-12 h-8 text-center border-t border-b"
+                    />
+                    <button
+                      onClick={() => handleUpdateQuantity(index, cartItem.quantity + 1, cartItem)}
+                      className="bg-gray-200 hover:bg-gray-300 w-8 h-8 rounded-r flex items-center justify-center"
+                    >
+                      <FiPlus />
+                    </button>
                   </div>
+                )}
+
+                <div className="mt-2 font-semibold text-gray-900">
+                  Total: ₹{cartItem.totalPrice}
                 </div>
               </div>
-            )}
-          </div>
+            ))
+          )}
+        </div>
+
+        <div className="p-4 border-t bg-gray-50 flex-shrink-0">
+          <button
+            onClick={onProceedToSummary}
+            disabled={!cart || cart.length === 0}
+            className={`w-full py-2 rounded-md ${
+              !cart || cart.length === 0
+                ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                : `${colors.button} text-white`
+            }`}
+          >
+            Review Bill ({cart?.length || 0})
+          </button>
         </div>
       </div>
     </div>

@@ -22,6 +22,7 @@ const AddTechnicianModal = ({ isOpen, onClose, onSuccess }) => {
   const [branches, setBranches] = useState([]);  // ब्रांचेज के लिए स्टेट जोड़ा
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [usernameError, setUsernameError] = useState(null);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   
@@ -52,6 +53,7 @@ const AddTechnicianModal = ({ isOpen, onClose, onSuccess }) => {
       status: 'active'
     });
     setError(null);
+    setUsernameError(null);
     
     // ऑटोफिल समस्या को ठीक करने के लिए थोड़ी देर का टाइमआउट जोड़ें
     setTimeout(() => {
@@ -116,15 +118,48 @@ const AddTechnicianModal = ({ isOpen, onClose, onSuccess }) => {
       ...prev,
       [name]: value
     }));
+
+    // Clear username error when user starts typing
+    if (name === 'username' && usernameError) {
+      setUsernameError(null);
+    }
+  };
+
+  const validateUsername = (username) => {
+    const trimmedUsername = username.trim();
+
+    if (!trimmedUsername) {
+      return 'Username is required';
+    }
+
+    const usernameRegex = /^[a-zA-Z0-9_.-@#]+$/;
+    if (!usernameRegex.test(trimmedUsername)) {
+      return 'Username can only contain letters, numbers, and symbols (_ . - @ #). Spaces are not allowed.';
+    }
+
+    return null;
+  };
+
+  const handleUsernameBlur = () => {
+    const error = validateUsername(formData.username);
+    setUsernameError(error);
   };
   
   const validateForm = () => {
+    // Check username validity first
+    const usernameValidationError = validateUsername(formData.username);
+    if (usernameValidationError) {
+      setUsernameError(usernameValidationError);
+      setError(usernameValidationError);
+      return false;
+    }
+
     // एडमिन के लिए ब्रांच वैलिडेशन जोड़ें
     if (user.role === 'admin' && !formData.branch) {
       setError('Please select a branch');
       return false;
     }
-    
+
     if (!formData.firstName || !formData.username || !formData.password) {
       setError('Please fill in all required fields');
       return false;
@@ -159,10 +194,13 @@ const AddTechnicianModal = ({ isOpen, onClose, onSuccess }) => {
     
     try {
       setLoading(true);
-      
+
       // confirmPassword हटा दें API कॉल से पहले
       const { confirmPassword, ...dataToSubmit } = formData;
-      
+
+      // Trim username to remove leading/trailing spaces
+      dataToSubmit.username = dataToSubmit.username.trim();
+
       // मैनेजर के लिए उनके ब्रांच का उपयोग करें
       if (user.role === 'manager') {
         dataToSubmit.branch = user.branch;
@@ -259,11 +297,15 @@ const AddTechnicianModal = ({ isOpen, onClose, onSuccess }) => {
               type="text"
               value={formData.username}
               onChange={handleChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+              onBlur={handleUsernameBlur}
+              className={`w-full px-3 py-2 border ${usernameError ? 'border-red-500' : 'border-gray-300'} rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500`}
               placeholder="Enter username"
               autoComplete="off"
               required
             />
+            {usernameError && (
+              <p className="mt-1 text-sm text-red-600">{usernameError}</p>
+            )}
           </div>
           
           <div>

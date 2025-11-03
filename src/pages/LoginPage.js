@@ -17,8 +17,11 @@ const LoginPage = () => {
     setError('');
     setLoading(true);
 
+    // Trim username to remove leading/trailing spaces
+    const trimmedUsername = username.trim();
+
     try {
-      const result = await login(username, password);
+      const result = await login(trimmedUsername, password);
       
       if (result.success) {
         navigate('/dashboard');

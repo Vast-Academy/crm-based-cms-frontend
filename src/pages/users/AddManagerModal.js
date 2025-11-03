@@ -21,6 +21,7 @@ const AddManagerModal = ({ isOpen, onClose, onSuccess }) => {
   const [branches, setBranches] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [usernameError, setUsernameError] = useState(null);
   
   useEffect(() => {
     if (isOpen) {
@@ -43,6 +44,7 @@ const AddManagerModal = ({ isOpen, onClose, onSuccess }) => {
       status: 'active'
     });
     setError(null);
+    setUsernameError(null);
     
     // Add a slight delay before clearing any browser auto-fills
     setTimeout(() => {
@@ -106,9 +108,42 @@ const AddManagerModal = ({ isOpen, onClose, onSuccess }) => {
       ...prev,
       [name]: value
     }));
+
+    // Clear username error when user starts typing
+    if (name === 'username' && usernameError) {
+      setUsernameError(null);
+    }
+  };
+
+  const validateUsername = (username) => {
+    const trimmedUsername = username.trim();
+
+    if (!trimmedUsername) {
+      return 'Username is required';
+    }
+
+    const usernameRegex = /^[a-zA-Z0-9_.-@#]+$/;
+    if (!usernameRegex.test(trimmedUsername)) {
+      return 'Username can only contain letters, numbers, and symbols (_ . - @ #). Spaces are not allowed.';
+    }
+
+    return null;
+  };
+
+  const handleUsernameBlur = () => {
+    const error = validateUsername(formData.username);
+    setUsernameError(error);
   };
   
   const validateForm = () => {
+    // Check username validity first
+    const usernameValidationError = validateUsername(formData.username);
+    if (usernameValidationError) {
+      setUsernameError(usernameValidationError);
+      setError(usernameValidationError);
+      return false;
+    }
+
     if (!formData.firstName || !formData.lastName || !formData.username || !formData.email || !formData.password || !formData.branch) {
       setError('Please fill in all required fields');
       return false;
@@ -143,9 +178,12 @@ const AddManagerModal = ({ isOpen, onClose, onSuccess }) => {
     
     try {
       setLoading(true);
-      
+
       // Remove confirmPassword before sending to API
       const { confirmPassword, ...dataToSubmit } = formData;
+
+      // Trim username to remove leading/trailing spaces
+      dataToSubmit.username = dataToSubmit.username.trim();
       
       const response = await fetch(SummaryApi.addManagerUser.url, {
         method: SummaryApi.addManagerUser.method,
@@ -250,11 +288,15 @@ const AddManagerModal = ({ isOpen, onClose, onSuccess }) => {
                   type="text"
                   value={formData.username}
                   onChange={handleChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                  onBlur={handleUsernameBlur}
+                  className={`w-full px-3 py-2 border ${usernameError ? 'border-red-500' : 'border-gray-300'} rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500`}
                   placeholder="Enter username"
                   autoComplete="new-username"
                   required
                 />
+                {usernameError && (
+                  <p className="mt-1 text-sm text-red-600">{usernameError}</p>
+                )}
               </div>
               
               <div>

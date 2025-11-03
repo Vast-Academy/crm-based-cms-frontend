@@ -7,6 +7,8 @@ import { useNotification } from '../../context/NotificationContext';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import ItemSelector from './ItemSelector';
 import PaymentModal from './PaymentModal';
+import Modal from '../../components/Modal';
+import { SerializedStockForm, GenericStockForm } from '../inventory/AllInventoryItems';
 
 // Ensure global modal registry exists
 if (!window.__modalRegistry) {
@@ -47,10 +49,18 @@ export default function BillingModal({ isOpen, onClose, customer, onBillCreated 
   const [error, setError] = useState(null);
   const [showItemSelector, setShowItemSelector] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
-  
+
   // Bill totals
   const [subtotal, setSubtotal] = useState(0);
   const [total, setTotal] = useState(0);
+
+  // Stock modal states
+  const [showAddStockModal, setShowAddStockModal] = useState(false);
+  const [stockModalItem, setStockModalItem] = useState(null);
+  const [stockEntriesToSave, setStockEntriesToSave] = useState([]);
+  const [currentStockItem, setCurrentStockItem] = useState(null);
+  const [showStockSaveConfirmation, setShowStockSaveConfirmation] = useState(false);
+  const [stockSaveLoading, setStockSaveLoading] = useState(false);
 
   // Register/unregister modal in global registry
   useEffect(() => {
@@ -259,6 +269,72 @@ export default function BillingModal({ isOpen, onClose, customer, onBillCreated 
     setShowPaymentModal(false);
     setSubtotal(0);
     setTotal(0);
+    setShowAddStockModal(false);
+    setStockModalItem(null);
+  };
+
+  const openAddStockModal = (item) => {
+    const normalizedItem = {
+      ...item,
+      itemType: item.type === 'serialized-product' ? 'serialized' :
+        item.type === 'generic-product' ? 'generic' : item.type
+    };
+    setStockModalItem(normalizedItem);
+    setShowAddStockModal(true);
+  };
+
+  const closeAddStockModal = () => {
+    setShowAddStockModal(false);
+    setStockModalItem(null);
+    setStockEntriesToSave([]);
+    setCurrentStockItem(null);
+    setShowStockSaveConfirmation(false);
+  };
+
+  const handlePrepareForSaving = (entries, item) => {
+    setStockEntriesToSave(entries);
+    setCurrentStockItem(item);
+    setShowStockSaveConfirmation(true);
+  };
+
+  const handleSaveStock = async () => {
+    if (!currentStockItem || stockEntriesToSave.length === 0) {
+      setShowStockSaveConfirmation(false);
+      return;
+    }
+
+    try {
+      setStockSaveLoading(true);
+
+      for (const entry of stockEntriesToSave) {
+        const response = await fetch(SummaryApi.addInventoryStock.url, {
+          method: SummaryApi.addInventoryStock.method,
+          credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            itemId: currentStockItem.id || currentStockItem._id,
+            ...entry
+          })
+        });
+
+        const data = await response.json();
+
+        if (!data.success) {
+          throw new Error(data.message || 'Failed to add stock');
+        }
+      }
+
+      showNotification('success', 'Stock added successfully');
+      closeAddStockModal();
+      await fetchInventoryItems();
+    } catch (err) {
+      showNotification('error', err.message || 'Failed to add stock');
+    } finally {
+      setStockSaveLoading(false);
+      setShowStockSaveConfirmation(false);
+    }
   };
 
   // Handle overlay click - requires double click to close
@@ -356,40 +432,8 @@ export default function BillingModal({ isOpen, onClose, customer, onBillCreated 
             </button>
           </div>
           
-          {/* Progress Steps */}
-          <div className="px-6 py-4 bg-gray-50 border-b">
-            <div className="flex items-center justify-center space-x-8">
-              <div className={`flex items-center ${currentStep === 'items' ? colors.text : 'text-gray-400'}`}>
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                  currentStep === 'items' ? colors.button + ' text-white' : 'bg-gray-200'
-                }`}>
-                  1
-                </div>
-                <span className="ml-2 font-medium">Select Items</span>
-              </div>
-              <div className={`w-16 h-0.5 ${currentStep === 'summary' || currentStep === 'payment' ? colors.button : 'bg-gray-200'}`} />
-              <div className={`flex items-center ${currentStep === 'summary' || currentStep === 'payment' ? colors.text : 'text-gray-400'}`}>
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                  currentStep === 'summary' || currentStep === 'payment' ? colors.button + ' text-white' : 'bg-gray-200'
-                }`}>
-                  2
-                </div>
-                <span className="ml-2 font-medium">Bill Summary</span>
-              </div>
-              <div className={`w-16 h-0.5 ${currentStep === 'payment' ? colors.button : 'bg-gray-200'}`} />
-              <div className={`flex items-center ${currentStep === 'payment' ? colors.text : 'text-gray-400'}`}>
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                  currentStep === 'payment' ? colors.button + ' text-white' : 'bg-gray-200'
-                }`}>
-                  3
-                </div>
-                <span className="ml-2 font-medium">Payment</span>
-              </div>
-            </div>
-          </div>
-          
-          {/* Content */}
-          <div className="p-6" style={{ minHeight: '500px', maxHeight: '70vh', overflowY: 'auto' }}>
+          {/* Content - No outer scroll, no progress bar */}
+          <div className={currentStep === 'items' ? '' : 'p-6'} style={currentStep === 'items' ? {} : { minHeight: '500px', maxHeight: '70vh', overflowY: 'auto' }}>
             {loading ? (
               <div className="flex justify-center py-12">
                 <LoadingSpinner />
@@ -412,6 +456,8 @@ export default function BillingModal({ isOpen, onClose, customer, onBillCreated 
                 colors={colors}
                 onRefreshItems={fetchInventoryItems}
                 isRefreshing={loading}
+                onProceedToSummary={handleProceedToSummary}
+                openAddStockModal={openAddStockModal}
               />
             )}
 
@@ -522,49 +568,44 @@ export default function BillingModal({ isOpen, onClose, customer, onBillCreated 
             )}
           </div>
 
-          {/* Footer Actions */}
-          <div className="px-6 py-4 bg-gray-50 border-t flex justify-between">
-            <div className="flex items-center space-x-4">
-              {cart.length > 0 && (
-                <div className="text-sm text-gray-600">
-                  {cart.length} item{cart.length > 1 ? 's' : ''} • Total: ₹{total}
-                </div>
-              )}
+          {/* Footer Actions - Hidden on items step */}
+          {currentStep !== 'items' && (
+            <div className="px-6 py-4 bg-gray-50 border-t flex justify-between">
+              <div className="flex items-center space-x-4">
+                {cart.length > 0 && (
+                  <div className="text-sm text-gray-600">
+                    {cart.length} item{cart.length > 1 ? 's' : ''} • Total: ₹{total}
+                  </div>
+                )}
+              </div>
+              <div className="flex space-x-3">
+                {currentStep === 'summary' && (
+                  <>
+                    <button
+                      onClick={() => setCurrentStep('items')}
+                      className="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 font-medium"
+                    >
+                      Back
+                    </button>
+                    <button
+                      onClick={handleProceedToPayment}
+                      className={`px-6 py-2 ${colors.button} text-white rounded-lg font-medium`}
+                    >
+                      Proceed to Payment
+                    </button>
+                  </>
+                )}
+                {currentStep === 'payment' && (
+                  <button
+                    onClick={() => setCurrentStep('summary')}
+                    className="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 font-medium"
+                  >
+                    Back to Summary
+                  </button>
+                )}
+              </div>
             </div>
-            <div className="flex space-x-3">
-              <button
-                onClick={handleClose}
-                className="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 font-medium"
-              >
-                Cancel
-              </button>
-              {currentStep === 'items' && (
-                <button
-                  onClick={handleProceedToSummary}
-                  disabled={cart.length === 0}
-                  className={`px-6 py-2 ${colors.button} disabled:bg-gray-300 text-white rounded-lg font-medium`}
-                >
-                  Review Bill ({cart.length})
-                </button>
-              )}
-              {currentStep === 'summary' && (
-                <button
-                  onClick={handleProceedToPayment}
-                  className={`px-6 py-2 ${colors.button} text-white rounded-lg font-medium`}
-                >
-                  Proceed to Payment
-                </button>
-              )}
-              {currentStep === 'payment' && (
-                <button
-                  onClick={() => setCurrentStep('summary')}
-                  className="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 font-medium"
-                >
-                  Back to Summary
-                </button>
-              )}
-            </div>
-          </div>
+          )}
         </div>
       </div>
 
@@ -582,6 +623,82 @@ export default function BillingModal({ isOpen, onClose, customer, onBillCreated 
           onPaymentSuccess={handlePaymentSuccess}
           colors={colors}
         />
+      )}
+
+      {/* Add Stock Modal */}
+      {showAddStockModal && stockModalItem && (
+        <Modal
+          isOpen={showAddStockModal}
+          onClose={closeAddStockModal}
+          title={`Add Stock for ${stockModalItem?.name || ''}`}
+          size="lg"
+          zIndex="z-[80]"
+          draggable={true}
+        >
+          {stockModalItem.itemType === 'serialized' ? (
+            <SerializedStockForm
+              item={stockModalItem}
+              onClose={closeAddStockModal}
+              showNotification={showNotification}
+              onSuccess={async () => {
+                closeAddStockModal();
+                await fetchInventoryItems();
+                showNotification('success', 'Stock added successfully');
+              }}
+              onPrepareForSaving={handlePrepareForSaving}
+            />
+          ) : stockModalItem.itemType === 'generic' ? (
+            <GenericStockForm
+              item={stockModalItem}
+              onClose={closeAddStockModal}
+              showNotification={showNotification}
+              onSuccess={async () => {
+                closeAddStockModal();
+                await fetchInventoryItems();
+                showNotification('success', 'Stock added successfully');
+              }}
+              onPrepareForSaving={handlePrepareForSaving}
+            />
+          ) : (
+            <div className="text-center text-gray-500 py-4">
+              Unsupported item type
+            </div>
+          )}
+        </Modal>
+      )}
+
+      {/* Confirm Save Stock Modal */}
+      {showStockSaveConfirmation && (
+        <Modal
+          isOpen={showStockSaveConfirmation}
+          onClose={() => setShowStockSaveConfirmation(false)}
+          title="Confirm Stock Save"
+          size="md"
+          zIndex="z-[90]"
+          draggable={true}
+        >
+          <div className="py-4">
+            <p className="text-center text-gray-600 mb-6">
+              Are you sure you want to save this stock? This will add {stockEntriesToSave.length} {stockEntriesToSave.length === 1 ? 'entry' : 'entries'} to the inventory.
+            </p>
+            <div className="flex justify-center gap-4">
+              <button
+                onClick={() => setShowStockSaveConfirmation(false)}
+                disabled={stockSaveLoading}
+                className="px-4 py-2 rounded-md border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSaveStock}
+                disabled={stockSaveLoading}
+                className={`px-4 py-2 rounded-md text-white ${stockSaveLoading ? 'bg-green-300 cursor-not-allowed' : 'bg-green-500 hover:bg-green-600'}`}
+              >
+                {stockSaveLoading ? 'Saving...' : 'Save Stock'}
+              </button>
+            </div>
+          </div>
+        </Modal>
       )}
     </div>
   );
