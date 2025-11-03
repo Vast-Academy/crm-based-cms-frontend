@@ -209,6 +209,12 @@ const handleRefresh = () => {
       // localStorage से कैश को हटा दें
       localStorage.removeItem('inventoryItems');
       fetchAllItems(); // Refresh the data
+
+      // Refresh View Details modal data if it's open
+      if (selectedStockItem && isViewStockModalOpen) {
+        loadCurrentStockData(selectedStockItem);
+      }
+
       setIsAddStockModalOpen(false);
     } catch (err) {
       showNotification('error', 'Server error. Please try again later.');
@@ -646,8 +652,6 @@ const handleRefresh = () => {
                     getStockDisplay={getStockDisplay}
                     openViewStockModal={() => openViewStockModal(item)}
                     openAddStockModal={() => openAddStockModal(item)}
-                    isExpanded={expandedRowId === item.id}
-                    toggleExpanded={() => toggleRowExpansion(item.id)}
                   />
                 ))}
               </tbody>
@@ -667,11 +671,12 @@ const handleRefresh = () => {
       >
         {selectedStockItem && (
           <div>
-            <div className="mb-4">
-              <h3 className="text-lg font-semibold text-gray-900">
-                Stock Overview
-              </h3>
-              <p className="text-sm text-gray-500">
+            <div className="mb-4 flex justify-between items-start">
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900">
+                  Stock Overview
+                </h3>
+                <p className="text-sm text-gray-500">
                 Current Available Stock:{' '}
                 {(() => {
                   const availableTotal = getAvailableTotal();
@@ -694,9 +699,23 @@ const handleRefresh = () => {
                   </p>
                 );
               })()}
-              <p className="text-sm text-gray-400 mt-1">
-                Switch between current allocation and stock addition history.
-              </p>
+                <p className="text-sm text-gray-400 mt-1">
+                  Switch between current allocation and stock addition history.
+                </p>
+              </div>
+
+              {/* Add Stock Button */}
+              {user.role === 'manager' && selectedStockItem.itemType !== 'service' && (
+                <button
+                  onClick={() => {
+                    openAddStockModal(selectedStockItem);
+                  }}
+                  className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-md font-medium flex items-center gap-2"
+                >
+                  <FiPlus size={18} />
+                  Add Stock
+                </button>
+              )}
             </div>
 
             <div className="border-b border-gray-200 mb-4">
@@ -1002,6 +1021,7 @@ const handleRefresh = () => {
   onClose={() => setIsAddStockModalOpen(false)}
   title={`Add Stock for ${selectedStockItem?.name || ''}`}
   size="lg"
+  zIndex="z-[60]"
 >
   {selectedStockItem && (
     <div>
@@ -1054,6 +1074,7 @@ const handleRefresh = () => {
   onClose={() => setShowSaveConfirmation(false)}
   title="Confirm Save"
   size="md"
+  zIndex="z-[70]"
 >
   <div className="py-4">
     <div className="mb-6 flex items-center justify-center">
@@ -1780,14 +1801,13 @@ export const GenericStockForm = ({ item, onClose, showNotification, onSuccess, o
 
 
 // Add this component at the end of your file (before export default)
-const ClickableTableRow = ({ item, index, user, handleDeleteItem, getItemTypeDisplay, getStockDisplay, openViewStockModal, openAddStockModal,  isExpanded, toggleExpanded }) => {
-  // const [expanded, setExpanded] = useState(false);
+const ClickableTableRow = ({ item, index, user, handleDeleteItem, getItemTypeDisplay, getStockDisplay, openViewStockModal, openAddStockModal }) => {
   
   return (
     <React.Fragment>
-      <tr 
+      <tr
         className="hover:bg-gray-50 cursor-pointer"
-        onClick={toggleExpanded}
+        onClick={() => openViewStockModal(item)}
       >
         <td className="px-6 py-4 whitespace-nowrap">
           <div className={`w-8 h-8 rounded-full flex items-center justify-center  font-medium ${
@@ -1872,33 +1892,6 @@ const ClickableTableRow = ({ item, index, user, handleDeleteItem, getItemTypeDis
           </div>
         </td> */}
       </tr>
-      
-      {/* Expandable row for action buttons */}
-      {isExpanded && (
-        <tr className="bg-gray-50">
-          <td colSpan={user.role === 'admin' ? 9 : 8} className="px-6 py-4 border-b">
-            <div className="flex space-x-3">
-              {item.itemType !== 'service' && (
-                <button
-                  onClick={() => openViewStockModal()}
-                  className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
-                >
-                  View Details
-                </button>
-              )}
-              
-              {user.role === 'manager' && item.itemType !== 'service' && (
-                <button
-                  onClick={() => openAddStockModal()}
-                  className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-teal-500 hover:bg-teal-600"
-                >
-                  Add Stock
-                </button>
-              )}
-            </div>
-          </td>
-        </tr>
-      )}
     </React.Fragment>
   );
 };

@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import { FiClock, FiActivity, FiCheckCircle, FiSearch, FiRefreshCw, FiEye, FiFilter } from 'react-icons/fi';
+import React, { useState, useEffect, useRef } from 'react';
+import { FiClock, FiActivity, FiCheckCircle, FiSearch, FiRefreshCw, FiEye, FiFilter, FiChevronDown } from 'react-icons/fi';
+import { LuArrowDownUp, LuArrowUpDown } from "react-icons/lu";
 import SummaryApi from '../../common';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import { useAuth } from '../../context/AuthContext';
@@ -21,6 +22,12 @@ const PendingApprovals = () => {
   // State for modal
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [selectedProject, setSelectedProject] = useState(null);
+
+  // Sorting states
+  const [sortOrder, setSortOrder] = useState('desc'); // desc = newest first
+  const [sortField, setSortField] = useState('date'); // 'date' or 'technician'
+  const [isSortDropdownOpen, setIsSortDropdownOpen] = useState(false);
+  const sortDropdownRef = useRef(null);
 
   const PROJECTS_CACHE_KEY = 'managerProjectsData';
 
@@ -149,13 +156,37 @@ const PendingApprovals = () => {
       );
     }
 
-    // Sort by most recent (updatedAt or createdAt)
+    // Apply sorting based on sortField and sortOrder
     filtered.sort((a, b) => {
-      const dateA = a.updatedAt || a.createdAt;
-      const dateB = b.updatedAt || b.createdAt;
+      if (sortField === 'date') {
+        // Sort by date
+        const dateA = a.updatedAt || a.createdAt;
+        const dateB = b.updatedAt || b.createdAt;
 
-      // Sort descending (newest first)
-      return new Date(dateB) - new Date(dateA);
+        const comparison = new Date(dateB) - new Date(dateA);
+        return sortOrder === 'desc' ? comparison : -comparison;
+      } else if (sortField === 'technician') {
+        // Sort by technician name
+        const nameA = a.technician
+          ? `${a.technician.firstName || ''} ${a.technician.lastName || ''}`.toLowerCase().trim()
+          : '';
+        const nameB = b.technician
+          ? `${b.technician.firstName || ''} ${b.technician.lastName || ''}`.toLowerCase().trim()
+          : '';
+
+        if (nameA < nameB) return sortOrder === 'asc' ? -1 : 1;
+        if (nameA > nameB) return sortOrder === 'asc' ? 1 : -1;
+        return 0;
+      } else if (sortField === 'customer') {
+        // Sort by customer name
+        const customerA = (a.customerName || '').toLowerCase().trim();
+        const customerB = (b.customerName || '').toLowerCase().trim();
+
+        if (customerA < customerB) return sortOrder === 'asc' ? -1 : 1;
+        if (customerA > customerB) return sortOrder === 'asc' ? 1 : -1;
+        return 0;
+      }
+      return 0;
     });
 
     setFilteredProjects(filtered);
@@ -170,6 +201,38 @@ const PendingApprovals = () => {
   useEffect(() => {
     applyFilter(allProjects, searchQuery);
   }, [searchQuery]);
+
+  // Re-apply filter when sort changes
+  useEffect(() => {
+    applyFilter(allProjects, searchQuery);
+  }, [sortField, sortOrder]);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (sortDropdownRef.current && !sortDropdownRef.current.contains(event.target)) {
+        setIsSortDropdownOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+
+  // Handle sort option selection
+  const handleSortSelection = (field) => {
+    if (sortField === field) {
+      // Toggle order if same field selected
+      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+    } else {
+      // Set new field with default order
+      setSortField(field);
+      setSortOrder(field === 'date' ? 'desc' : 'asc'); // date defaults to desc (newest first), name to asc
+    }
+    setIsSortDropdownOpen(false);
+  };
 
   // Format date function
   const formatDate = (dateString) => {
@@ -303,24 +366,95 @@ const PendingApprovals = () => {
     <div className="">
       {/* Main Container with White Box */}
       <div className="p-6 bg-white rounded-lg shadow-md max-w-[1300px]">
-        {/* Header */}
-        <div className="mb-4">
-          <h1 className="text-2xl font-semibold text-gray-800">Pending Approvals</h1>
-          <p className="text-gray-600 mt-1">Projects awaiting your approval</p>
+        {/* Header with Sort Dropdown */}
+        <div className="mb-4 flex items-start justify-between">
+          <div>
+            <h1 className="text-2xl font-semibold text-gray-800">Pending Approvals</h1>
+            <p className="text-gray-600 mt-1">Projects awaiting your approval</p>
+          </div>
+
+          {/* Sort Dropdown */}
+          <div className="relative mt-6" ref={sortDropdownRef}>
+            <button
+              onClick={() => setIsSortDropdownOpen(!isSortDropdownOpen)}
+              className="flex items-center px-4 py-2 rounded-full text-sm font-medium bg-gray-100 text-gray-600 hover:bg-gray-200"
+            >
+              {sortOrder === 'asc' ? (
+                <LuArrowDownUp className="h-4 w-4 mr-2" />
+              ) : (
+                <LuArrowUpDown className="h-4 w-4 mr-2" />
+              )}
+              Sort
+              <FiChevronDown className="ml-2 h-4 w-4" />
+            </button>
+
+            {/* Sort Dropdown Menu */}
+            {isSortDropdownOpen && (
+              <div className="absolute right-0 mt-2 w-56 bg-white rounded-md shadow-lg z-50 border border-gray-200">
+                <div className="py-1">
+                  <button
+                    onClick={() => handleSortSelection('technician')}
+                    className={`flex items-center justify-between w-full px-4 py-2 text-sm text-left hover:bg-gray-100 ${
+                      sortField === 'technician' ? 'bg-gray-50 text-teal-600 font-medium' : 'text-gray-700'
+                    }`}
+                  >
+                    <span>Technician Name</span>
+                    {sortField === 'technician' && (
+                      sortOrder === 'asc' ? (
+                        <LuArrowDownUp className="h-4 w-4" />
+                      ) : (
+                        <LuArrowUpDown className="h-4 w-4" />
+                      )
+                    )}
+                  </button>
+                  <button
+                    onClick={() => handleSortSelection('customer')}
+                    className={`flex items-center justify-between w-full px-4 py-2 text-sm text-left hover:bg-gray-100 ${
+                      sortField === 'customer' ? 'bg-gray-50 text-teal-600 font-medium' : 'text-gray-700'
+                    }`}
+                  >
+                    <span>Customer Name</span>
+                    {sortField === 'customer' && (
+                      sortOrder === 'asc' ? (
+                        <LuArrowDownUp className="h-4 w-4" />
+                      ) : (
+                        <LuArrowUpDown className="h-4 w-4" />
+                      )
+                    )}
+                  </button>
+                  <button
+                    onClick={() => handleSortSelection('date')}
+                    className={`flex items-center justify-between w-full px-4 py-2 text-sm text-left hover:bg-gray-100 ${
+                      sortField === 'date' ? 'bg-gray-50 text-teal-600 font-medium' : 'text-gray-700'
+                    }`}
+                  >
+                    <span>Date</span>
+                    {sortField === 'date' && (
+                      sortOrder === 'asc' ? (
+                        <LuArrowDownUp className="h-4 w-4" />
+                      ) : (
+                        <LuArrowUpDown className="h-4 w-4" />
+                      )
+                    )}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
 
-        {/* Search */}
+        {/* Search bar - full width below */}
         <div className="mb-4">
-           <div className="relative">
-              <input
-                type="text"
-                placeholder="Search pending approvals..."
-                className="w-full px-3 py-2 pl-10 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-              <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-            </div>
+          <div className="relative">
+            <input
+              type="text"
+              placeholder="Search pending approvals..."
+              className="w-full px-3 py-2 pl-10 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+            <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+          </div>
         </div>
 
         {error && (

@@ -413,11 +413,16 @@ const handleCancelSave = () => {
         }
         
         showNotification('success', 'Stock added successfully');
-        
+
         setShowSaveConfirmation(false);
         setIsAddStockModalOpen(false);
         resetStockEntriesForm();
         fetchItems();
+
+        // Refresh View Details modal data if it's open
+        if (selectedStockItem && isViewStockModalOpen) {
+          loadCurrentStockData(selectedStockItem);
+        }
       } catch (err) {
         showNotification('error', 'Server error. Please try again later.');
         setError('Server error. Please try again later.');
@@ -494,10 +499,8 @@ const handleCancelSave = () => {
                     item={item}
                     index={index}
                     user={user}
-                    openViewStockModal={openViewStockModal}
-                    openAddStockModal={openAddStockModal}
-                    isExpanded={expandedRowId === item.id}
-                    toggleExpanded={() => toggleRowExpansion(item.id)}
+                    openViewStockModal={() => openViewStockModal(item)}
+                    openAddStockModal={() => openAddStockModal(item)}
                   />
                 ))}
               </tbody>
@@ -512,6 +515,7 @@ const handleCancelSave = () => {
           onClose={() => handleDiscardAndClose()}
           title={`Add Stock for ${selectedItem?.name || ''}`}
           size="lg"
+          zIndex="z-[60]"
         >
           {selectedItem && (
             <div>
@@ -655,32 +659,47 @@ const handleCancelSave = () => {
         >
           {selectedStockItem && (
             <div>
-              <div className="mb-4">
-                <h3 className="text-lg font-semibold text-gray-900">Stock Overview</h3>
-                <p className="text-sm text-gray-500">
-                  Current Available Stock:{' '}
+              <div className="mb-4 flex justify-between items-start">
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900">Stock Overview</h3>
+                  <p className="text-sm text-gray-500">
+                    Current Available Stock:{' '}
+                    {(() => {
+                      const availableTotal = getAvailableTotal();
+                      if (availableTotal === null || availableTotal === undefined) {
+                        return '...';
+                      }
+                      return `${availableTotal} ${itemUnit}`.trim();
+                    })()}
+                  </p>
                   {(() => {
-                    const availableTotal = getAvailableTotal();
-                    if (availableTotal === null || availableTotal === undefined) {
-                      return '...';
+                    const assignedTotal = getAssignedTotal();
+                    if (assignedTotal === null || assignedTotal === undefined) {
+                      return null;
                     }
-                    return `${availableTotal} ${itemUnit}`.trim();
+                    return (
+                      <p className="text-sm text-gray-500">
+                        Assigned to Technicians: {assignedTotal} {itemUnit}
+                      </p>
+                    );
                   })()}
-                </p>
-                {(() => {
-                  const assignedTotal = getAssignedTotal();
-                  if (assignedTotal === null || assignedTotal === undefined) {
-                    return null;
-                  }
-                  return (
-                    <p className="text-sm text-gray-500">
-                      Assigned to Technicians: {assignedTotal} {itemUnit}
-                    </p>
-                  );
-                })()}
-                <p className="text-sm text-gray-400 mt-1">
-                  Switch between current allocation and stock history.
-                </p>
+                  <p className="text-sm text-gray-400 mt-1">
+                    Switch between current allocation and stock history.
+                  </p>
+                </div>
+
+                {/* Add Stock Button */}
+                {user.role === 'manager' && (
+                  <button
+                    onClick={() => {
+                      openAddStockModal(selectedStockItem);
+                    }}
+                    className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-md font-medium flex items-center gap-2"
+                  >
+                    <FiPlus size={18} />
+                    Add Stock
+                  </button>
+                )}
               </div>
 
               <div className="border-b border-gray-200 mb-4">
@@ -905,6 +924,7 @@ const handleCancelSave = () => {
   onClose={handleCancelSave}
   title="Confirm Save"
   size="md"
+  zIndex="z-[70]"
 >
   <div className="py-4">
     <div className="mb-6 flex items-center justify-center">
@@ -958,15 +978,14 @@ const handleCancelSave = () => {
   };
 
   // Add this component at the end of your file (before export default)
-  const ClickableTableRow = ({ item, index, user, openViewStockModal, openAddStockModal, isExpanded, toggleExpanded }) => {
-    // const [expanded, setExpanded] = useState(false);
+  const ClickableTableRow = ({ item, index, user, openViewStockModal, openAddStockModal }) => {
     const totalStock = item.stock ? item.stock.reduce((total, stock) => total + parseInt(stock.quantity, 10), 0) : 0;
     
     return (
       <React.Fragment>
-        <tr 
+        <tr
           className="hover:bg-gray-50 cursor-pointer"
-          onClick={toggleExpanded}
+          onClick={() => openViewStockModal(item)}
         >
           <td className="px-6 py-4 whitespace-nowrap">
             <div className="w-8 h-8 rounded-full bg-teal-500 flex items-center justify-center text-white font-medium">
@@ -1000,31 +1019,6 @@ const handleCancelSave = () => {
             </button>
           </td> */}
         </tr>
-        
-        {/* Expandable row for action buttons */}
-        {isExpanded && (
-          <tr className="bg-gray-50">
-            <td colSpan={9} className="px-6 py-4 border-b">
-              <div className="flex space-x-3">
-                <button
-                  onClick={() => openViewStockModal(item)}
-                  className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
-                >
-                  View Details
-                </button>
-                
-                {user.role === 'manager' && (
-                  <button
-                    onClick={() => openAddStockModal(item)}
-                    className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-teal-500 hover:bg-teal-600"
-                  >
-                    Add Stock
-                  </button>
-                )}
-              </div>
-            </td>
-          </tr>
-        )}
       </React.Fragment>
     );
   };
