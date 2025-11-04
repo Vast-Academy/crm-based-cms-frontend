@@ -234,6 +234,55 @@ export default function ItemSelector({
     onRefreshItems();
   };
 
+  // Group cart items by product ID (for display purposes)
+  const getGroupedCartItems = () => {
+    if (!cart || cart.length === 0) return [];
+
+    const grouped = {};
+
+    cart.forEach((cartItem, index) => {
+      const key = cartItem.itemId;
+
+      if (!grouped[key]) {
+        // Find the original product from items
+        const product = items.find(p => p._id === key);
+
+        grouped[key] = {
+          itemId: key,
+          itemName: cartItem.itemName,
+          unitPrice: cartItem.unitPrice,
+          item: cartItem.item,
+          type: product?.type || (cartItem.serialNumber ? 'serialized-product' : 'generic-product'),
+          serialNumbers: [],
+          genericEntries: [],
+          totalPrice: 0,
+          totalQuantity: 0
+        };
+      }
+
+      if (cartItem.serialNumber) {
+        // Serialized product
+        grouped[key].serialNumbers.push({
+          serialNumber: cartItem.serialNumber,
+          cartIndex: index,
+          price: cartItem.totalPrice
+        });
+      } else {
+        // Generic product
+        grouped[key].genericEntries.push({
+          cartIndex: index,
+          quantity: cartItem.quantity,
+          price: cartItem.totalPrice
+        });
+        grouped[key].totalQuantity += cartItem.quantity;
+      }
+
+      grouped[key].totalPrice += cartItem.totalPrice;
+    });
+
+    return Object.values(grouped);
+  };
+
   // Handle keyboard navigation for serial number dropdown
   const handleKeyDown = (e) => {
     if (!isDropdownOpen) return;
@@ -469,70 +518,102 @@ export default function ItemSelector({
               No items selected. Search and select products.
             </div>
           ) : (
-            cart?.map((cartItem, index) => (
-              <div key={index} className="mb-4 border-b pb-2">
+            getGroupedCartItems().map((groupedItem) => (
+              <div key={groupedItem.itemId} className="mb-4 border-b pb-2">
                 <div className="flex justify-between">
-                  <div className="font-medium">{cartItem.itemName}</div>
-                  <button
-                    onClick={() => onRemoveItem(index)}
-                    className="text-red-500 hover:text-red-700"
-                  >
-                    <FiTrash2 className="w-5 h-5" />
-                  </button>
+                  <div className="font-medium">{groupedItem.itemName}</div>
+                  {/* Only show remove button for single entries */}
+                  {(groupedItem.serialNumbers.length === 1 || groupedItem.genericEntries.length === 1) && (
+                    <button
+                      onClick={() => onRemoveItem(groupedItem.serialNumbers[0]?.cartIndex || groupedItem.genericEntries[0]?.cartIndex)}
+                      className="text-red-500 hover:text-red-700"
+                    >
+                      <FiTrash2 className="w-5 h-5" />
+                    </button>
+                  )}
                 </div>
 
                 <div className="text-sm text-gray-500">
-                  {cartItem.serialNumber && (
-                    <div>Serial: {cartItem.serialNumber}</div>
-                  )}
-                  <div>₹{cartItem.unitPrice} × {cartItem.quantity}</div>
+                  Type: {groupedItem.type === 'serialized-product' ? 'Serialized' : 'Generic'}
                 </div>
 
-                {/* Pricing Information */}
-                {cartItem.item?.pricing && (
-                  <div className="mt-2 p-2 bg-gray-50 rounded text-xs space-y-1">
+                {/* Pricing Information - Show only relevant price based on customer type */}
+                {groupedItem.item?.pricing && (
+                  <div className="mt-2 p-2 bg-gray-50 rounded text-xs">
                     <div className="flex justify-between">
-                      <span className="text-gray-600">Customer:</span>
-                      <span className="font-medium text-green-700">₹{cartItem.item.pricing.customerPrice || 0}</span>
+                      <span className="text-gray-600">Price:</span>
+                      <span className={`font-medium ${
+                        customerType === 'customer' ? 'text-green-700' :
+                        customerType === 'dealer' ? 'text-blue-700' :
+                        'text-purple-700'
+                      }`}>
+                        ₹{
+                          customerType === 'customer' ? (groupedItem.item.pricing.customerPrice || 0) :
+                          customerType === 'dealer' ? (groupedItem.item.pricing.dealerPrice || 0) :
+                          (groupedItem.item.pricing.distributorPrice || 0)
+                        }
+                      </span>
                     </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Dealer:</span>
-                      <span className="font-medium text-blue-700">₹{cartItem.item.pricing.dealerPrice || 0}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Distributor:</span>
-                      <span className="font-medium text-purple-700">₹{cartItem.item.pricing.distributorPrice || 0}</span>
-                    </div>
+                  </div>
+                )}
+
+                {/* For serialized products, show serial numbers */}
+                {groupedItem.type === 'serialized-product' && groupedItem.serialNumbers.length > 0 && (
+                  <div className="mt-2">
+                    <div className="text-sm font-medium">Serial Numbers:</div>
+                    {groupedItem.serialNumbers.map((sn, idx) => (
+                      <div
+                        key={idx}
+                        className="flex justify-between items-center text-sm mt-1"
+                      >
+                        <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs">
+                          {sn.serialNumber}
+                        </span>
+                        <button
+                          onClick={() => onRemoveItem(sn.cartIndex)}
+                          className="text-red-500 hover:text-red-700"
+                        >
+                          <FiTrash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ))}
                   </div>
                 )}
 
                 {/* For generic products, show quantity controls */}
-                {!cartItem.serialNumber && (
-                  <div className="mt-2 flex items-center">
-                    <button
-                      onClick={() => handleUpdateQuantity(index, cartItem.quantity - 1, cartItem)}
-                      className="bg-gray-200 hover:bg-gray-300 w-8 h-8 rounded-l flex items-center justify-center"
-                    >
-                      <FiMinus />
-                    </button>
-                    <input
-                      type="number"
-                      min="1"
-                      value={cartItem.quantity}
-                      onChange={(e) => handleUpdateQuantity(index, parseInt(e.target.value) || 0, cartItem)}
-                      className="w-12 h-8 text-center border-t border-b"
-                    />
-                    <button
-                      onClick={() => handleUpdateQuantity(index, cartItem.quantity + 1, cartItem)}
-                      className="bg-gray-200 hover:bg-gray-300 w-8 h-8 rounded-r flex items-center justify-center"
-                    >
-                      <FiPlus />
-                    </button>
+                {groupedItem.type === 'generic-product' && groupedItem.genericEntries.length > 0 && (
+                  <div className="mt-2">
+                    {groupedItem.genericEntries.map((entry, idx) => (
+                      <div key={idx} className="flex items-center mt-1">
+                        <button
+                          onClick={() => handleUpdateQuantity(entry.cartIndex, entry.quantity - 1, cart[entry.cartIndex])}
+                          className="bg-gray-200 hover:bg-gray-300 w-8 h-8 rounded-l flex items-center justify-center"
+                        >
+                          <FiMinus />
+                        </button>
+                        <input
+                          type="number"
+                          min="1"
+                          value={entry.quantity}
+                          onChange={(e) => handleUpdateQuantity(entry.cartIndex, parseInt(e.target.value) || 0, cart[entry.cartIndex])}
+                          className="w-12 h-8 text-center border-t border-b"
+                        />
+                        <button
+                          onClick={() => handleUpdateQuantity(entry.cartIndex, entry.quantity + 1, cart[entry.cartIndex])}
+                          className="bg-gray-200 hover:bg-gray-300 w-8 h-8 rounded-r flex items-center justify-center"
+                        >
+                          <FiPlus />
+                        </button>
+                        <span className="ml-2 text-sm text-gray-500">
+                          @ ₹{groupedItem.unitPrice}
+                        </span>
+                      </div>
+                    ))}
                   </div>
                 )}
 
                 <div className="mt-2 font-semibold text-gray-900">
-                  Total: ₹{cartItem.totalPrice}
+                  Total: ₹{groupedItem.totalPrice}
                 </div>
               </div>
             ))

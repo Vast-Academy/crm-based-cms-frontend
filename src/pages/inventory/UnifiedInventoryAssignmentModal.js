@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { FiPlus, FiMinus, FiX, FiSearch } from 'react-icons/fi';
+import { FiPlus, FiMinus, FiX, FiSearch, FiTrash2, FiAlertCircle } from 'react-icons/fi';
 import Modal from '../../components/Modal';
 import SummaryApi from '../../common';
 import LoadingSpinner from '../../components/LoadingSpinner';
@@ -704,31 +704,46 @@ const UnifiedInventoryAssignmentModal = ({ isOpen, onClose, technician, onSucces
                                 </button>
                                 <button
                                   onClick={() => handleSelectProduct(product)}
-                                  disabled={!selectedSerialNumbers[product.id]}
+                                  disabled={!selectedSerialNumbers[product.id] || availableStock === 0}
                                   className="flex-1 py-2 px-4 bg-blue-500 hover:bg-blue-600 disabled:bg-gray-300 text-white rounded font-medium"
                                 >
                                   Add
                                 </button>
                               </div>
+                              {availableStock === 0 && (
+                                <div className="flex items-center gap-1 text-xs text-red-600">
+                                  <FiAlertCircle size={12} />
+                                  <span>Out of stock - Add stock to continue</span>
+                                </div>
+                              )}
                             </div>
                           )}
 
                           {/* For generic products, show add button directly */}
                           {product.type === 'generic-product' && (
-                            <div className="mt-3 flex flex-col sm:flex-row gap-2">
-                              <button
-                                type="button"
-                                onClick={() => openAddStockModal(product)}
-                                className="flex-1 py-2 px-4 bg-green-500 hover:bg-green-600 text-white rounded font-medium"
-                              >
-                                Add Stock
-                              </button>
-                              <button
-                                onClick={() => handleSelectProduct(product)}
-                                className="flex-1 py-2 px-4 bg-blue-500 hover:bg-blue-600 text-white rounded font-medium"
-                              >
-                                Add
-                              </button>
+                            <div className="mt-3 space-y-2">
+                              <div className="flex flex-col sm:flex-row gap-2">
+                                <button
+                                  type="button"
+                                  onClick={() => openAddStockModal(product)}
+                                  className="flex-1 py-2 px-4 bg-green-500 hover:bg-green-600 text-white rounded font-medium"
+                                >
+                                  Add Stock
+                                </button>
+                                <button
+                                  onClick={() => handleSelectProduct(product)}
+                                  disabled={availableStock === 0}
+                                  className="flex-1 py-2 px-4 bg-blue-500 hover:bg-blue-600 disabled:bg-gray-300 text-white rounded font-medium"
+                                >
+                                  Add
+                                </button>
+                              </div>
+                              {availableStock === 0 && (
+                                <div className="flex items-center gap-1 text-xs text-red-600">
+                                  <FiAlertCircle size={12} />
+                                  <span>Out of stock - Add stock to continue</span>
+                                </div>
+                              )}
                             </div>
                           )}
                         </div>
@@ -760,11 +775,11 @@ const UnifiedInventoryAssignmentModal = ({ isOpen, onClose, technician, onSucces
                       <div key={item.id} className="mb-4 border-b pb-2">
                         <div className="flex justify-between">
                           <div className="font-medium">{item.name}</div>
-                          <button 
+                          <button
                             onClick={() => removeItem(item.id)}
                             className="text-red-500 hover:text-red-700"
                           >
-                            <FiX className="w-5 h-5" />
+                            <FiTrash2 className="w-5 h-5" />
                           </button>
                         </div>
                         
@@ -802,11 +817,11 @@ const UnifiedInventoryAssignmentModal = ({ isOpen, onClose, technician, onSucces
                                 <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs">
                                   {sn}
                                 </span>
-                                <button 
+                                <button
                                   onClick={() => removeSerialNumber(item.id, sn)}
                                   className="text-red-500 hover:text-red-700"
                                 >
-                                  <FiX className="w-4 h-4" />
+                                  <FiTrash2 className="w-4 h-4" />
                                 </button>
                               </div>
                             ))}
