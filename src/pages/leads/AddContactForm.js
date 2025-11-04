@@ -32,6 +32,8 @@ export default function AddContactForm({ initialPhone = '', initialType = 'lead'
     installDate: "",
     projectType: "",
     installedBy: "", // only for Existing customers
+    installedByEngineer: "", // NEW: Engineer name
+    engineerMobileNo: "", // NEW: Engineer mobile number
     remarks: "",
   });
 
@@ -85,6 +87,11 @@ export default function AddContactForm({ initialPhone = '', initialType = 'lead'
   const [searchResults, setSearchResults] = useState([]);
   const [showSearchResults, setShowSearchResults] = useState(false);
 
+  // Engineer search states
+  const [technicians, setTechnicians] = useState([]);
+  const [filteredTechnicians, setFilteredTechnicians] = useState([]);
+  const [showEngineerDropdown, setShowEngineerDropdown] = useState(false);
+
   const services = useMemo(
     () => [
       { value: "CCTV Camera", label: "CCTV Camera" },
@@ -114,9 +121,9 @@ export default function AddContactForm({ initialPhone = '', initialType = 'lead'
             method: SummaryApi.getBranches.method,
             credentials: 'include'
           });
-          
+
           const data = await response.json();
-          
+
           if (data.success) {
             setBranches(data.data);
             if (user.selectedBranch) {
@@ -127,10 +134,35 @@ export default function AddContactForm({ initialPhone = '', initialType = 'lead'
           console.error('Error fetching branches:', err);
         }
       };
-      
+
       fetchBranches();
     }
   }, [user]);
+
+  // Fetch technicians from current branch
+  useEffect(() => {
+    if (isOpen) {
+      const fetchTechnicians = async () => {
+        try {
+          const response = await fetch(SummaryApi.getTechnicianUsers.url, {
+            method: SummaryApi.getTechnicianUsers.method,
+            credentials: 'include'
+          });
+
+          const data = await response.json();
+
+          if (data.success) {
+            // console.log("Fetched technicians:", data.data);
+            setTechnicians(data.data || []);
+          }
+        } catch (err) {
+          console.error('Error fetching technicians:', err);
+        }
+      };
+
+      fetchTechnicians();
+    }
+  }, [isOpen]);
 
   // Close dropdowns when clicking outside
   useEffect(() => {
@@ -153,11 +185,55 @@ export default function AddContactForm({ initialPhone = '', initialType = 'lead'
     setForm((f) => ({
       ...f,
       [key]: value,
-      ...(key === "leadType" ? { customerStatus: "", installDate: "", installedBy: "" } : {}),
-      ...(key === "customerStatus" && value !== "Existing" ? { installDate: "", installedBy: "" } : {}),
+      ...(key === "leadType" ? { customerStatus: "", installDate: "", installedBy: "", installedByEngineer: "", engineerMobileNo: "" } : {}),
+      ...(key === "customerStatus" && value !== "Existing" ? { installDate: "", installedBy: "", installedByEngineer: "", engineerMobileNo: "" } : {}),
       ...(key === "sameAsPhone" && value === true ? { whatsapp: f.phone } : {}),
     }));
   }
+
+  // Handle engineer name input and search
+  const handleEngineerNameChange = (value) => {
+    update("installedByEngineer", value);
+
+    if (value.trim().length > 0) {
+      // Filter technicians based on input
+      const filtered = technicians.filter(tech =>
+        `${tech.firstName} ${tech.lastName}`.toLowerCase().includes(value.toLowerCase())
+      );
+      setFilteredTechnicians(filtered);
+      setShowEngineerDropdown(filtered.length > 0);
+    } else {
+      setFilteredTechnicians([]);
+      setShowEngineerDropdown(false);
+      update("engineerMobileNo", ""); // Clear mobile number if name is cleared
+    }
+  };
+
+  // Handle engineer selection from dropdown
+  const handleEngineerSelect = (technician) => {
+    // console.log("Selected technician:", technician);
+
+    // Try multiple possible field names for phone number
+    const phoneNumber = technician.phoneNumber || technician.phone || technician.mobile || technician.mobileNumber || "";
+    // console.log("Phone number:", phoneNumber);
+
+    const fullName = `${technician.firstName} ${technician.lastName}`;
+    update("installedByEngineer", fullName);
+    update("engineerMobileNo", phoneNumber);
+    setShowEngineerDropdown(false);
+    setFilteredTechnicians([]);
+  };
+
+  // Handle Enter key to move to next field
+  const handleKeyDown = (e, nextFieldId) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      const nextField = document.getElementById(nextFieldId);
+      if (nextField) {
+        nextField.focus();
+      }
+    }
+  };
 
   // Check if phone number exists
   const checkPhoneNumber = async (phone) => {
@@ -283,6 +359,12 @@ export default function AddContactForm({ initialPhone = '', initialType = 'lead'
     if (!form.projectType && !isDealer && !isDistributor && !isBillingCustomer) e.projectType = "Select a project";
     if (form.leadType === "Customer" && form.customerStatus === "Existing" && !form.installedBy) e.installedBy = "Select who installed";
 
+    // Engineer fields are required only if "Our Company" is selected
+    if (form.leadType === "Customer" && form.customerStatus === "Existing" && form.installedBy === "Our Company") {
+      if (!form.installedByEngineer.trim()) e.installedByEngineer = "Engineer name is required";
+      if (!form.engineerMobileNo.trim()) e.engineerMobileNo = "Engineer mobile number is required";
+    }
+
     return e;
   }
 
@@ -399,6 +481,8 @@ export default function AddContactForm({ initialPhone = '', initialType = 'lead'
             dataToSubmit.isExistingCustomer = true;
             dataToSubmit.completionDate = form.installDate;
             dataToSubmit.installedBy = form.installedBy;
+            dataToSubmit.installedByEngineer = form.installedByEngineer;
+            dataToSubmit.engineerMobileNo = form.engineerMobileNo;
           }
 
           const response = await fetch(SummaryApi.createCustomer.url, {
@@ -449,6 +533,7 @@ export default function AddContactForm({ initialPhone = '', initialType = 'lead'
   const isBillingCustomer = form.leadType === "Customer" && form.customerStatus === "Billing";
   const isDealer = form.leadType === "Dealer";
   const isDistributor = form.leadType === "Distributor";
+  const isInstalledByOurCompany = form.installedBy === "Our Company";
   
   // Dynamic color schemes
   const getColorScheme = () => {
@@ -730,17 +815,18 @@ export default function AddContactForm({ initialPhone = '', initialType = 'lead'
             </div>
             
             {user.role === 'admin' && (
-              <SelectField 
-                label="Branch" 
-                value={selectedBranch} 
-                onChange={setSelectedBranch} 
+              <SelectField
+                label="Branch"
+                value={selectedBranch}
+                onChange={setSelectedBranch}
                 options={[
-                  { value: "", label: "Select Branch" }, 
+                  { value: "", label: "Select Branch" },
                   ...branches.map(branch => ({ value: branch._id, label: branch.name }))
                 ]}
                 colorScheme={colorScheme}
               />
             )}
+            </div>
           </div>
 
           {/* Lead / Customer */}
@@ -783,14 +869,6 @@ export default function AddContactForm({ initialPhone = '', initialType = 'lead'
               </AnimatePresence>
             </div>
 
-            {/* Existing -> Installation Date */}
-            <AnimatePresence initial={false}>
-              {isExisting && (
-                <motion.div key="installDate" variants={fieldVariants} initial="hidden" animate="show" exit="exit" transition={{ duration: 0.22, ease: "easeOut" }} className="mt-2 w-full">
-                  <DateField label="Installation Date" value={form.installDate} onChange={(v) => update("installDate", v)} error={errors.installDate} colorScheme={colorScheme} />
-                </motion.div>
-              )}
-            </AnimatePresence>
           </div>
 
           {/* Project Type / Inquire For - Only show for Leads and Customers (except Billing) */}
@@ -805,17 +883,114 @@ export default function AddContactForm({ initialPhone = '', initialType = 'lead'
                   options={[{ value: "", label: "Choose..." }, ...services]}
                   error={errors.projectType}
                   colorScheme={colorScheme}
+                  id="projectType"
+                  onKeyDown={(e) => handleKeyDown(e, 'installedBy')}
                 />
               </div>
             </div>
           )}
-          </div>
 
           {/* Installed By (only when Existing Customer) */}
           <AnimatePresence initial={false}>
             {isExisting && (
               <motion.div key="installedBy" variants={fieldVariants} initial="hidden" animate="show" exit="exit" transition={{ duration: 0.22, ease: "easeOut" }} className="mt-2 w-full">
-                <SelectField label="Installed By" value={form.installedBy} onChange={(v) => update("installedBy", v)} options={installedByOptions} error={errors.installedBy} colorScheme={colorScheme} />
+                <SelectField
+                  label="Installed By"
+                  value={form.installedBy}
+                  onChange={(v) => update("installedBy", v)}
+                  options={installedByOptions}
+                  error={errors.installedBy}
+                  colorScheme={colorScheme}
+                  id="installedBy"
+                  onKeyDown={(e) => handleKeyDown(e, 'installDate')}
+                />
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* Installation Date (only when Existing Customer) */}
+          <AnimatePresence initial={false}>
+            {isExisting && (
+              <motion.div key="installDate" variants={fieldVariants} initial="hidden" animate="show" exit="exit" transition={{ duration: 0.22, ease: "easeOut" }} className="mt-2 w-full">
+                <DateField
+                  label="Installation Date"
+                  value={form.installDate}
+                  onChange={(v) => update("installDate", v)}
+                  error={errors.installDate}
+                  colorScheme={colorScheme}
+                  id="installDate"
+                  onKeyDown={(e) => handleKeyDown(e, 'installedByEngineer')}
+                />
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* Installed by Engineer (only when Existing Customer AND Our Company) - with autocomplete */}
+          <AnimatePresence initial={false}>
+            {isExisting && isInstalledByOurCompany && (
+              <motion.div key="installedByEngineer" variants={fieldVariants} initial="hidden" animate="show" exit="exit" transition={{ duration: 0.22, ease: "easeOut" }} className="mt-2 w-full">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {/* Engineer Name with Autocomplete */}
+                  <div className="relative">
+                    <label className={`block text-xs font-medium mb-1 ${colorScheme.label}`}>
+                      Installed by Engineer *
+                    </label>
+                    <input
+                      type="text"
+                      id="installedByEngineer"
+                      value={form.installedByEngineer}
+                      onChange={(e) => handleEngineerNameChange(e.target.value)}
+                      onKeyDown={(e) => handleKeyDown(e, 'engineerMobileNo')}
+                      className={`w-full rounded-lg border ${errors.installedByEngineer ? 'border-red-500' : colorScheme.inputBorder || "border-gray-300"} focus:outline-none focus:ring-2 ${colorScheme.inputRing} transition p-1 text-gray-900 placeholder:text-gray-400 text-sm`}
+                      placeholder="Search engineer name..."
+                      autoComplete="off"
+                    />
+                    {errors.installedByEngineer && (
+                      <p className="text-red-500 text-xs mt-1">{errors.installedByEngineer}</p>
+                    )}
+
+                    {/* Engineer Dropdown */}
+                    {showEngineerDropdown && filteredTechnicians.length > 0 && (
+                      <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                        {filteredTechnicians.map((tech) => {
+                          const displayPhone = tech.phoneNumber || tech.phone || tech.mobile || tech.mobileNumber || "N/A";
+                          return (
+                            <div
+                              key={tech._id}
+                              onClick={() => handleEngineerSelect(tech)}
+                              className="px-4 py-2 hover:bg-blue-50 cursor-pointer border-b last:border-b-0"
+                            >
+                              <p className="font-medium text-sm text-gray-900">
+                                {tech.firstName} {tech.lastName}
+                              </p>
+                              <p className="text-xs text-gray-500">{displayPhone}</p>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Engineer Mobile Number (Auto-filled) */}
+                  <div>
+                    <label className={`block text-xs font-medium mb-1 ${colorScheme.label}`}>
+                      Engineer Mobile No *
+                    </label>
+                    <input
+                      type="text"
+                      id="engineerMobileNo"
+                      value={form.engineerMobileNo}
+                      onChange={(e) => update("engineerMobileNo", e.target.value)}
+                      onKeyDown={(e) => handleKeyDown(e, 'remarks')}
+                      className={`w-full rounded-lg border ${errors.engineerMobileNo ? 'border-red-500' : colorScheme.inputBorder || "border-gray-300"} focus:outline-none focus:ring-2 ${colorScheme.inputRing} transition p-1 text-gray-900 placeholder:text-gray-400 text-sm`}
+                      placeholder="Engineer mobile number"
+                      autoComplete="off"
+                    />
+                    {errors.engineerMobileNo && (
+                      <p className="text-red-500 text-xs mt-1">{errors.engineerMobileNo}</p>
+                    )}
+                  </div>
+                </div>
               </motion.div>
             )}
           </AnimatePresence>
@@ -823,7 +998,8 @@ export default function AddContactForm({ initialPhone = '', initialType = 'lead'
           {/* Remarks */}
           <div className="mt-8 mb-6">
             <SectionTitle title="Remarks" subtle />
-            <textarea 
+            <textarea
+              id="remarks"
               className={`w-full rounded-lg border ${colorScheme.inputBorder || "border-gray-300"} focus:outline-none focus:ring-2 ${colorScheme.inputRing} transition p-1 text-gray-900 placeholder:text-gray-400 text-sm min-h-[60px]`}
               placeholder="Notes..." 
               value={form.remarks} 
@@ -853,15 +1029,15 @@ export default function AddContactForm({ initialPhone = '', initialType = 'lead'
             >
               {loading ? 'Submitting...' : 'Submit'}
             </button>
-            <button 
-              type="button" 
+            <button
+              type="button"
               onClick={onCancel}
               className="inline-flex items-center justify-center rounded-xl bg-white text-gray-700 px-6 py-2 h-12 font-semibold shadow-lg hover:shadow-xl transition-all duration-300 border-2 border-gray-200 "
             >
               Cancel
             </button>
-              </div>
-            </form>
+          </div>
+        </form>
 
             <AnimatePresence>
               {submitted && (
