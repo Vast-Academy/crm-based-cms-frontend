@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FiX, FiUser, FiPhone, FiMapPin, FiMessageSquare, FiCalendar, FiFileText, FiDollarSign, FiCreditCard, FiCheck, FiAlertCircle, FiSmartphone, FiTrendingUp, FiArrowLeft, FiPrinter, FiDownload } from 'react-icons/fi';
+import { FiX, FiUser, FiPhone, FiMapPin, FiMessageSquare, FiCalendar, FiFileText, FiDollarSign, FiCreditCard, FiCheck, FiAlertCircle, FiSmartphone, FiTrendingUp, FiArrowLeft, FiPrinter, FiDownload, FiRefreshCw } from 'react-icons/fi';
 import { QRCodeCanvas } from 'qrcode.react';
 import jsPDF from 'jspdf';
 import SummaryApi from '../../common';
@@ -54,6 +54,11 @@ export default function DealerDetailModal({ isOpen, onClose, dealerId, onDealerU
   const [bills, setBills] = useState([]);
   const [billsSummary, setBillsSummary] = useState(null);
   const [loadingBills, setLoadingBills] = useState(false);
+
+  // Refresh states for each tab
+  const [refreshingDetails, setRefreshingDetails] = useState(false);
+  const [refreshingBills, setRefreshingBills] = useState(false);
+  const [refreshingPayments, setRefreshingPayments] = useState(false);
   
   // Payment states
   const [showPaymentModal, setShowPaymentModal] = useState(false);
@@ -344,6 +349,47 @@ export default function DealerDetailModal({ isOpen, onClose, dealerId, onDealerU
     // Refresh bills if on bills tab
     if (activeTab === 'bills' || activeTab === 'payment') {
       fetchDealerBills();
+    }
+  };
+
+  // Refresh handlers for each tab
+  const handleRefreshDetails = async () => {
+    if (refreshingDetails) return;
+
+    setRefreshingDetails(true);
+    try {
+      await fetchDealerDetails();
+    } catch (err) {
+      console.error('Error refreshing dealer details:', err);
+    } finally {
+      setRefreshingDetails(false);
+    }
+  };
+
+  const handleRefreshBills = async () => {
+    if (refreshingBills) return;
+
+    setRefreshingBills(true);
+    try {
+      await fetchDealerBills();
+    } catch (err) {
+      console.error('Error refreshing bills:', err);
+    } finally {
+      setRefreshingBills(false);
+    }
+  };
+
+  const handleRefreshPayments = async () => {
+    if (refreshingPayments) return;
+
+    setRefreshingPayments(true);
+    try {
+      await fetchDealerBills();
+      setTransactionRefreshKey(prev => prev + 1);
+    } catch (err) {
+      console.error('Error refreshing payments:', err);
+    } finally {
+      setRefreshingPayments(false);
     }
   };
 
@@ -725,37 +771,91 @@ export default function DealerDetailModal({ isOpen, onClose, dealerId, onDealerU
           
           {/* Tab Navigation */}
           <div className="border-b border-orange-200 bg-orange-50 px-6">
-            <nav className="-mb-px flex space-x-8">
-              <button
-                onClick={() => setActiveTab('details')}
-                className={`py-2 px-1 border-b-2 font-medium text-sm ${
-                  activeTab === 'details'
-                    ? 'border-orange-500 text-orange-600'
-                    : 'border-transparent text-orange-700 hover:text-orange-800 hover:border-orange-300'
-                }`}
-              >
-                Dealer Details
-              </button>
-              <button
-                onClick={() => setActiveTab('bills')}
-                className={`py-2 px-1 border-b-2 font-medium text-sm ${
-                  activeTab === 'bills'
-                    ? 'border-orange-500 text-orange-600'
-                    : 'border-transparent text-orange-700 hover:text-orange-800 hover:border-orange-300'
-                }`}
-              >
-                Bill History
-              </button>
-              <button
-                onClick={() => setActiveTab('payment')}
-                className={`py-2 px-1 border-b-2 font-medium text-sm ${
-                  activeTab === 'payment'
-                    ? 'border-orange-500 text-orange-600'
-                    : 'border-transparent text-orange-700 hover:text-orange-800 hover:border-orange-300'
-                }`}
-              >
-                Payment
-              </button>
+            <nav className="-mb-px flex justify-between items-center">
+              <div className="flex space-x-8">
+                <button
+                  onClick={() => setActiveTab('details')}
+                  className={`py-2 px-1 border-b-2 font-medium text-sm ${
+                    activeTab === 'details'
+                      ? 'border-orange-500 text-orange-600'
+                      : 'border-transparent text-orange-700 hover:text-orange-800 hover:border-orange-300'
+                  }`}
+                >
+                  Dealer Details
+                </button>
+                <button
+                  onClick={() => setActiveTab('bills')}
+                  className={`py-2 px-1 border-b-2 font-medium text-sm ${
+                    activeTab === 'bills'
+                      ? 'border-orange-500 text-orange-600'
+                      : 'border-transparent text-orange-700 hover:text-orange-800 hover:border-orange-300'
+                  }`}
+                >
+                  Bill History
+                </button>
+                <button
+                  onClick={() => setActiveTab('payment')}
+                  className={`py-2 px-1 border-b-2 font-medium text-sm ${
+                    activeTab === 'payment'
+                      ? 'border-orange-500 text-orange-600'
+                      : 'border-transparent text-orange-700 hover:text-orange-800 hover:border-orange-300'
+                  }`}
+                >
+                  Payment
+                </button>
+              </div>
+
+              {/* Refresh Button for Active Tab */}
+              <div className="py-2">
+                {activeTab === 'details' && (
+                  <button
+                    onClick={handleRefreshDetails}
+                    disabled={refreshingDetails}
+                    className={`p-2 rounded-md transition-colors ${
+                      refreshingDetails
+                        ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                        : 'bg-orange-100 text-orange-600 hover:bg-orange-200'
+                    }`}
+                    title="Refresh dealer details"
+                  >
+                    <FiRefreshCw
+                      className={`w-4 h-4 ${refreshingDetails ? 'animate-spin' : ''}`}
+                    />
+                  </button>
+                )}
+                {activeTab === 'bills' && (
+                  <button
+                    onClick={handleRefreshBills}
+                    disabled={refreshingBills}
+                    className={`p-2 rounded-md transition-colors ${
+                      refreshingBills
+                        ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                        : 'bg-orange-100 text-orange-600 hover:bg-orange-200'
+                    }`}
+                    title="Refresh bill history"
+                  >
+                    <FiRefreshCw
+                      className={`w-4 h-4 ${refreshingBills ? 'animate-spin' : ''}`}
+                    />
+                  </button>
+                )}
+                {activeTab === 'payment' && (
+                  <button
+                    onClick={handleRefreshPayments}
+                    disabled={refreshingPayments}
+                    className={`p-2 rounded-md transition-colors ${
+                      refreshingPayments
+                        ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                        : 'bg-orange-100 text-orange-600 hover:bg-orange-200'
+                    }`}
+                    title="Refresh payment history"
+                  >
+                    <FiRefreshCw
+                      className={`w-4 h-4 ${refreshingPayments ? 'animate-spin' : ''}`}
+                    />
+                  </button>
+                )}
+              </div>
             </nav>
           </div>
           

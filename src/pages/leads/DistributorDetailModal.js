@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FiX, FiUser, FiPhone, FiMapPin, FiMessageSquare, FiCalendar, FiFileText, FiDollarSign, FiCreditCard, FiCheck, FiAlertCircle, FiSmartphone, FiTrendingUp, FiArrowLeft, FiPrinter, FiDownload, FiClock } from 'react-icons/fi';
+import { FiX, FiUser, FiPhone, FiMapPin, FiMessageSquare, FiCalendar, FiFileText, FiDollarSign, FiCreditCard, FiCheck, FiAlertCircle, FiSmartphone, FiTrendingUp, FiArrowLeft, FiPrinter, FiDownload, FiClock, FiRefreshCw } from 'react-icons/fi';
 import { QRCodeCanvas } from 'qrcode.react';
 import jsPDF from 'jspdf';
 import SummaryApi from '../../common';
@@ -81,6 +81,11 @@ export default function DistributorDetailModal({ isOpen, onClose, distributorId,
   const [bills, setBills] = useState([]);
   const [billsSummary, setBillsSummary] = useState(null);
   const [loadingBills, setLoadingBills] = useState(false);
+
+  // Refresh states for each tab
+  const [refreshingDetails, setRefreshingDetails] = useState(false);
+  const [refreshingBills, setRefreshingBills] = useState(false);
+  const [refreshingPayments, setRefreshingPayments] = useState(false);
   
   // Payment states
   const [showPaymentModal, setShowPaymentModal] = useState(false);
@@ -580,6 +585,47 @@ export default function DistributorDetailModal({ isOpen, onClose, distributorId,
     }
   };
 
+  // Refresh handlers for each tab
+  const handleRefreshDetails = async () => {
+    if (refreshingDetails) return;
+
+    setRefreshingDetails(true);
+    try {
+      await fetchDistributorDetails();
+    } catch (err) {
+      console.error('Error refreshing distributor details:', err);
+    } finally {
+      setRefreshingDetails(false);
+    }
+  };
+
+  const handleRefreshBills = async () => {
+    if (refreshingBills) return;
+
+    setRefreshingBills(true);
+    try {
+      await fetchDistributorBills();
+    } catch (err) {
+      console.error('Error refreshing bills:', err);
+    } finally {
+      setRefreshingBills(false);
+    }
+  };
+
+  const handleRefreshPayments = async () => {
+    if (refreshingPayments) return;
+
+    setRefreshingPayments(true);
+    try {
+      await fetchDistributorBills();
+      setTransactionRefreshKey(prev => prev + 1);
+    } catch (err) {
+      console.error('Error refreshing payments:', err);
+    } finally {
+      setRefreshingPayments(false);
+    }
+  };
+
   const handleProcessPayment = async () => {
     if (!paymentAmount || parseFloat(paymentAmount) <= 0) {
       showNotification('error', 'Please enter a valid payment amount');
@@ -618,7 +664,7 @@ export default function DistributorDetailModal({ isOpen, onClose, distributorId,
     }
 
     setProcessingPayment(true);
-    
+
     try {
       const response = await fetch(SummaryApi.processBulkPayment.url, {
         method: SummaryApi.processBulkPayment.method,
@@ -658,9 +704,9 @@ export default function DistributorDetailModal({ isOpen, onClose, distributorId,
           notes: paymentNotes.trim() || undefined
         })
       });
-      
+
       const data = await response.json();
-      
+
       if (data.success) {
         showNotification('success', `Payment of ₹${paymentAmount} processed successfully`);
 
@@ -743,37 +789,91 @@ export default function DistributorDetailModal({ isOpen, onClose, distributorId,
           
           {/* Tab Navigation */}
           <div className="border-b border-teal-200 bg-teal-50 px-6">
-            <nav className="-mb-px flex space-x-8">
-              <button
-                onClick={() => setActiveTab('details')}
-                className={`py-2 px-1 border-b-2 font-medium text-sm ${
-                  activeTab === 'details'
-                    ? 'border-teal-500 text-teal-600'
-                    : 'border-transparent text-teal-700 hover:text-teal-800 hover:border-teal-300'
-                }`}
-              >
-                Distributor Details
-              </button>
-              <button
-                onClick={() => setActiveTab('bills')}
-                className={`py-2 px-1 border-b-2 font-medium text-sm ${
-                  activeTab === 'bills'
-                    ? 'border-teal-500 text-teal-600'
-                    : 'border-transparent text-teal-700 hover:text-teal-800 hover:border-teal-300'
-                }`}
-              >
-                Bill History
-              </button>
-              <button
-                onClick={() => setActiveTab('payment')}
-                className={`py-2 px-1 border-b-2 font-medium text-sm ${
-                  activeTab === 'payment'
-                    ? 'border-teal-500 text-teal-600'
-                    : 'border-transparent text-teal-700 hover:text-teal-800 hover:border-teal-300'
-                }`}
-              >
-                Payment
-              </button>
+            <nav className="-mb-px flex justify-between items-center">
+              <div className="flex space-x-8">
+                <button
+                  onClick={() => setActiveTab('details')}
+                  className={`py-2 px-1 border-b-2 font-medium text-sm ${
+                    activeTab === 'details'
+                      ? 'border-teal-500 text-teal-600'
+                      : 'border-transparent text-teal-700 hover:text-teal-800 hover:border-teal-300'
+                  }`}
+                >
+                  Distributor Details
+                </button>
+                <button
+                  onClick={() => setActiveTab('bills')}
+                  className={`py-2 px-1 border-b-2 font-medium text-sm ${
+                    activeTab === 'bills'
+                      ? 'border-teal-500 text-teal-600'
+                      : 'border-transparent text-teal-700 hover:text-teal-800 hover:border-teal-300'
+                  }`}
+                >
+                  Bill History
+                </button>
+                <button
+                  onClick={() => setActiveTab('payment')}
+                  className={`py-2 px-1 border-b-2 font-medium text-sm ${
+                    activeTab === 'payment'
+                      ? 'border-teal-500 text-teal-600'
+                      : 'border-transparent text-teal-700 hover:text-teal-800 hover:border-teal-300'
+                  }`}
+                >
+                  Payment
+                </button>
+              </div>
+
+              {/* Refresh Button for Active Tab */}
+              <div className="py-2">
+                {activeTab === 'details' && (
+                  <button
+                    onClick={handleRefreshDetails}
+                    disabled={refreshingDetails}
+                    className={`p-2 rounded-md transition-colors ${
+                      refreshingDetails
+                        ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                        : 'bg-teal-100 text-teal-600 hover:bg-teal-200'
+                    }`}
+                    title="Refresh distributor details"
+                  >
+                    <FiRefreshCw
+                      className={`w-4 h-4 ${refreshingDetails ? 'animate-spin' : ''}`}
+                    />
+                  </button>
+                )}
+                {activeTab === 'bills' && (
+                  <button
+                    onClick={handleRefreshBills}
+                    disabled={refreshingBills}
+                    className={`p-2 rounded-md transition-colors ${
+                      refreshingBills
+                        ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                        : 'bg-teal-100 text-teal-600 hover:bg-teal-200'
+                    }`}
+                    title="Refresh bill history"
+                  >
+                    <FiRefreshCw
+                      className={`w-4 h-4 ${refreshingBills ? 'animate-spin' : ''}`}
+                    />
+                  </button>
+                )}
+                {activeTab === 'payment' && (
+                  <button
+                    onClick={handleRefreshPayments}
+                    disabled={refreshingPayments}
+                    className={`p-2 rounded-md transition-colors ${
+                      refreshingPayments
+                        ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                        : 'bg-teal-100 text-teal-600 hover:bg-teal-200'
+                    }`}
+                    title="Refresh payment history"
+                  >
+                    <FiRefreshCw
+                      className={`w-4 h-4 ${refreshingPayments ? 'animate-spin' : ''}`}
+                    />
+                  </button>
+                )}
+              </div>
             </nav>
           </div>
           

@@ -168,7 +168,22 @@ export default function BillingModal({ isOpen, onClose, customer, onBillCreated 
       
       if (data.success) {
         console.log('Fetched inventory items:', data.items);
-        setItems(data.items);
+
+        // Filter out services and sort: serialized first, then generic
+        const filteredAndSortedItems = data.items
+          .filter(item => item.type !== 'service')
+          .sort((a, b) => {
+            // Serialized products first
+            if (a.type === 'serialized-product' && b.type !== 'serialized-product') return -1;
+            if (a.type !== 'serialized-product' && b.type === 'serialized-product') return 1;
+            // Then generic products
+            if (a.type === 'generic-product' && b.type !== 'generic-product') return -1;
+            if (a.type !== 'generic-product' && b.type === 'generic-product') return 1;
+            // Alphabetically within same type
+            return (a.name || '').localeCompare(b.name || '');
+          });
+
+        setItems(filteredAndSortedItems);
       } else {
         setError(data.message || 'Failed to fetch inventory items');
       }
@@ -408,7 +423,7 @@ export default function BillingModal({ isOpen, onClose, customer, onBillCreated 
         <span className="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
         
         {/* Modal panel */}
-        <div className={`inline-block align-bottom bg-white rounded-3xl text-left shadow-2xl transform transition-all sm:my-12 sm:align-middle sm:w-full sm:max-w-6xl mx-4 border ${colors.border} overflow-hidden border-t-4 ${colors.borderT}`}>
+        <div className={`inline-block align-bottom bg-white rounded-lg text-left shadow-2xl transform transition-all sm:my-12 sm:align-middle sm:w-full sm:max-w-6xl mx-4 border ${colors.border} overflow-hidden border-t-4 ${colors.borderT}`}>
           {/* Header */}
           <div className={`flex justify-between items-center bg-gradient-to-r ${colors.bg} px-6 py-4 border-b ${colors.border}`}>
             <div className="flex items-center space-x-3">
@@ -432,20 +447,20 @@ export default function BillingModal({ isOpen, onClose, customer, onBillCreated 
             </button>
           </div>
           
-          {/* Content - No outer scroll, no progress bar */}
-          <div className={currentStep === 'items' ? '' : 'p-6'} style={currentStep === 'items' ? {} : { minHeight: '500px', maxHeight: '70vh', overflowY: 'auto' }}>
+          {/* Content */}
+          <div>
             {loading ? (
               <div className="flex justify-center py-12">
                 <LoadingSpinner />
               </div>
             ) : error ? (
-              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-4">
+              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg m-4">
                 {error}
               </div>
             ) : null}
 
             {/* Step 1: Item Selection */}
-            {currentStep === 'items' && (
+            {currentStep === 'items' && !loading && !error && (
               <ItemSelector
                 items={items}
                 onAddToCart={addToCart}
@@ -463,7 +478,7 @@ export default function BillingModal({ isOpen, onClose, customer, onBillCreated 
 
             {/* Step 2: Bill Summary */}
             {currentStep === 'summary' && (
-              <div className="space-y-6">
+              <div className="p-4 space-y-6">
                 <div className="flex justify-between items-center">
                   <h4 className="text-xl font-semibold text-gray-900">Bill Summary</h4>
                   <button
@@ -510,7 +525,7 @@ export default function BillingModal({ isOpen, onClose, customer, onBillCreated 
 
             {/* Step 3: Payment */}
             {currentStep === 'payment' && (
-              <div className="space-y-6">
+              <div className="p-4 space-y-6">
                 <div className="flex justify-between items-center">
                   <h4 className="text-xl font-semibold text-gray-900">Payment</h4>
                   <button

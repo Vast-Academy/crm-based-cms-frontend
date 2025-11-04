@@ -23,6 +23,11 @@ export default function ItemSelector({
   const [inputValues, setInputValues] = useState({}); // For temporary input values
   const [cartInputValues, setCartInputValues] = useState({}); // For cart input values
 
+  // Serial number dropdown states
+  const [matchingSerialNumbers, setMatchingSerialNumbers] = useState([]);
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [highlightedIndex, setHighlightedIndex] = useState(-1);
+
   // Filter items based on search query
   useEffect(() => {
     if (!items || !Array.isArray(items)) {
@@ -46,6 +51,51 @@ export default function ItemSelector({
 
     setFilteredItems(filtered);
   }, [searchQuery, items]);
+
+  // Filter serial numbers as user types for dropdown
+  useEffect(() => {
+    if (searchQuery.trim().length > 0) {
+      // Check if search term looks like a serial number (alphanumeric with 3+ chars)
+      const isSerialSearch = /^[A-Za-z0-9]{3,}$/.test(searchQuery.trim());
+
+      if (isSerialSearch) {
+        // Get all already added serial numbers from cart
+        const usedSerials = cart
+          .filter(item => item.serialNumber)
+          .map(item => item.serialNumber);
+
+        // Get all matching serial numbers from serialized products
+        const allSerialNumbers = [];
+        items.forEach(product => {
+          if (product.type === 'serialized-product' && product.stock && Array.isArray(product.stock)) {
+            product.stock.forEach(stockItem => {
+              if (stockItem.serialNumber &&
+                  stockItem.serialNumber.toLowerCase().includes(searchQuery.toLowerCase()) &&
+                  !usedSerials.includes(stockItem.serialNumber)) {
+                allSerialNumbers.push({
+                  serialNumber: stockItem.serialNumber,
+                  productId: product._id,
+                  productName: product.name
+                });
+              }
+            });
+          }
+        });
+
+        setMatchingSerialNumbers(allSerialNumbers);
+        setIsDropdownOpen(allSerialNumbers.length > 0);
+        setHighlightedIndex(allSerialNumbers.length > 0 ? 0 : -1);
+      } else {
+        setMatchingSerialNumbers([]);
+        setIsDropdownOpen(false);
+        setHighlightedIndex(-1);
+      }
+    } else {
+      setMatchingSerialNumbers([]);
+      setIsDropdownOpen(false);
+      setHighlightedIndex(-1);
+    }
+  }, [searchQuery, items, cart]);
 
   const getCustomerPrice = (item) => {
     if (item.pricing) {
@@ -184,10 +234,58 @@ export default function ItemSelector({
     onRefreshItems();
   };
 
+  // Handle keyboard navigation for serial number dropdown
+  const handleKeyDown = (e) => {
+    if (!isDropdownOpen) return;
+
+    switch (e.key) {
+      case 'ArrowDown':
+        e.preventDefault();
+        setHighlightedIndex(prev =>
+          prev < matchingSerialNumbers.length - 1 ? prev + 1 : prev
+        );
+        break;
+      case 'ArrowUp':
+        e.preventDefault();
+        setHighlightedIndex(prev => prev > 0 ? prev - 1 : 0);
+        break;
+      case 'Enter':
+        e.preventDefault();
+        if (highlightedIndex >= 0 && highlightedIndex < matchingSerialNumbers.length) {
+          const selected = matchingSerialNumbers[highlightedIndex];
+          handleSelectSerialNumber(selected);
+        }
+        break;
+      case 'Escape':
+        setIsDropdownOpen(false);
+        break;
+      default:
+        break;
+    }
+  };
+
+  // Handle select serial number from dropdown
+  const handleSelectSerialNumber = (serialData) => {
+    // Find the product
+    const product = items.find(p => p._id === serialData.productId);
+
+    if (product) {
+      // Add to cart with this serial number
+      const unitPrice = getCustomerPrice(product);
+      onAddToCart(product, serialData.serialNumber, 1);
+
+      setSearchQuery(''); // Clear search input
+      setIsDropdownOpen(false); // Close dropdown
+      setHighlightedIndex(-1); // Reset highlighted index
+    } else {
+      showNotification('error', 'Product not found for this serial number');
+    }
+  };
+
   return (
-    <div className="flex flex-col md:flex-row" style={{ height: '70vh' }}>
+    <div className="flex flex-col md:flex-row h-[70vh]">
       {/* Left side - Product list */}
-      <div className="w-full md:w-2/3 flex flex-col border-r" style={{ height: '70vh' }}>
+      <div className="w-full md:w-2/3 flex flex-col border-r ml-6">
         <div className="p-4 border-b flex-shrink-0">
           <div className="flex items-center gap-2">
             <div className="relative flex-1">
@@ -196,9 +294,29 @@ export default function ItemSelector({
                 placeholder="Search by item name or serial number..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
+                onKeyDown={handleKeyDown}
                 className="w-full p-3 border rounded pl-10"
               />
               <FiSearch className="absolute left-3 top-[14px] text-gray-400" />
+
+              {/* Serial Number Dropdown */}
+              {isDropdownOpen && (
+                <div className="absolute z-10 left-0 right-20 mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-y-auto">
+                  {matchingSerialNumbers.map((item, index) => (
+                    <div
+                      key={index}
+                      className={`px-4 py-2 cursor-pointer border-b last:border-b-0 hover:bg-gray-50 ${
+                        highlightedIndex === index ? 'bg-blue-50 border-l-4 border-l-blue-500' : ''
+                      }`}
+                      onClick={() => handleSelectSerialNumber(item)}
+                      onMouseEnter={() => setHighlightedIndex(index)}
+                    >
+                      <div className="font-medium text-gray-800">{item.serialNumber}</div>
+                      <div className="text-xs text-gray-500">{item.productName}</div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
             {onRefreshItems && (
               <button

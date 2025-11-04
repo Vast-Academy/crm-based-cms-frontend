@@ -1,6 +1,6 @@
 // components/technician/TechnicianInventoryModal.jsx
 import React, { useState, useEffect, useRef } from 'react';
-import { FiArrowRight, FiX, FiPackage, FiSearch } from 'react-icons/fi';
+import { FiArrowRight, FiX, FiPackage, FiSearch, FiRefreshCw } from 'react-icons/fi';
 import SummaryApi from '../../common';
 import { useNotification } from '../../context/NotificationContext';
 
@@ -22,6 +22,7 @@ const TechnicianInventoryModal = ({ isOpen, onClose, technician, onAssignInvento
   const [error, setError] = useState(null);
   const [filterType, setFilterType] = useState('current'); // Default to current
   const [searchQuery, setSearchQuery] = useState(''); // Search state
+  const [refreshing, setRefreshing] = useState(false); // Refresh state
 
   // Double ESC and double click states
   const [escPressCount, setEscPressCount] = useState(0);
@@ -289,11 +290,31 @@ const TechnicianInventoryModal = ({ isOpen, onClose, technician, onAssignInvento
     setLatestTransfers(latest);
   };
 
+  // Handler for refreshing all data
+  const handleRefreshData = async () => {
+    if (!technician || refreshing) return;
+
+    setRefreshing(true);
+    try {
+      // Fetch both inventory history and current inventory
+      await Promise.all([
+        fetchTechnicianInventoryHistory(),
+        fetchTechnicianCurrentInventory()
+      ]);
+      showNotification('success', 'Inventory data refreshed successfully', 3000);
+    } catch (err) {
+      console.error('Error refreshing data:', err);
+      showNotification('error', 'Failed to refresh inventory data', 3000);
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
   // Format date
   const formatDate = (dateString) => {
-    const options = { 
-      year: 'numeric', 
-      month: 'short', 
+    const options = {
+      year: 'numeric',
+      month: 'short',
       day: 'numeric',
       hour: '2-digit',
       minute: '2-digit'
@@ -473,14 +494,33 @@ const TechnicianInventoryModal = ({ isOpen, onClose, technician, onAssignInvento
                 </button>
               </div>
 
-              {/* Right side - Assign Inventory button */}
-              <button
-                onClick={() => onAssignInventory && onAssignInventory(technician)}
-                className="px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600 flex items-center text-sm font-medium"
-              >
-                <FiPackage className="mr-2" />
-                Assign Inventory
-              </button>
+              {/* Right side - Action buttons */}
+              <div className="flex items-center space-x-2">
+                {/* Refresh Button */}
+                <button
+                  onClick={handleRefreshData}
+                  disabled={refreshing}
+                  className={`p-2 rounded-md transition-colors ${
+                    refreshing
+                      ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                      : 'bg-blue-50 text-blue-600 hover:bg-blue-100'
+                  }`}
+                  title="Refresh inventory data"
+                >
+                  <FiRefreshCw
+                    className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`}
+                  />
+                </button>
+
+                {/* Assign Inventory Button */}
+                <button
+                  onClick={() => onAssignInventory && onAssignInventory(technician)}
+                  className="px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600 flex items-center text-sm font-medium"
+                >
+                  <FiPackage className="mr-2" />
+                  Assign Inventory
+                </button>
+              </div>
             </div>
 
             {/* Search Bar */}

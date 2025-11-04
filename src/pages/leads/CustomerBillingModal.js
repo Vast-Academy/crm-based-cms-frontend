@@ -155,7 +155,22 @@ export default function CustomerBillingModal({ isOpen, onClose, customer, onBill
 
       if (data.success) {
         console.log('Fetched inventory items:', data.items);
-        setItems(data.items);
+
+        // Filter out services and sort: serialized first, then generic
+        const filteredAndSortedItems = data.items
+          .filter(item => item.type !== 'service')
+          .sort((a, b) => {
+            // Serialized products first
+            if (a.type === 'serialized-product' && b.type !== 'serialized-product') return -1;
+            if (a.type !== 'serialized-product' && b.type === 'serialized-product') return 1;
+            // Then generic products
+            if (a.type === 'generic-product' && b.type !== 'generic-product') return -1;
+            if (a.type !== 'generic-product' && b.type === 'generic-product') return 1;
+            // Alphabetically within same type
+            return (a.name || '').localeCompare(b.name || '');
+          });
+
+        setItems(filteredAndSortedItems);
       } else {
         setError(data.message || 'Failed to fetch inventory items');
       }
@@ -373,7 +388,7 @@ export default function CustomerBillingModal({ isOpen, onClose, customer, onBill
 
         {/* Modal panel */}
         <div
-          className={`inline-block align-bottom bg-white rounded-3xl text-left shadow-2xl transform transition-all sm:my-12 sm:align-middle sm:w-full sm:max-w-6xl mx-4 border ${colors.border} overflow-hidden border-t-4 ${colors.borderT}`}
+          className={`inline-block align-bottom bg-white text-left shadow-2xl transform transition-all sm:my-12 sm:align-middle sm:w-full sm:max-w-6xl max-h-[90vh] mx-4 border ${colors.border} overflow-hidden border-t-4 ${colors.borderT}`}
           onClick={(e) => e.stopPropagation()}
         >
           {/* Header */}
@@ -399,20 +414,20 @@ export default function CustomerBillingModal({ isOpen, onClose, customer, onBill
             </button>
           </div>
 
-          {/* Content - No outer scroll, no progress bar */}
-          <div className={currentStep === 'items' ? '' : 'p-6'} style={currentStep === 'items' ? {} : { minHeight: '500px', maxHeight: '70vh', overflowY: 'auto' }}>
+          {/* Content */}
+          <div>
             {loading ? (
               <div className="flex justify-center py-12">
                 <LoadingSpinner />
               </div>
             ) : error ? (
-              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-4">
+              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg m-4">
                 {error}
               </div>
             ) : null}
 
             {/* Step 1: Item Selection */}
-            {currentStep === 'items' && (
+            {currentStep === 'items' && !loading && !error && (
               <ItemSelector
                 items={items}
                 onAddToCart={addToCart}
@@ -430,7 +445,7 @@ export default function CustomerBillingModal({ isOpen, onClose, customer, onBill
 
             {/* Step 2: Bill Summary */}
             {currentStep === 'summary' && (
-              <div className="space-y-6">
+              <div className="p-4 space-y-6">
                 <div className="flex justify-between items-center">
                   <h4 className="text-xl font-semibold text-gray-900">Bill Summary</h4>
                   <button
@@ -477,7 +492,7 @@ export default function CustomerBillingModal({ isOpen, onClose, customer, onBill
 
             {/* Step 3: Payment */}
             {currentStep === 'payment' && (
-              <div className="space-y-6">
+              <div className="p-4 space-y-6">
                 <div className="flex justify-between items-center">
                   <h4 className="text-xl font-semibold text-gray-900">Payment</h4>
                   <button

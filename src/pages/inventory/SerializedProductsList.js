@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { FiPlus, FiTrash, FiSearch, FiCamera, FiSave, FiChevronDown, FiChevronRight } from 'react-icons/fi';
+import { FiPlus, FiTrash, FiSearch, FiCamera, FiSave, FiChevronDown, FiChevronRight, FiRefreshCw } from 'react-icons/fi';
 import { LuArrowUpDown } from "react-icons/lu";
 import { LuArrowDownUp } from "react-icons/lu";
 import Modal from '../../components/Modal';
@@ -36,6 +36,7 @@ const SerializedProductsList = ({ searchTerm = '', branch = '', sortField = 'nam
   const [currentStockLoading, setCurrentStockLoading] = useState(false);
   const [currentStockError, setCurrentStockError] = useState(null);
   const [expandedHistoryGroups, setExpandedHistoryGroups] = useState({});
+  const [refreshingStock, setRefreshingStock] = useState(false);
 
    // State to track which row is expanded
     const [expandedRowId, setExpandedRowId] = useState(null);
@@ -240,6 +241,36 @@ const SerializedProductsList = ({ searchTerm = '', branch = '', sortField = 'nam
       setCurrentStockData(null);
     } finally {
       setCurrentStockLoading(false);
+    }
+  };
+
+  // Refresh handler for stock modal
+  const handleRefreshStockData = async () => {
+    if (!selectedStockItem || refreshingStock) return;
+
+    setRefreshingStock(true);
+    try {
+      // Refresh current stock data
+      await loadCurrentStockData(selectedStockItem);
+
+      // Refresh stock history
+      const response = await fetch(`${SummaryApi.getStockHistory.url}/${selectedStockItem.id}`, {
+        method: SummaryApi.getStockHistory.method,
+        credentials: 'include'
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        setStockHistory(data.history || []);
+      }
+
+      showNotification('success', 'Stock data refreshed successfully', 3000);
+    } catch (err) {
+      console.error('Error refreshing stock data:', err);
+      showNotification('error', 'Failed to refresh stock data', 3000);
+    } finally {
+      setRefreshingStock(false);
     }
   };
 
@@ -1004,18 +1035,37 @@ const handleCancelSave = () => {
                 </p>
               </div>
 
-              {/* Add Stock Button */}
-              {user.role === 'manager' && (
+              {/* Refresh and Add Stock Buttons */}
+              <div className="flex items-center space-x-2">
+                {/* Refresh Button */}
                 <button
-                  onClick={() => {
-                    openAddStockModal(selectedStockItem);
-                  }}
-                  className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-md font-medium flex items-center gap-2"
+                  onClick={handleRefreshStockData}
+                  disabled={refreshingStock}
+                  className={`p-2 rounded-md transition-colors ${
+                    refreshingStock
+                      ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                      : 'bg-blue-100 text-blue-600 hover:bg-blue-200'
+                  }`}
+                  title="Refresh stock data"
                 >
-                  <FiPlus size={18} />
-                  Add Stock
+                  <FiRefreshCw
+                    className={`w-4 h-4 ${refreshingStock ? 'animate-spin' : ''}`}
+                  />
                 </button>
-              )}
+
+                {/* Add Stock Button */}
+                {user.role === 'manager' && (
+                  <button
+                    onClick={() => {
+                      openAddStockModal(selectedStockItem);
+                    }}
+                    className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-md font-medium flex items-center gap-2"
+                  >
+                    <FiPlus size={18} />
+                    Add Stock
+                  </button>
+                )}
+              </div>
             </div>
 
             <div className="border-b border-gray-200 mb-4">

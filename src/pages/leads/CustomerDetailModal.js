@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { FiPhone, FiMail, FiMessageSquare, FiEdit2, FiClipboard, FiCalendar, FiDollarSign, FiFileText, FiUser, FiCheck, FiAlertCircle, FiCreditCard, FiSmartphone, FiTrendingUp, FiArrowLeft, FiPrinter, FiDownload } from 'react-icons/fi';
+import { FiPhone, FiMail, FiMessageSquare, FiEdit2, FiClipboard, FiCalendar, FiDollarSign, FiFileText, FiUser, FiCheck, FiAlertCircle, FiCreditCard, FiSmartphone, FiTrendingUp, FiArrowLeft, FiPrinter, FiDownload, FiRefreshCw } from 'react-icons/fi';
 import { QRCodeCanvas } from 'qrcode.react';
 import jsPDF from 'jspdf';
 import SummaryApi from '../../common';
@@ -35,6 +35,11 @@ const [showBillingModal, setShowBillingModal] = useState(false);
   const [bills, setBills] = useState([]);
   const [billsSummary, setBillsSummary] = useState(null);
   const [loadingBills, setLoadingBills] = useState(false);
+
+  // Refresh states for each tab
+  const [refreshingDetails, setRefreshingDetails] = useState(false);
+  const [refreshingBills, setRefreshingBills] = useState(false);
+  const [refreshingPayments, setRefreshingPayments] = useState(false);
   
   // Payment states
   const [showPaymentForm, setShowPaymentForm] = useState(false);
@@ -545,11 +550,52 @@ const handleViewProjectDetails = async (project) => {
     }
   };
 
+  // Refresh handlers for each tab
+  const handleRefreshDetails = async () => {
+    if (refreshingDetails) return;
+
+    setRefreshingDetails(true);
+    try {
+      await fetchCustomer();
+    } catch (err) {
+      console.error('Error refreshing customer details:', err);
+    } finally {
+      setRefreshingDetails(false);
+    }
+  };
+
+  const handleRefreshBills = async () => {
+    if (refreshingBills) return;
+
+    setRefreshingBills(true);
+    try {
+      await fetchCustomerBills();
+    } catch (err) {
+      console.error('Error refreshing bills:', err);
+    } finally {
+      setRefreshingBills(false);
+    }
+  };
+
+  const handleRefreshPayments = async () => {
+    if (refreshingPayments) return;
+
+    setRefreshingPayments(true);
+    try {
+      await fetchCustomerBills();
+      setTransactionRefreshKey(prev => prev + 1);
+    } catch (err) {
+      console.error('Error refreshing payments:', err);
+    } finally {
+      setRefreshingPayments(false);
+    }
+  };
+
   const handleWorkOrderSuccess = (data) => {
     // Refresh customer data after adding new project/work order
     fetchCustomer();
     setShowWorkOrderModal(false);
-    
+
     // Notify parent component of the update
     if (onCustomerUpdated) {
       onCustomerUpdated(data.customer);
@@ -611,37 +657,91 @@ const handleViewProjectDetails = async (project) => {
         <>
           {/* Tab Navigation */}
           <div className="border-b border-gray-200 bg-purple-50 px-6">
-            <nav className="-mb-px flex space-x-8">
-              <button
-                onClick={() => setActiveTab('details')}
-                className={`py-2 px-1 border-b-2 font-medium text-sm ${
-                  activeTab === 'details'
-                    ? 'border-purple-500 text-purple-600'
-                    : 'border-transparent text-purple-700 hover:text-purple-800 hover:border-purple-300'
-                }`}
-              >
-                Customer Details
-              </button>
-              <button
-                onClick={() => setActiveTab('bills')}
-                className={`py-2 px-1 border-b-2 font-medium text-sm ${
-                  activeTab === 'bills'
-                    ? 'border-purple-500 text-purple-600'
-                    : 'border-transparent text-purple-700 hover:text-purple-800 hover:border-purple-300'
-                }`}
-              >
-                Bill History
-              </button>
-              <button
-                onClick={() => setActiveTab('payment')}
-                className={`py-2 px-1 border-b-2 font-medium text-sm ${
-                  activeTab === 'payment'
-                    ? 'border-purple-500 text-purple-600'
-                    : 'border-transparent text-purple-700 hover:text-purple-800 hover:border-purple-300'
-                }`}
-              >
-                Payment
-              </button>
+            <nav className="-mb-px flex justify-between items-center">
+              <div className="flex space-x-8">
+                <button
+                  onClick={() => setActiveTab('details')}
+                  className={`py-2 px-1 border-b-2 font-medium text-sm ${
+                    activeTab === 'details'
+                      ? 'border-purple-500 text-purple-600'
+                      : 'border-transparent text-purple-700 hover:text-purple-800 hover:border-purple-300'
+                  }`}
+                >
+                  Customer Details
+                </button>
+                <button
+                  onClick={() => setActiveTab('bills')}
+                  className={`py-2 px-1 border-b-2 font-medium text-sm ${
+                    activeTab === 'bills'
+                      ? 'border-purple-500 text-purple-600'
+                      : 'border-transparent text-purple-700 hover:text-purple-800 hover:border-purple-300'
+                  }`}
+                >
+                  Bill History
+                </button>
+                <button
+                  onClick={() => setActiveTab('payment')}
+                  className={`py-2 px-1 border-b-2 font-medium text-sm ${
+                    activeTab === 'payment'
+                      ? 'border-purple-500 text-purple-600'
+                      : 'border-transparent text-purple-700 hover:text-purple-800 hover:border-purple-300'
+                  }`}
+                >
+                  Payment
+                </button>
+              </div>
+
+              {/* Refresh Button for Active Tab */}
+              <div className="py-2">
+                {activeTab === 'details' && (
+                  <button
+                    onClick={handleRefreshDetails}
+                    disabled={refreshingDetails}
+                    className={`p-2 rounded-md transition-colors ${
+                      refreshingDetails
+                        ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                        : 'bg-purple-100 text-purple-600 hover:bg-purple-200'
+                    }`}
+                    title="Refresh customer details"
+                  >
+                    <FiRefreshCw
+                      className={`w-4 h-4 ${refreshingDetails ? 'animate-spin' : ''}`}
+                    />
+                  </button>
+                )}
+                {activeTab === 'bills' && (
+                  <button
+                    onClick={handleRefreshBills}
+                    disabled={refreshingBills}
+                    className={`p-2 rounded-md transition-colors ${
+                      refreshingBills
+                        ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                        : 'bg-purple-100 text-purple-600 hover:bg-purple-200'
+                    }`}
+                    title="Refresh bill history"
+                  >
+                    <FiRefreshCw
+                      className={`w-4 h-4 ${refreshingBills ? 'animate-spin' : ''}`}
+                    />
+                  </button>
+                )}
+                {activeTab === 'payment' && (
+                  <button
+                    onClick={handleRefreshPayments}
+                    disabled={refreshingPayments}
+                    className={`p-2 rounded-md transition-colors ${
+                      refreshingPayments
+                        ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                        : 'bg-purple-100 text-purple-600 hover:bg-purple-200'
+                    }`}
+                    title="Refresh payment history"
+                  >
+                    <FiRefreshCw
+                      className={`w-4 h-4 ${refreshingPayments ? 'animate-spin' : ''}`}
+                    />
+                  </button>
+                )}
+              </div>
             </nav>
           </div>
 

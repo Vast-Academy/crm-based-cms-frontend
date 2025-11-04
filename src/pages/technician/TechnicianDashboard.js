@@ -1005,9 +1005,108 @@ const fetchFreshWorkOrders = async () => {
       await fetchReturnRequests();
       await fetchWorkOrders();
     };
-    
+
     loadData();
   }, []);
+
+  // Auto-refresh work orders when on home tab (polling every 30 seconds)
+  useEffect(() => {
+    // Only setup polling if on home tab
+    if (activeTab !== 'home') {
+      return;
+    }
+
+    let pollingInterval = null;
+    let isPageVisible = true;
+
+    // Function to check for new work orders
+    const checkForUpdates = async () => {
+      // Only poll if page is visible and on home tab
+      if (!isPageVisible || activeTab !== 'home') {
+        return;
+      }
+
+      try {
+        // Fetch fresh work orders silently in background
+        const response = await fetch(SummaryApi.getTechnicianWorkOrders.url, {
+          method: SummaryApi.getTechnicianWorkOrders.method,
+          credentials: 'include'
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+          const newWorkOrders = data.data || [];
+
+          // Check if there are new orders by comparing counts
+          const currentActiveCount = workOrders.length;
+          const newActiveCount = newWorkOrders.filter(order =>
+            order.status === 'assigned' ||
+            order.status === 'in-progress' ||
+            order.status === 'paused' ||
+            order.status === 'rejected' ||
+            order.status === 'pending-approval'
+          ).length;
+
+          // If new work orders detected, update state and cache
+          if (newActiveCount !== currentActiveCount) {
+            console.log('New work orders detected! Refreshing...');
+
+            // Update cache
+            localStorage.setItem('technicianWorkOrders', JSON.stringify(newWorkOrders));
+
+            // Separate active and completed orders
+            const active = [];
+            const completed = [];
+            const transferred = [];
+
+            newWorkOrders.forEach(order => {
+              if (order.status === 'completed') {
+                completed.push(order);
+              } else if (order.status === 'transferred') {
+                transferred.push(order);
+              } else {
+                active.push(order);
+              }
+            });
+
+            // Update states
+            setWorkOrders(active);
+            setCompletedOrders(completed);
+            setTransferredProjects(transferred);
+            setLastRefreshTime(prev => ({...prev, workOrders: new Date().getTime()}));
+          }
+        }
+      } catch (err) {
+        console.error('Error checking for updates:', err);
+        // Fail silently - don't disrupt user experience
+      }
+    };
+
+    // Handle page visibility change
+    const handleVisibilityChange = () => {
+      isPageVisible = !document.hidden;
+
+      if (isPageVisible && activeTab === 'home') {
+        // Page became visible, check immediately
+        checkForUpdates();
+      }
+    };
+
+    // Add visibility change listener
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    // Start polling every 30 seconds
+    pollingInterval = setInterval(checkForUpdates, 30000);
+
+    // Cleanup on unmount or when activeTab changes
+    return () => {
+      if (pollingInterval) {
+        clearInterval(pollingInterval);
+      }
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [activeTab, workOrders.length]); // Re-run when tab changes or workOrders count changes
 
   // Handle inventory item click
   const handleInventoryClick = (item) => {

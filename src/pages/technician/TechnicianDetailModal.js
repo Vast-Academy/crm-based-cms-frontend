@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { FiEdit2, FiEye, FiPackage, FiList } from 'react-icons/fi';
+import { FiEdit2, FiEye, FiPackage, FiList, FiRefreshCw } from 'react-icons/fi';
 import SummaryApi from '../../common';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import { useAuth } from '../../context/AuthContext';
@@ -18,7 +18,8 @@ const TechnicianDetailModal = ({ isOpen, onClose, technicianId, onTechnicianUpda
     transferredProjects: [],
     completedProjects: []
   });
-  
+  const [refreshingProjects, setRefreshingProjects] = useState(false);
+
   // Project details modal state
   const [showProjectDetailsModal, setShowProjectDetailsModal] = useState(false);
   const [selectedProject, setSelectedProject] = useState(null);
@@ -162,6 +163,20 @@ const handleTechnicianUpdated = () => {
   // Call the onTechnicianUpdated prop if provided
   onTechnicianUpdated && onTechnicianUpdated();
 };
+
+// Handler for refreshing projects
+const handleRefreshProjects = async () => {
+  if (!technicianId || refreshingProjects) return;
+
+  setRefreshingProjects(true);
+  try {
+    await fetchTechnicianProjects(technicianId);
+  } catch (err) {
+    console.error('Error refreshing projects:', err);
+  } finally {
+    setRefreshingProjects(false);
+  }
+};
   
   // Get status badge style
   const getStatusBadge = (status) => {
@@ -277,7 +292,25 @@ const handleTechnicianUpdated = () => {
           <div className="lg:col-span-2 bg-white rounded-lg overflow-hidden border border-gray-200">
   <div className="p-6">
     <div className="flex justify-between items-center mb-6">
-      <h2 className="text-xl font-semibold">Projects</h2>
+      <div className="flex items-center space-x-3">
+        <h2 className="text-xl font-semibold">Projects</h2>
+
+        {/* Refresh Button */}
+        <button
+          onClick={handleRefreshProjects}
+          disabled={refreshingProjects}
+          className={`p-2 rounded-md transition-colors ${
+            refreshingProjects
+              ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+              : 'bg-blue-50 text-blue-600 hover:bg-blue-100'
+          }`}
+          title="Refresh projects"
+        >
+          <FiRefreshCw
+            className={`w-4 h-4 ${refreshingProjects ? 'animate-spin' : ''}`}
+          />
+        </button>
+      </div>
 
       {/* Inventory Action Buttons */}
       {user.role === 'manager' && (
