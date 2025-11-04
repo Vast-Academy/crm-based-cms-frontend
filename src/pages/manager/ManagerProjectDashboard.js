@@ -9,14 +9,14 @@ import ProjectDetailsModal from './ProjectDetailsModal';
 const STATUS_FILTER_OPTIONS = [
   { value: 'all', label: 'All Projects' },
   { value: 'assigned', label: 'Assigned' },
-  { value: 'in-progress', label: 'In Progress' },
-  { value: 'paused', label: 'Paused' },
-  { value: 'transferring', label: 'Transferring' },
-  { value: 'transferred', label: 'Transferred' },
-  { value: 'completed', label: 'Completed' },
   { value: 'cancelled', label: 'Cancelled' },
+  { value: 'completed', label: 'Completed' },
+  { value: 'in-progress', label: 'In Progress' },
   { value: 'job-closed', label: 'Job Closed' },
-  { value: 'rejected', label: 'Rejected' }
+  { value: 'paused', label: 'Paused' },
+  { value: 'rejected', label: 'Rejected' },
+  { value: 'transferred', label: 'Transferred' },
+  { value: 'transferring', label: 'Transferring' }
 ];
 
 const SORT_OPTIONS = [

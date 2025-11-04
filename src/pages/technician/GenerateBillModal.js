@@ -60,6 +60,29 @@ const GenerateBillModal = ({ isOpen, onClose, workOrder, onBillGenerated, onDone
   const [manualEntryMode, setManualEntryMode] = useState(false);
   const [manualCode, setManualCode] = useState('');
 
+  // Service management states
+  const [showCreateServiceModal, setShowCreateServiceModal] = useState(false);
+  const [showEditServiceModal, setShowEditServiceModal] = useState(false);
+  const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
+  const [newServiceData, setNewServiceData] = useState({
+    name: '',
+    customerPrice: ''
+  });
+  const [editingService, setEditingService] = useState(null);
+  const [serviceToDelete, setServiceToDelete] = useState(null);
+
+  // Double-click states for Create Service Modal
+  const [clickCountCreate, setClickCountCreate] = useState(0);
+  const [clickTimerCreate, setClickTimerCreate] = useState(null);
+
+  // Double-click states for Edit Service Modal
+  const [clickCountEdit, setClickCountEdit] = useState(0);
+  const [clickTimerEdit, setClickTimerEdit] = useState(null);
+
+  // Double-click states for Delete Confirmation Modal
+  const [clickCountDelete, setClickCountDelete] = useState(0);
+  const [clickTimerDelete, setClickTimerDelete] = useState(null);
+
   // Reset states when modal opens
   useEffect(() => {
     if (isOpen) {
@@ -103,6 +126,23 @@ const GenerateBillModal = ({ isOpen, onClose, workOrder, onBillGenerated, onDone
       drawerName: '',
       upiTransactionId: ''
     });
+    // Reset service management states
+    setShowCreateServiceModal(false);
+    setShowEditServiceModal(false);
+    setShowDeleteConfirmation(false);
+    setNewServiceData({
+      name: '',
+      customerPrice: ''
+    });
+    setEditingService(null);
+    setServiceToDelete(null);
+    // Reset double-click states
+    setClickCountCreate(0);
+    setClickCountEdit(0);
+    setClickCountDelete(0);
+    if (clickTimerCreate) clearTimeout(clickTimerCreate);
+    if (clickTimerEdit) clearTimeout(clickTimerEdit);
+    if (clickTimerDelete) clearTimeout(clickTimerDelete);
   };
   
   // Fetch technician's inventory
@@ -236,9 +276,23 @@ const fetchAvailableServices = async () => {
       if (!query) {
         return availableServices; // Show all services
       }
-      return availableServices.filter(service =>
-        (service.itemName || service.name).toLowerCase().includes(query)
-      );
+
+      // Check if query is a number (price search)
+      const isNumericSearch = !isNaN(query) && query.trim() !== '';
+
+      return availableServices.filter(service => {
+        const serviceName = (service.itemName || service.name).toLowerCase();
+        const servicePrice = service.salePrice || 0;
+
+        if (isNumericSearch) {
+          // Search by price - convert both to numbers for comparison
+          const searchPrice = parseFloat(query);
+          return servicePrice === searchPrice || servicePrice.toString().includes(query);
+        } else {
+          // Search by name
+          return serviceName.includes(query);
+        }
+      });
     }
   };
 
@@ -356,6 +410,287 @@ const showPaymentConfirmation = () => {
   setCurrentStep('payment-confirmation');
   setError(null);
 };
+
+  // Handler functions for service management
+
+  // Double-click handlers for Create Service Modal
+  const handleOverlayClickCreate = () => {
+    if (clickCountCreate === 0) {
+      setClickCountCreate(1);
+      const timer = setTimeout(() => {
+        setError('To close the popup, click twice on the background');
+        setClickCountCreate(0);
+      }, 800);
+      setClickTimerCreate(timer);
+    } else if (clickCountCreate === 1) {
+      if (clickTimerCreate) clearTimeout(clickTimerCreate);
+      setClickCountCreate(0);
+      setShowCreateServiceModal(false);
+      setNewServiceData({ name: '', customerPrice: '' });
+      setError(null);
+    }
+  };
+
+  // Double-click handlers for Edit Service Modal
+  const handleOverlayClickEdit = () => {
+    if (clickCountEdit === 0) {
+      setClickCountEdit(1);
+      const timer = setTimeout(() => {
+        setError('To close the popup, click twice on the background');
+        setClickCountEdit(0);
+      }, 800);
+      setClickTimerEdit(timer);
+    } else if (clickCountEdit === 1) {
+      if (clickTimerEdit) clearTimeout(clickTimerEdit);
+      setClickCountEdit(0);
+      setShowEditServiceModal(false);
+      setEditingService(null);
+      setError(null);
+    }
+  };
+
+  // Double-click handlers for Delete Confirmation Modal
+  const handleOverlayClickDelete = () => {
+    if (clickCountDelete === 0) {
+      setClickCountDelete(1);
+      const timer = setTimeout(() => {
+        setError('To close the popup, click twice on the background');
+        setClickCountDelete(0);
+      }, 800);
+      setClickTimerDelete(timer);
+    } else if (clickCountDelete === 1) {
+      if (clickTimerDelete) clearTimeout(clickTimerDelete);
+      setClickCountDelete(0);
+      setShowDeleteConfirmation(false);
+      setServiceToDelete(null);
+      setError(null);
+    }
+  };
+
+  // Open create service modal with auto-populate logic
+  const handleOpenCreateServiceModal = () => {
+    const query = searchQuery.trim();
+    const isNumericSearch = !isNaN(query) && query !== '';
+
+    // Auto-populate based on search query
+    if (isNumericSearch) {
+      // If search is a number, populate price field
+      setNewServiceData({
+        name: '',
+        customerPrice: query
+      });
+    } else {
+      // If search is text, populate name field
+      setNewServiceData({
+        name: query,
+        customerPrice: ''
+      });
+    }
+
+    setShowCreateServiceModal(true);
+    setError(null);
+  };
+
+  // Handle create service form input changes
+  const handleNewServiceInputChange = (e) => {
+    const { name, value } = e.target;
+    setNewServiceData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+  // Create new service
+  const handleCreateService = async () => {
+    try {
+      // Validate
+      if (!newServiceData.name.trim()) {
+        setError('Service name is required');
+        return;
+      }
+
+      if (newServiceData.customerPrice === '' || newServiceData.customerPrice === null || newServiceData.customerPrice === undefined) {
+        setError('Customer price is required (0 is allowed)');
+        return;
+      }
+
+      setLoading(true);
+      setError(null);
+
+      // Generate a unique ID for the service
+      const uniqueId = `SERVICE-${Date.now()}`;
+
+      const requestData = {
+        type: 'service',
+        name: newServiceData.name,
+        customerPrice: parseFloat(newServiceData.customerPrice),
+        dealerPrice: null,
+        distributorPrice: null,
+        id: uniqueId
+      };
+
+      const response = await fetch(SummaryApi.addInventoryItem.url, {
+        method: SummaryApi.addInventoryItem.method,
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(requestData)
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        // Clear cache
+        localStorage.removeItem('servicesData');
+
+        // Close modal and reset form
+        setShowCreateServiceModal(false);
+        setNewServiceData({
+          name: '',
+          customerPrice: ''
+        });
+
+        // Refresh inventory to show new service
+        await fetchTechnicianInventory();
+
+        setError(null);
+      } else {
+        setError(data.message || 'Failed to create service');
+      }
+    } catch (err) {
+      setError('Server error. Please try again later.');
+      console.error('Error creating service:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Open edit service modal
+  const handleOpenEditServiceModal = (service) => {
+    // Properly set the editing service with correct price
+    const serviceToEdit = {
+      ...service,
+      customerPrice: service.salePrice !== undefined && service.salePrice !== null ? service.salePrice : (service.customerPrice || 0)
+    };
+    setEditingService(serviceToEdit);
+    setShowEditServiceModal(true);
+    setError(null);
+  };
+
+  // Handle edit service form input changes
+  const handleEditServiceInputChange = (e) => {
+    const { name, value } = e.target;
+    setEditingService(prev => ({
+      ...prev,
+      [name]: value,
+      // Update salePrice when customerPrice changes
+      ...(name === 'customerPrice' && { salePrice: value })
+    }));
+  };
+
+  // Update service
+  const handleUpdateService = async () => {
+    try {
+      // Validate
+      if (!editingService.itemName && !editingService.name) {
+        setError('Service name is required');
+        return;
+      }
+
+      if (editingService.customerPrice === '' || editingService.customerPrice === null || editingService.customerPrice === undefined) {
+        setError('Customer price is required (0 is allowed)');
+        return;
+      }
+
+      setLoading(true);
+      setError(null);
+
+      const updateData = {
+        name: editingService.itemName || editingService.name,
+        customerPrice: parseFloat(editingService.customerPrice || editingService.salePrice),
+        type: 'service'
+      };
+
+      const response = await fetch(`${SummaryApi.updateInventoryItem.url}/${editingService.itemId || editingService.id}`, {
+        method: SummaryApi.updateInventoryItem.method,
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(updateData)
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        // Clear cache
+        localStorage.removeItem('servicesData');
+
+        // Close modal
+        setShowEditServiceModal(false);
+        setEditingService(null);
+
+        // Refresh inventory
+        await fetchTechnicianInventory();
+
+        setError(null);
+      } else {
+        setError(data.message || 'Failed to update service');
+      }
+    } catch (err) {
+      setError('Server error. Please try again later.');
+      console.error('Error updating service:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Open delete confirmation
+  const handleOpenDeleteConfirmation = (service) => {
+    setServiceToDelete(service);
+    setShowDeleteConfirmation(true);
+  };
+
+  // Delete service
+  const handleDeleteService = async () => {
+    try {
+      if (!serviceToDelete) return;
+
+      setLoading(true);
+      setError(null);
+
+      const response = await fetch(`${SummaryApi.deleteInventoryItem.url}/${serviceToDelete.itemId || serviceToDelete.id}`, {
+        method: SummaryApi.deleteInventoryItem.method,
+        credentials: 'include'
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        // Clear cache
+        localStorage.removeItem('servicesData');
+
+        // Close all modals
+        setShowDeleteConfirmation(false);
+        setShowEditServiceModal(false);
+        setServiceToDelete(null);
+        setEditingService(null);
+
+        // Refresh inventory
+        await fetchTechnicianInventory();
+
+        setError(null);
+      } else {
+        setError(data.message || 'Failed to delete service');
+      }
+    } catch (err) {
+      setError('Server error. Please try again later.');
+      console.error('Error deleting service:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Update work order status to pending-approval after payment
 const updateWorkOrderStatus = async () => {
@@ -1131,7 +1466,7 @@ const getGroupedItems = () => {
                   <div className="relative mb-3">
                     <input
                       type="text"
-                      placeholder={activeTab === 'products' ? 'Search products by name or serial number...' : 'Search services by name...'}
+                      placeholder={activeTab === 'products' ? 'Search products by name or serial number...' : 'Search services by name or price...'}
                       className="w-full pl-10 pr-4 py-2 border rounded-md"
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
@@ -1231,12 +1566,20 @@ const getGroupedItems = () => {
                                       ₹{service.salePrice?.toFixed(2) || '0.00'}
                                     </p>
                                   </div>
-                                  <button
-                                    onClick={() => addItemToSelection(service)}
-                                    className="ml-2 px-3 py-1 bg-purple-500 text-white rounded-md text-sm hover:bg-purple-600"
-                                  >
-                                    Add +
-                                  </button>
+                                  <div className="flex flex-col gap-2">
+                                    <button
+                                      onClick={() => addItemToSelection(service)}
+                                      className="px-4 py-1 bg-purple-500 text-white rounded-md text-sm hover:bg-purple-600"
+                                    >
+                                      + Add
+                                    </button>
+                                    <button
+                                      onClick={() => handleOpenEditServiceModal(service)}
+                                      className="px-4 py-1 bg-blue-500 text-white rounded-md text-sm hover:bg-blue-600"
+                                    >
+                                      Edit
+                                    </button>
+                                  </div>
                                 </div>
                               ))}
                             </div>
@@ -1249,7 +1592,17 @@ const getGroupedItems = () => {
                       )}
                     </div>
                   </div>
-                  
+
+                  {/* Create New Service Button - Only show in Services tab */}
+                  {activeTab === 'services' && (
+                    <button
+                      onClick={handleOpenCreateServiceModal}
+                      className="w-full mb-3 py-3 bg-green-500 text-white rounded-md font-medium hover:bg-green-600 flex items-center justify-center gap-2"
+                    >
+                      <span className="text-lg">+</span> Create New Service
+                    </button>
+                  )}
+
                   {/* Selected Items List */}
                   <div className="mb-3">
                     <p className="text-sm font-medium mb-2">Selected Items:</p>
@@ -2271,6 +2624,254 @@ const getGroupedItems = () => {
   )}
         </div>
     </div>
+
+    {/* Create New Service Modal */}
+    {showCreateServiceModal && (
+      <div
+        className="fixed inset-0 bg-black bg-opacity-50 z-[60] flex justify-center items-center p-4"
+        onClick={handleOverlayClickCreate}
+      >
+        <div
+          className="bg-white rounded-xl shadow-2xl w-full max-w-md"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="flex justify-between items-center p-4 border-b bg-green-50">
+            <h3 className="text-lg font-semibold text-green-800">Create New Service</h3>
+            <button
+              onClick={() => {
+                setShowCreateServiceModal(false);
+                setNewServiceData({ name: '', customerPrice: '' });
+                setError(null);
+              }}
+              className="p-1 rounded-full hover:bg-green-100"
+            >
+              <X size={20} />
+            </button>
+          </div>
+
+          <div className="p-4">
+            {error && (
+              <div className="mb-3 bg-red-50 text-red-600 p-3 rounded-md text-sm">
+                {error}
+              </div>
+            )}
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Service Name *
+                </label>
+                <input
+                  type="text"
+                  name="name"
+                  value={newServiceData.name}
+                  onChange={handleNewServiceInputChange}
+                  className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+                  placeholder="Enter service name"
+                  autoComplete="off"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Customer Price (₹) *
+                </label>
+                <input
+                  type="number"
+                  name="customerPrice"
+                  value={newServiceData.customerPrice}
+                  onChange={handleNewServiceInputChange}
+                  className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+                  placeholder="Enter price (0 is allowed)"
+                  min="0"
+                  step="any"
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-3 p-4 bg-gray-50 border-t">
+            <button
+              onClick={() => {
+                setShowCreateServiceModal(false);
+                setNewServiceData({ name: '', customerPrice: '' });
+                setError(null);
+              }}
+              className="px-4 py-2 text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleCreateService}
+              disabled={loading}
+              className="px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600 disabled:opacity-50"
+            >
+              {loading ? 'Adding...' : 'Add Service'}
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+
+    {/* Edit Service Modal */}
+    {showEditServiceModal && editingService && (
+      <div
+        className="fixed inset-0 bg-black bg-opacity-50 z-[60] flex justify-center items-center p-4"
+        onClick={handleOverlayClickEdit}
+      >
+        <div
+          className="bg-white rounded-xl shadow-2xl w-full max-w-md"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="flex justify-between items-center p-4 border-b bg-blue-50">
+            <h3 className="text-lg font-semibold text-blue-800">Edit Service</h3>
+            <div className="flex gap-2">
+              <button
+                onClick={() => handleOpenDeleteConfirmation(editingService)}
+                className="px-3 py-1 bg-red-500 text-white text-sm rounded-md hover:bg-red-600"
+              >
+                Delete
+              </button>
+              <button
+                onClick={() => {
+                  setShowEditServiceModal(false);
+                  setEditingService(null);
+                  setError(null);
+                }}
+                className="p-1 rounded-full hover:bg-blue-100"
+              >
+                <X size={20} />
+              </button>
+            </div>
+          </div>
+
+          <div className="p-4">
+            {error && (
+              <div className="mb-3 bg-red-50 text-red-600 p-3 rounded-md text-sm">
+                {error}
+              </div>
+            )}
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Service Name *
+                </label>
+                <input
+                  type="text"
+                  name="itemName"
+                  value={editingService.itemName || editingService.name || ''}
+                  onChange={(e) => {
+                    setEditingService(prev => ({
+                      ...prev,
+                      itemName: e.target.value,
+                      name: e.target.value
+                    }));
+                  }}
+                  className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Enter service name"
+                  autoComplete="off"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Customer Price (₹) *
+                </label>
+                <input
+                  type="number"
+                  name="customerPrice"
+                  value={editingService.customerPrice !== undefined && editingService.customerPrice !== null ? editingService.customerPrice : ''}
+                  onChange={(e) => {
+                    setEditingService(prev => ({
+                      ...prev,
+                      customerPrice: e.target.value,
+                      salePrice: e.target.value
+                    }));
+                  }}
+                  className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Enter price (0 is allowed)"
+                  min="0"
+                  step="any"
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-3 p-4 bg-gray-50 border-t">
+            <button
+              onClick={() => {
+                setShowEditServiceModal(false);
+                setEditingService(null);
+                setError(null);
+              }}
+              className="px-4 py-2 text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleUpdateService}
+              disabled={loading}
+              className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 disabled:opacity-50"
+            >
+              {loading ? 'Updating...' : 'Update Service'}
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+
+    {/* Delete Confirmation Modal */}
+    {showDeleteConfirmation && serviceToDelete && (
+      <div
+        className="fixed inset-0 bg-black bg-opacity-50 z-[70] flex justify-center items-center p-4"
+        onClick={handleOverlayClickDelete}
+      >
+        <div
+          className="bg-white rounded-xl shadow-2xl w-full max-w-sm"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="p-6">
+            <div className="flex justify-center mb-4">
+              <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center">
+                <AlertCircle className="text-red-600" size={24} />
+              </div>
+            </div>
+
+            <h3 className="text-lg font-semibold text-center mb-2">Delete Service?</h3>
+            <p className="text-sm text-gray-600 text-center mb-6">
+              Are you sure you want to delete "{serviceToDelete.itemName || serviceToDelete.name}"? This action cannot be undone.
+            </p>
+
+            {error && (
+              <div className="mb-4 bg-red-50 text-red-600 p-3 rounded-md text-sm">
+                {error}
+              </div>
+            )}
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => {
+                  setShowDeleteConfirmation(false);
+                  setServiceToDelete(null);
+                  setError(null);
+                }}
+                className="flex-1 px-4 py-2 text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300"
+              >
+                No, Cancel
+              </button>
+              <button
+                onClick={handleDeleteService}
+                disabled={loading}
+                className="flex-1 px-4 py-2 bg-red-500 text-white rounded-md hover:bg-red-600 disabled:opacity-50"
+              >
+                {loading ? 'Deleting...' : 'Yes, Delete'}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    )}
   </div>
   );
 };

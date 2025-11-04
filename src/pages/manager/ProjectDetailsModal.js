@@ -1,9 +1,10 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { FiX, FiUser, FiCalendar, FiMapPin, FiInfo, FiFileText, FiCheckCircle, FiClock, FiEye, FiAlertCircle, FiRefreshCw } from 'react-icons/fi';
+import { FiX, FiUser, FiCalendar, FiMapPin, FiInfo, FiFileText, FiCheckCircle, FiClock, FiEye, FiAlertCircle, FiRefreshCw, FiPhone } from 'react-icons/fi';
 import SummaryApi from '../../common';
 import { useAuth } from '../../context/AuthContext';
 import { useNotification } from '../../context/NotificationContext';
 import LoadingSpinner from '../../components/LoadingSpinner';
+import { Building } from 'lucide-react';
 
 // Ensure global modal registry exists
 if (!window.__modalRegistry) {
@@ -502,8 +503,17 @@ const ProjectDetailsModal = ({ isOpen, onClose, project: projectProp, onProjectA
             
             <div className="bg-white border rounded-lg p-4">
               <p className="font-medium">{project.customerName}</p>
+              {project.customerFirmName && (
+                <p className="text-sm text-gray-600 mt-1 flex items-center">
+                  <Building className="w-4 h-4 mr-2 text-gray-500" />
+                  {project.customerFirmName}
+                </p>
+              )}
               {project.customerPhone && (
-                <p className="text-sm mt-1">Phone: {project.customerPhone}</p>
+                <p className="text-sm mt-1 flex items-center">
+                  <FiPhone className="mr-2 text-gray-500" />
+                  {project.customerPhone}
+                </p>
               )}
               {project.customerAddress && (
                 <p className="flex items-start text-sm mt-2">

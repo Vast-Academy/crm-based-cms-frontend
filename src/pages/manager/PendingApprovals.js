@@ -145,8 +145,9 @@ const PendingApprovals = () => {
     // Apply search query if needed
     if (query.trim() !== '') {
       const lowercaseQuery = query.toLowerCase();
-      filtered = filtered.filter(project =>
+      filtered = filtered.filter(project => 
         (project.customerName && project.customerName.toLowerCase().includes(lowercaseQuery)) ||
+        (project.customerFirmName && project.customerFirmName.toLowerCase().includes(lowercaseQuery)) ||
         (project.projectType && project.projectType.toLowerCase().includes(lowercaseQuery)) ||
         (project.technician &&
           (`${project.technician.firstName} ${project.technician.lastName}`).toLowerCase().includes(lowercaseQuery)) ||
@@ -502,8 +503,11 @@ const PendingApprovals = () => {
                           )
                           }
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {project.customerName}
+                        <td className="px-6 py-4 whitespace-nowrap text-sm">
+                          <div className="font-medium text-gray-900">{project.customerName}</div>
+                          {project.customerFirmName && (
+                            <div className="text-xs text-gray-400">{project.customerFirmName}</div>
+                          )}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <span className="px-2 py-1 rounded-full text-xs bg-blue-100 text-blue-800">
