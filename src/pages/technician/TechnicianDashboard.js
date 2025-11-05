@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import {
   Package,
   Camera,
+  Building,
   Clipboard,
   CheckSquare,
   List,
@@ -1115,16 +1116,40 @@ const fetchFreshWorkOrders = async () => {
   };
 
   // Handle work order click
-  const handleWorkOrderClick = async (workOrder) => {
+  const handleWorkOrderClick = async (workOrder, fromPendingApprovalTab = false) => {
     // Check the status and redirect or open modal based on it
   if (workOrder.status === 'in-progress') {
     // Redirect to current-project tab
     handleTabChange('current-project');
     return;
   } else if (workOrder.status === 'pending-approval') {
-    // Redirect to pending-approval-projects tab
-    handleTabChange('pending-approval-projects');
-    return;
+    // If clicked from home page, redirect to pending-approval tab
+    // If already in pending-approval tab, open the modal
+    if (!fromPendingApprovalTab) {
+      handleTabChange('pending-approval-projects');
+      return;
+    } else {
+      // Open ProjectDetailsModal for pending-approval projects
+      try {
+        const response = await fetch(`${SummaryApi.getWorkOrderDetails.url}/${workOrder.customerId}/${workOrder.orderId}`, {
+          method: SummaryApi.getWorkOrderDetails.method,
+          credentials: 'include'
+        });
+
+        const data = await response.json();
+
+        if (data.success && data.data) {
+          setSelectedCompletedProject(data.data);
+        } else {
+          setSelectedCompletedProject(workOrder);
+        }
+      } catch (err) {
+        console.error('Error fetching detailed work order:', err);
+        setSelectedCompletedProject(workOrder);
+      }
+      setShowProjectDetailsModal(true);
+      return;
+    }
   } else if (workOrder.status === 'completed') {
     // For completed projects, open ProjectDetailsModal (manager's modal)
     try {
@@ -2253,42 +2278,76 @@ const fetchFreshWorkOrders = async () => {
               {/* Assignment List */}
               <div className="space-y-2">
                 {workOrders.length > 0 ? (
-                  workOrders.map((order) => (
-                    <div
-                      key={order.orderId || `order-${Math.random().toString(36).substr(2, 9)}`}
-                      className="flex items-center gap-2 p-2 bg-gray-100 rounded-lg border border-slate-200 cursor-pointer"
-                      onClick={() => handleWorkOrderClick(order)}
-                    >
-                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
-                        order.status === 'pending-approval' ? 'bg-orange-500' :
-                        order.status === 'in-progress' ? 'bg-blue-500' :
-                        order.status === 'assigned' ? 'bg-blue-500' :
-                        order.status === 'paused' ? 'bg-yellow-500' :
-                        order.status === 'rejected' ? 'bg-red-500' :
-                        'bg-slate-600'
-                      }`}>
-                        <FileText size={14} className="text-white" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="font-semibold text-sm text-slate-800">{order.projectType}</div>
-                        <div className="text-xs text-slate-600 mt-0.5">
-                          Order ID: {order.orderId}
+                  workOrders.map((order) => {
+                    const statusConfig = {
+                      'pending-approval': { bg: 'bg-orange-500', border: 'border-orange-200', hoverBorder: 'hover:border-orange-300', badge: 'bg-orange-100 text-orange-700', label: 'Pending Approval' },
+                      'in-progress': { bg: 'bg-blue-500', border: 'border-blue-200', hoverBorder: 'hover:border-blue-300', badge: 'bg-blue-100 text-blue-700', label: 'In Progress' },
+                      'assigned': { bg: 'bg-blue-500', border: 'border-blue-200', hoverBorder: 'hover:border-blue-300', badge: 'bg-blue-100 text-blue-700', label: 'Assigned' },
+                      'paused': { bg: 'bg-yellow-500', border: 'border-yellow-200', hoverBorder: 'hover:border-yellow-300', badge: 'bg-yellow-100 text-yellow-700', label: 'Paused' },
+                      'rejected': { bg: 'bg-red-500', border: 'border-red-200', hoverBorder: 'hover:border-red-300', badge: 'bg-red-100 text-red-700', label: 'Rejected' }
+                    };
+                    const config = statusConfig[order.status] || { bg: 'bg-slate-500', border: 'border-slate-200', hoverBorder: 'hover:border-slate-300', badge: 'bg-slate-100 text-slate-700', label: order.status };
+
+                    return (
+                      <div
+                        key={order.orderId || `order-${Math.random().toString(36).substr(2, 9)}`}
+                        className={`bg-white rounded-lg border ${config.border} ${config.hoverBorder} hover:shadow-sm transition-all cursor-pointer p-2.5`}
+                        onClick={() => handleWorkOrderClick(order)}
+                      >
+                        <div className="flex items-start gap-2">
+                          {/* Icon */}
+                          <div className={`w-7 h-7 ${config.bg} rounded flex items-center justify-center flex-shrink-0 mt-0.5`}>
+                            <FileText size={12} className="text-white" />
+                          </div>
+
+                          {/* Content */}
+                          <div className="flex-1 min-w-0 space-y-1">
+                            {/* Project Type & Category */}
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="font-semibold text-sm text-slate-800">{order.projectType}</span>
+                              {order.projectCategory && (
+                                <span className={`px-1.5 py-0.5 ${config.badge} text-xs rounded font-medium`}>
+                                  {order.projectCategory}
+                                </span>
+                              )}
+                            </div>
+
+                            {/* Customer & Firm inline */}
+                            <div className="flex items-center gap-1.5 text-xs text-gray-700 flex-wrap">
+                              {order.customerName && (
+                                <>
+                                  <User size={10} className="text-gray-500" />
+                                  <span className="font-medium">{order.customerName}</span>
+                                </>
+                              )}
+                              {order.customerFirmName && (
+                                <>
+                                  {order.customerName && <span className="text-gray-400">•</span>}
+                                  <Building size={10} className="text-gray-500" />
+                                  <span>{order.customerFirmName}</span>
+                                </>
+                              )}
+                            </div>
+
+                            {/* Address */}
+                            {order.customerAddress && (
+                              <div className="flex items-start gap-1.5 text-xs text-gray-600">
+                                <MapPin size={10} className="text-gray-500 mt-0.5 flex-shrink-0" />
+                                <span className="line-clamp-1">{order.customerAddress}</span>
+                              </div>
+                            )}
+
+                            {/* Status Badge */}
+                            <div className="pt-0.5">
+                              <span className={`px-2 py-0.5 ${config.badge} text-xs rounded-full font-medium inline-block`}>
+                                {config.label}
+                              </span>
+                            </div>
+                          </div>
                         </div>
                       </div>
-                      <div className={`px-2 py-1 rounded text-xs font-medium border ${
-                        order.status === 'pending-approval' ? 'bg-orange-100 text-orange-700 border-orange-200' :
-                        order.status === 'in-progress' ? 'bg-blue-100 text-blue-700 border-blue-200' :
-                        order.status === 'assigned' ? 'bg-blue-100 text-blue-700 border-blue-200' :
-                        order.status === 'paused' ? 'bg-yellow-100 text-yellow-700 border-yellow-200' :
-                        order.status === 'rejected' ? 'bg-red-100 text-red-700 border-red-200' :
-                        'bg-slate-100 text-slate-700 border-slate-200'
-                      }`}>
-                        {order.status === 'pending-approval' ? 'Pending-Approval' :
-                         order.status === 'in-progress' ? 'In Progress' :
-                         order.status}
-                      </div>
-                    </div>
-                  ))
+                    );
+                  })
                 ) : (
                   <div className="p-8 text-center">
                     <p className="text-gray-500">No active assignments</p>
@@ -2332,42 +2391,66 @@ const fetchFreshWorkOrders = async () => {
             </div>
             
             {/* Completed Work Orders */}
-            <div className={`${darkMode ? 'bg-gray-800/50 backdrop-blur-sm border border-gray-700' : 'bg-white/80 backdrop-blur-sm border border-gray-200'} rounded-2xl shadow-xl overflow-hidden`}>
-              <div className={`p-4 ${darkMode ? 'border-b border-gray-700' : 'border-b border-gray-200'}`}>
-                <h2 className="font-bold text-lg">Completed Assignments</h2>
-              </div>
-              
-              <div>
+            <div className="bg-white rounded-lg shadow-md p-3">
+              <h3 className="text-sm font-bold text-gray-800 mb-3">Completed Assignments</h3>
+
+              <div className="space-y-2">
                 {completedOrders.length > 0 ? (
                   completedOrders.map((order) => (
-                    <div 
-                      key={order.orderId || `order-${Math.random().toString(36).substr(2, 9)}`} 
-                      className={`p-4 ${darkMode ? 'border-b border-gray-700 last:border-b-0 hover:bg-gray-700/50' : 'border-b border-gray-200 last:border-b-0 hover:bg-gray-100/50'} transition-colors cursor-pointer`}
+                    <div
+                      key={order.orderId || `order-${Math.random().toString(36).substr(2, 9)}`}
+                      className="bg-white rounded-lg border border-green-200 hover:border-green-300 hover:shadow-sm transition-all cursor-pointer p-2.5"
                       onClick={() => handleWorkOrderClick(order)}
                     >
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center">
-                          <div className={`w-10 h-10 rounded-full ${getStatusColor(order.status)} flex items-center justify-center mr-3`}>
-                            <CheckSquare size={18} className="text-white" />
-                          </div>
-                          <div>
-                            <p className={`font-medium truncate max-w-[140px] ${darkMode ? 'text-white' : 'text-gray-800'}`}>
-                              {order.projectType}
-                            </p>
-                            <p className={`text-xs ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                              Order ID: {order.orderId}
-                            </p>
-                          </div>
+                      <div className="flex items-start gap-2">
+                        {/* Icon */}
+                        <div className="w-7 h-7 bg-green-500 rounded flex items-center justify-center flex-shrink-0 mt-0.5">
+                          <CheckSquare size={12} className="text-white" />
                         </div>
-                        <span className={`px-2 py-1 rounded-full text-xs capitalize ${darkMode ? 'bg-green-600/40 text-green-100' : 'bg-green-100 text-green-800'}`}>
-                          {order.status}
-                        </span>
+
+                        {/* Content */}
+                        <div className="flex-1 min-w-0 space-y-1">
+                          {/* Project Type & Category */}
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="font-semibold text-sm text-slate-800">{order.projectType}</span>
+                            {order.projectCategory && (
+                              <span className="px-1.5 py-0.5 bg-green-100 text-green-700 text-xs rounded font-medium">
+                                {order.projectCategory}
+                              </span>
+                            )}
+                          </div>
+
+                          {/* Customer & Firm inline */}
+                          <div className="flex items-center gap-1.5 text-xs text-gray-700 flex-wrap">
+                            {order.customerName && (
+                              <>
+                                <User size={10} className="text-gray-500" />
+                                <span className="font-medium">{order.customerName}</span>
+                              </>
+                            )}
+                            {order.customerFirmName && (
+                              <>
+                                {order.customerName && <span className="text-gray-400">•</span>}
+                                <Building size={10} className="text-gray-500" />
+                                <span>{order.customerFirmName}</span>
+                              </>
+                            )}
+                          </div>
+
+                          {/* Address */}
+                          {order.customerAddress && (
+                            <div className="flex items-start gap-1.5 text-xs text-gray-600">
+                              <MapPin size={10} className="text-gray-500 mt-0.5 flex-shrink-0" />
+                              <span className="line-clamp-1">{order.customerAddress}</span>
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </div>
                   ))
                 ) : (
                   <div className="p-8 text-center">
-                    <p className={`${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>No completed assignments yet</p>
+                    <p className="text-gray-500">No completed assignments yet</p>
                   </div>
                 )}
               </div>
@@ -2417,20 +2500,52 @@ const fetchFreshWorkOrders = async () => {
           workOrders.filter(order => order.status === 'pending-approval').map((order) => (
             <div
               key={order.orderId || `order-${Math.random().toString(36).substr(2, 9)}`}
-              className="flex items-center gap-2 p-2 bg-gray-100 rounded-lg border border-slate-200 cursor-pointer"
-              onClick={() => handleWorkOrderClick(order)}
+              className="bg-white rounded-lg border border-orange-200 hover:border-orange-300 hover:shadow-sm transition-all cursor-pointer p-2.5"
+              onClick={() => handleWorkOrderClick(order, true)}
             >
-              <div className="w-8 h-8 bg-orange-500 rounded-lg flex items-center justify-center">
-                <Calendar size={14} className="text-white" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="font-semibold text-sm text-slate-800">{order.projectType}</div>
-                <div className="text-xs text-slate-600 mt-0.5">
-                  Order ID: {order.orderId}
+              <div className="flex items-start gap-2">
+                {/* Icon */}
+                <div className="w-7 h-7 bg-orange-500 rounded flex items-center justify-center flex-shrink-0 mt-0.5">
+                  <FileText size={12} className="text-white" />
                 </div>
-              </div>
-              <div className="px-2 py-1 bg-orange-100 text-orange-700 rounded text-xs font-medium border border-orange-200">
-                Pending-Approval
+
+                {/* Content */}
+                <div className="flex-1 min-w-0 space-y-1">
+                  {/* Project Type & Category */}
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="font-semibold text-sm text-slate-800">{order.projectType}</span>
+                    {order.projectCategory && (
+                      <span className="px-1.5 py-0.5 bg-orange-100 text-orange-700 text-xs rounded font-medium">
+                        {order.projectCategory}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Customer & Firm inline */}
+                  <div className="flex items-center gap-1.5 text-xs text-gray-700 flex-wrap">
+                    {order.customerName && (
+                      <>
+                        <User size={10} className="text-gray-500" />
+                        <span className="font-medium">{order.customerName}</span>
+                      </>
+                    )}
+                    {order.customerFirmName && (
+                      <>
+                        {order.customerName && <span className="text-gray-400">•</span>}
+                        <Building size={10} className="text-gray-500" />
+                        <span>{order.customerFirmName}</span>
+                      </>
+                    )}
+                  </div>
+
+                  {/* Address */}
+                  {order.customerAddress && (
+                    <div className="flex items-start gap-1.5 text-xs text-gray-600">
+                      <MapPin size={10} className="text-gray-500 mt-0.5 flex-shrink-0" />
+                      <span className="line-clamp-1">{order.customerAddress}</span>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           ))

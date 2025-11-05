@@ -422,10 +422,10 @@ const ProjectDetailsModal = ({ isOpen, onClose, project: projectProp, onProjectA
     <div className="fixed inset-0 bg-gray-600 bg-opacity-75 flex justify-center items-start z-50 p-2 overflow-auto" onClick={handleOverlayClick}>
       <div className="bg-white rounded-lg shadow-xl w-full max-w-3xl max-h-[90vh] overflow-hidden my-4"
        ref={modalContentRef} onClick={(e) => e.stopPropagation()}>
-        <div className="sticky top-0 bg-white p-4 border-b flex justify-between items-center">
-          <h2 className="text-xl font-semibold flex items-center">
-            Project Details 
-            <span className={`ml-3 px-3 py-1 rounded-full text-sm capitalize ${getStatusBadge(project.status)}`}>
+        <div className="sticky top-0 bg-white p-3 sm:p-4 border-b flex justify-between items-center">
+          <h2 className="text-lg sm:text-xl font-semibold flex items-center flex-wrap gap-2">
+            <span>Project Details</span>
+            <span className={`px-2 sm:px-3 py-1 rounded-full text-xs sm:text-sm capitalize ${getStatusBadge(project.status)}`}>
               {project.status === 'pending-approval' ? 'Pending Approval' : project.status}
             </span>
           </h2>
@@ -453,9 +453,9 @@ const ProjectDetailsModal = ({ isOpen, onClose, project: projectProp, onProjectA
           </div>
         </div>
         
-        <div 
+        <div
           ref={modalContentRef}
-          className="overflow-y-auto p-6"
+          className="overflow-y-auto p-4 sm:p-6"
           style={{ maxHeight: 'calc(90vh - 70px)' }}
         >
           {error && (
@@ -749,21 +749,22 @@ const ProjectDetailsModal = ({ isOpen, onClose, project: projectProp, onProjectA
           )}
 
           {showBillSummary && selectedBill && (
-            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-              <div className="bg-white rounded-lg shadow-lg w-full max-w-2xl p-6">
-                <div className="flex justify-between items-center mb-4">
-                  <h3 className="text-lg font-medium">Bill Summary</h3>
-                  <button onClick={() => setShowBillSummary(false)} className="text-gray-400 hover:text-gray-600">
-                    <FiX size={24} />
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-3 sm:p-4">
+              <div className="bg-white rounded-lg shadow-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto p-4 sm:p-6">
+                <div className="flex justify-between items-center mb-3 sm:mb-4">
+                  <h3 className="text-base sm:text-lg font-medium">Bill Summary</h3>
+                  <button onClick={() => setShowBillSummary(false)} className="text-gray-400 hover:text-gray-600 flex-shrink-0 ml-2">
+                    <FiX size={20} className="sm:hidden" />
+                    <FiX size={24} className="hidden sm:block" />
                   </button>
                 </div>
-                
-                <div className="mb-4">
-                  <p className="text-gray-600">Bill #{selectedBill.billNumber}</p>
-                  <p className="text-gray-600">Date: {formatDate(selectedBill.createdAt)}</p>
+
+                <div className="mb-3 sm:mb-4">
+                  <p className="text-sm sm:text-base text-gray-600">Bill #{selectedBill.billNumber}</p>
+                  <p className="text-sm sm:text-base text-gray-600">Date: {formatDate(selectedBill.createdAt)}</p>
                 </div>
 
-                <div className="flex space-x-2 mb-4">
+                <div className="flex flex-wrap gap-2 mb-3 sm:mb-4">
                   {selectedBill.extendedPaymentStatus && (
                     <span className={`px-2 py-1 rounded-full text-xs ${
                       selectedBill.extendedPaymentStatus === 'paid' ? 'bg-green-100 text-green-800' :
@@ -784,74 +785,79 @@ const ProjectDetailsModal = ({ isOpen, onClose, project: projectProp, onProjectA
                     </span>
                   )}
                 </div>
-                
-                <div className="mb-4 grid grid-cols-2 gap-4 text-sm">
-                  <div className="bg-gray-50 p-3 rounded-md">
-                    <span className="font-medium">Total Amount:</span>
-                    <p>₹{selectedBill.totalAmount?.toFixed(2) || '0.00'}</p>
+
+                <div className="mb-3 sm:mb-4 grid grid-cols-2 gap-2 sm:gap-4 text-xs sm:text-sm">
+                  <div className="bg-gray-50 p-2 sm:p-3 rounded-md">
+                    <span className="font-medium block mb-1">Total Amount:</span>
+                    <p className="text-sm sm:text-base">₹{selectedBill.totalAmount?.toFixed(2) || '0.00'}</p>
                   </div>
-                  <div className="bg-gray-50 p-3 rounded-md">
-                    <span className="font-medium">Paid Amount:</span>
-                    <p>₹{selectedBill.amountPaid?.toFixed(2) || '0.00'}</p>
+                  <div className="bg-gray-50 p-2 sm:p-3 rounded-md">
+                    <span className="font-medium block mb-1">Paid Amount:</span>
+                    <p className="text-sm sm:text-base">₹{selectedBill.amountPaid?.toFixed(2) || '0.00'}</p>
                   </div>
-                  <div className="bg-gray-50 p-3 rounded-md">
-                    <span className="font-medium">Due Amount:</span>
-                    <p>₹{selectedBill.amountDue?.toFixed(2) || '0.00'}</p>
+                  <div className="bg-gray-50 p-2 sm:p-3 rounded-md">
+                    <span className="font-medium block mb-1">Due Amount:</span>
+                    <p className="text-sm sm:text-base">₹{selectedBill.amountDue?.toFixed(2) || '0.00'}</p>
                   </div>
-                  <div className="bg-gray-50 p-3 rounded-md">
-                    <span className="font-medium">Payment Method:</span>
-                    <p>{formatPaymentMethod(selectedBill.paymentMethod)}</p>
+                  <div className="bg-gray-50 p-2 sm:p-3 rounded-md">
+                    <span className="font-medium block mb-1">Payment Method:</span>
+                    <p className="text-sm sm:text-base truncate">{formatPaymentMethod(selectedBill.paymentMethod)}</p>
                   </div>
                 </div>
-                
-                <div className="overflow-x-auto">
-                  <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
-                      <tr>
-                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Item</th>
-                        <th className="px-4 py-2 text-center text-xs font-medium text-gray-500 uppercase">Quantity</th>
-                        <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">Price</th>
-                        <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">Amount</th>
-                      </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
-                      {selectedBill.items && selectedBill.items.map((item, index) => (
-                        <tr key={index} className="hover:bg-gray-50">
-                          <td className="px-4 py-2 whitespace-nowrap">
-                            <div>{item.name}</div>
-                            {item.serialNumber && (
-                              <div className="text-xs text-gray-500">Serial: {item.serialNumber}</div>
-                            )}
+
+                <div className="overflow-x-auto -mx-4 sm:mx-0">
+                  <div className="inline-block min-w-full align-middle px-4 sm:px-0">
+                    <table className="min-w-full divide-y divide-gray-200">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="px-2 sm:px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Item</th>
+                          <th className="px-2 sm:px-4 py-2 text-center text-xs font-medium text-gray-500 uppercase">Qty</th>
+                          <th className="px-2 sm:px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase hidden sm:table-cell">Price</th>
+                          <th className="px-2 sm:px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">Amount</th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-gray-200">
+                        {selectedBill.items && selectedBill.items.map((item, index) => (
+                          <tr key={index} className="hover:bg-gray-50">
+                            <td className="px-2 sm:px-4 py-2 text-xs sm:text-sm">
+                              <div className="max-w-[140px] sm:max-w-none break-words">{item.name}</div>
+                              {item.serialNumber && (
+                                <div className="text-xs text-gray-500 hidden sm:block">Serial: {item.serialNumber}</div>
+                              )}
+                            </td>
+                            <td className="px-2 sm:px-4 py-2 text-center text-xs sm:text-sm whitespace-nowrap">
+                              {item.quantity}
+                            </td>
+                            <td className="px-2 sm:px-4 py-2 text-right text-xs sm:text-sm whitespace-nowrap hidden sm:table-cell">
+                              ₹{item.price?.toFixed(2) || '0.00'}
+                            </td>
+                            <td className="px-2 sm:px-4 py-2 text-right text-xs sm:text-sm whitespace-nowrap">
+                              ₹{item.amount?.toFixed(2) || '0.00'}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                      <tfoot className="bg-gray-50">
+                        <tr>
+                          <td colSpan="2" className="px-2 sm:px-4 py-2 text-right font-medium text-xs sm:text-sm sm:hidden">
+                            Total:
                           </td>
-                          <td className="px-4 py-2 text-center whitespace-nowrap">
-                            {item.quantity}
+                          <td colSpan="3" className="px-2 sm:px-4 py-2 text-right font-medium text-xs sm:text-sm hidden sm:table-cell">
+                            Total:
                           </td>
-                          <td className="px-4 py-2 text-right whitespace-nowrap">
-                            ₹{item.price?.toFixed(2) || '0.00'}
-                          </td>
-                          <td className="px-4 py-2 text-right whitespace-nowrap">
-                            ₹{item.amount?.toFixed(2) || '0.00'}
+                          <td className="px-2 sm:px-4 py-2 text-right font-medium text-xs sm:text-sm">
+                            ₹{selectedBill.totalAmount?.toFixed(2) || '0.00'}
                           </td>
                         </tr>
-                      ))}
-                    </tbody>
-                    <tfoot className="bg-gray-50">
-                      <tr>
-                        <td colSpan="3" className="px-4 py-2 text-right font-medium">
-                          Total:
-                        </td>
-                        <td className="px-4 py-2 text-right font-medium">
-                          ₹{selectedBill.totalAmount?.toFixed(2) || '0.00'}
-                        </td>
-                      </tr>
-                    </tfoot>
-                  </table>
+                      </tfoot>
+                    </table>
+                  </div>
                 </div>
-                
+
                 <div className="mt-4 flex justify-end">
                   <button
                     onClick={() => setShowBillSummary(false)}
-                    className="px-4 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300"
+                    className="px-3 sm:px-4 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300 text-sm sm:text-base"
                   >
                     Close
                   </button>
@@ -860,8 +866,8 @@ const ProjectDetailsModal = ({ isOpen, onClose, project: projectProp, onProjectA
             </div>
           )}
 
-          {/* Approval Buttons - After Payment Information */}
-          {project.status === 'pending-approval' && (
+          {/* Approval Buttons - After Payment Information - Only for managers/admins */}
+          {project.status === 'pending-approval' && user && ['manager', 'admin'].includes(user.role) && (
             <div className="mb-6">
               {/* Show message if bill is already rejected */}
               {hasRejectedBill() && (
