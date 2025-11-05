@@ -92,6 +92,39 @@ export default function AddContactForm({ initialPhone = '', initialType = 'lead'
   const [filteredTechnicians, setFilteredTechnicians] = useState([]);
   const [showEngineerDropdown, setShowEngineerDropdown] = useState(false);
 
+  // Handle Enter key to move to next input
+  const handleKeyDown = (e, nextFieldId) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+
+      // Special handling for remarks - submit form on Enter
+      if (nextFieldId === 'submit') {
+        onSubmit(e);
+        return;
+      }
+
+      const nextField = document.getElementById(nextFieldId);
+      if (nextField) {
+        // For select/dropdown fields, trigger click to open dropdown
+        if (nextField.tagName === 'SELECT') {
+          nextField.focus();
+          // Small delay to ensure focus is set before opening
+          setTimeout(() => {
+            // Simulate click to open dropdown
+            const event = new MouseEvent('mousedown', {
+              bubbles: true,
+              cancelable: true,
+              view: window
+            });
+            nextField.dispatchEvent(event);
+          }, 50);
+        } else {
+          nextField.focus();
+        }
+      }
+    }
+  };
+
   const services = useMemo(
     () => [
       { value: "CCTV Camera", label: "CCTV Camera" },
@@ -224,17 +257,6 @@ export default function AddContactForm({ initialPhone = '', initialType = 'lead'
     setFilteredTechnicians([]);
   };
 
-  // Handle Enter key to move to next field
-  const handleKeyDown = (e, nextFieldId) => {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      const nextField = document.getElementById(nextFieldId);
-      if (nextField) {
-        nextField.focus();
-      }
-    }
-  };
-
   // Check if phone number exists
   const checkPhoneNumber = async (phone) => {
     if (phone.length < 8) return;
@@ -304,23 +326,51 @@ export default function AddContactForm({ initialPhone = '', initialType = 'lead'
     }
   }, [isOpen]);
 
-  // Close modal when Escape key is pressed twice within 800ms
+  // Handle Escape key: 2 ESC = Reset form, 3 ESC = Close modal
   useEffect(() => {
     const handleEsc = (event) => {
       if (event.key === 'Escape' && isOpen) {
         if (escPressCount === 0) {
-          // First ESC press - start timer, NO notification yet
+          // First ESC press - start timer
           setEscPressCount(1);
 
-          // Set timer to reset after 800ms and show notification
+          // Set timer to reset after 800ms
           const timer = setTimeout(() => {
-            // Timer expired - user didn't press twice, show guide notification
-            showNotification('info', 'To close the popup, press ESC twice', 3000);
             setEscPressCount(0);
           }, 800);
           setEscPressTimer(timer);
         } else if (escPressCount === 1) {
-          // Second ESC press within time window - close popup, NO notification
+          // Second ESC press - Clear/Reset form fields
+          clearTimeout(escPressTimer);
+          setEscPressCount(2);
+
+          // Reset all form fields
+          setForm({
+            customerName: "",
+            companyName: "",
+            phone: "",
+            whatsapp: "",
+            sameAsPhone: false,
+            address: "",
+            leadType: initialType,
+            customerStatus: "",
+            installDate: "",
+            projectType: "",
+            installedBy: "",
+            installedByEngineer: "",
+            engineerMobileNo: "",
+            remarks: "",
+          });
+          setErrors({});
+          showNotification('success', 'Form cleared! Press ESC once more to close', 2000);
+
+          // Set timer for third ESC
+          const timer = setTimeout(() => {
+            setEscPressCount(0);
+          }, 800);
+          setEscPressTimer(timer);
+        } else if (escPressCount === 2) {
+          // Third ESC press - Close popup
           clearTimeout(escPressTimer);
           setEscPressCount(0);
           onCancel();
@@ -660,20 +710,24 @@ export default function AddContactForm({ initialPhone = '', initialType = 'lead'
           <div className="mb-6">
             <SectionTitle title="Basic Details" />
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <TextField 
-              label="Customer Name" 
-              placeholder="Enter full name" 
-              value={form.customerName} 
-              onChange={(v) => update("customerName", v)} 
+            <TextField
+              label="Customer Name"
+              placeholder="Enter full name"
+              value={form.customerName}
+              onChange={(v) => update("customerName", v)}
               error={errors.customerName}
               colorScheme={colorScheme}
+              id="customerName"
+              onKeyDown={(e) => handleKeyDown(e, 'companyName')}
             />
-            <TextField 
-              label="Company Name" 
-              placeholder="Optional" 
-              value={form.companyName} 
+            <TextField
+              label="Company Name"
+              placeholder="Optional"
+              value={form.companyName}
               onChange={(v) => update("companyName", v)}
               colorScheme={colorScheme}
+              id="companyName"
+              onKeyDown={(e) => handleKeyDown(e, 'phone')}
             />
 
             <div>
@@ -708,10 +762,12 @@ export default function AddContactForm({ initialPhone = '', initialType = 'lead'
                     )}
                   </div>
                   
-                  <input 
+                  <input
                     type="text"
+                    id="phone"
                     value={form.phone}
                     onChange={(e) => handlePhoneChange(e.target.value)}
+                    onKeyDown={(e) => handleKeyDown(e, 'whatsapp')}
                     placeholder="Phone number"
                     size="12"
                     className={`w-full rounded-r-lg border ${errors.phone ? "border-red-400" : (colorScheme.inputBorder || "border-gray-300")} focus:outline-none focus:ring-2 ${colorScheme.inputRing} transition p-1 text-gray-900 placeholder:text-gray-400 text-sm`}
@@ -776,10 +832,12 @@ export default function AddContactForm({ initialPhone = '', initialType = 'lead'
                     )}
                   </div>
                   
-                  <input 
+                  <input
                     type="text"
+                    id="whatsapp"
                     value={form.whatsapp}
                     onChange={(e) => handleWhatsappChange(e.target.value)}
+                    onKeyDown={(e) => handleKeyDown(e, 'address')}
                     placeholder="WhatsApp number"
                     size="12"
                     disabled={form.sameAsPhone}
@@ -804,11 +862,13 @@ export default function AddContactForm({ initialPhone = '', initialType = 'lead'
             <div className="md:col-span-2">
               <label className="block">
                 <span className="block text-sm font-medium text-gray-700 mb-1">Address</span>
-                <textarea 
+                <textarea
+                  id="address"
                   className={`w-full rounded-lg border ${colorScheme.inputBorder || "border-gray-300"} focus:outline-none focus:ring-2 ${colorScheme.inputRing} transition p-1 text-gray-900 placeholder:text-gray-400 text-sm`}
                   placeholder="Address"
                   value={form.address}
                   onChange={(e) => update("address", e.target.value)}
+                  onKeyDown={(e) => handleKeyDown(e, 'branch')}
                   rows="1"
                 ></textarea>
               </label>
@@ -824,6 +884,8 @@ export default function AddContactForm({ initialPhone = '', initialType = 'lead'
                   ...branches.map(branch => ({ value: branch._id, label: branch.name }))
                 ]}
                 colorScheme={colorScheme}
+                id="branch"
+                onKeyDown={(e) => handleKeyDown(e, 'leadType')}
               />
             )}
             </div>
@@ -833,19 +895,21 @@ export default function AddContactForm({ initialPhone = '', initialType = 'lead'
           <div className="mt-8 mb-6">
             <SectionTitle title="Lead / Customer" subtle />
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <SelectField 
-                label="Select Type" 
-                value={form.leadType} 
-                onChange={(v) => update("leadType", v)} 
+              <SelectField
+                label="Select Type"
+                value={form.leadType}
+                onChange={(v) => update("leadType", v)}
                 options={[
-                  { value: "", label: "Choose..." }, 
-                  { value: "Lead", label: "Lead" }, 
+                  { value: "", label: "Choose..." },
+                  { value: "Lead", label: "Lead" },
                   { value: "Customer", label: "Customer" },
                   { value: "Dealer", label: "Dealer" },
                   { value: "Distributor", label: "Distributor" }
-                ]} 
+                ]}
                 error={errors.leadType}
                 colorScheme={colorScheme}
+                id="leadType"
+                onKeyDown={(e) => handleKeyDown(e, 'customerStatus')}
               />
 
               <AnimatePresence initial={false}>
@@ -863,6 +927,8 @@ export default function AddContactForm({ initialPhone = '', initialType = 'lead'
                       ]}
                       error={errors.customerStatus}
                       colorScheme={colorScheme}
+                      id="customerStatus"
+                      onKeyDown={(e) => handleKeyDown(e, 'projectType')}
                     />
                   </motion.div>
                 )}
@@ -1001,9 +1067,10 @@ export default function AddContactForm({ initialPhone = '', initialType = 'lead'
             <textarea
               id="remarks"
               className={`w-full rounded-lg border ${colorScheme.inputBorder || "border-gray-300"} focus:outline-none focus:ring-2 ${colorScheme.inputRing} transition p-1 text-gray-900 placeholder:text-gray-400 text-sm min-h-[60px]`}
-              placeholder="Notes..." 
-              value={form.remarks} 
-              onChange={(e) => update("remarks", e.target.value)} 
+              placeholder="Notes..."
+              value={form.remarks}
+              onChange={(e) => update("remarks", e.target.value)}
+              onKeyDown={(e) => handleKeyDown(e, 'submit')}
             />
           </div>
 
@@ -1067,31 +1134,35 @@ function SectionTitle({ title, subtle }) {
   );
 }
 
-function TextField({ label, value, onChange, placeholder, error, colorScheme }) {
+function TextField({ label, value, onChange, placeholder, error, colorScheme, id, onKeyDown }) {
   return (
     <label className="block">
       <span className="block text-xs font-medium text-gray-700 mb-1">{label}</span>
-      <input 
-        type="text" 
+      <input
+        type="text"
         size="20"
-        className={`w-full rounded-lg border ${error ? "border-red-400" : (colorScheme?.inputBorder || "border-gray-300")} focus:outline-none focus:ring-2 ${colorScheme?.inputRing || 'focus:ring-blue-300 focus:border-blue-400'} transition p-1 text-gray-900 placeholder:text-gray-400 text-sm`} 
-        placeholder={placeholder} 
-        value={value} 
-        onChange={(e) => onChange(e.target.value)} 
+        id={id}
+        className={`w-full rounded-lg border ${error ? "border-red-400" : (colorScheme?.inputBorder || "border-gray-300")} focus:outline-none focus:ring-2 ${colorScheme?.inputRing || 'focus:ring-blue-300 focus:border-blue-400'} transition p-1 text-gray-900 placeholder:text-gray-400 text-sm`}
+        placeholder={placeholder}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        onKeyDown={onKeyDown}
       />
       {error && <span className="text-xs text-red-600 mt-1 inline-block">{error}</span>}
     </label>
   );
 }
 
-function SelectField({ label, value, onChange, options, error, colorScheme }) {
+function SelectField({ label, value, onChange, options, error, colorScheme, id, onKeyDown }) {
   return (
     <label className="block">
       <span className="block text-xs font-medium text-gray-700 mb-1">{label}</span>
-      <select 
-        className={`w-full rounded-lg border ${error ? "border-red-400" : (colorScheme?.inputBorder || "border-gray-300")} bg-gradient-to-r from-white to-gray-50 focus:outline-none focus:ring-2 ${colorScheme?.inputRing || 'focus:ring-blue-300 focus:border-blue-400'} transition p-1 text-gray-900 text-sm`} 
-        value={value} 
+      <select
+        id={id}
+        className={`w-full rounded-lg border ${error ? "border-red-400" : (colorScheme?.inputBorder || "border-gray-300")} bg-gradient-to-r from-white to-gray-50 focus:outline-none focus:ring-2 ${colorScheme?.inputRing || 'focus:ring-blue-300 focus:border-blue-400'} transition p-1 text-gray-900 text-sm`}
+        value={value}
         onChange={(e) => onChange(e.target.value)}
+        onKeyDown={onKeyDown}
       >
         {options.map((o) => (
           <option key={o.value} value={o.value}>{o.label}</option>
@@ -1102,7 +1173,7 @@ function SelectField({ label, value, onChange, options, error, colorScheme }) {
   );
 }
 
-function DateField({ label, value, onChange, error, colorScheme }) {
+function DateField({ label, value, onChange, error, colorScheme, id, onKeyDown }) {
   const [selectedDate, setSelectedDate] = useState(value ? new Date(value) : null);
 
   const handleDateChange = (date) => {
@@ -1130,8 +1201,10 @@ function DateField({ label, value, onChange, error, colorScheme }) {
       <span className="block text-xs font-medium text-gray-700 mb-1">{label}</span>
       <div className="relative">
         <DatePicker
+          id={id}
           selected={selectedDate}
           onChange={handleDateChange}
+          onKeyDown={onKeyDown}
           dateFormat="dd/MM/yyyy"
           className={`w-full rounded-lg border ${error ? "border-red-400" : (colorScheme?.inputBorder || "border-gray-300")} bg-gradient-to-r from-white to-gray-50 focus:outline-none focus:ring-2 ${colorScheme?.inputRing || 'focus:ring-green-300 focus:border-green-400'} transition p-1 pr-8 text-gray-900 text-sm`}
           placeholderText="dd/mm/yyyy"

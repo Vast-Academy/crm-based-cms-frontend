@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FiX, FiUser, FiPhone, FiMapPin, FiMessageSquare, FiCalendar, FiFileText, FiDollarSign, FiCreditCard, FiCheck, FiAlertCircle, FiSmartphone, FiTrendingUp, FiArrowLeft, FiPrinter, FiDownload, FiRefreshCw } from 'react-icons/fi';
+import { FiX, FiUser, FiPhone, FiMapPin, FiEdit2, FiMessageSquare, FiCalendar, FiFileText, FiDollarSign, FiCreditCard, FiCheck, FiAlertCircle, FiSmartphone, FiTrendingUp, FiArrowLeft, FiPrinter, FiDownload, FiRefreshCw } from 'react-icons/fi';
 import { QRCodeCanvas } from 'qrcode.react';
 import jsPDF from 'jspdf';
 import SummaryApi from '../../common';
@@ -10,6 +10,7 @@ import BillHistoryTable from '../../components/BillHistoryTable';
 import TransactionHistory from '../../components/TransactionHistory';
 import { useNotification } from '../../context/NotificationContext';
 import BillingModal from './BillingModal';
+import EditDealerModal from './EditDealerModal';
 
 // Ensure global modal registry exists
 if (!window.__modalRegistry) {
@@ -48,6 +49,9 @@ export default function DealerDetailModal({ isOpen, onClose, dealerId, onDealerU
   const [error, setError] = useState(null);
   const [newRemark, setNewRemark] = useState('');
   const [addingRemark, setAddingRemark] = useState(false);
+  const [showAllRemarksModal, setShowAllRemarksModal] = useState(false);
+  const [showEditDealerModal, setShowEditDealerModal] = useState(false);
+  const [showBillDetailModal, setShowBillDetailModal] = useState(false);
   
   // Bill history states
   const [activeTab, setActiveTab] = useState('details'); // 'details', 'bills', 'payment'
@@ -187,9 +191,9 @@ export default function DealerDetailModal({ isOpen, onClose, dealerId, onDealerU
     }
   }, [isOpen, dealerId]);
 
-  // Fetch bills when tab changes or bills tab is active
+  // Fetch bills when modal opens or tab changes
   useEffect(() => {
-    if (isOpen && dealerId && (activeTab === 'bills' || activeTab === 'payment')) {
+    if (isOpen && dealerId && (activeTab === 'details' || activeTab === 'bills' || activeTab === 'payment')) {
       fetchDealerBills();
     }
   }, [isOpen, dealerId, activeTab]);
@@ -328,6 +332,12 @@ export default function DealerDetailModal({ isOpen, onClose, dealerId, onDealerU
     } finally {
       setAddingRemark(false);
     }
+  };
+
+  // Handle dealer update success
+  const handleDealerUpdateSuccess = (updatedDealer) => {
+    setDealer(updatedDealer);
+    if (onDealerUpdated) onDealerUpdated(updatedDealer);
   };
 
   // Handle opening billing modal for dealer
@@ -554,6 +564,11 @@ export default function DealerDetailModal({ isOpen, onClose, dealerId, onDealerU
     setBillView('detail');
   };
 
+  const handleViewBillInModal = (bill) => {
+    setSelectedBill(bill);
+    setShowBillDetailModal(true);
+  };
+
   const handleBackToBills = () => {
     setBillView('list');
     setSelectedBill(null);
@@ -744,12 +759,12 @@ export default function DealerDetailModal({ isOpen, onClose, dealerId, onDealerU
           aria-hidden="true"
           onClick={handleOverlayClick}
         />
-        
+
         {/* Center modal */}
         <span className="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
-        
-        {/* Modal panel */}
-        <div className="inline-block align-bottom bg-white rounded-3xl text-left shadow-2xl transform transition-all sm:my-12 sm:align-middle sm:w-full sm:max-w-4xl mx-4 border border-orange-200 overflow-hidden border-t-4 border-t-orange-500">
+
+        {/* Modal panel - Matching CustomerDetailModal size */}
+        <div className="inline-block align-bottom bg-white rounded-2xl text-left shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:w-full sm:max-w-7xl mx-4 overflow-hidden">
           {/* Header */}
           <div className="flex justify-between items-center bg-gradient-to-r from-orange-50 to-orange-100 px-6 py-4 border-b border-orange-200">
             <div className="flex items-center space-x-3">
@@ -873,114 +888,235 @@ export default function DealerDetailModal({ isOpen, onClose, dealerId, onDealerU
               <>
                 {/* Details Tab */}
                 {activeTab === 'details' && (
-                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                    {/* Left Column - Basic Info */}
-                    <div className="lg:col-span-2">
-                      <div className="bg-gray-50 rounded-lg p-4 mb-6">
-                        <div className="flex items-center justify-between mb-4">
-                          <h4 className="font-medium text-gray-900 flex items-center">
-                            <FiUser className="mr-2 text-orange-500" />
-                            Basic Information
-                          </h4>
-                          {/* New Bill Button - Only show if manager */}
-                          {user.role === 'manager' && (
-                            <button
-                              onClick={() => handleCreateBill(dealer)}
-                              className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-orange-500 hover:bg-orange-600 transition-colors"
-                            >
-                              New Bill
-                            </button>
-                          )}
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 p-2">
+                    {/* Left Column - Dealer Info (Matching Customer Pattern) */}
+                    <div className="lg:col-span-1 bg-white rounded-lg border overflow-hidden border-t-4 border-orange-500">
+                      <div className="p-6">
+                        <div className="flex justify-between items-start mb-4">
+                          <div>
+                            <h2 className="text-xl font-semibold">{dealer.name}</h2>
+                            <div className="text-sm text-gray-500 mt-1">
+                              Added on {formatDate(dealer.createdAt)}
+                            </div>
+                          </div>
+                          <span className="px-3 py-1 rounded-full text-sm bg-orange-100 text-orange-800">
+                            Dealer
+                          </span>
                         </div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
-                            <p className="text-gray-900">{dealer.name}</p>
-                          </div>
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Firm Name</label>
-                            <p className="text-gray-900">{dealer.firmName || 'Not provided'}</p>
-                          </div>
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
-                            <p className="text-gray-900 flex items-center">
-                              <FiPhone className="mr-2 text-orange-500" size={16} />
-                              {dealer.phoneNumber}
-                            </p>
-                          </div>
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">WhatsApp Number</label>
-                            <p className="text-gray-900">{dealer.whatsappNumber || 'Not provided'}</p>
-                          </div>
-                          <div className="md:col-span-2">
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Address</label>
-                            <p className="text-gray-900 flex items-start">
-                              <FiMapPin className="mr-2 text-orange-500 mt-1" size={16} />
-                              {dealer.address || 'Not provided'}
-                            </p>
-                          </div>
-                          {dealer.branch && (
+
+                        {/* Contact info - Vertical Layout */}
+                        <div className="space-y-4 mt-6">
+                          <div className="flex items-start">
+                            <FiPhone className="mt-1 mr-3 text-gray-500" />
                             <div>
-                              <label className="block text-sm font-medium text-gray-700 mb-1">Branch</label>
-                              <p className="text-gray-900">{dealer.branch.name}</p>
+                              <div className="text-sm text-gray-500">Phone Number</div>
+                              <div>{dealer.phoneNumber}</div>
+                            </div>
+                          </div>
+
+                          {dealer.whatsappNumber && (
+                            <div className="flex items-start">
+                              <FiMessageSquare className="mt-1 mr-3 text-gray-500" />
+                              <div>
+                                <div className="text-sm text-gray-500">WhatsApp</div>
+                                <div>{dealer.whatsappNumber}</div>
+                              </div>
                             </div>
                           )}
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Created Date</label>
-                            <p className="text-gray-900 flex items-center">
-                              <FiCalendar className="mr-2 text-orange-500" size={16} />
-                              {formatDate(dealer.createdAt)}
-                            </p>
-                          </div>
-                        </div>
-                      </div>
 
-                      {/* Add Remark Section */}
-                      <div className="bg-orange-50 rounded-lg p-4">
-                        <h4 className="font-medium text-orange-900 mb-3 flex items-center">
-                          <FiMessageSquare className="mr-2 text-orange-500" />
-                          Add New Remark
-                        </h4>
-                        <div className="flex space-x-3">
-                          <input
-                            type="text"
-                            value={newRemark}
-                            onChange={(e) => setNewRemark(e.target.value)}
-                            placeholder="Enter remark..."
-                            className="flex-1 rounded-lg border border-orange-300 focus:outline-none focus:ring-2 focus:ring-orange-300 focus:border-orange-400 transition p-3 text-gray-900 placeholder:text-gray-400"
-                            onKeyPress={(e) => e.key === 'Enter' && handleAddRemark()}
-                          />
+                          {dealer.firmName && (
+                            <div className="flex items-start">
+                              <FiUser className="mt-1 mr-3 text-gray-500" />
+                              <div>
+                                <div className="text-sm text-gray-500">Firm Name</div>
+                                <div>{dealer.firmName}</div>
+                              </div>
+                            </div>
+                          )}
+
+                          {dealer.address && (
+                            <div className="flex items-start">
+                              <FiMapPin className="mt-1 mr-3 text-gray-500" />
+                              <div>
+                                <div className="text-sm text-gray-500">Address</div>
+                                <div>{dealer.address}</div>
+                              </div>
+                            </div>
+                          )}
+
+                          {dealer.branch && (
+                            <div className="flex items-start">
+                              <div className="mt-1 mr-3 text-gray-500">🏢</div>
+                              <div>
+                                <div className="text-sm text-gray-500">Branch</div>
+                                <div>{dealer.branch.name}</div>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Action Buttons */}
+                        <div className="mt-8 space-y-3">
                           <button
-                            onClick={handleAddRemark}
-                            disabled={addingRemark || !newRemark.trim()}
-                            className="bg-orange-500 hover:bg-orange-600 disabled:bg-orange-300 text-white px-6 py-2 rounded-lg font-medium transition-colors"
+                            onClick={() => setShowEditDealerModal(true)}
+                            className="w-full py-2 px-4 border border-gray-300 rounded-md flex items-center justify-center text-gray-700 hover:bg-gray-50"
                           >
-                            {addingRemark ? 'Adding...' : 'Add'}
+                            <FiEdit2 className="mr-2" />
+                            Edit Dealer
                           </button>
                         </div>
                       </div>
                     </div>
 
-                    {/* Right Column - Remarks History */}
-                    <div className="lg:col-span-1">
-                      <div className="bg-gray-50 rounded-lg p-4">
-                        <h4 className="font-medium text-gray-900 mb-4 flex items-center">
-                          <FiMessageSquare className="mr-2 text-orange-500" />
-                          Remarks History
-                        </h4>
-                        <div className="space-y-3 max-h-96 overflow-y-auto">
-                          {dealer.remarks && dealer.remarks.length > 0 ? (
-                            dealer.remarks.map((remark, index) => (
-                              <div key={index} className="bg-white rounded-lg p-3 border border-orange-100">
-                                <p className="text-gray-900 text-sm mb-2">{remark.text}</p>
-                                <div className="text-xs text-gray-500 flex justify-between items-center">
-                                  <span>By: {remark.createdBy?.firstName} {remark.createdBy?.lastName}</span>
-                                  <span>{formatDate(remark.createdAt)}</span>
-                                </div>
+                    {/* Right Column - Bills Table & Add Remark */}
+                    <div className="lg:col-span-2 bg-white rounded-lg overflow-hidden border border-gray-200">
+                      <div className="p-6">
+                        <div className="flex items-center justify-between mb-5">
+                          <h2 className="text-xl font-semibold">Bills History</h2>
+                          {user.role === 'manager' && (
+                            <button
+                              onClick={() => handleCreateBill(dealer)}
+                              className="inline-flex items-center px-4 py-2 bg-orange-500 text-white rounded-md hover:bg-orange-600 transition-colors"
+                            >
+                              <FiFileText className="mr-2" size={16} />
+                              New Bill
+                            </button>
+                          )}
+                        </div>
+
+                        {/* Bills Table */}
+                        {loadingBills ? (
+                          <div className="flex justify-center py-12">
+                            <LoadingSpinner inline size={24} />
+                          </div>
+                        ) : bills && bills.length > 0 ? (
+                          <div className="overflow-x-auto">
+                            <table className="min-w-full divide-y divide-gray-200">
+                              <thead className="bg-gray-50">
+                                <tr>
+                                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Bill #
+                                  </th>
+                                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Date
+                                  </th>
+                                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Total
+                                  </th>
+                                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Paid
+                                  </th>
+                                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Due
+                                  </th>
+                                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Status
+                                  </th>
+                                </tr>
+                              </thead>
+                              <tbody className="bg-white divide-y divide-gray-200">
+                                {bills.map((bill) => (
+                                  <tr
+                                    key={bill._id}
+                                    onClick={() => handleViewBillInModal(bill)}
+                                    className="hover:bg-gray-50 cursor-pointer transition-colors"
+                                  >
+                                    <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">
+                                      #{bill.billNumber}
+                                    </td>
+                                    <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
+                                      {new Date(bill.createdAt).toLocaleDateString()}
+                                    </td>
+                                    <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
+                                      {formatCurrency(bill.total)}
+                                    </td>
+                                    <td className="px-4 py-3 whitespace-nowrap text-sm text-green-600">
+                                      {formatCurrency(bill.paidAmount || 0)}
+                                    </td>
+                                    <td className="px-4 py-3 whitespace-nowrap text-sm text-red-600">
+                                      {formatCurrency(bill.dueAmount || 0)}
+                                    </td>
+                                    <td className="px-4 py-3 whitespace-nowrap">
+                                      <span className={`px-2 py-1 text-xs rounded-full font-medium ${
+                                        bill.paymentStatus === 'completed'
+                                          ? 'bg-green-100 text-green-700'
+                                          : bill.paymentStatus === 'partial'
+                                          ? 'bg-yellow-100 text-yellow-700'
+                                          : 'bg-red-100 text-red-700'
+                                      }`}>
+                                        {bill.paymentStatus === 'completed' ? 'Paid' :
+                                         bill.paymentStatus === 'partial' ? 'Partial' : 'Pending'}
+                                      </span>
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        ) : (
+                          <div className="mb-6 p-6 text-center border rounded-md bg-gray-50">
+                            <FiFileText className="mx-auto text-gray-400 mb-2" size={40} />
+                            <p className="text-gray-500">No bills found for this dealer.</p>
+                            {user.role === 'manager' && (
+                              <button
+                                onClick={() => handleCreateBill(dealer)}
+                                className="mt-4 px-4 py-2 bg-orange-500 text-white rounded-md hover:bg-orange-600 transition-colors"
+                              >
+                                Create First Bill
+                              </button>
+                            )}
+                          </div>
+                        )}
+
+                        {/* Add Remark Section */}
+                        <div className="mt-6 pt-6 border-t border-gray-200">
+                          <h3 className="font-semibold text-lg mb-3">Add Remark</h3>
+                          <div className="flex gap-3 mb-4">
+                            <input
+                              id="remark-input"
+                              type="text"
+                              value={newRemark}
+                              onChange={(e) => setNewRemark(e.target.value)}
+                              placeholder="Enter remark..."
+                              className="flex-1 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition px-3 py-2"
+                              onKeyPress={(e) => e.key === 'Enter' && handleAddRemark()}
+                            />
+                            <button
+                              onClick={handleAddRemark}
+                              disabled={addingRemark || !newRemark.trim()}
+                              className="bg-orange-500 hover:bg-orange-600 disabled:bg-orange-300 disabled:cursor-not-allowed text-white px-6 py-2 rounded-lg font-medium transition-colors"
+                            >
+                              {addingRemark ? 'Adding...' : 'Add'}
+                            </button>
+                          </div>
+
+                          {/* Latest Remark (Only 1) */}
+                          {dealer.remarks && dealer.remarks.length > 0 && (
+                            <div>
+                              <div className="flex items-center justify-between mb-3">
+                                <h4 className="font-medium text-gray-700">Latest Remark</h4>
+                                <button
+                                  onClick={() => setShowAllRemarksModal(true)}
+                                  className="text-sm text-orange-600 hover:text-orange-700 font-medium"
+                                >
+                                  View All ({dealer.remarks.length})
+                                </button>
                               </div>
-                            ))
-                          ) : (
-                            <p className="text-gray-500 text-sm text-center py-4">No remarks yet</p>
+                              <div>
+                                {(() => {
+                                  const latestRemark = dealer.remarks[dealer.remarks.length - 1];
+                                  return (
+                                    <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
+                                      <p className="text-gray-900 text-sm mb-2">{latestRemark.text}</p>
+                                      <div className="text-xs text-gray-500 flex justify-between items-center">
+                                        <span className="font-medium">{latestRemark.createdBy?.firstName} {latestRemark.createdBy?.lastName}</span>
+                                        <span>{new Date(latestRemark.createdAt).toLocaleDateString()}</span>
+                                      </div>
+                                    </div>
+                                  );
+                                })()}
+                              </div>
+                            </div>
                           )}
                         </div>
                       </div>
@@ -1549,6 +1685,248 @@ export default function DealerDetailModal({ isOpen, onClose, dealerId, onDealerU
         </div>
       </div>
 
+
+      {/* Bill Detail Modal */}
+      {showBillDetailModal && selectedBill && (
+        <div className="fixed inset-0 z-[60] overflow-y-auto">
+          <div className="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
+            {/* Background overlay */}
+            <div
+              className="fixed inset-0 transition-opacity bg-gray-500 opacity-75"
+              onClick={() => {
+                setShowBillDetailModal(false);
+                setSelectedBill(null);
+              }}
+            />
+
+            {/* Modal panel */}
+            <div className="inline-block align-bottom bg-white rounded-2xl text-left shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:max-w-4xl sm:w-full mx-4 overflow-hidden">
+              {/* Header */}
+              <div className="bg-orange-50 px-6 py-4 border-b border-orange-200">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg font-semibold text-orange-900">
+                    Bill Details - #{selectedBill.billNumber}
+                  </h3>
+                  <div className="flex items-center gap-3">
+                    <button
+                      onClick={handlePrint}
+                      className="flex items-center gap-2 px-3 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm"
+                    >
+                      <FiPrinter size={16} />
+                      Print
+                    </button>
+                    <button
+                      onClick={handleDownloadPDF}
+                      className="flex items-center gap-2 px-3 py-1.5 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm"
+                    >
+                      <FiDownload size={16} />
+                      Download
+                    </button>
+                    <button
+                      onClick={() => {
+                        setShowBillDetailModal(false);
+                        setSelectedBill(null);
+                      }}
+                      className="text-orange-500 hover:text-orange-700"
+                    >
+                      <FiX size={24} />
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Bill Content */}
+              <div className="px-6 py-6 max-h-[70vh] overflow-y-auto">
+                <div ref={printRef} className="print-content bg-white">
+                  {/* Company Header */}
+                  <div className="header text-center mb-6 border-b-2 border-gray-800 pb-4">
+                    <h1 className="company-name text-2xl font-bold text-blue-600 mb-2">SyncVap CRM</h1>
+                    <p className="text-gray-600 text-sm">Your Business Address</p>
+                    <p className="text-gray-600 text-sm">Phone: (000) 000-0000 | Email: info@syncvap.com</p>
+                  </div>
+
+                  <h2 className="invoice-title text-xl font-bold text-center mb-6">INVOICE</h2>
+
+                  {/* Bill Info */}
+                  <div className="bill-info flex justify-between mb-6">
+                    <div className="customer-info">
+                      <h3 className="section-title text-base font-semibold text-gray-700 mb-2">Bill To:</h3>
+                      <p className="font-semibold">{selectedBill.customerName || dealer?.name}</p>
+                      <p className="text-gray-600 text-sm">{dealer?.address || 'Address not available'}</p>
+                      <p className="text-gray-600 text-sm">{selectedBill.customerPhone || dealer?.phoneNumber}</p>
+                    </div>
+                    <div className="invoice-details text-right">
+                      <p className="mb-1 text-sm"><span className="font-semibold">Invoice #:</span> {selectedBill.billNumber}</p>
+                      <p className="mb-1 text-sm"><span className="font-semibold">Date:</span> {formatDate(selectedBill.createdAt).split(',')[0]}</p>
+                      <p className="mb-1 text-sm">
+                        <span className="font-semibold">Status:</span>
+                        <span className={`ml-2 px-2 py-1 rounded text-xs ${
+                          selectedBill.paymentStatus === 'completed'
+                            ? 'bg-green-100 text-green-800'
+                            : selectedBill.paymentStatus === 'partial'
+                            ? 'bg-yellow-100 text-yellow-800'
+                            : 'bg-red-100 text-red-800'
+                        }`}>
+                          {selectedBill.paymentStatus === 'completed' ? 'Paid' : selectedBill.paymentStatus === 'partial' ? 'Partially Paid' : 'Pending'}
+                        </span>
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Items Table */}
+                  <table className="w-full border-collapse mb-6">
+                    <thead>
+                      <tr className="bg-gray-100">
+                        <th className="text-left p-2 border-b border-gray-300 font-semibold text-sm">Item</th>
+                        <th className="text-center p-2 border-b border-gray-300 font-semibold text-sm">Qty</th>
+                        <th className="text-right p-2 border-b border-gray-300 font-semibold text-sm">Unit Price</th>
+                        <th className="text-right p-2 border-b border-gray-300 font-semibold text-sm">Total</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {selectedBill.items?.map((item, index) => (
+                        <tr key={index} className="border-b border-gray-200">
+                          <td className="p-2 text-sm">
+                            {item.name}
+                            {item.serialNumber && (
+                              <span className="block text-xs text-gray-500">SN: {item.serialNumber}</span>
+                            )}
+                          </td>
+                          <td className="text-center p-2 text-sm">{item.quantity}</td>
+                          <td className="text-right p-2 text-sm">{formatCurrency(item.price)}</td>
+                          <td className="text-right p-2 text-sm font-semibold">{formatCurrency(item.amount)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+
+                  {/* Totals */}
+                  <div className="totals text-right ml-auto max-w-xs">
+                    <div className="total-row flex justify-between py-2 border-b border-gray-200">
+                      <span className="font-semibold">Subtotal:</span>
+                      <span>{formatCurrency(selectedBill.subtotal || 0)}</span>
+                    </div>
+                    {selectedBill.discount > 0 && (
+                      <div className="total-row flex justify-between py-2 border-b border-gray-200 text-green-600">
+                        <span className="font-semibold">Discount:</span>
+                        <span>- {formatCurrency(selectedBill.discount)}</span>
+                      </div>
+                    )}
+                    {selectedBill.tax > 0 && (
+                      <div className="total-row flex justify-between py-2 border-b border-gray-200">
+                        <span className="font-semibold">Tax:</span>
+                        <span>{formatCurrency(selectedBill.tax)}</span>
+                      </div>
+                    )}
+                    <div className="total-row flex justify-between py-3 border-t-2 border-gray-800 font-bold text-lg">
+                      <span>Total:</span>
+                      <span className="text-blue-600">{formatCurrency(selectedBill.total)}</span>
+                    </div>
+                    {selectedBill.paidAmount > 0 && (
+                      <div className="total-row flex justify-between py-2 border-b border-gray-200 text-green-600">
+                        <span className="font-semibold">Paid:</span>
+                        <span>{formatCurrency(selectedBill.paidAmount)}</span>
+                      </div>
+                    )}
+                    {selectedBill.dueAmount > 0 && (
+                      <div className="total-row flex justify-between py-2 text-red-600 font-semibold">
+                        <span>Due:</span>
+                        <span>{formatCurrency(selectedBill.dueAmount)}</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Notes */}
+                  {selectedBill.notes && (
+                    <div className="notes mt-6 pt-4 border-t border-gray-200">
+                      <h4 className="font-semibold mb-2 text-sm">Notes:</h4>
+                      <p className="text-gray-600 text-sm">{selectedBill.notes}</p>
+                    </div>
+                  )}
+
+                  {/* Footer */}
+                  <div className="footer text-center mt-8 pt-4 border-t border-gray-300">
+                    <p className="text-gray-600 text-sm">Thank you for your business!</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Dealer Modal */}
+      {showEditDealerModal && (
+        <EditDealerModal
+          isOpen={showEditDealerModal}
+          onClose={() => setShowEditDealerModal(false)}
+          dealerId={dealerId}
+          onSuccess={handleDealerUpdateSuccess}
+        />
+      )}
+
+      {/* View All Remarks Modal */}
+      {showAllRemarksModal && (
+        <div className="fixed inset-0 z-[60] overflow-y-auto">
+          <div className="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
+            {/* Background overlay */}
+            <div
+              className="fixed inset-0 transition-opacity bg-gray-500 opacity-75"
+              onClick={() => setShowAllRemarksModal(false)}
+            />
+
+            {/* Modal panel */}
+            <div className="inline-block align-bottom bg-white rounded-2xl text-left shadow-2xl transform transition-all sm:my-12 sm:align-middle sm:max-w-2xl sm:w-full mx-4 overflow-hidden">
+              <div className="bg-orange-50 px-6 py-4 border-b border-orange-200">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg font-semibold text-orange-900 flex items-center">
+                    <FiMessageSquare className="mr-2" />
+                    All Remarks ({dealer.remarks?.length || 0})
+                  </h3>
+                  <button
+                    onClick={() => setShowAllRemarksModal(false)}
+                    className="text-orange-500 hover:text-orange-700"
+                  >
+                    <FiX size={24} />
+                  </button>
+                </div>
+              </div>
+
+              <div className="px-6 py-4 max-h-[60vh] overflow-y-auto">
+                {dealer.remarks && dealer.remarks.length > 0 ? (
+                  <div className="space-y-3">
+                    {dealer.remarks.slice().reverse().map((remark, index) => (
+                      <div key={index} className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                        <p className="text-gray-900 mb-2">{remark.text}</p>
+                        <div className="text-xs text-gray-500 flex justify-between items-center">
+                          <span className="font-medium">
+                            {remark.createdBy?.firstName} {remark.createdBy?.lastName}
+                          </span>
+                          <span>{new Date(remark.createdAt).toLocaleString()}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-8">
+                    <FiMessageSquare className="mx-auto text-gray-400 mb-2" size={40} />
+                    <p className="text-gray-500">No remarks yet</p>
+                  </div>
+                )}
+              </div>
+
+              <div className="px-6 py-4 border-t border-gray-200 bg-gray-50">
+                <button
+                  onClick={() => setShowAllRemarksModal(false)}
+                  className="w-full px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Payment Confirmation Modal */}
       {showPaymentModal && (
