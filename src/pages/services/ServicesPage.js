@@ -473,10 +473,13 @@ const ServicesPage = () => {
     }
   };
 
-  // Filter services based on search term
+  // Filter services based on search term (name and price)
   const filteredServices = services.filter(service => {
     if (searchTerm) {
-      return service.name.toLowerCase().includes(searchTerm.toLowerCase());
+      const searchLower = searchTerm.toLowerCase();
+      const nameMatch = service.name.toLowerCase().includes(searchLower);
+      const priceMatch = service.pricing?.customerPrice?.toString().includes(searchTerm);
+      return nameMatch || priceMatch;
     }
     return true;
   });
@@ -490,7 +493,32 @@ const ServicesPage = () => {
           <div className="flex items-center gap-2">
             {/* Add Service Button */}
             <button
-              onClick={() => setIsModalOpen(true)}
+              onClick={() => {
+                // Check if search term is a number or text
+                const isNumber = !isNaN(searchTerm) && searchTerm.trim() !== '';
+
+                if (isNumber) {
+                  // If search term is a number, set it as customer price
+                  setNewService({
+                    name: '',
+                    customerPrice: searchTerm.trim()
+                  });
+                } else if (searchTerm.trim()) {
+                  // If search term is text, set it as service name
+                  setNewService({
+                    name: searchTerm.trim(),
+                    customerPrice: ''
+                  });
+                } else {
+                  // If no search term, reset form
+                  setNewService({
+                    name: '',
+                    customerPrice: ''
+                  });
+                }
+
+                setIsModalOpen(true);
+              }}
               className="flex items-center px-4 py-2 bg-purple-500 text-white rounded-md hover:bg-purple-600 transition-colors"
             >
               <FiPlusCircle className="mr-2" />
@@ -539,7 +567,7 @@ const ServicesPage = () => {
                 <React.Fragment key={service.id}>
                   <tr
                     className={`${index % 2 === 0 ? 'bg-white' : 'bg-purple-50/30'} hover:bg-purple-100/50 cursor-pointer`}
-                    onClick={() => toggleRowExpansion(service.id)}
+                    onClick={() => openEditModal(service)}
                   >
                     <td className="px-4 py-3 border-t">
                       <div className="flex items-center justify-center w-8 h-8 bg-purple-500 text-white rounded-full">
@@ -551,34 +579,6 @@ const ServicesPage = () => {
                       <span className="text-purple-700 font-semibold">₹{service.pricing?.customerPrice || 0}</span>
                     </td>
                   </tr>
-
-                  {/* Expandable row for action buttons */}
-                  {expandedRowId === service.id && (
-                    <tr className="bg-purple-50">
-                      <td colSpan={3} className="px-6 py-4 border-b">
-                        <div className="flex space-x-3">
-                          <button
-                            onClick={() => openEditModal(service)}
-                            className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-purple-500 hover:bg-purple-600"
-                          >
-                            <FiSave className="mr-2" />
-                            Edit Service
-                          </button>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setServiceToDelete(service);
-                              setIsDeleteDialogOpen(true);
-                            }}
-                            className="inline-flex items-center px-4 py-2 border border-red-500 rounded-md shadow-sm text-sm font-medium text-red-500 bg-white hover:bg-red-500 hover:text-white"
-                          >
-                            <FiTrash2 className="mr-2" />
-                            Delete Service
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  )}
                 </React.Fragment>
               ))}
               {filteredServices.length === 0 && (
@@ -758,10 +758,14 @@ const ServicesPage = () => {
 
             <div className="bg-purple-50 px-6 py-4 flex justify-end space-x-3">
               <button
-                onClick={() => setIsEditModalOpen(false)}
-                className="px-4 py-2 text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300 focus:outline-none"
+                onClick={() => {
+                  setServiceToDelete(selectedService);
+                  setIsDeleteDialogOpen(true);
+                }}
+                className="inline-flex items-center px-4 py-2 border border-red-500 rounded-md shadow-sm text-sm font-medium text-red-500 bg-white hover:bg-red-500 hover:text-white focus:outline-none"
               >
-                Cancel
+                <FiTrash2 className="mr-2" />
+                Delete Service
               </button>
               <button
                 onClick={handleUpdateService}

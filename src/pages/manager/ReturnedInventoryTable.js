@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { FiChevronDown, FiChevronUp, FiClock, FiUser, FiPackage } from 'react-icons/fi';
+import React, { useState, useEffect, useRef } from 'react';
+import { FiClock, FiUser, FiPackage, FiX } from 'react-icons/fi';
 import SummaryApi from '../../common';
 import { useNotification } from '../../context/NotificationContext';
 import ConfirmReturnModal from './ConfirmReturnModal';
@@ -10,11 +10,17 @@ const ReturnedInventoryTable = () => {
   const [returnedItems, setReturnedItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [expandedRowId, setExpandedRowId] = useState(null);
+  const [detailsModalOpen, setDetailsModalOpen] = useState(false);
   const [confirmModalOpen, setConfirmModalOpen] = useState(false);
   const [rejectModalOpen, setRejectModalOpen] = useState(false);
   const [selectedReturn, setSelectedReturn] = useState(null);
   const [lastRefreshTime, setLastRefreshTime] = useState(0);
+
+  // Double ESC and double click states for details modal
+  const [escPressCount, setEscPressCount] = useState(0);
+  const [escPressTimer, setEscPressTimer] = useState(null);
+  const [clickCount, setClickCount] = useState(0);
+  const [clickTimer, setClickTimer] = useState(null);
 
   // Fetch returned inventory
   useEffect(() => {
@@ -119,35 +125,93 @@ const fetchFreshReturnedInventory = async (isBackground = false) => {
     return new Date(dateString).toLocaleDateString(undefined, options);
   };
 
-  // Toggle row expansion
-  const toggleRowExpansion = (id) => {
-    setExpandedRowId(expandedRowId === id ? null : id);
+  // Open details modal
+  const handleOpenDetailsModal = (returnItem) => {
+    setSelectedReturn(returnItem);
+    setDetailsModalOpen(true);
   };
 
   // Open confirm modal
-  const handleOpenConfirmModal = (returnItem) => {
-    setSelectedReturn(returnItem);
+  const handleOpenConfirmModal = () => {
     setConfirmModalOpen(true);
   };
 
   // Open reject modal
-  const handleOpenRejectModal = (returnItem) => {
-    setSelectedReturn(returnItem);
+  const handleOpenRejectModal = () => {
     setRejectModalOpen(true);
   };
 
   // Handle successful confirmation
   const handleReturnConfirmed = () => {
-    // Refresh the data
+    // Close details modal and reset
+    setDetailsModalOpen(false);
+    setSelectedReturn(null);
     fetchReturnedInventory();
     showNotification('success', 'Inventory return confirmed successfully');
   };
 
   // Handle successful rejection
   const handleReturnRejected = () => {
-    // Refresh the data
+    // Close details modal and reset
+    setDetailsModalOpen(false);
+    setSelectedReturn(null);
     fetchReturnedInventory();
     showNotification('success', 'Inventory return rejected successfully');
+  };
+
+  // Reset ESC and click counters for details modal
+  useEffect(() => {
+    if (!detailsModalOpen) {
+      setEscPressCount(0);
+      setClickCount(0);
+      if (escPressTimer) clearTimeout(escPressTimer);
+      if (clickTimer) clearTimeout(clickTimer);
+    }
+  }, [detailsModalOpen]);
+
+  // Double ESC handler for details modal
+  useEffect(() => {
+    const handleEsc = (event) => {
+      if (event.key === 'Escape' && detailsModalOpen) {
+        if (escPressCount === 0) {
+          setEscPressCount(1);
+          const timer = setTimeout(() => {
+            showNotification('info', 'To close the popup, press ESC twice', 3000);
+            setEscPressCount(0);
+          }, 800);
+          setEscPressTimer(timer);
+        } else if (escPressCount === 1) {
+          clearTimeout(escPressTimer);
+          setEscPressCount(0);
+          setDetailsModalOpen(false);
+        }
+      }
+    };
+
+    if (detailsModalOpen) {
+      document.addEventListener('keydown', handleEsc);
+    }
+
+    return () => {
+      document.removeEventListener('keydown', handleEsc);
+      if (escPressTimer) clearTimeout(escPressTimer);
+    };
+  }, [detailsModalOpen, escPressCount, escPressTimer, showNotification]);
+
+  // Handle overlay click for details modal - requires double click to close
+  const handleOverlayClick = () => {
+    if (clickCount === 0) {
+      setClickCount(1);
+      const timer = setTimeout(() => {
+        showNotification('info', 'To close the popup, click twice on the background', 3000);
+        setClickCount(0);
+      }, 800);
+      setClickTimer(timer);
+    } else if (clickCount === 1) {
+      if (clickTimer) clearTimeout(clickTimer);
+      setClickCount(0);
+      setDetailsModalOpen(false);
+    }
   };
 
   return (
@@ -175,146 +239,52 @@ const fetchFreshReturnedInventory = async (isBackground = false) => {
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Technician</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Items</th>
-                <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
               {returnedItems.map((returnItem, index) => (
-                <React.Fragment key={returnItem.id}>
-                  <tr 
-                    className={`hover:bg-gray-50 cursor-pointer ${
-                      expandedRowId === returnItem.id ? 'bg-gray-50' : ''
-                    }`}
-                    onClick={() => toggleRowExpansion(returnItem.id)}
-                  >
-                    <td className="px-4 py-3 whitespace-nowrap">
-                      <div className="flex items-center">
-                        <div className="w-8 h-8 rounded-full bg-indigo-500 flex items-center justify-center text-white font-medium">
-                          {index + 1}
+                <tr
+                  key={returnItem.id}
+                  className="hover:bg-gray-50 cursor-pointer"
+                  onClick={() => handleOpenDetailsModal(returnItem)}
+                >
+                  <td className="px-4 py-3 whitespace-nowrap">
+                    <div className="flex items-center">
+                      <div className="w-8 h-8 rounded-full bg-indigo-500 flex items-center justify-center text-white font-medium">
+                        {index + 1}
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-4 py-3 whitespace-nowrap">
+                    <div className="flex items-center">
+                      <FiUser className="mr-2 text-gray-500" />
+                      <div>
+                        <div className="text-sm font-medium text-gray-900">
+                          {returnItem.technician.name}
+                        </div>
+                        <div className="text-xs text-gray-500">
+                          {returnItem.technician.username}
                         </div>
                       </div>
-                    </td>
-                    <td className="px-4 py-3 whitespace-nowrap">
-                      <div className="flex items-center">
-                        <FiUser className="mr-2 text-gray-500" />
-                        <div>
-                          <div className="text-sm font-medium text-gray-900">
-                            {returnItem.technician.name}
-                          </div>
-                          <div className="text-xs text-gray-500">
-                            {returnItem.technician.username}
-                          </div>
-                        </div>
+                    </div>
+                  </td>
+                  <td className="px-4 py-3 whitespace-nowrap">
+                    <div className="flex items-center">
+                      <FiClock className="mr-2 text-gray-500" />
+                      <div className="text-sm text-gray-900">
+                        {formatDate(returnItem.returnedAt)}
                       </div>
-                    </td>
-                    <td className="px-4 py-3 whitespace-nowrap">
-                      <div className="flex items-center">
-                        <FiClock className="mr-2 text-gray-500" />
-                        <div className="text-sm text-gray-900">
-                          {formatDate(returnItem.returnedAt)}
-                        </div>
+                    </div>
+                  </td>
+                  <td className="px-4 py-3 whitespace-nowrap">
+                    <div className="flex items-center">
+                      <FiPackage className="mr-2 text-gray-500" />
+                      <div className="text-sm text-gray-900">
+                        {returnItem.itemCount} items ({returnItem.totalQuantity} units)
                       </div>
-                    </td>
-                    <td className="px-4 py-3 whitespace-nowrap">
-                      <div className="flex items-center">
-                        <FiPackage className="mr-2 text-gray-500" />
-                        <div className="text-sm text-gray-900">
-                          {returnItem.itemCount} items ({returnItem.totalQuantity} units)
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 whitespace-nowrap text-center">
-                      <div className="inline-flex">
-                        {expandedRowId === returnItem.id ? (
-                          <FiChevronUp className="text-gray-500" />
-                        ) : (
-                          <FiChevronDown className="text-gray-500" />
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                  
-                  {/* Expanded details row */}
-                  {expandedRowId === returnItem.id && (
-                    <tr>
-                      <td colSpan="5" className="px-4 py-3 bg-gray-50 border-b">
-                        <div className="p-3">
-                          <h3 className="font-medium text-gray-900 mb-2">
-                            Returned Items
-                          </h3>
-                          
-                          {/* Items table */}
-                          <div className="overflow-x-auto bg-white border rounded-lg mb-4">
-                            <table className="min-w-full divide-y divide-gray-200">
-                              <thead className="bg-gray-100">
-                                <tr>
-                                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Item Name</th>
-                                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
-                                  <th className="px-3 py-2 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Quantity</th>
-                                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Serial No.</th>
-                                </tr>
-                              </thead>
-                              <tbody className="divide-y divide-gray-200">
-                                {returnItem.items.map((item) => (
-                                  <tr key={item.id} className="hover:bg-gray-50">
-                                    <td className="px-3 py-2 whitespace-nowrap text-sm font-medium text-gray-900">
-                                      {item.name}
-                                    </td>
-                                    <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-500">
-                                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                                        item.type === 'serialized-product' 
-                                          ? 'bg-blue-100 text-blue-800' 
-                                          : 'bg-green-100 text-green-800'
-                                      }`}>
-                                        {item.type === 'serialized-product' ? 'Serialized' : 'Generic'}
-                                      </span>
-                                    </td>
-                                    <td className="px-3 py-2 whitespace-nowrap text-center text-sm text-gray-500">
-                                      {item.quantity} {item.unit || 'units'}
-                                    </td>
-                                    <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-500">
-                                      {item.serialNumber ? (
-                                        <span className="px-2 py-1 bg-blue-50 text-blue-700 rounded text-xs font-mono">
-                                          {item.serialNumber}
-                                        </span>
-                                      ) : (
-                                        '-'
-                                      )}
-                                    </td>
-                                  </tr>
-                                ))}
-                              </tbody>
-                            </table>
-                          </div>
-                          
-                          {/* Action buttons */}
-                          <div className="flex justify-end space-x-3">
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleOpenRejectModal(returnItem);
-                              }}
-                              className="px-4 py-2 bg-red-500 text-white rounded-md hover:bg-red-600 focus:outline-none"
-                            >
-                              Reject Return
-                            </button>
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleOpenConfirmModal(returnItem);
-                              }}
-                              className="px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600 focus:outline-none"
-                            >
-                              Confirm Return
-                            </button>
-                          </div>
-                        </div>
-                      </td>
-                    </tr>
-                  )}
-                </React.Fragment>
+                    </div>
+                  </td>
+                </tr>
               ))}
             </tbody>
           </table>
@@ -324,7 +294,130 @@ const fetchFreshReturnedInventory = async (isBackground = false) => {
           <p className="text-gray-500">No pending returned inventory items</p>
         </div>
       )}
-      
+
+      {/* Return Details Modal */}
+      {detailsModalOpen && selectedReturn && (
+        <div
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+          onClick={handleOverlayClick}
+        >
+          <div
+            className="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between bg-indigo-100 px-6 py-4 border-b">
+              <h2 className="text-xl font-semibold text-indigo-800">
+                Return Details
+              </h2>
+              <button
+                onClick={() => setDetailsModalOpen(false)}
+                className="text-indigo-500 hover:text-indigo-700 focus:outline-none"
+              >
+                <FiX size={24} />
+              </button>
+            </div>
+
+            {/* Content */}
+            <div className="p-6">
+              {/* Technician and Date Info */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6 bg-gray-50 p-4 rounded-lg">
+                <div className="flex items-center">
+                  <FiUser className="mr-3 text-gray-500" size={20} />
+                  <div>
+                    <div className="text-xs text-gray-500 uppercase">Technician</div>
+                    <div className="text-sm font-medium text-gray-900">
+                      {selectedReturn.technician.name}
+                    </div>
+                    <div className="text-xs text-gray-500">
+                      {selectedReturn.technician.username}
+                    </div>
+                  </div>
+                </div>
+                <div className="flex items-center">
+                  <FiClock className="mr-3 text-gray-500" size={20} />
+                  <div>
+                    <div className="text-xs text-gray-500 uppercase">Return Date</div>
+                    <div className="text-sm font-medium text-gray-900">
+                      {formatDate(selectedReturn.returnedAt)}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Returned Items Table */}
+              <div className="mb-6">
+                <h3 className="font-medium text-gray-900 mb-3 flex items-center">
+                  <FiPackage className="mr-2" />
+                  Returned Items ({selectedReturn.itemCount} items, {selectedReturn.totalQuantity} units)
+                </h3>
+
+                <div className="overflow-x-auto border rounded-lg">
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-100">
+                      <tr>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Item Name</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
+                        <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Quantity</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Serial No.</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-200 bg-white">
+                      {selectedReturn.items.map((item) => (
+                        <tr key={item.id} className="hover:bg-gray-50">
+                          <td className="px-4 py-3 text-sm font-medium text-gray-900">
+                            {item.name}
+                          </td>
+                          <td className="px-4 py-3 text-sm text-gray-500">
+                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                              item.type === 'serialized-product'
+                                ? 'bg-blue-100 text-blue-800'
+                                : 'bg-green-100 text-green-800'
+                            }`}>
+                              {item.type === 'serialized-product' ? 'Serialized' : 'Generic'}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 text-center text-sm text-gray-500">
+                            {item.quantity} {item.unit || 'units'}
+                          </td>
+                          <td className="px-4 py-3 text-sm text-gray-500">
+                            {item.serialNumber ? (
+                              <span className="px-2 py-1 bg-blue-50 text-blue-700 rounded text-xs font-mono">
+                                {item.serialNumber}
+                              </span>
+                            ) : (
+                              '-'
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+
+            {/* Action Buttons Footer */}
+            <div className="bg-gray-50 px-6 py-4 flex justify-end space-x-3 border-t">
+              <button
+                type="button"
+                onClick={handleOpenRejectModal}
+                className="px-6 py-2 bg-red-500 text-white rounded-md hover:bg-red-600 focus:outline-none font-medium"
+              >
+                Reject Return
+              </button>
+              <button
+                type="button"
+                onClick={handleOpenConfirmModal}
+                className="px-6 py-2 bg-green-500 text-white rounded-md hover:bg-green-600 focus:outline-none font-medium"
+              >
+                Confirm Return
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Confirm Return Modal */}
       {selectedReturn && (
         <ConfirmReturnModal

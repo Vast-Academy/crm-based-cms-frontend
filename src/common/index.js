@@ -257,6 +257,14 @@ const SummaryApi = {
         url : `${backendDomain}/api/get-manager-projects`,
         method: "get"
       },
+      getManagerFinancialSummary: {
+        url: `${backendDomain}/api/manager/financial-summary`,
+        method: "get"
+      },
+      getManagerBalanceOverview: {
+        url: `${backendDomain}/api/manager/balance-overview`,
+        method: "get"
+      },
       approveWorkOrder: {
         url : `${backendDomain}/api/approve-order`,
         method: "post"

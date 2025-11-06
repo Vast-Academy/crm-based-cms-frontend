@@ -27,7 +27,6 @@ const InventoryPage = () => {
   const [inventoryItems, setInventoryItems] = useState([]);
   const [activeFilter, setActiveFilter] = useState('All');
   const [searchTerm, setSearchTerm] = useState('');
-  const [expandedRowId, setExpandedRowId] = useState(null);
 const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 const [selectedItem, setSelectedItem] = useState(null);
 const [lastRefreshTime, setLastRefreshTime] = useState(0);
@@ -171,21 +170,80 @@ const [isImportModalOpen, setIsImportModalOpen] = useState(false);
     }
   };
 
-// Function to toggle expanded row
-const toggleRowExpansion = (itemId) => {
-  if (expandedRowId === itemId) {
-    // If clicking the same row that's already expanded, collapse it
-    setExpandedRowId(null);
-  } else {
-    // Otherwise expand the clicked row (and collapse any previously expanded row)
-    setExpandedRowId(itemId);
-  }
-};
-
 // Function to open edit modal
 const openEditModal = (item) => {
   setSelectedItem(item);
   setIsEditModalOpen(true);
+};
+
+const handleDeleteRequest = (item) => {
+  if (!item) return;
+  setItemToDelete(item);
+  setIsDeleteDialogOpen(true);
+};
+
+const handleCancelDelete = () => {
+  setIsDeleteDialogOpen(false);
+  setItemToDelete(null);
+};
+
+const handleConfirmDelete = async () => {
+  if (!itemToDelete) {
+    handleCancelDelete();
+    return;
+  }
+
+  const stock =
+    itemToDelete.type === 'serialized-product'
+      ? itemToDelete.stock
+        ? itemToDelete.stock.length
+        : 0
+      : itemToDelete.type === 'generic-product'
+      ? itemToDelete.stock
+        ? itemToDelete.stock.reduce(
+            (total, stockItem) => total + parseInt(stockItem.quantity, 10),
+            0
+          )
+        : 0
+      : 0;
+
+  if (stock > 0) {
+    showNotification('error', 'Item cannot be deleted because it has stock.');
+    handleCancelDelete();
+    return;
+  }
+
+  try {
+    setLoading(true);
+    const response = await fetch(
+      `${SummaryApi.deleteInventoryItem.url}/${itemToDelete.id}`,
+      {
+        method: SummaryApi.deleteInventoryItem.method,
+        credentials: 'include',
+      }
+    );
+    const data = await response.json();
+    if (data.success) {
+      showNotification('success', 'Item deleted successfully.');
+      setInventoryItems((prevItems) =>
+        prevItems.filter((item) => item.id !== itemToDelete.id)
+      );
+      localStorage.removeItem('inventoryItems');
+      if (isEditModalOpen && selectedItem?.id === itemToDelete.id) {
+        setIsEditModalOpen(false);
+        setSelectedItem(null);
+      }
+      fetchFreshInventoryData();
+    } else {
+      showNotification('error', data.message || 'Failed to delete item.');
+    }
+  } catch (err) {
+    showNotification('error', 'Server error. Please try again later.');
+    console.error('Error deleting item:', err);
+  } finally {
+    setLoading(false);
+    handleCancelDelete();
+  }
 };
 
 // Add a function to handle the update
@@ -705,119 +763,43 @@ const getStockDisplay = (item) => {
             </thead>
             <tbody>
   {sortedAndFilteredItems.map((item, index) => (
-    <React.Fragment key={item.id}>
-      <tr
-        className={`${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'} hover:bg-gray-100 cursor-pointer`}
-        onClick={() => toggleRowExpansion(item.id)}
-      >
-        <td className="px-4 py-3 border-t">
-          <div className={`flex items-center justify-center w-8 h-8 rounded-full text-white ${
+    <tr
+      key={item.id}
+      className={`${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'} hover:bg-gray-100 cursor-pointer`}
+      onClick={() => openEditModal(item)}
+    >
+      <td className="px-4 py-3 border-t">
+        <div
+          className={`flex items-center justify-center w-8 h-8 rounded-full text-white ${
             item.type === 'serialized-product' ? 'bg-blue-500' : 'bg-teal-500'
-          }`}>
-            {index + 1}
-          </div>
-        </td>
-        <td className={`px-4 py-3 border-t font-medium`}>{item.name}</td>
-        <td className="px-4 py-3 border-t">{item.warranty || 'N/A'}</td>
-        <td className="px-4 py-3 border-t">₹{item.mrp || 'N/A'}</td>
-        <td className="px-4 py-3 border-t">₹{item.purchasePrice || 'N/A'}</td>
-        <td className="px-4 py-3 border-t">₹{item.pricing?.customerPrice || 'N/A'}</td>
-        <td className="px-4 py-3 border-t">₹{item.pricing?.dealerPrice || 'N/A'}</td>
-        <td className="px-4 py-3 border-t">₹{item.pricing?.distributorPrice || 'N/A'}</td>
-        <td className="px-4 py-3 border-t">
-          {item.type !== 'service' ? (
-            <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-              item.type === 'serialized-product' ? 'bg-blue-100 text-blue-800' : 'bg-teal-100 text-teal-800'
-            }`}>
-              {item.totalStock !== undefined ? item.totalStock : getStockDisplay(item)} {item.unit}
-            </span>
-          ) : (
-            'N/A'
-          )}
-        </td>
-      </tr>
-      
-      {/* Expandable row for action buttons */}
-      {expandedRowId === item.id && (
-        <tr className="bg-gray-50">
-          <td colSpan={9} className="px-6 py-4 border-b">
-            <div className="flex space-x-3">
-              <button
-                onClick={() => openEditModal(item)}
-                className={`inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white ${
-                  item.type === 'serialized-product' ? 'bg-blue-500 hover:bg-blue-600' : 'bg-teal-500 hover:bg-teal-600'
-                }`}
-              >
-                <FiSave className="mr-2" />
-                Edit Item
-              </button>
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setItemToDelete(item);
-                  setIsDeleteDialogOpen(true);
-                }}
-                className="inline-flex items-center px-4 py-2 border border-red-500 rounded-md shadow-sm text-sm font-medium text-red-500 bg-white hover:bg-red-500 hover:text-white"
-              >
-                <FiTrash2 className="mr-2" />
-                Delete Item
-              </button>
-            </div>
-          </td>
-        </tr>
-      )}
-      {/* Confirmation Dialog for Delete */}
-      <ConfirmationDialog
-        isOpen={isDeleteDialogOpen}
-        title="Confirm Delete"
-        message={`${user.firstName} ${user.lastName || ''}, are you sure you want to delete the item "${itemToDelete ? itemToDelete.name : ''}"?`}
-        confirmText="Yes, Delete"
-        cancelText="No"
-        onConfirm={async () => {
-          if (!itemToDelete) {
-            setIsDeleteDialogOpen(false);
-            return;
-          }
-          const stock = itemToDelete.type === 'serialized-product'
-            ? (itemToDelete.stock ? itemToDelete.stock.length : 0)
-            : itemToDelete.type === 'generic-product'
-              ? (itemToDelete.stock ? itemToDelete.stock.reduce((total, stock) => total + parseInt(stock.quantity, 10), 0) : 0)
-              : 0;
-          if (stock > 0) {
-            showNotification('error', 'Item cannot be deleted because it has stock.');
-            setIsDeleteDialogOpen(false);
-            return;
-          }
-          try {
-            setLoading(true);
-            const response = await fetch(`${SummaryApi.deleteInventoryItem.url}/${itemToDelete.id}`, {
-              method: SummaryApi.deleteInventoryItem.method,
-              credentials: 'include',
-            });
-            const data = await response.json();
-            if (data.success) {
-              showNotification('success', 'Item deleted successfully.');
-              setInventoryItems(prevItems => prevItems.filter(item => item.id !== itemToDelete.id));
-              localStorage.removeItem('inventoryItems');
-              fetchFreshInventoryData();
-            } else {
-              showNotification('error', data.message || 'Failed to delete item.');
-            }
-          } catch (err) {
-            showNotification('error', 'Server error. Please try again later.');
-            console.error('Error deleting item:', err);
-          } finally {
-            setLoading(false);
-            setIsDeleteDialogOpen(false);
-            setItemToDelete(null);
-          }
-        }}
-        onCancel={() => {
-          setIsDeleteDialogOpen(false);
-          setItemToDelete(null);
-        }}
-      />
-    </React.Fragment>
+          }`}
+        >
+          {index + 1}
+        </div>
+      </td>
+      <td className="px-4 py-3 border-t font-medium">{item.name}</td>
+      <td className="px-4 py-3 border-t">{item.warranty || 'N/A'}</td>
+      <td className="px-4 py-3 border-t">₹{item.mrp || 'N/A'}</td>
+      <td className="px-4 py-3 border-t">₹{item.purchasePrice || 'N/A'}</td>
+      <td className="px-4 py-3 border-t">₹{item.pricing?.customerPrice || 'N/A'}</td>
+      <td className="px-4 py-3 border-t">₹{item.pricing?.dealerPrice || 'N/A'}</td>
+      <td className="px-4 py-3 border-t">₹{item.pricing?.distributorPrice || 'N/A'}</td>
+      <td className="px-4 py-3 border-t">
+        {item.type !== 'service' ? (
+          <span
+            className={`px-2 py-1 rounded-full text-xs font-medium ${
+              item.type === 'serialized-product'
+                ? 'bg-blue-100 text-blue-800'
+                : 'bg-teal-100 text-teal-800'
+            }`}
+          >
+            {item.totalStock !== undefined ? item.totalStock : getStockDisplay(item)} {item.unit}
+          </span>
+        ) : (
+          'N/A'
+        )}
+      </td>
+    </tr>
   ))}
   {sortedAndFilteredItems.length === 0 && (
     <tr>
@@ -830,7 +812,7 @@ const getStockDisplay = (item) => {
           </table>
         </div>
       </div>
-      
+
       {/* Add Inventory Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
@@ -1054,12 +1036,28 @@ const getStockDisplay = (item) => {
     <div className="bg-white max-h-[600px] overflow-y-auto rounded-lg shadow-xl w-full max-w-2xl">
       <div className="flex items-center justify-between bg-gray-100 px-6 py-4">
         <h2 className="text-xl font-semibold text-gray-800">Edit Item: {selectedItem.name}</h2>
-        <button 
-          onClick={() => setIsEditModalOpen(false)}
-          className="text-gray-500 hover:text-gray-700 focus:outline-none"
-        >
-          <FiX size={24} />
-        </button>
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => handleDeleteRequest(selectedItem)}
+            disabled={loading}
+            className={`inline-flex items-center px-3 py-2 border border-red-500 rounded-md text-sm font-medium transition-colors ${
+              loading
+                ? 'text-red-300 cursor-not-allowed'
+                : 'text-red-600 hover:bg-red-500 hover:text-white'
+            }`}
+          >
+            <FiTrash2 className="mr-2" size={16} />
+            Delete Item
+          </button>
+          <button
+            onClick={() => setIsEditModalOpen(false)}
+            className="text-gray-500 hover:text-gray-700 focus:outline-none"
+            aria-label="Close edit item modal"
+          >
+            <FiX size={24} />
+          </button>
+        </div>
       </div>
       
       <div className="p-6">
@@ -1291,9 +1289,19 @@ const getStockDisplay = (item) => {
         onClose={() => setIsImportModalOpen(false)}
         onImportSuccess={() => {
           // Clear cache and refresh inventory data
-          localStorage.removeItem('inventoryItems');
-          fetchFreshInventoryData();
-        }}
+      localStorage.removeItem('inventoryItems');
+      fetchFreshInventoryData();
+    }}
+  />
+
+      <ConfirmationDialog
+        isOpen={isDeleteDialogOpen}
+        title="Confirm Delete"
+        message={`${user.firstName} ${user.lastName || ''}Are you sure you want to delete the item "${itemToDelete ? itemToDelete.name : ''}"?`}
+        confirmText="Yes, Delete"
+        cancelText="No"
+        onConfirm={handleConfirmDelete}
+        onCancel={handleCancelDelete}
       />
     </div>
   );

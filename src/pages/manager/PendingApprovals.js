@@ -30,10 +30,37 @@ const PendingApprovals = () => {
   const sortDropdownRef = useRef(null);
 
   const PROJECTS_CACHE_KEY = 'managerProjectsData';
+  const POLLING_INTERVAL_MS = 30000;
+  const pendingSignatureRef = useRef('');
+  const pollingIntervalRef = useRef(null);
 
   const categorizeProjects = (projects) => {
     const pending = projects.filter(p => p.status === 'pending-approval');
     setPendingApprovals(pending);
+    pendingSignatureRef.current = buildPendingSignature(pending);
+  };
+
+  const buildPendingSignature = (projects) => {
+    if (!projects || projects.length === 0) return '';
+    return projects
+      .map((project) => {
+        const projectId = project._id || project.id || '';
+        const updatedAt =
+          project.pendingApprovalDate ||
+          project.updatedAt ||
+          project.statusUpdatedAt ||
+          project.createdAt ||
+          '';
+        return `${projectId}-${updatedAt}`;
+      })
+      .sort()
+      .join('|');
+  };
+
+  const getBranchQueryParam = () => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const urlBranch = urlParams.get('branch') || user.selectedBranch || '';
+    return urlBranch ? `?branch=${urlBranch}` : '';
   };
 
 
@@ -83,13 +110,7 @@ const PendingApprovals = () => {
 
   const fetchFreshProjects = async () => {
     try {
-      // Get branch from URL params first, then fallback to user.selectedBranch
-      const urlParams = new URLSearchParams(window.location.search);
-      const urlBranch = urlParams.get('branch') || user.selectedBranch || '';
-      let branchParam = '';
-      if (urlBranch) {
-        branchParam = `?branch=${urlBranch}`;
-      }
+      const branchParam = getBranchQueryParam();
 
       const response = await fetch(`${SummaryApi.getManagerProjects.url}${branchParam}`, {
         method: 'GET',
@@ -193,6 +214,10 @@ const PendingApprovals = () => {
     setFilteredProjects(filtered);
   };
 
+  useEffect(() => {
+    pendingSignatureRef.current = buildPendingSignature(pendingApprovals);
+  }, [pendingApprovals]);
+
   // Initial data fetch
   useEffect(() => {
     fetchProjects();
@@ -202,6 +227,10 @@ const PendingApprovals = () => {
   useEffect(() => {
     applyFilter(allProjects, searchQuery);
   }, [searchQuery]);
+
+  useEffect(() => {
+    applyFilter(allProjects, searchQuery);
+  }, [allProjects]);
 
   // Re-apply filter when sort changes
   useEffect(() => {
@@ -221,6 +250,71 @@ const PendingApprovals = () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, []);
+
+  useEffect(() => {
+    let isChecking = false;
+    let isMounted = true;
+
+    const checkForUpdates = async () => {
+      if (isChecking || !isMounted) return;
+      isChecking = true;
+
+      try {
+        const branchParam = getBranchQueryParam();
+        const response = await fetch(`${SummaryApi.getManagerProjects.url}${branchParam}`, {
+          method: 'GET',
+          credentials: 'include',
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to fetch projects for updates');
+        }
+
+        const data = await response.json();
+        if (!data.success || !Array.isArray(data.data)) {
+          return;
+        }
+
+        const pendingProjects = data.data.filter(
+          (project) => project.status === 'pending-approval'
+        );
+        const newSignature = buildPendingSignature(pendingProjects);
+
+        if (newSignature !== pendingSignatureRef.current && isMounted) {
+          setAllProjects(data.data);
+          categorizeProjects(data.data);
+          localStorage.setItem(PROJECTS_CACHE_KEY, JSON.stringify(data.data));
+        }
+      } catch (err) {
+        console.error('Error checking for new pending approvals:', err);
+      } finally {
+        isChecking = false;
+      }
+    };
+
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        checkForUpdates();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    pollingIntervalRef.current = setInterval(checkForUpdates, POLLING_INTERVAL_MS);
+
+    if (!document.hidden) {
+      checkForUpdates();
+    }
+
+    return () => {
+      isMounted = false;
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current);
+        pollingIntervalRef.current = null;
+      }
+    };
+  }, [user.selectedBranch, window.location.search]);
 
   // Handle sort option selection
   const handleSortSelection = (field) => {

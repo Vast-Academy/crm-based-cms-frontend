@@ -1,6 +1,6 @@
 // components/AssignTechnicianModal.jsx
 import React, { useState, useEffect, useRef } from 'react';
-import { FiSave, FiX } from 'react-icons/fi';
+import { FiSave, FiX, FiRefreshCw } from 'react-icons/fi';
 import SummaryApi from '../../common';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import { useAuth } from '../../context/AuthContext';
@@ -75,7 +75,13 @@ const AssignTechnicianModal = ({ isOpen, onClose, workOrder, onSuccess, canCance
       setLoadingTechnicians(false);
     }
   };
-  
+
+  const handleRefreshTechnicians = () => {
+    if (loadingTechnicians) return;
+    setError(null);
+    fetchTechnicians();
+  };
+
   // Register/unregister modal in global registry
   useEffect(() => {
     if (isOpen) {
@@ -253,12 +259,29 @@ useEffect(() => {
           <h2 className="text-xl font-semibold">
             {isComplaint ? 'Assign Engineer to Complaint' : 'Assign Engineer'}
           </h2>
-          <button
-            onClick={onClose}
-            className="text-gray-500 hover:text-gray-700"
-          >
-            <FiX size={24} />
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={handleRefreshTechnicians}
+              disabled={loadingTechnicians}
+              title="Refresh technicians"
+              aria-label="Refresh technicians list"
+              className={`p-2 rounded-full transition-colors ${
+                loadingTechnicians
+                  ? 'text-gray-400 cursor-not-allowed'
+                  : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
+              }`}
+            >
+              <FiRefreshCw size={20} className={loadingTechnicians ? 'animate-spin' : ''} />
+            </button>
+            <button
+              onClick={onClose}
+              className="text-gray-500 hover:text-gray-700"
+              aria-label="Close assign technician modal"
+            >
+              <FiX size={24} />
+            </button>
+          </div>
         </div>
         
         {/* Added overflow-y-auto to make only the content area scrollable */}
