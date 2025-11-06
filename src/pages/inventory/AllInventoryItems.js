@@ -1324,20 +1324,43 @@ export const SerializedStockForm = ({ item, onClose, showNotification, onSuccess
       
       try {
         setCheckingSerial(true);
-        
+
         const response = await fetch(`${SummaryApi.checkSerialNumber.url}/${serialNumber}`, {
           method: SummaryApi.checkSerialNumber.method,
           credentials: 'include'
         });
-        
+
         const data = await response.json();
-        
+
         if (data.exists) {
+          // Build appropriate error message based on the type of conflict
+          let errorMessage = '';
+
+          if (data.assignedToTechnician) {
+            // Serial number assigned to technician
+            errorMessage = data.message || `Serial number is assigned to technician: ${data.technicianName}`;
+          } else if (data.usedInBill) {
+            // Serial number used in a bill
+            if (data.customerName) {
+              errorMessage = data.message || `Serial number used in bill for customer: ${data.customerName}`;
+            } else if (data.entityName) {
+              errorMessage = data.message || `Serial number used in bill for ${data.entityType}: ${data.entityName}`;
+            } else {
+              errorMessage = data.message || 'Serial number has been used in a bill';
+            }
+          } else if (data.item) {
+            // Serial number exists in inventory stock
+            errorMessage = `Serial number already exists for item: ${data.item.name}`;
+          } else {
+            // Fallback message
+            errorMessage = data.message || 'Serial number is not available';
+          }
+
           setSerialNumberStatus(prev => ({
             ...prev,
             [index]: {
               valid: false,
-              message: `Serial number already exists for item: ${data.item.name}`
+              message: errorMessage
             }
           }));
         } else {
@@ -1345,7 +1368,7 @@ export const SerializedStockForm = ({ item, onClose, showNotification, onSuccess
             ...prev,
             [index]: {
               valid: true,
-              message: 'Serial number is valid'
+              message: data.message || 'Serial number is valid'
             }
           }));
         }
