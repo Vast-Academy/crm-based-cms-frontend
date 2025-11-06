@@ -788,7 +788,7 @@ const UnifiedInventoryAssignmentModal = ({ isOpen, onClose, technician, onSucces
                         </div>
 
                         {/* Pricing Information */}
-                        {item.pricing && (
+                        {/* {item.pricing && (
                           <div className="mt-2 p-2 bg-gray-50 rounded text-xs space-y-1">
                             <div className="flex justify-between">
                               <span className="text-gray-600">Customer Price:</span>
@@ -803,7 +803,7 @@ const UnifiedInventoryAssignmentModal = ({ isOpen, onClose, technician, onSucces
                               <span className="font-medium text-purple-700">₹{item.pricing.distributorPrice || 0}</span>
                             </div>
                           </div>
-                        )}
+                        )} */}
 
                         {/* For serialized products, show serial numbers */}
                         {item.type === 'serialized-product' && (
