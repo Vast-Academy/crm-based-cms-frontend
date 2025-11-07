@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { FiClock, FiUser, FiPackage, FiX } from 'react-icons/fi';
+import { FiClock, FiUser, FiPackage, FiX, FiSearch } from 'react-icons/fi';
 import SummaryApi from '../../common';
 import { useNotification } from '../../context/NotificationContext';
 import ConfirmReturnModal from './ConfirmReturnModal';
@@ -15,6 +15,10 @@ const ReturnedInventoryTable = () => {
   const [rejectModalOpen, setRejectModalOpen] = useState(false);
   const [selectedReturn, setSelectedReturn] = useState(null);
   const [lastRefreshTime, setLastRefreshTime] = useState(0);
+
+  // Search states
+  const [searchQuery, setSearchQuery] = useState('');
+  const searchInputRef = useRef(null);
 
   // Double ESC and double click states for details modal
   const [escPressCount, setEscPressCount] = useState(0);
@@ -125,10 +129,66 @@ const fetchFreshReturnedInventory = async (isBackground = false) => {
     return new Date(dateString).toLocaleDateString(undefined, options);
   };
 
+  // Filter items based on search query
+  const filterItems = (items) => {
+    if (!searchQuery.trim()) return items;
+
+    const query = searchQuery.toLowerCase();
+    return items.filter(item => {
+      // Search by item name
+      const nameMatch = item.name.toLowerCase().includes(query);
+
+      // Search by serial number
+      const serialMatch = item.serialNumber &&
+        item.serialNumber.toLowerCase().includes(query);
+
+      return nameMatch || serialMatch;
+    });
+  };
+
+  // Handle search input Enter key - Select all text like Ctrl+A
+  const handleSearchKeyPress = (e) => {
+    if (e.key === 'Enter' && searchInputRef.current) {
+      e.preventDefault();
+      searchInputRef.current.select();
+    }
+  };
+
+  // Highlight search term in text (like ReturnInventoryModal)
+  const highlightSearchTerm = (text) => {
+    if (!searchQuery.trim() || !text) return text;
+
+    const searchLower = searchQuery.toLowerCase();
+    const textLower = text.toLowerCase();
+
+    if (!textLower.includes(searchLower)) return text;
+
+    const index = textLower.indexOf(searchLower);
+    const before = text.substring(0, index);
+    const match = text.substring(index, index + searchQuery.length);
+    const after = text.substring(index + searchQuery.length);
+
+    return (
+      <>
+        {before}
+        <span className="bg-yellow-200 text-gray-900">
+          {match}
+        </span>
+        {after}
+      </>
+    );
+  };
+
+  // Reset search when modal closes
+  const resetSearch = () => {
+    setSearchQuery('');
+  };
+
   // Open details modal
   const handleOpenDetailsModal = (returnItem) => {
     setSelectedReturn(returnItem);
     setDetailsModalOpen(true);
+    resetSearch();
   };
 
   // Open confirm modal
@@ -166,6 +226,7 @@ const fetchFreshReturnedInventory = async (isBackground = false) => {
       setClickCount(0);
       if (escPressTimer) clearTimeout(escPressTimer);
       if (clickTimer) clearTimeout(clickTimer);
+      resetSearch();
     }
   }, [detailsModalOpen]);
 
@@ -345,11 +406,42 @@ const fetchFreshReturnedInventory = async (isBackground = false) => {
                 </div>
               </div>
 
+              {/* Search Bar */}
+              <div className="mb-6">
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <FiSearch className="text-gray-400" size={20} />
+                  </div>
+                  <input
+                    ref={searchInputRef}
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    onKeyPress={handleSearchKeyPress}
+                    placeholder="Search by item name or serial number..."
+                    className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
+                  />
+                  {searchQuery && (
+                    <button
+                      onClick={() => setSearchQuery('')}
+                      className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                    >
+                      <FiX size={16} className="text-gray-500 hover:text-gray-700" />
+                    </button>
+                  )}
+                </div>
+                {searchQuery && (
+                  <p className="mt-2 text-xs text-gray-600">
+                    Found {filterItems(selectedReturn.items).length} item{filterItems(selectedReturn.items).length !== 1 ? 's' : ''}
+                  </p>
+                )}
+              </div>
+
               {/* Returned Items Table */}
               <div className="mb-6">
                 <h3 className="font-medium text-gray-900 mb-3 flex items-center">
                   <FiPackage className="mr-2" />
-                  Returned Items ({selectedReturn.itemCount} items, {selectedReturn.totalQuantity} units)
+                  Returned Items ({filterItems(selectedReturn.items).length} of {selectedReturn.itemCount} items showing)
                 </h3>
 
                 <div className="overflow-x-auto border rounded-lg">
@@ -363,10 +455,10 @@ const fetchFreshReturnedInventory = async (isBackground = false) => {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-200 bg-white">
-                      {selectedReturn.items.map((item) => (
+                      {filterItems(selectedReturn.items).map((item) => (
                         <tr key={item.id} className="hover:bg-gray-50">
                           <td className="px-4 py-3 text-sm font-medium text-gray-900">
-                            {item.name}
+                            {highlightSearchTerm(item.name)}
                           </td>
                           <td className="px-4 py-3 text-sm text-gray-500">
                             <span className={`px-2 py-1 rounded-full text-xs font-medium ${
@@ -383,7 +475,7 @@ const fetchFreshReturnedInventory = async (isBackground = false) => {
                           <td className="px-4 py-3 text-sm text-gray-500">
                             {item.serialNumber ? (
                               <span className="px-2 py-1 bg-blue-50 text-blue-700 rounded text-xs font-mono">
-                                {item.serialNumber}
+                                {highlightSearchTerm(item.serialNumber)}
                               </span>
                             ) : (
                               '-'
@@ -394,6 +486,11 @@ const fetchFreshReturnedInventory = async (isBackground = false) => {
                     </tbody>
                   </table>
                 </div>
+                {filterItems(selectedReturn.items).length === 0 && (
+                  <div className="text-center py-6 text-gray-500">
+                    No items found matching your search.
+                  </div>
+                )}
               </div>
             </div>
 
