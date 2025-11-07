@@ -1,6 +1,7 @@
 // components/technician/TechnicianInventoryModal.jsx
 import React, { useState, useEffect, useRef } from 'react';
 import { FiArrowRight, FiX, FiPackage, FiSearch, FiRefreshCw } from 'react-icons/fi';
+import Draggable from 'react-draggable';
 import SummaryApi from '../../common';
 import { useNotification } from '../../context/NotificationContext';
 
@@ -15,6 +16,7 @@ const TechnicianInventoryModal = ({ isOpen, onClose, technician, onAssignInvento
   // Modal registry setup
   const modalId = useRef(Math.random().toString(36).substr(2, 9));
   const numericZIndex = useRef(60); // z-[60] from the modal div
+  const nodeRef = useRef(null); // Ref for Draggable
 
   const [transfers, setTransfers] = useState([]);
   const [currentInventory, setCurrentInventory] = useState([]);
@@ -441,16 +443,22 @@ const TechnicianInventoryModal = ({ isOpen, onClose, technician, onAssignInvento
       {/* Modal backdrop */}
       <div className="fixed inset-0 bg-black opacity-50" onClick={handleOverlayClick}></div>
 
-      {/* Modal content */}
-      <div className="relative bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[85vh] flex flex-col overflow-hidden">
-          {/* Modal header */}
-          <div className="flex justify-between items-center border-b px-6 py-4">
-            <h3 className="text-lg font-medium text-gray-900">
+      {/* Modal content - Wrapped with Draggable */}
+      <Draggable
+        nodeRef={nodeRef}
+        handle=".modal-drag-handle"
+        bounds="parent"
+        defaultPosition={{ x: 0, y: 0 }}
+      >
+        <div ref={nodeRef} className="relative bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[85vh] flex flex-col overflow-hidden">
+          {/* Modal header - Draggable handle */}
+          <div className="flex justify-between items-center border-b px-6 py-4 modal-drag-handle cursor-move">
+            <h3 className="text-lg font-medium text-gray-900 select-none">
               {technician ? `${technician.firstName} ${technician.lastName}'s Inventory History` : 'Inventory History'}
             </h3>
             <button
               type="button"
-              className="text-gray-400 hover:text-gray-500"
+              className="text-gray-400 hover:text-gray-500 cursor-pointer"
               onClick={onClose}
             >
               <FiX className="w-5 h-5" />
@@ -730,6 +738,7 @@ const TechnicianInventoryModal = ({ isOpen, onClose, technician, onAssignInvento
             )}
           </div>
         </div>
+      </Draggable>
     </div>
   );
 };

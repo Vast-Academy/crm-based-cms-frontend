@@ -637,11 +637,12 @@ const handleViewProjectDetails = async (project) => {
   
   return (
     <>
-    <Modal 
-      isOpen={isOpen} 
-      onClose={onClose} 
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
       title="Customer Details"
       size="xl"
+      draggable={true}
     >
       {loading ? (
         <div className="p-6 flex justify-center">

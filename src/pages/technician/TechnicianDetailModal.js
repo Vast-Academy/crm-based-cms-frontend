@@ -199,12 +199,13 @@ const handleRefreshProjects = async () => {
   if (!isOpen) return null;
   
   return (
-    <Modal 
-      isOpen={isOpen} 
-      onClose={onClose} 
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
       title="Technician Details"
       size="xl"
       zIndex="z-[40]"
+      draggable={true}
     >
       {loading && !technician ? (
         <div className="p-6 flex justify-center">

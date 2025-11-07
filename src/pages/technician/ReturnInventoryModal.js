@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  X, 
-  Package, 
+import {
+  X,
+  Package,
   ChevronDown,
   AlertCircle,
-  Check
+  Check,
+  Search
 } from 'lucide-react';
 import SummaryApi from '../../common';
 
@@ -15,6 +16,7 @@ const ReturnInventoryModal = ({ isOpen, onClose, onInventoryReturned, darkMode =
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [expandedItems, setExpandedItems] = useState([]);
+  const [searchTerm, setSearchTerm] = useState('');
   // Add new state for confirmation modal
   const [showConfirmation, setShowConfirmation] = useState(false);
   
@@ -22,9 +24,37 @@ const ReturnInventoryModal = ({ isOpen, onClose, onInventoryReturned, darkMode =
   useEffect(() => {
     if (isOpen) {
       fetchInventory();
+      setSearchTerm(''); // Reset search when modal opens
     }
   }, [isOpen]);
-  
+
+  // Filter inventory based on search term
+  useEffect(() => {
+    if (!searchTerm.trim()) {
+      setFilteredInventory(inventory);
+      return;
+    }
+
+    const searchLower = searchTerm.toLowerCase().trim();
+    const filtered = inventory.filter(item => {
+      // Search by item name
+      const nameMatch = item.itemName?.toLowerCase().includes(searchLower);
+
+      // For serialized products, also search by serial numbers
+      if (item.type === 'serialized-product') {
+        const serialMatch = item.serializedItems?.some(si =>
+          si.status === 'active' && si.serialNumber?.toLowerCase().includes(searchLower)
+        );
+        return nameMatch || serialMatch;
+      }
+
+      // For generic products, only search by name
+      return nameMatch;
+    });
+
+    setFilteredInventory(filtered);
+  }, [searchTerm, inventory]);
+
   const fetchInventory = async () => {
     try {
       setLoading(true);
@@ -32,9 +62,9 @@ const ReturnInventoryModal = ({ isOpen, onClose, onInventoryReturned, darkMode =
         method: SummaryApi.getTechnicianInventory.method,
         credentials: 'include'
       });
-      
+
       const data = await response.json();
-      
+
       if (data.success) {
         // Filter out items with 0 quantity
         const activeInventory = data.data.filter(item => {
@@ -155,6 +185,31 @@ const ReturnInventoryModal = ({ isOpen, onClose, onInventoryReturned, darkMode =
     return item.serializedItems
       ?.filter(serialItem => serialItem.status === 'active')
       ?.map(serialItem => serialItem.serialNumber) || [];
+  };
+
+  // Check if serial number matches search term
+  const highlightSearchTerm = (text) => {
+    if (!searchTerm.trim() || !text) return text;
+
+    const searchLower = searchTerm.toLowerCase();
+    const textLower = text.toLowerCase();
+
+    if (!textLower.includes(searchLower)) return text;
+
+    const index = textLower.indexOf(searchLower);
+    const before = text.substring(0, index);
+    const match = text.substring(index, index + searchTerm.length);
+    const after = text.substring(index + searchTerm.length);
+
+    return (
+      <>
+        {before}
+        <span className={darkMode ? 'bg-yellow-600 text-white' : 'bg-yellow-200 text-gray-900'}>
+          {match}
+        </span>
+        {after}
+      </>
+    );
   };
 
   // Check if all active serials are selected for an item
@@ -327,18 +382,63 @@ const ReturnInventoryModal = ({ isOpen, onClose, onInventoryReturned, darkMode =
           </div>
         )}
 
+        {/* Search Bar */}
+        <div className="p-4 pb-0">
+          <div className="relative">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <Search size={18} className={darkMode ? 'text-gray-400' : 'text-gray-500'} />
+            </div>
+            <input
+              type="text"
+              placeholder="Search by item name or serial number..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className={`w-full pl-10 pr-4 py-2 rounded-lg border ${
+                darkMode
+                  ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400 focus:border-teal-500 focus:ring-1 focus:ring-teal-500'
+                  : 'bg-white border-gray-300 text-gray-800 placeholder-gray-500 focus:border-teal-500 focus:ring-1 focus:ring-teal-500'
+              } outline-none transition-colors`}
+            />
+            {searchTerm && (
+              <button
+                onClick={() => setSearchTerm('')}
+                className="absolute inset-y-0 right-0 pr-3 flex items-center"
+              >
+                <X size={16} className={darkMode ? 'text-gray-400 hover:text-gray-300' : 'text-gray-500 hover:text-gray-700'} />
+              </button>
+            )}
+          </div>
+          {searchTerm && (
+            <p className={`mt-2 text-xs ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+              Found {filteredInventory.length} item{filteredInventory.length !== 1 ? 's' : ''}
+            </p>
+          )}
+        </div>
+
         {/* Inventory List */}
-        <div 
-          className="overflow-y-auto" 
-          style={{ maxHeight: 'calc(90vh - 190px)' }}
+        <div
+          className="overflow-y-auto"
+          style={{ maxHeight: 'calc(90vh - 260px)' }}
         >
           {loading ? (
             <div className="p-4 text-center">
               <p className={darkMode ? 'text-gray-400' : 'text-gray-500'}>Loading inventory...</p>
             </div>
           ) : filteredInventory.length === 0 ? (
-            <div className="p-4 text-center text-gray-500">
-              No inventory items to return.
+            <div className="p-4 text-center">
+              <p className={darkMode ? 'text-gray-400' : 'text-gray-500'}>
+                {searchTerm
+                  ? `No items found matching "${searchTerm}"`
+                  : 'No inventory items to return.'}
+              </p>
+              {searchTerm && (
+                <button
+                  onClick={() => setSearchTerm('')}
+                  className={`mt-2 text-sm ${darkMode ? 'text-teal-400 hover:text-teal-300' : 'text-teal-600 hover:text-teal-700'}`}
+                >
+                  Clear search
+                </button>
+              )}
             </div>
           ) : (
             <div className="space-y-1">
@@ -359,7 +459,9 @@ const ReturnInventoryModal = ({ isOpen, onClose, onInventoryReturned, darkMode =
                           {index + 1}
                         </div>
                         <div>
-                          <p className={`font-medium ${darkMode ? 'text-white' : 'text-gray-800'}`}>{item.itemName}</p>
+                          <p className={`font-medium ${darkMode ? 'text-white' : 'text-gray-800'}`}>
+                            {highlightSearchTerm(item.itemName)}
+                          </p>
                           <p className={`text-xs ${darkMode ? 'text-gray-400' : 'text-gray-500'} capitalize`}>
                             {item.type.replace('-product', '')}
                           </p>
@@ -458,13 +560,15 @@ const ReturnInventoryModal = ({ isOpen, onClose, onInventoryReturned, darkMode =
                                 }`}
                                 onClick={() => toggleSerialItemSelection(item, serialNumber)}
                               >
-                                <input 
+                                <input
                                   type="checkbox"
                                   className={`mr-2 ${darkMode ? 'text-teal-500' : ''}`}
                                   checked={isSerialItemSelected(itemKey, serialNumber)}
                                   onChange={() => {}} // React requires onChange with checked
                                 />
-                                <span className={darkMode ? 'text-gray-200' : 'text-gray-800'}>{serialNumber}</span>
+                                <span className={darkMode ? 'text-gray-200' : 'text-gray-800'}>
+                                  {highlightSearchTerm(serialNumber)}
+                                </span>
                               </div>
                             ))
                           }
