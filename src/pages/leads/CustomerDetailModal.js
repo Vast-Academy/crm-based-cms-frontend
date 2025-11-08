@@ -275,9 +275,16 @@ const handleViewProjectDetails = async (project) => {
     doc.setFontSize(12);
     doc.text('Bill To:', 20, 65);
     doc.setFontSize(10);
-    doc.text(selectedBill.customerName || customer?.name || 'N/A', 20, 72);
-    doc.text(customer?.address || 'Address not available', 20, 78);
-    doc.text(selectedBill.customerPhone || customer?.phoneNumber || 'Phone not available', 20, 84);
+    let yPosition = 72;
+    doc.text(selectedBill.customerName || customer?.name || 'N/A', 20, yPosition);
+    if (selectedBill.customerFirmName || customer?.firmName) {
+      yPosition += 6;
+      doc.text(selectedBill.customerFirmName || customer?.firmName, 20, yPosition);
+    }
+    yPosition += 6;
+    doc.text(customer?.address || 'Address not available', 20, yPosition);
+    yPosition += 6;
+    doc.text(selectedBill.customerPhone || customer?.phoneNumber || 'Phone not available', 20, yPosition);
 
     // Invoice Details - Right Side
     doc.setFontSize(10);
@@ -1139,6 +1146,9 @@ const handleViewProjectDetails = async (project) => {
                       <div className="customer-info">
                         <h3 className="section-title text-lg font-semibold text-gray-700 mb-3">Bill To:</h3>
                         <p className="font-semibold text-lg">{selectedBill.customerName || customer?.name}</p>
+                        {(selectedBill.customerFirmName || customer?.firmName) && (
+                          <p className="text-gray-700 font-medium">{selectedBill.customerFirmName || customer?.firmName}</p>
+                        )}
                         <p className="text-gray-600">{customer?.address || 'Address not available'}</p>
                         <p className="text-gray-600">{selectedBill.customerPhone || customer?.phoneNumber}</p>
                       </div>
@@ -1175,15 +1185,15 @@ const handleViewProjectDetails = async (project) => {
                           <tr key={index} className="border-b border-gray-200">
                             <td className="p-3">
                               <div>
-                                <div className="font-medium">{item.itemName}</div>
+                                <div className="font-medium">{item.itemName || item.name}</div>
                                 {item.serialNumber && (
                                   <div className="text-xs text-gray-500">S/N: {item.serialNumber}</div>
                                 )}
                               </div>
                             </td>
-                            <td className="text-center p-3">{item.quantity}</td>
-                            <td className="text-right p-3">{formatCurrency(item.unitPrice)}</td>
-                            <td className="text-right p-3">{formatCurrency(item.totalPrice)}</td>
+                            <td className="text-center p-3">{item.quantity || 1}</td>
+                            <td className="text-right p-3">{formatCurrency(item.unitPrice || item.price || 0)}</td>
+                            <td className="text-right p-3">{formatCurrency(item.totalPrice || item.total || item.amount || (item.quantity * (item.unitPrice || item.price || 0)))}</td>
                           </tr>
                         )) || (
                           <tr>

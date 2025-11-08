@@ -123,13 +123,51 @@ const CACHE_STALENESS_TIME = 15 * 1000;
     // Redirect to login page will be handled by AuthContext/Router
   };
 
-  // Add these functions to handle customer interactions
+  // Contact Person handlers
+const handleCallContactPerson = (project) => {
+  const phoneNumber = project.contactPersonPhone || project.customerPhone;
+  if (phoneNumber) {
+    addActivityToHistory(project, `Call initiated to contact person`);
+    window.location.href = `tel:${phoneNumber}`;
+  } else {
+    alert('Contact person phone number not available');
+  }
+};
+
+const handleMessageContactPerson = (project) => {
+  const phoneNumber = project.contactPersonPhone || project.customerWhatsapp || project.customerPhone;
+  if (phoneNumber) {
+    addActivityToHistory(project, `WhatsApp message initiated to contact person`);
+    window.open(`https://wa.me/${phoneNumber.replace(/[^0-9]/g, '')}`, '_blank');
+  } else {
+    alert('Contact person number not available');
+  }
+};
+
+// Owner handlers - Only shown when showOwnerDetailsToTechnician is true
+const handleCallOwner = (project) => {
+  if (project.customerPhone) {
+    addActivityToHistory(project, `Call initiated to owner`);
+    window.location.href = `tel:${project.customerPhone}`;
+  } else {
+    alert('Owner phone number not available');
+  }
+};
+
+const handleMessageOwner = (project) => {
+  const phoneNumber = project.customerWhatsapp || project.customerPhone;
+  if (phoneNumber) {
+    addActivityToHistory(project, `WhatsApp message initiated to owner`);
+    window.open(`https://wa.me/${phoneNumber.replace(/[^0-9]/g, '')}`, '_blank');
+  } else {
+    alert('Owner contact number not available');
+  }
+};
+
+// Legacy handlers - keeping for backward compatibility
 const handleCallCustomer = (project) => {
   if (project.customerPhone) {
-    // Record this action in status history
     addActivityToHistory(project, `Call initiated to customer`);
-    
-    // Actually make the call
     window.location.href = `tel:${project.customerPhone}`;
   } else {
     alert('Customer phone number not available');
@@ -138,10 +176,7 @@ const handleCallCustomer = (project) => {
 
 const handleMessageCustomer = (project) => {
   if (project.customerWhatsapp || project.customerPhone) {
-    // Record this action in status history
     addActivityToHistory(project, `WhatsApp message initiated to customer`);
-    
-    // Open WhatsApp with the number
     const phoneNumber = project.customerWhatsapp || project.customerPhone;
     window.open(`https://wa.me/${phoneNumber.replace(/[^0-9]/g, '')}`, '_blank');
   } else {
@@ -1826,29 +1861,37 @@ const fetchFreshWorkOrders = async () => {
 
           {/* Contact Cards */}
           <div className="space-y-3">
-            {/* Customer Contact */}
+            {/* Contact Person Card - Always show */}
             <div className="bg-white rounded-lg shadow-md p-3">
-              <h3 className="text-sm font-bold text-gray-800 mb-1">{activeProject.customerName}</h3>
+              <div className="flex items-center justify-between mb-1">
+                <h3 className="text-sm font-bold text-blue-600">Contact Person</h3>
+                <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">Primary</span>
+              </div>
+              <p className="text-sm font-semibold text-gray-800 mb-1">
+                {activeProject.contactPersonName || activeProject.customerName}
+              </p>
               {activeProject.customerFirmName && (
-                <p className="text-xs text-gray-600 mb-1"><span className='font-bold'>Company :</span> {activeProject.customerFirmName}</p>
+                <p className="text-xs text-gray-600 mb-1">
+                  <span className='font-bold'>Company:</span> {activeProject.customerFirmName}
+                </p>
               )}
               {activeProject.customerAddress && (
                 <p className="flex items-start text-xs text-gray-600 mb-3">
                   <FiMapPin className="mr-2 text-gray-500 mt-1" />
                   <span>{activeProject.customerAddress}</span>
-                  </p>
+                </p>
               )}
 
               <div className="flex gap-2">
                 <button
-                  onClick={() => handleMessageCustomer(activeProject)}
+                  onClick={() => handleMessageContactPerson(activeProject)}
                   className="flex-1 bg-blue-500 hover:bg-blue-600 text-white rounded-lg p-2 flex items-center justify-center gap-2 text-sm font-medium"
                 >
                   <MessageSquare size={14} />
                   Message
                 </button>
                 <button
-                  onClick={() => handleCallCustomer(activeProject)}
+                  onClick={() => handleCallContactPerson(activeProject)}
                   className="flex-1 bg-green-500 hover:bg-green-600 text-white rounded-lg p-2 flex items-center justify-center gap-2 text-sm font-medium"
                 >
                   <Phone size={14} />
@@ -1856,6 +1899,37 @@ const fetchFreshWorkOrders = async () => {
                 </button>
               </div>
             </div>
+
+            {/* Owner Contact Card - Only show if showOwnerDetailsToTechnician is true */}
+            {activeProject.showOwnerDetailsToTechnician && (
+              <div className="bg-white rounded-lg shadow-md p-3 border-2 border-orange-200">
+                <div className="flex items-center justify-between mb-1">
+                  <h3 className="text-sm font-bold text-orange-600">Owner</h3>
+                  <span className="text-xs bg-orange-100 text-orange-700 px-2 py-0.5 rounded-full">Secondary</span>
+                </div>
+                <p className="text-sm font-semibold text-gray-800 mb-1">
+                  {activeProject.customerName}
+                </p>
+                <p className="text-xs text-gray-500 mb-3">Owner's direct contact</p>
+
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => handleMessageOwner(activeProject)}
+                    className="flex-1 bg-orange-500 hover:bg-orange-600 text-white rounded-lg p-2 flex items-center justify-center gap-2 text-sm font-medium"
+                  >
+                    <MessageSquare size={14} />
+                    Message Owner
+                  </button>
+                  <button
+                    onClick={() => handleCallOwner(activeProject)}
+                    className="flex-1 bg-orange-600 hover:bg-orange-700 text-white rounded-lg p-2 flex items-center justify-center gap-2 text-sm font-medium"
+                  >
+                    <Phone size={14} />
+                    Call Owner
+                  </button>
+                </div>
+              </div>
+            )}
 
             {/* Setup Technician - Only show for Repair/Complaint projects */}
             {(activeProject.projectCategory === 'Repair' ||

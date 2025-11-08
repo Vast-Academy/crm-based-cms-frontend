@@ -375,9 +375,16 @@ export default function DistributorDetailModal({ isOpen, onClose, distributorId,
     doc.setFontSize(12);
     doc.text('Bill To:', 20, 65);
     doc.setFontSize(10);
-    doc.text(selectedBill.customerName || distributor?.name || 'N/A', 20, 72);
-    doc.text(distributor?.address || 'Address not available', 20, 78);
-    doc.text(selectedBill.customerPhone || distributor?.phoneNumber || 'Phone not available', 20, 84);
+    let yPosition = 72;
+    doc.text(selectedBill.customerName || distributor?.name || 'N/A', 20, yPosition);
+    if (selectedBill.customerFirmName || distributor?.firmName) {
+      yPosition += 6;
+      doc.text(selectedBill.customerFirmName || distributor?.firmName, 20, yPosition);
+    }
+    yPosition += 6;
+    doc.text(distributor?.address || 'Address not available', 20, yPosition);
+    yPosition += 6;
+    doc.text(selectedBill.customerPhone || distributor?.phoneNumber || 'Phone not available', 20, yPosition);
 
     // Invoice Details - Right Side
     doc.setFontSize(10);
@@ -782,7 +789,7 @@ export default function DistributorDetailModal({ isOpen, onClose, distributorId,
         <span className="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
 
         {/* Modal panel - Matching CustomerDetailModal size */}
-        <div className="inline-block align-bottom bg-white rounded-2xl text-left shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:w-full sm:max-w-7xl mx-4 overflow-hidden">
+        <div className="inline-block align-bottom bg-white rounded-2xl text-left shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:w-full sm:max-w-6xl mx-4 overflow-hidden">
           {/* Header */}
           <div className="flex justify-between items-center bg-gradient-to-r from-teal-50 to-teal-100 px-6 py-4 border-b border-teal-200">
             <div className="flex items-center space-x-3">
@@ -893,7 +900,7 @@ export default function DistributorDetailModal({ isOpen, onClose, distributorId,
           </div>
           
           {/* Content */}
-          <div className="p-6">
+          <div className="p-6 max-h-[calc(100vh-12rem)] overflow-y-auto">
             {loading ? (
               <div className="flex justify-center py-12">
                 <LoadingSpinner />
@@ -1191,6 +1198,9 @@ export default function DistributorDetailModal({ isOpen, onClose, distributorId,
                             <div className="customer-info">
                               <h3 className="section-title text-lg font-semibold text-gray-700 mb-3">Bill To:</h3>
                               <p className="font-semibold text-lg">{selectedBill.customerName || distributor?.name}</p>
+                              {(selectedBill.customerFirmName || distributor?.firmName) && (
+                                <p className="text-gray-700 font-medium">{selectedBill.customerFirmName || distributor?.firmName}</p>
+                              )}
                               <p className="text-gray-600">{distributor?.address || 'Address not available'}</p>
                               <p className="text-gray-600">{selectedBill.customerPhone || distributor?.phoneNumber}</p>
                             </div>
@@ -1833,6 +1843,9 @@ export default function DistributorDetailModal({ isOpen, onClose, distributorId,
                     <div className="customer-info">
                       <h3 className="section-title text-base font-semibold text-gray-700 mb-2">Bill To:</h3>
                       <p className="font-semibold">{selectedBill.customerName || distributor?.name}</p>
+                      {(selectedBill.customerFirmName || distributor?.firmName) && (
+                        <p className="text-gray-700 text-sm font-medium">{selectedBill.customerFirmName || distributor?.firmName}</p>
+                      )}
                       <p className="text-gray-600 text-sm">{distributor?.address || 'Address not available'}</p>
                       <p className="text-gray-600 text-sm">{selectedBill.customerPhone || distributor?.phoneNumber}</p>
                     </div>
@@ -1868,14 +1881,16 @@ export default function DistributorDetailModal({ isOpen, onClose, distributorId,
                       {selectedBill.items?.map((item, index) => (
                         <tr key={index} className="border-b border-gray-200">
                           <td className="p-2 text-sm">
-                            {item.name}
-                            {item.serialNumber && (
-                              <span className="block text-xs text-gray-500">SN: {item.serialNumber}</span>
-                            )}
+                            <div>
+                              <div className="font-medium">{item.itemName || item.name}</div>
+                              {item.serialNumber && (
+                                <div className="text-xs text-gray-500">S/N: {item.serialNumber}</div>
+                              )}
+                            </div>
                           </td>
-                          <td className="text-center p-2 text-sm">{item.quantity}</td>
-                          <td className="text-right p-2 text-sm">{formatCurrency(item.price)}</td>
-                          <td className="text-right p-2 text-sm font-semibold">{formatCurrency(item.amount)}</td>
+                          <td className="text-center p-2 text-sm">{item.quantity || 1}</td>
+                          <td className="text-right p-2 text-sm">{formatCurrency(item.price || item.unitPrice || 0)}</td>
+                          <td className="text-right p-2 text-sm font-semibold">{formatCurrency(item.amount || item.total || (item.quantity * (item.price || item.unitPrice || 0)))}</td>
                         </tr>
                       ))}
                     </tbody>

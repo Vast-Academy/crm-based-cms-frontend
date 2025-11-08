@@ -97,6 +97,14 @@ const SummaryApi = {
         url : `${backendDomain}/api/update-customer`,
         method: "post"
     },
+    checkDuplicateContactPerson: {
+        url : `${backendDomain}/api/check-duplicate-contact-person`,
+        method: "get"
+    },
+    verifyPassword: {
+        url : `${backendDomain}/api/verify-password`,
+        method: "post"
+    },
     addOldProject: {
         url: `${backendDomain}/api/add-old-project`,
         method: "post"

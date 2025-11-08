@@ -27,6 +27,11 @@ export default function AddContactForm({ initialPhone = '', initialType = 'lead'
     whatsapp: "",
     sameAsPhone: false,
     address: "",
+    // Contact Person Details
+    contactPersonName: "",
+    contactPersonPhone: "",
+    sameAsCustomerDetails: false,
+    showOwnerDetailsToTechnician: false,
     leadType: initialType, // Lead | Customer | Dealer | Distributor
     customerStatus: "", // New | Existing
     installDate: "",
@@ -75,9 +80,42 @@ export default function AddContactForm({ initialPhone = '', initialType = 'lead'
     }
   }, [form.sameAsPhone, form.phone, countryCode]);
 
+  // Sync Contact Person with Customer Details if checkbox is ON
+  useEffect(() => {
+    if (form.sameAsCustomerDetails) {
+      setForm((f) => ({
+        ...f,
+        contactPersonName: f.customerName,
+        contactPersonPhone: f.phone
+      }));
+    }
+  }, [form.sameAsCustomerDetails, form.customerName, form.phone]);
+
+  // Handle checkbox toggle with clear functionality
+  const handleSameAsCustomerDetailsChange = (isChecked) => {
+    if (!isChecked) {
+      // Clear fields when checkbox is turned OFF
+      setForm((f) => ({
+        ...f,
+        sameAsCustomerDetails: false,
+        contactPersonName: '',
+        contactPersonPhone: ''
+      }));
+    } else {
+      // Turn on checkbox
+      update("sameAsCustomerDetails", true);
+    }
+  };
+
   const [submitted, setSubmitted] = useState(false);
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
+
+  // Duplicate contact person confirmation states
+  const [showDuplicateModal, setShowDuplicateModal] = useState(false);
+  const [duplicateCustomerInfo, setDuplicateCustomerInfo] = useState(null);
+  const [managerPassword, setManagerPassword] = useState('');
+  const [passwordError, setPasswordError] = useState('');
 
   // Handle branches for admin users
   const [branches, setBranches] = useState([]);
@@ -352,6 +390,10 @@ export default function AddContactForm({ initialPhone = '', initialType = 'lead'
             whatsapp: "",
             sameAsPhone: false,
             address: "",
+            contactPersonName: "",
+            contactPersonPhone: "",
+            sameAsCustomerDetails: false,
+            showOwnerDetailsToTechnician: false,
             leadType: initialType,
             customerStatus: "",
             installDate: "",
@@ -393,6 +435,74 @@ export default function AddContactForm({ initialPhone = '', initialType = 'lead'
     };
   }, [isOpen, onCancel, escPressCount, escPressTimer, showNotification]);
 
+  // Check if contact person phone number already exists
+  const checkDuplicateContactPerson = async (contactPhone) => {
+    if (!contactPhone || form.leadType !== 'Customer') return null;
+
+    try {
+      const response = await fetch(`${SummaryApi.checkDuplicateContactPerson.url}?phone=${encodeURIComponent(countryCode + contactPhone)}`, {
+        method: 'GET',
+        credentials: 'include'
+      });
+
+      const data = await response.json();
+
+      if (data.success && data.exists) {
+        return data.customer;
+      }
+      return null;
+    } catch (err) {
+      console.error('Error checking duplicate contact person:', err);
+      return null;
+    }
+  };
+
+  // Verify manager password
+  const verifyManagerPassword = async () => {
+    if (!managerPassword) {
+      setPasswordError('Password is required');
+      return false;
+    }
+
+    try {
+      const response = await fetch(SummaryApi.verifyPassword.url, {
+        method: SummaryApi.verifyPassword.method,
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ password: managerPassword })
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        return true;
+      } else {
+        setPasswordError(data.message || 'Invalid password');
+        return false;
+      }
+    } catch (err) {
+      setPasswordError('Server error. Please try again.');
+      return false;
+    }
+  };
+
+  // Handle duplicate confirmation with password
+  const handleDuplicateConfirmation = async () => {
+    setPasswordError('');
+
+    // Verify password
+    const isPasswordValid = await verifyManagerPassword();
+
+    if (isPasswordValid) {
+      // Close modal and proceed with submission
+      setShowDuplicateModal(false);
+      setManagerPassword('');
+      await submitCustomer();
+    }
+  };
+
   function validate() {
     const e = {};
     if (!form.customerName.trim()) e.customerName = "Required";
@@ -403,6 +513,15 @@ export default function AddContactForm({ initialPhone = '', initialType = 'lead'
     if (!form.leadType) e.leadType = "Select one";
     if (form.leadType === "Customer" && !form.customerStatus) e.customerStatus = "Select one";
     if (form.leadType === "Customer" && form.customerStatus === "Existing" && !form.installDate) e.installDate = "Required";
+
+    // Contact Person validation - Required for Customers
+    if (form.leadType === "Customer") {
+      if (!form.contactPersonName.trim()) e.contactPersonName = "Contact person name is required";
+      if (!form.contactPersonPhone.trim()) e.contactPersonPhone = "Contact person mobile is required";
+      if (form.contactPersonPhone && !/^\+?[0-9\s-]{7,15}$/.test(form.contactPersonPhone)) {
+        e.contactPersonPhone = "Invalid phone number";
+      }
+    }
 
     // Project type is not required for dealers, distributors, and billing customers
     const isBillingCustomer = form.leadType === "Customer" && form.customerStatus === "Billing";
@@ -422,11 +541,28 @@ export default function AddContactForm({ initialPhone = '', initialType = 'lead'
     e.preventDefault();
     const v = validate();
     setErrors(v);
-    
+
     if (Object.keys(v).length === 0) {
-      setLoading(true);
-      
-      try {
+      // Check for duplicate contact person phone for customers
+      if (form.leadType === 'Customer' && form.contactPersonPhone) {
+        const duplicate = await checkDuplicateContactPerson(form.contactPersonPhone);
+        if (duplicate) {
+          // Show duplicate confirmation modal
+          setDuplicateCustomerInfo(duplicate);
+          setShowDuplicateModal(true);
+          return; // Stop here and wait for user confirmation
+        }
+      }
+
+      // Proceed with submission
+      await submitCustomer();
+    }
+  }
+
+  async function submitCustomer() {
+    setLoading(true);
+
+    try {
         // Prepare form data based on type
         const dataToSubmit = {
           name: form.customerName,
@@ -435,6 +571,13 @@ export default function AddContactForm({ initialPhone = '', initialType = 'lead'
           whatsappNumber: whatsappCountryCode + form.whatsapp,
           address: form.address,
         };
+
+        // Add contact person data for customers
+        if (form.leadType === 'Customer') {
+          dataToSubmit.contactPersonName = form.contactPersonName;
+          dataToSubmit.contactPersonPhone = countryCode + form.contactPersonPhone;
+          dataToSubmit.showOwnerDetailsToTechnician = form.showOwnerDetailsToTechnician;
+        }
 
         // Add branch if admin and branch is selected
         if (user.role === 'admin' && selectedBranch) {
@@ -562,12 +705,11 @@ export default function AddContactForm({ initialPhone = '', initialType = 'lead'
             setErrors({ submit: data.message || 'Failed to add customer' });
           }
         }
-      } catch (err) {
-        setErrors({ submit: 'Server error. Please try again later.' });
-        console.error('Error adding contact:', err);
-      } finally {
-        setLoading(false);
-      }
+    } catch (err) {
+      setErrors({ submit: 'Server error. Please try again later.' });
+      console.error('Error adding contact:', err);
+    } finally {
+      setLoading(false);
     }
   }
 
@@ -711,7 +853,7 @@ export default function AddContactForm({ initialPhone = '', initialType = 'lead'
             <SectionTitle title="Basic Details" />
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <TextField
-              label="Customer Name"
+              label="Owner Name"
               placeholder="Enter full name"
               value={form.customerName}
               onChange={(v) => update("customerName", v)}
@@ -891,6 +1033,52 @@ export default function AddContactForm({ initialPhone = '', initialType = 'lead'
             </div>
           </div>
 
+          {/* Contact Person Details - Only for Customers */}
+          <AnimatePresence initial={false}>
+            {form.leadType === "Customer" && (
+              <motion.div key="contactPerson" variants={fieldVariants} initial="hidden" animate="show" exit="exit" transition={{ duration: 0.22, ease: "easeOut" }} className="mt-8 mb-6">
+                <SectionTitle title="Contact Person Details" />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <TextField
+                    label="Contact Person Name*"
+                    placeholder="Enter contact person name"
+                    value={form.contactPersonName}
+                    onChange={(v) => update("contactPersonName", v)}
+                    error={errors.contactPersonName}
+                    colorScheme={colorScheme}
+                    id="contactPersonName"
+                    onKeyDown={(e) => handleKeyDown(e, 'contactPersonPhone')}
+                  />
+
+                  <TextField
+                    label="Contact Person Mobile*"
+                    placeholder="Enter mobile number"
+                    value={form.contactPersonPhone}
+                    onChange={(v) => update("contactPersonPhone", v)}
+                    error={errors.contactPersonPhone}
+                    colorScheme={colorScheme}
+                    id="contactPersonPhone"
+                    onKeyDown={(e) => handleKeyDown(e, 'leadType')}
+                  />
+                </div>
+
+                {/* Same as Customer Details Checkbox */}
+                <div className="flex items-center mt-2">
+                  <input
+                    type="checkbox"
+                    id="sameAsCustomerDetails"
+                    className="mr-2 h-4 w-4 rounded border-gray-300"
+                    checked={form.sameAsCustomerDetails}
+                    onChange={(e) => handleSameAsCustomerDetailsChange(e.target.checked)}
+                  />
+                  <label htmlFor="sameAsCustomerDetails" className="text-xs text-gray-500">
+                    Same as customer basic details
+                  </label>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
           {/* Lead / Customer */}
           <div className="mt-8 mb-6">
             <SectionTitle title="Lead / Customer" subtle />
@@ -1061,6 +1249,29 @@ export default function AddContactForm({ initialPhone = '', initialType = 'lead'
             )}
           </AnimatePresence>
 
+          {/* Show Owner Details to Technician - Only for Customers */}
+          <AnimatePresence initial={false}>
+            {form.leadType === "Customer" && (
+              <motion.div key="showOwnerDetails" variants={fieldVariants} initial="hidden" animate="show" exit="exit" transition={{ duration: 0.22, ease: "easeOut" }} className="mt-8 mb-6">
+                <div className="flex items-center p-3 bg-blue-50 rounded-lg border border-blue-200">
+                  <input
+                    type="checkbox"
+                    id="showOwnerDetailsToTechnician"
+                    className="mr-3 h-5 w-5 rounded border-gray-300"
+                    checked={form.showOwnerDetailsToTechnician}
+                    onChange={(e) => update("showOwnerDetailsToTechnician", e.target.checked)}
+                  />
+                  <label htmlFor="showOwnerDetailsToTechnician" className="text-sm text-gray-700 cursor-pointer">
+                    <span className="font-semibold">Show Owner's Phone Number to Technician</span>
+                    <p className="text-xs text-gray-600 mt-1">
+                      If checked, technician will see both owner and contact person details. Otherwise, only contact person details will be visible.
+                    </p>
+                  </label>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
           {/* Remarks */}
           <div className="mt-8 mb-6">
             <SectionTitle title="Remarks" subtle />
@@ -1108,11 +1319,11 @@ export default function AddContactForm({ initialPhone = '', initialType = 'lead'
 
             <AnimatePresence>
               {submitted && (
-                <motion.div 
-                  initial={{ y: 20, opacity: 0 }} 
-                  animate={{ y: 0, opacity: 1 }} 
-                  exit={{ y: 20, opacity: 0 }} 
-                  transition={{ duration: 0.25 }} 
+                <motion.div
+                  initial={{ y: 20, opacity: 0 }}
+                  animate={{ y: 0, opacity: 1 }}
+                  exit={{ y: 20, opacity: 0 }}
+                  transition={{ duration: 0.25 }}
                   className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-white text-gray-900 shadow-lg ring-1 ring-gray-200 px-4 py-3 rounded-xl"
                 >
                   Form submitted successfully ✅
@@ -1122,6 +1333,84 @@ export default function AddContactForm({ initialPhone = '', initialType = 'lead'
           </div>
         </div>
       </div>
+
+      {/* Duplicate Contact Person Confirmation Modal */}
+      {showDuplicateModal && duplicateCustomerInfo && (
+        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-[60] p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6">
+            <div className="flex items-center mb-4">
+              <div className="w-12 h-12 rounded-full bg-yellow-100 flex items-center justify-center mr-3">
+                <svg className="w-6 h-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+              </div>
+              <h3 className="text-xl font-bold text-gray-800">Duplicate Contact Person</h3>
+            </div>
+
+            <div className="mb-6">
+              <p className="text-gray-700 mb-3">
+                This contact person phone number is already added for:
+              </p>
+              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+                <p className="font-semibold text-gray-900">{duplicateCustomerInfo.name}</p>
+                {duplicateCustomerInfo.firmName && (
+                  <p className="text-sm text-gray-600">Company: {duplicateCustomerInfo.firmName}</p>
+                )}
+                <p className="text-sm text-gray-600">Phone: {duplicateCustomerInfo.phoneNumber}</p>
+              </div>
+            </div>
+
+            <div className="mb-4">
+              <p className="text-gray-700 font-medium mb-2">
+                Do you still want to add this contact person?
+              </p>
+              <p className="text-sm text-gray-600 mb-3">
+                Please enter your password to confirm:
+              </p>
+              <input
+                type="password"
+                value={managerPassword}
+                onChange={(e) => {
+                  setManagerPassword(e.target.value);
+                  setPasswordError('');
+                }}
+                placeholder="Enter your password"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                onKeyPress={(e) => e.key === 'Enter' && handleDuplicateConfirmation()}
+                autoComplete="new-password"
+                autoFocus
+              />
+              {passwordError && (
+                <p className="text-red-600 text-sm mt-2">{passwordError}</p>
+              )}
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => {
+                  setShowDuplicateModal(false);
+                  setManagerPassword('');
+                  setPasswordError('');
+                }}
+                className="flex-1 px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 font-medium"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDuplicateConfirmation}
+                disabled={!managerPassword}
+                className={`flex-1 px-4 py-2 rounded-lg font-medium ${
+                  managerPassword
+                    ? 'bg-indigo-600 text-white hover:bg-indigo-700'
+                    : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                }`}
+              >
+                Confirm & Submit
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

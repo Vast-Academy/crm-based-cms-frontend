@@ -1006,7 +1006,7 @@ const Dashboard = () => {
           </div>
 
           {/* Net Profit & Collection Stats */}
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 mb-8">
+          {/* <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 mb-8">
             <div className="bg-white rounded-xl shadow-lg p-6 border-l-4 border-purple-500">
               <div className="flex justify-between items-start">
                 <div>
@@ -1063,7 +1063,7 @@ const Dashboard = () => {
                 </div>
               </div>
             </div>
-          </div>
+          </div> */}
 
           {/* Balance Overview - Only show for managers */}
           {balanceOverview.accounts && balanceOverview.accounts.length > 0 && (
