@@ -1438,7 +1438,7 @@ const Dashboard = () => {
                     </tr>
                   ))}
 
-              {/* Add a total row at the bottom */}
+              {/* Add a total row at the bottom remark*/}
               <tr className="bg-gray-50 font-semibold">
                 <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900">
                   Total
