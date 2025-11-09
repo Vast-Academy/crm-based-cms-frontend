@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import {
   FiUsers,
   FiPackage,
@@ -38,6 +38,11 @@ const Dashboard = () => {
   const [balanceOverview, setBalanceOverview] = useState({ accounts: [], summary: {} });
   const [showModal, setShowModal] = useState(false);
 
+  // Polling refs
+  const dataSignatureRef = useRef('');
+  const pollingIntervalRef = useRef(null);
+  const POLLING_INTERVAL_MS = 30000; // 30 seconds
+
   // Stats state with initial values
   const [stats, setStats] = useState({
     branches: 0,
@@ -76,6 +81,23 @@ const Dashboard = () => {
 
   // Cache staleness time - 15 minutes
   const CACHE_STALENESS_TIME = 15 * 60 * 1000;
+
+  // Build a signature from dashboard data to detect changes
+  const buildDataSignature = (dashboardData) => {
+    if (!dashboardData) return '';
+
+    const parts = [
+      dashboardData.stats?.assignedProjects || 0,
+      dashboardData.stats?.pendingApprovals || 0,
+      dashboardData.stats?.completedProjects || 0,
+      dashboardData.stats?.workOrders || 0,
+      dashboardData.stats?.inventory || 0,
+      dashboardData.stats?.customers || 0,
+      dashboardData.stats?.leads || 0,
+    ];
+
+    return parts.join('-');
+  };
 
   // Main function to fetch dashboard data with caching
   const fetchDashboardData = async (forceFresh = false) => {
@@ -643,6 +665,10 @@ const Dashboard = () => {
         "dashboardData",
         JSON.stringify(dashboardDataToCache)
       );
+
+      // Update signature after successful fetch
+      dataSignatureRef.current = buildDataSignature(dashboardDataToCache);
+
       // localStorage.setItem('dashboardDataTimestamp', new Date().getTime().toString());
     } catch (err) {
       console.error("Error fetching fresh dashboard data:", err);
@@ -670,6 +696,184 @@ const Dashboard = () => {
     }
 
     fetchDashboardData();
+  }, [user.role, user.selectedBranch]);
+
+  // Polling effect to check for updates
+  useEffect(() => {
+    let isChecking = false;
+    let isMounted = true;
+
+    const checkForUpdates = async () => {
+      if (isChecking || !isMounted) return;
+      isChecking = true;
+
+      try {
+        // Build branch param if needed
+        let branchParam = "";
+        if (user.role === "admin" && user.selectedBranch) {
+          branchParam = `?branch=${user.selectedBranch}`;
+        }
+
+        // Fetch only the necessary data to check for updates
+        const [
+          leadsResponse,
+          customersResponse,
+          workOrdersResponse,
+          projectsResponse,
+          inventorySerializedResponse,
+          inventoryGenericResponse,
+        ] = await Promise.all([
+          fetch(`${SummaryApi.getAllLeads.url}${branchParam}`, {
+            method: SummaryApi.getAllLeads.method,
+            credentials: "include",
+          }),
+          fetch(`${SummaryApi.getAllCustomers.url}${branchParam}`, {
+            method: SummaryApi.getAllCustomers.method,
+            credentials: "include",
+          }),
+          fetch(`${SummaryApi.getWorkOrders.url}${branchParam}`, {
+            method: SummaryApi.getWorkOrders.method,
+            credentials: "include",
+          }),
+          fetch(`${SummaryApi.getManagerProjects.url}${branchParam}`, {
+            method: "GET",
+            credentials: "include",
+          }),
+          fetch(`${SummaryApi.getInventoryByType.url}/serialized-product`, {
+            method: SummaryApi.getInventoryByType.method,
+            credentials: "include",
+          }),
+          fetch(`${SummaryApi.getInventoryByType.url}/generic-product`, {
+            method: SummaryApi.getInventoryByType.method,
+            credentials: "include",
+          }),
+        ]);
+
+        const leadsData = await leadsResponse.json();
+        const customersData = await customersResponse.json();
+        const workOrdersData = await workOrdersResponse.json();
+        const projectsData = await projectsResponse.json();
+        const serializedData = await inventorySerializedResponse.json();
+        const genericData = await inventoryGenericResponse.json();
+
+        // Calculate basic stats
+        let inventoryTotal = 0;
+        let assignedCount = 0;
+        let pendingApprovalCount = 0;
+        let completedCount = 0;
+        let pendingWorkOrdersCount = 0;
+
+        if (user.role === "manager") {
+          // Manager inventory calculation
+          if (serializedData.success) {
+            serializedData.items.forEach((item) => {
+              if (item.stock) {
+                inventoryTotal += item.stock.length;
+              }
+            });
+          }
+
+          if (genericData.success) {
+            genericData.items.forEach((item) => {
+              if (item.stock) {
+                item.stock.forEach((stock) => {
+                  inventoryTotal += parseInt(stock.quantity || 0, 10);
+                });
+              }
+            });
+          }
+        } else {
+          // Admin inventory calculation
+          if (serializedData.success) {
+            inventoryTotal += serializedData.items.length;
+          }
+          if (genericData.success) {
+            inventoryTotal += genericData.items.length;
+          }
+        }
+
+        // Calculate project counts
+        if (projectsData.success) {
+          const validProjects = projectsData.data.filter((project) => {
+            return (
+              project.technician &&
+              (project.technician.firstName ||
+                project.technician.lastName ||
+                (typeof project.technician === "string" &&
+                  project.technician.length > 0))
+            );
+          });
+
+          assignedCount = validProjects.filter((project) =>
+            ["assigned", "in-progress", "paused"].includes(project.status)
+          ).length;
+
+          pendingApprovalCount = validProjects.filter(
+            (project) => project.status === "pending-approval"
+          ).length;
+
+          completedCount = validProjects.filter(
+            (project) => project.status === "completed"
+          ).length;
+        }
+
+        // Calculate work orders count
+        pendingWorkOrdersCount = workOrdersData.success
+          ? workOrdersData.data.filter(
+              (order) =>
+                order.status === "pending" || order.status === "Pending"
+            ).length
+          : 0;
+
+        // Build new signature
+        const newData = {
+          stats: {
+            assignedProjects: assignedCount,
+            pendingApprovals: pendingApprovalCount,
+            completedProjects: completedCount,
+            workOrders: pendingWorkOrdersCount,
+            inventory: inventoryTotal,
+            customers: customersData.success ? customersData.data.length : 0,
+            leads: leadsData.success ? leadsData.data.length : 0,
+          },
+        };
+
+        const newSignature = buildDataSignature(newData);
+
+        // If signature changed, refresh full dashboard data
+        if (newSignature !== dataSignatureRef.current && isMounted) {
+          console.log("Dashboard data changed, refreshing...");
+          await fetchFreshDashboardData(true);
+        }
+      } catch (err) {
+        console.error("Error checking for dashboard updates:", err);
+      } finally {
+        isChecking = false;
+      }
+    };
+
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        checkForUpdates();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    pollingIntervalRef.current = setInterval(checkForUpdates, POLLING_INTERVAL_MS);
+
+    if (!document.hidden) {
+      checkForUpdates();
+    }
+
+    return () => {
+      isMounted = false;
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current);
+        pollingIntervalRef.current = null;
+      }
+    };
   }, [user.role, user.selectedBranch]);
 
   const isAdmin = user.role === "admin";
