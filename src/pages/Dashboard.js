@@ -11,6 +11,7 @@ import {
   FiUserPlus,
   FiClipboard,
   FiHome,
+  FiRefreshCw,
 } from "react-icons/fi";
 import {
   Package as PackageIcon,
@@ -27,6 +28,9 @@ import SummaryApi from "../common";
 import { useAuth } from "../context/AuthContext";
 import LoadingSpinner from "../components/LoadingSpinner";
 import MarkUpdateForm from "../components/MarkUpdateForm";
+import CustomerDetailModal from "./leads/CustomerDetailModal";
+import DealerDetailModal from "./leads/DealerDetailModal";
+import DistributorDetailModal from "./leads/DistributorDetailModal";
 
 const Dashboard = () => {
   const { user } = useAuth();
@@ -37,6 +41,14 @@ const Dashboard = () => {
   const [managerSummary, setManagerSummary] = useState(null);
   const [balanceOverview, setBalanceOverview] = useState({ accounts: [], summary: {} });
   const [showModal, setShowModal] = useState(false);
+
+  // Detail modal states
+  const [showCustomerDetailModal, setShowCustomerDetailModal] = useState(false);
+  const [showDealerDetailModal, setShowDealerDetailModal] = useState(false);
+  const [showDistributorDetailModal, setShowDistributorDetailModal] = useState(false);
+  const [selectedCustomerId, setSelectedCustomerId] = useState(null);
+  const [selectedDealerId, setSelectedDealerId] = useState(null);
+  const [selectedDistributorId, setSelectedDistributorId] = useState(null);
 
   // Polling refs
   const dataSignatureRef = useRef('');
@@ -1034,6 +1046,73 @@ const Dashboard = () => {
     managerFinancialSnapshot.accountsSummary ||
     defaultManagerFinancialSummary.accountsSummary;
 
+  // Handler functions for opening detail modals
+  const handleViewCustomer = (customerId) => {
+    setSelectedCustomerId(customerId);
+    setShowCustomerDetailModal(true);
+  };
+
+  const handleViewDealer = (dealerId) => {
+    setSelectedDealerId(dealerId);
+    setShowDealerDetailModal(true);
+  };
+
+  const handleViewDistributor = (distributorId) => {
+    setSelectedDistributorId(distributorId);
+    setShowDistributorDetailModal(true);
+  };
+
+  // Handler to open appropriate modal based on customer type
+  const handleAccountClick = (account) => {
+    if (account.customerType === 'customer') {
+      handleViewCustomer(account.customerId);
+    } else if (account.customerType === 'dealer') {
+      handleViewDealer(account.customerId);
+    } else if (account.customerType === 'distributor') {
+      handleViewDistributor(account.customerId);
+    }
+  };
+
+  // Handler for modal close and data refresh
+  const handleCustomerUpdated = (updatedCustomer) => {
+    // Refresh dashboard data after customer update
+    fetchDashboardData(true);
+  };
+
+  const handleDealerUpdated = (updatedDealer) => {
+    // Refresh dashboard data after dealer update
+    fetchDashboardData(true);
+  };
+
+  const handleDistributorUpdated = (updatedDistributor) => {
+    // Refresh dashboard data after distributor update
+    fetchDashboardData(true);
+  };
+
+  // Handle Balance Overview refresh
+  const handleRefreshBalanceOverview = async () => {
+    try {
+      const balanceResponse = await fetch(
+        SummaryApi.getManagerBalanceOverview.url,
+        {
+          method: SummaryApi.getManagerBalanceOverview.method,
+          credentials: "include",
+        }
+      );
+      const balanceData = await balanceResponse.json();
+      if (balanceData.success) {
+        setBalanceOverview(balanceData.data);
+        // Cache in localStorage
+        localStorage.setItem('managerBalanceOverview', JSON.stringify(balanceData.data));
+      } else {
+        setBalanceOverview({ accounts: [], summary: {} });
+      }
+    } catch (balanceError) {
+      console.error("Error refreshing balance overview:", balanceError);
+      // Keep existing data if refresh fails
+    }
+  };
+
   if (loading) {
     return <LoadingSpinner />;
   }
@@ -1279,8 +1358,18 @@ const Dashboard = () => {
                     Accounts with outstanding balances
                   </p>
                 </div>
-                <div className="text-sm text-gray-500">
-                  Showing {balanceOverview.accounts.length} accounts
+                <div className="flex items-center gap-3">
+                  {/* Refresh Button */}
+                  <button
+                    onClick={handleRefreshBalanceOverview}
+                    className="p-2 rounded-full bg-gray-200 hover:bg-gray-300 text-gray-700"
+                    title="Refresh Balance Overview"
+                  >
+                    <FiRefreshCw className="w-4 h-4" />
+                  </button>
+                  <div className="text-sm text-gray-500">
+                    Showing {balanceOverview.accounts.length} accounts
+                  </div>
                 </div>
               </div>
               <div className="overflow-x-auto">
@@ -1313,7 +1402,8 @@ const Dashboard = () => {
                       return (
                         <tr
                           key={`${account.customerId}-${index}`}
-                          className="border-b border-gray-100 hover:bg-gray-50"
+                          className="border-b border-gray-100 hover:bg-gray-50 cursor-pointer"
+                          onClick={() => handleAccountClick(account)}
                         >
                           <td className="py-3 px-4">
                             {/* Display exactly like ContactsPage */}
@@ -1514,6 +1604,37 @@ const Dashboard = () => {
           </table>
         </div>
       </div>
+
+      {/* Detail Modals */}
+      <CustomerDetailModal
+        isOpen={showCustomerDetailModal}
+        onClose={() => {
+          setShowCustomerDetailModal(false);
+          setSelectedCustomerId(null);
+        }}
+        customerId={selectedCustomerId}
+        onCustomerUpdated={handleCustomerUpdated}
+      />
+
+      <DealerDetailModal
+        isOpen={showDealerDetailModal}
+        onClose={() => {
+          setShowDealerDetailModal(false);
+          setSelectedDealerId(null);
+        }}
+        dealerId={selectedDealerId}
+        onDealerUpdated={handleDealerUpdated}
+      />
+
+      <DistributorDetailModal
+        isOpen={showDistributorDetailModal}
+        onClose={() => {
+          setShowDistributorDetailModal(false);
+          setSelectedDistributorId(null);
+        }}
+        distributorId={selectedDistributorId}
+        onDistributorUpdated={handleDistributorUpdated}
+      />
 
     </div>
   );

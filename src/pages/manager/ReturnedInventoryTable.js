@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { FiClock, FiUser, FiPackage, FiX, FiSearch } from 'react-icons/fi';
+import { FiClock, FiUser, FiPackage, FiX, FiSearch, FiRefreshCw, FiChevronDown } from 'react-icons/fi';
+import { LuArrowDownUp, LuArrowUpDown } from 'react-icons/lu';
 import SummaryApi from '../../common';
 import { useNotification } from '../../context/NotificationContext';
 import ConfirmReturnModal from './ConfirmReturnModal';
@@ -20,6 +21,12 @@ const ReturnedInventoryTable = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const searchInputRef = useRef(null);
 
+  // Sort dropdown states
+  const [isSortDropdownOpen, setIsSortDropdownOpen] = useState(false);
+  const [sortField, setSortField] = useState('date'); // 'technician', 'date', 'quantity'
+  const [sortOrder, setSortOrder] = useState('desc'); // 'asc' or 'desc'
+  const sortDropdownRef = useRef(null);
+
   // Double ESC and double click states for details modal
   const [escPressCount, setEscPressCount] = useState(0);
   const [escPressTimer, setEscPressTimer] = useState(null);
@@ -29,6 +36,20 @@ const ReturnedInventoryTable = () => {
   // Fetch returned inventory
   useEffect(() => {
     fetchReturnedInventory();
+  }, []);
+
+  // Close sort dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (sortDropdownRef.current && !sortDropdownRef.current.contains(event.target)) {
+        setIsSortDropdownOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
   }, []);
 
   const fetchReturnedInventory = async (forceFresh = false) => {
@@ -116,6 +137,30 @@ const fetchFreshReturnedInventory = async (isBackground = false) => {
     }
   }
 };
+
+  // Handle manual refresh button click
+  const handleRefreshClick = async () => {
+    try {
+      await fetchFreshReturnedInventory();
+    } catch (err) {
+      console.error('Error refreshing returned inventory:', err);
+      setError('Failed to refresh returned inventory. Please try again.');
+      setLoading(false);
+    }
+  };
+
+  // Handle sort selection
+  const handleSortSelection = (field) => {
+    if (sortField === field) {
+      // Toggle order if same field selected
+      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+    } else {
+      // Set new field with default order
+      setSortField(field);
+      setSortOrder(field === 'date' ? 'desc' : 'asc');
+    }
+    setIsSortDropdownOpen(false);
+  };
 
   // Format date
   const formatDate = (dateString) => {
@@ -275,10 +320,122 @@ const fetchFreshReturnedInventory = async (isBackground = false) => {
     }
   };
 
+  // Get sorted items
+  const getSortedItems = () => {
+    let sorted = [...returnedItems];
+
+    // Apply sorting
+    sorted.sort((a, b) => {
+      let comparison = 0;
+
+      if (sortField === 'technician') {
+        // Sort by technician name
+        const nameA = (a.technician?.name || '').toLowerCase();
+        const nameB = (b.technician?.name || '').toLowerCase();
+        comparison = nameA.localeCompare(nameB);
+      } else if (sortField === 'date') {
+        // Sort by return date
+        const dateA = new Date(a.returnedAt).getTime();
+        const dateB = new Date(b.returnedAt).getTime();
+        comparison = dateA - dateB;
+      } else if (sortField === 'quantity') {
+        // Sort by total quantity
+        const qtyA = a.totalQuantity || 0;
+        const qtyB = b.totalQuantity || 0;
+        comparison = qtyA - qtyB;
+      }
+
+      return sortOrder === 'asc' ? comparison : -comparison;
+    });
+
+    return sorted;
+  };
+
   return (
     <div className="bg-white rounded-lg shadow-md p-4">
       <div className="flex justify-between items-center mb-4">
         <h2 className="text-lg font-semibold">Pending Returned Inventory</h2>
+
+        {/* Refresh and Sort Controls */}
+        <div className="flex items-center gap-3">
+          {/* Refresh Button */}
+          <button
+            onClick={handleRefreshClick}
+            className="p-2 rounded-full bg-gray-200 hover:bg-gray-300 text-gray-700"
+            title="Refresh Returned Inventory"
+          >
+            <FiRefreshCw className="w-5 h-5" />
+          </button>
+
+          {/* Sort Dropdown */}
+          <div className="relative" ref={sortDropdownRef}>
+            <button
+              onClick={() => setIsSortDropdownOpen(!isSortDropdownOpen)}
+              className="flex items-center px-4 py-2 rounded-full text-sm font-medium bg-gray-100 text-gray-600 hover:bg-gray-200"
+            >
+              {sortOrder === 'asc' ? (
+                <LuArrowDownUp className="h-4 w-4 mr-2" />
+              ) : (
+                <LuArrowUpDown className="h-4 w-4 mr-2" />
+              )}
+              Sort
+              <FiChevronDown className="ml-2 h-4 w-4" />
+            </button>
+
+            {/* Sort Dropdown Menu */}
+            {isSortDropdownOpen && (
+              <div className="absolute right-0 mt-2 w-56 bg-white rounded-md shadow-lg z-50 border border-gray-200">
+                <div className="py-1">
+                  <button
+                    onClick={() => handleSortSelection('technician')}
+                    className={`flex items-center justify-between w-full px-4 py-2 text-sm text-left hover:bg-gray-100 ${
+                      sortField === 'technician' ? 'bg-gray-50 text-teal-600 font-medium' : 'text-gray-700'
+                    }`}
+                  >
+                    <span>Technician Name</span>
+                    {sortField === 'technician' && (
+                      sortOrder === 'asc' ? (
+                        <LuArrowDownUp className="h-4 w-4" />
+                      ) : (
+                        <LuArrowUpDown className="h-4 w-4" />
+                      )
+                    )}
+                  </button>
+                  <button
+                    onClick={() => handleSortSelection('date')}
+                    className={`flex items-center justify-between w-full px-4 py-2 text-sm text-left hover:bg-gray-100 ${
+                      sortField === 'date' ? 'bg-gray-50 text-teal-600 font-medium' : 'text-gray-700'
+                    }`}
+                  >
+                    <span>Date Added</span>
+                    {sortField === 'date' && (
+                      sortOrder === 'asc' ? (
+                        <LuArrowDownUp className="h-4 w-4" />
+                      ) : (
+                        <LuArrowUpDown className="h-4 w-4" />
+                      )
+                    )}
+                  </button>
+                  <button
+                    onClick={() => handleSortSelection('quantity')}
+                    className={`flex items-center justify-between w-full px-4 py-2 text-sm text-left hover:bg-gray-100 ${
+                      sortField === 'quantity' ? 'bg-gray-50 text-teal-600 font-medium' : 'text-gray-700'
+                    }`}
+                  >
+                    <span>Items Quantity</span>
+                    {sortField === 'quantity' && (
+                      sortOrder === 'asc' ? (
+                        <LuArrowDownUp className="h-4 w-4" />
+                      ) : (
+                        <LuArrowUpDown className="h-4 w-4" />
+                      )
+                    )}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
       </div>
       
       {error && (
@@ -303,7 +460,7 @@ const fetchFreshReturnedInventory = async (isBackground = false) => {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {returnedItems.map((returnItem, index) => (
+              {getSortedItems().map((returnItem, index) => (
                 <tr
                   key={returnItem.id}
                   className="hover:bg-gray-50 cursor-pointer"

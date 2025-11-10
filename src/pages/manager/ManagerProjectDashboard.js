@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { FiFilter, FiSearch, FiChevronDown, FiCheck } from 'react-icons/fi';
+import { FiFilter, FiSearch, FiChevronDown, FiCheck, FiRefreshCw } from 'react-icons/fi';
 import { LuArrowDownUp, LuArrowUpDown } from 'react-icons/lu';
 import SummaryApi from '../../common';
 import LoadingSpinner from '../../components/LoadingSpinner';
@@ -394,7 +394,17 @@ const ManagerProjectDashboard = () => {
       <div className="p-6 bg-white rounded-lg shadow-md max-w-[1300px]">
         {/* Header */}
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-4">
-          <h1 className="text-2xl font-semibold text-gray-800">Projects</h1>
+          <div className="flex items-center gap-3">
+            <h1 className="text-2xl font-semibold text-gray-800">Projects</h1>
+            {/* Refresh Button */}
+            <button
+              onClick={() => fetchFreshProjects()}
+              className="p-2 rounded-full bg-gray-200 hover:bg-gray-300 text-gray-700"
+              title="Refresh Projects"
+            >
+              <FiRefreshCw className="w-5 h-5" />
+            </button>
+          </div>
           <div className="flex items-center gap-2">
             {/* Filter Dropdown */}
             <div className="relative" ref={filterDropdownRef}>

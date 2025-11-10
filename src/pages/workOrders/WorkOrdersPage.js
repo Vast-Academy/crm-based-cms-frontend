@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { FiSearch, FiUser } from 'react-icons/fi';
+import { FiSearch, FiUser, FiRefreshCw, FiChevronDown } from 'react-icons/fi';
+import { LuArrowDownUp, LuArrowUpDown } from "react-icons/lu";
 import SummaryApi from '../../common';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import { useAuth } from '../../context/AuthContext';
@@ -75,6 +76,12 @@ const WorkOrdersPage = () => {
   const [cancelReason, setCancelReason] = useState('');
   const [cancelError, setCancelError] = useState('');
   const [cancelLoading, setCancelLoading] = useState(false);
+
+  // Sort dropdown states
+  const [isSortDropdownOpen, setIsSortDropdownOpen] = useState(false);
+  const [sortField, setSortField] = useState('dateCreated'); // 'dateCreated', 'customerName', 'companyName'
+  const [sortOrder, setSortOrder] = useState('desc'); // 'asc' or 'desc'
+  const sortDropdownRef = useRef(null);
   
   const fetchWorkOrders = async (forceFresh = false) => {
     try {
@@ -457,23 +464,23 @@ const fetchFreshWorkOrders = async (isBackground = false) => {
   // Apply filters and search to the work orders
   const applyFilters = (ordersToFilter, category) => {
     let filtered = [...ordersToFilter];
-    
+
     // Apply category filter
     if (category !== 'all') {
       if (category === 'installation') {
-        filtered = filtered.filter(order => 
+        filtered = filtered.filter(order =>
           order.projectCategory === 'New Installation' || !order.projectCategory
         );
       } else if (category === 'repair') {
-        filtered = filtered.filter(order => 
+        filtered = filtered.filter(order =>
           order.projectCategory === 'Repair'
         );
       }
     }
-    
+
     // Apply search query
     if (searchQuery.trim() !== '') {
-      filtered = filtered.filter(order => 
+      filtered = filtered.filter(order =>
         (order.customerName && order.customerName.toLowerCase().includes(searchQuery.toLowerCase())) ||
         (order.customerPhone && order.customerPhone.includes(searchQuery)) ||
         (order.orderId && order.orderId.includes(searchQuery)) ||
@@ -481,7 +488,33 @@ const fetchFreshWorkOrders = async (isBackground = false) => {
         (order.projectType && order.projectType.toLowerCase().includes(searchQuery.toLowerCase()))
       );
     }
-    
+
+    // Apply sorting
+    if (sortField === 'dateCreated') {
+      // Sort by creation date
+      filtered.sort((a, b) => {
+        const aDate = new Date(a.createdAt).getTime();
+        const bDate = new Date(b.createdAt).getTime();
+        return sortOrder === 'desc' ? bDate - aDate : aDate - bDate;
+      });
+    } else if (sortField === 'customerName') {
+      // Sort by customer name
+      filtered.sort((a, b) => {
+        const nameA = (a.customerName || '').toLowerCase();
+        const nameB = (b.customerName || '').toLowerCase();
+        const comparison = nameA.localeCompare(nameB);
+        return sortOrder === 'asc' ? comparison : -comparison;
+      });
+    } else if (sortField === 'companyName') {
+      // Sort by company/firm name
+      filtered.sort((a, b) => {
+        const companyA = (a.customerFirmName || '').toLowerCase();
+        const companyB = (b.customerFirmName || '').toLowerCase();
+        const comparison = companyA.localeCompare(companyB);
+        return sortOrder === 'asc' ? comparison : -comparison;
+      });
+    }
+
     setFilteredOrders(filtered);
   };
   
@@ -491,10 +524,37 @@ const fetchFreshWorkOrders = async (isBackground = false) => {
     applyFilters(workOrders, category);
   };
   
-  // Handle search
+  // Handle search and sorting
   useEffect(() => {
     applyFilters(workOrders, categoryFilter);
-  }, [searchQuery, workOrders]);
+  }, [searchQuery, workOrders, sortField, sortOrder]);
+
+  // Close sort dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (sortDropdownRef.current && !sortDropdownRef.current.contains(event.target)) {
+        setIsSortDropdownOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+
+  // Handle sort selection
+  const handleSortSelection = (field) => {
+    if (sortField === field) {
+      // Toggle order if same field selected
+      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+    } else {
+      // Set new field with default order
+      setSortField(field);
+      setSortOrder(field === 'dateCreated' ? 'desc' : 'asc');
+    }
+    setIsSortDropdownOpen(false);
+  };
   
   const formatDate = (dateString) => {
     const options = { 
@@ -514,8 +574,88 @@ const fetchFreshWorkOrders = async (isBackground = false) => {
       {/* Main Container with White Box */}
       <div className="p-6 bg-white rounded-lg shadow-md max-w-[1300px]">
         {/* Header */}
-        <div className="mb-4">
+        <div className="pb-4 flex justify-between items-center">
           <h1 className="text-2xl font-semibold text-gray-800">Pending Work Orders</h1>
+
+          <div className="flex items-center gap-3">
+            {/* Sort Dropdown */}
+            <div className="relative" ref={sortDropdownRef}>
+              <button
+                onClick={() => setIsSortDropdownOpen(!isSortDropdownOpen)}
+                className="flex items-center px-4 py-2 rounded-full text-sm font-medium bg-gray-100 text-gray-600 hover:bg-gray-200"
+              >
+                {sortOrder === 'asc' ? (
+                  <LuArrowDownUp className="h-4 w-4 mr-2" />
+                ) : (
+                  <LuArrowUpDown className="h-4 w-4 mr-2" />
+                )}
+                Sort
+                <FiChevronDown className="ml-2 h-4 w-4" />
+              </button>
+
+              {/* Sort Dropdown Menu */}
+              {isSortDropdownOpen && (
+                <div className="absolute right-0 mt-2 w-56 bg-white rounded-md shadow-lg z-50 border border-gray-200">
+                  <div className="py-1">
+                    <button
+                      onClick={() => handleSortSelection('customerName')}
+                      className={`flex items-center justify-between w-full px-4 py-2 text-sm text-left hover:bg-gray-100 ${
+                        sortField === 'customerName' ? 'bg-gray-50 text-teal-600 font-medium' : 'text-gray-700'
+                      }`}
+                    >
+                      <span>Customer Name</span>
+                      {sortField === 'customerName' && (
+                        sortOrder === 'asc' ? (
+                          <LuArrowDownUp className="h-4 w-4" />
+                        ) : (
+                          <LuArrowUpDown className="h-4 w-4" />
+                        )
+                      )}
+                    </button>
+                    <button
+                      onClick={() => handleSortSelection('companyName')}
+                      className={`flex items-center justify-between w-full px-4 py-2 text-sm text-left hover:bg-gray-100 ${
+                        sortField === 'companyName' ? 'bg-gray-50 text-teal-600 font-medium' : 'text-gray-700'
+                      }`}
+                    >
+                      <span>Company Name</span>
+                      {sortField === 'companyName' && (
+                        sortOrder === 'asc' ? (
+                          <LuArrowDownUp className="h-4 w-4" />
+                        ) : (
+                          <LuArrowUpDown className="h-4 w-4" />
+                        )
+                      )}
+                    </button>
+                    <button
+                      onClick={() => handleSortSelection('dateCreated')}
+                      className={`flex items-center justify-between w-full px-4 py-2 text-sm text-left hover:bg-gray-100 ${
+                        sortField === 'dateCreated' ? 'bg-gray-50 text-teal-600 font-medium' : 'text-gray-700'
+                      }`}
+                    >
+                      <span>Date Created</span>
+                      {sortField === 'dateCreated' && (
+                        sortOrder === 'asc' ? (
+                          <LuArrowDownUp className="h-4 w-4" />
+                        ) : (
+                          <LuArrowUpDown className="h-4 w-4" />
+                        )
+                      )}
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Refresh Button */}
+            <button
+              onClick={() => fetchFreshWorkOrders()}
+              className="p-2 rounded-full bg-gray-200 hover:bg-gray-300 text-gray-700"
+              title="Refresh Work Orders"
+            >
+              <FiRefreshCw className="w-5 h-5" />
+            </button>
+          </div>
         </div>
         
         {/* Filter Buttons */}

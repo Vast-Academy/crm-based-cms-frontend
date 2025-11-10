@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { FiClock, FiActivity, FiCheckCircle, FiSearch, FiRefreshCw, FiEye, FiFilter, FiChevronDown } from 'react-icons/fi';
+import { FiSearch, FiRefreshCw, FiChevronDown } from 'react-icons/fi';
 import { LuArrowDownUp, LuArrowUpDown } from "react-icons/lu";
 import SummaryApi from '../../common';
 import LoadingSpinner from '../../components/LoadingSpinner';
@@ -110,6 +110,7 @@ const PendingApprovals = () => {
 
   const fetchFreshProjects = async () => {
     try {
+      setLoading(true);
       const branchParam = getBranchQueryParam();
 
       const response = await fetch(`${SummaryApi.getManagerProjects.url}${branchParam}`, {
@@ -134,6 +135,8 @@ const PendingApprovals = () => {
 
     } catch (err) {
       throw err; // This is handled by the caller
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -142,6 +145,17 @@ const PendingApprovals = () => {
       await fetchFreshProjects();
     } catch (err) {
       console.error('Background fetch failed:', err);
+    }
+  };
+
+  // Handle manual refresh button click
+  const handleRefreshClick = async () => {
+    try {
+      await fetchFreshProjects();
+    } catch (err) {
+      console.error('Error refreshing projects:', err);
+      setError('Failed to refresh projects. Please try again.');
+      setLoading(false);
     }
   };
 
@@ -468,8 +482,18 @@ const PendingApprovals = () => {
             <p className="text-gray-600 mt-1">Projects awaiting your approval</p>
           </div>
 
-          {/* Sort Dropdown */}
-          <div className="relative mt-6" ref={sortDropdownRef}>
+          <div className='flex items-center gap-3 mt-4'>
+             {/* Refresh Button */}
+                        <button
+                          onClick={handleRefreshClick}
+                          className="p-2 rounded-full bg-gray-200 hover:bg-gray-300 text-gray-700"
+                          title="Refresh Projects"
+                        >
+                          <FiRefreshCw className="w-5 h-5" />
+                        </button>
+
+                         {/* Sort Dropdown */}
+          <div className="relative" ref={sortDropdownRef}>
             <button
               onClick={() => setIsSortDropdownOpen(!isSortDropdownOpen)}
               className="flex items-center px-4 py-2 rounded-full text-sm font-medium bg-gray-100 text-gray-600 hover:bg-gray-200"
@@ -536,6 +560,10 @@ const PendingApprovals = () => {
               </div>
             )}
           </div>
+
+          </div>
+
+         
         </div>
 
         {/* Search bar - full width below */}

@@ -5,7 +5,7 @@ import GenericProductsList from './GenericProductsList';
 import AllInventoryItems from './AllInventoryItems';
 import UnifiedInventoryAssignmentModal from './UnifiedInventoryAssignmentModal';
 import SelectTechnicianModal from '../technician/SelectTechnicianModal';
-import { FiSearch, FiPackage, FiChevronDown, FiFilter } from 'react-icons/fi';
+import { FiSearch, FiPackage, FiChevronDown, FiFilter, FiRefreshCw } from 'react-icons/fi';
 import { LuArrowUpDown, LuArrowDownUp } from 'react-icons/lu';
 import { useNotification } from '../../context/NotificationContext';
 import ExportInventoryButton from '../../components/ExportInventoryButton';
@@ -153,6 +153,15 @@ const InventoryManagement = () => {
 
             {/* Filter and Sort dropdowns */}
             <div className="flex space-x-2 mb-2 sm:mb-0 items-center">
+              {/* Refresh Button */}
+              <button
+                onClick={() => setRefreshCount(prev => prev + 1)}
+                className="p-2 rounded-full bg-gray-200 hover:bg-gray-300 text-gray-700"
+                title="Refresh Inventory"
+              >
+                <FiRefreshCw className="w-5 h-5" />
+              </button>
+
               {/* Filter Dropdown */}
               <div className="relative" ref={filterDropdownRef}>
                 <button

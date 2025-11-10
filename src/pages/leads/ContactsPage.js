@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import { FiSearch, FiPlusCircle, FiFilter, FiRefreshCw, FiUserPlus } from 'react-icons/fi';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { FiSearch, FiPlusCircle, FiFilter, FiRefreshCw, FiUserPlus, FiChevronDown } from 'react-icons/fi';
+import { LuArrowDownUp, LuArrowUpDown } from "react-icons/lu";
 import { useSearchParams } from 'react-router-dom';
 import SummaryApi from '../../common';
 import LoadingSpinner from '../../components/LoadingSpinner';
@@ -28,7 +29,6 @@ const ContactsPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
-  const [filteredContacts, setFilteredContacts] = useState([]);
   const [filters, setFilters] = useState({
     type: 'all', // 'all', 'lead', 'customer', 'dealer', 'distributor'
     status: 'all'
@@ -57,6 +57,15 @@ const ContactsPage = () => {
   const [showConvertTypeModal, setShowConvertTypeModal] = useState(false);
   const [selectedLeadForConvert, setSelectedLeadForConvert] = useState(null);
   const [selectedConversionType, setSelectedConversionType] = useState(null);
+
+  // Filter and Sort dropdown states
+  const [isFilterDropdownOpen, setIsFilterDropdownOpen] = useState(false);
+  const [isSortDropdownOpen, setIsSortDropdownOpen] = useState(false);
+  const [isLeadSubFilterOpen, setIsLeadSubFilterOpen] = useState(false);
+  const [sortField, setSortField] = useState('recent'); // 'recent', 'name', 'company'
+  const [sortOrder, setSortOrder] = useState('desc'); // 'asc' or 'desc'
+  const filterDropdownRef = useRef(null);
+  const sortDropdownRef = useRef(null);
 
   // Add a handler function for complaint success
 const handleComplaintSuccess = (data) => {
@@ -89,9 +98,8 @@ const fetchContacts = async (forceFresh = false) => {
     if (!forceFresh && cachedContacts) {
       const parsedContacts = JSON.parse(cachedContacts);
       setContacts(parsedContacts);
-      applyFilters(parsedContacts);
       // console.log("Using cached contacts data");
-      
+
       // बैकग्राउंड में फ्रेश डेटा फेच करें
       fetchFreshContactsInBackground();
       setLoading(false);
@@ -108,7 +116,6 @@ const fetchContacts = async (forceFresh = false) => {
     if (cachedContacts) {
       const parsedContacts = JSON.parse(cachedContacts);
       setContacts(parsedContacts);
-      applyFilters(parsedContacts);
       console.log("Using cached contacts data after fetch error");
     } else {
       setError('Server error. Please try again later.');
@@ -212,8 +219,7 @@ const fetchContacts = async (forceFresh = false) => {
       });
   
       setContacts(combinedContacts);
-      applyFilters(combinedContacts);
-      
+
       // कॉन्टैक्ट्स डेटा कैश करें
       localStorage.setItem('contactsData', JSON.stringify(combinedContacts));
       
@@ -236,37 +242,6 @@ const fetchContacts = async (forceFresh = false) => {
     fetchContacts();
   }, [user.selectedBranch, searchParams]);
   
-// फ़िल्टर टैब्स का हैंडलर
-const handleFilterChange = (type, status = 'all') => {
-  // पहले फ़िल्टर्स सेट करें
-  setFilters({ type, status });
-  
-  // फिर मूल डेटा पर फ़िल्टरिंग करें
-  let filtered = [...contacts];
-  
-  // Filter by type
-  if (type !== 'all') {
-    filtered = filtered.filter(contact => contact.contactType === type);
-  }
-  
-  // Filter by status
-  if (status !== 'all') {
-    filtered = filtered.filter(contact => contact.status === status);
-  }
-  
-  // Apply search query
-  if (searchQuery.trim() !== '') {
-    filtered = filtered.filter(contact =>
-      (contact.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      contact.phoneNumber.includes(searchQuery) ||
-      (contact.email && contact.email.toLowerCase().includes(searchQuery.toLowerCase())) ||
-      (contact.firmName && contact.firmName.toLowerCase().includes(searchQuery.toLowerCase())))
-    );
-  }
-  
-  setFilteredContacts(filtered);
-};
-
   // Handle opening lead detail modal
   const handleViewLead = (leadId, convertMode = false) => {
     setSelectedLeadId(leadId);
@@ -453,10 +428,7 @@ const handleFilterChange = (type, status = 'all') => {
     // स्टेट अपडेट करें
     const updatedContacts = [contactWithType, ...contacts];
     setContacts(updatedContacts);
-    
-    // फिल्टर्स को फिर से लागू करें
-    applyFilters(updatedContacts);
-    
+
     // कैश अपडेट करें
     localStorage.setItem('contactsData', JSON.stringify(updatedContacts));
     
@@ -502,37 +474,97 @@ const handleFilterChange = (type, status = 'all') => {
     setShowAddModal(true);
   };
   
-  // Apply filters to the contacts
-  const applyFilters = (contactsToFilter) => {
-    let filtered = contactsToFilter;
-    
+  // Memoized filtered and sorted contacts for better performance
+  const filteredContacts = useMemo(() => {
+    let filtered = [...contacts];
+
     // Filter by type
     if (filters.type !== 'all') {
       filtered = filtered.filter(contact => contact.contactType === filters.type);
     }
-    
+
     // Filter by status
     if (filters.status !== 'all') {
       filtered = filtered.filter(contact => contact.status === filters.status);
     }
-    
+
     // Apply search query
     if (searchQuery.trim() !== '') {
+      const lowercaseQuery = searchQuery.toLowerCase();
       filtered = filtered.filter(contact =>
-        (contact.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        contact.name.toLowerCase().includes(lowercaseQuery) ||
         contact.phoneNumber.includes(searchQuery) ||
-        (contact.email && contact.email.toLowerCase().includes(searchQuery.toLowerCase())) ||
-        (contact.firmName && contact.firmName.toLowerCase().includes(searchQuery.toLowerCase())))
+        (contact.email && contact.email.toLowerCase().includes(lowercaseQuery)) ||
+        (contact.firmName && contact.firmName.toLowerCase().includes(lowercaseQuery))
       );
     }
-    
-    setFilteredContacts(filtered);
-  };
-  
-  // Handle search and filters
+
+    // Apply sorting - optimized
+    if (sortField === 'recent') {
+      // Sort by updatedAt or createdAt (most recent work first)
+      filtered.sort((a, b) => {
+        const aDate = new Date(a.updatedAt || a.createdAt).getTime();
+        const bDate = new Date(b.updatedAt || b.createdAt).getTime();
+        return sortOrder === 'desc' ? bDate - aDate : aDate - bDate;
+      });
+    } else if (sortField === 'name') {
+      // Sort by customer name
+      filtered.sort((a, b) => {
+        const nameA = (a.name || '').toLowerCase();
+        const nameB = (b.name || '').toLowerCase();
+        const comparison = nameA.localeCompare(nameB);
+        return sortOrder === 'asc' ? comparison : -comparison;
+      });
+    } else if (sortField === 'company') {
+      // Sort by company/firm name
+      filtered.sort((a, b) => {
+        const companyA = (a.firmName || '').toLowerCase();
+        const companyB = (b.firmName || '').toLowerCase();
+        const comparison = companyA.localeCompare(companyB);
+        return sortOrder === 'asc' ? comparison : -comparison;
+      });
+    }
+
+    return filtered;
+  }, [contacts, filters.type, filters.status, searchQuery, sortField, sortOrder]);
+
+  // Close dropdowns when clicking outside
   useEffect(() => {
-    applyFilters(contacts);
-  }, [searchQuery, filters, contacts]);
+    const handleClickOutside = (event) => {
+      if (filterDropdownRef.current && !filterDropdownRef.current.contains(event.target)) {
+        setIsFilterDropdownOpen(false);
+        setIsLeadSubFilterOpen(false);
+      }
+      if (sortDropdownRef.current && !sortDropdownRef.current.contains(event.target)) {
+        setIsSortDropdownOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+
+  // Handle filter selection
+  const handleFilterSelection = (type, status = 'all') => {
+    setFilters({ type, status });
+    setIsFilterDropdownOpen(false);
+    setIsLeadSubFilterOpen(false);
+  };
+
+  // Handle sort selection
+  const handleSortSelection = (field) => {
+    if (sortField === field) {
+      // Toggle order if same field selected
+      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+    } else {
+      // Set new field with default order
+      setSortField(field);
+      setSortOrder(field === 'recent' ? 'desc' : 'asc');
+    }
+    setIsSortDropdownOpen(false);
+  };
   
   // Function to check if search might be a valid phone number
   const isValidPhoneSearch = (query) => {
@@ -569,109 +601,207 @@ const handleFilterChange = (type, status = 'all') => {
   </button>
 </div>
         
-        {/* Control Bar - Single row with Add button, filter buttons and search */}
+        {/* Control Bar - Single row with Add button, filter and sort dropdowns */}
         <div className="pb-4">
-          
           <div className="flex items-center justify-between gap-4">
-          {user.role !== 'admin' && (
-          <button
-            onClick={() => handleAddNew()}
-            className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-full flex items-center whitespace-nowrap"
-          >
-            <FiPlusCircle className="mr-2" size={18} />
-            Add New Contact
-          </button>
-          )}
-          
-           {/* Filter Buttons */}
-           <div className="flex space-x-2">
-            <button
-             onClick={() => handleFilterChange('all')}
-              className={`px-4 py-1.5 rounded-full text-sm ${
-                filters.type === 'all' 
-                  ? 'bg-blue-500 text-white' 
-                  : 'bg-gray-100 text-gray-700'
-              }`}
-            >
-              All
-            </button>
-            <button
-               onClick={() => handleFilterChange('lead')}
-              className={`px-4 py-1.5 rounded-full text-sm ${
-                filters.type === 'lead' 
-                  ? 'bg-blue-500 text-white' 
-                  : 'bg-gray-100 text-gray-700'
-              }`}
-            >
-              Leads
-            </button>
-            <button
-              onClick={() => handleFilterChange('customer')}
-              className={`px-4 py-1.5 rounded-full text-sm ${
-                filters.type === 'customer' 
-                  ? 'bg-purple-500 text-white' 
-                  : 'bg-purple-100 text-purple-800'
-              }`}
-            >
-              Customers
-            </button>
-            <button
-              onClick={() => handleFilterChange('dealer')}
-              className={`px-4 py-1.5 rounded-full text-sm ${
-                filters.type === 'dealer' 
-                  ? 'bg-orange-500 text-white' 
-                  : 'bg-orange-100 text-orange-800'
-              }`}
-            >
-              Dealers
-            </button>
-            <button
-              onClick={() => handleFilterChange('distributor')}
-              className={`px-4 py-1.5 rounded-full text-sm ${
-                filters.type === 'distributor' 
-                  ? 'bg-teal-500 text-white' 
-                  : 'bg-teal-100 text-teal-800'
-              }`}
-            >
-              Distributors
-            </button>
-            
-            {/* Status Filters - only shown when Leads is selected */}
-            {filters.type === 'lead' && (
-              <>
-                <button
-                 onClick={() => handleFilterChange('lead', 'positive')}
-                  className={`px-4 py-1.5 rounded-full text-sm ${
-                    filters.status === 'positive' 
-                      ? 'bg-green-500 text-white' 
-                      : 'bg-green-100 text-green-800'
-                  }`}
-                >
-                  Positive
-                </button>
-                <button
-                  onClick={() => handleFilterChange('lead', 'neutral')}
-                  className={`px-4 py-1.5 rounded-full text-sm ${
-                    filters.status === 'neutral' 
-                      ? 'bg-gray-500 text-white' 
-                      : 'bg-gray-200 text-gray-800'
-                  }`}
-                >
-                  Neutral
-                </button>
-                <button
-                 onClick={() => handleFilterChange('lead', 'negative')}
-                  className={`px-4 py-1.5 rounded-full text-sm ${
-                    filters.status === 'negative' 
-                      ? 'bg-red-500 text-white' 
-                      : 'bg-red-100 text-red-800'
-                  }`}
-                >
-                  Negative
-                </button>
-              </>
+            {/* Left side - Add New Contact Button */}
+            {user.role !== 'admin' && (
+              <button
+                onClick={() => handleAddNew()}
+                className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-full flex items-center whitespace-nowrap"
+              >
+                <FiPlusCircle className="mr-2" size={18} />
+                Add New Contact
+              </button>
             )}
-          </div>
+
+            {/* Right side - Filter and Sort Dropdowns */}
+            <div className="flex items-center gap-3">
+              {/* Filter Dropdown */}
+              <div className="relative" ref={filterDropdownRef}>
+                <button
+                  onClick={() => {
+                    setIsFilterDropdownOpen(!isFilterDropdownOpen);
+                    setIsSortDropdownOpen(false);
+                  }}
+                  className="flex items-center px-4 py-2 rounded-full text-sm font-medium bg-gray-100 text-gray-600 hover:bg-gray-200"
+                >
+                  <FiFilter className="h-4 w-4 mr-2" />
+                  Filter
+                  <FiChevronDown className="ml-2 h-4 w-4" />
+                </button>
+
+                {/* Filter Dropdown Menu */}
+                {isFilterDropdownOpen && (
+                  <div className="absolute right-0 mt-2 w-56 bg-white rounded-md shadow-lg z-50 border border-gray-200">
+                    <div className="py-1">
+                      <button
+                        onClick={() => handleFilterSelection('all')}
+                        className={`flex items-center justify-between w-full px-4 py-2 text-sm text-left hover:bg-gray-100 ${
+                          filters.type === 'all' ? 'bg-gray-50 text-teal-600 font-medium' : 'text-gray-700'
+                        }`}
+                      >
+                        <span>All</span>
+                      </button>
+
+                      {/* Leads with sub-menu */}
+                      <div
+                        className="relative group"
+                        onMouseEnter={() => setIsLeadSubFilterOpen(true)}
+                        onMouseLeave={() => setIsLeadSubFilterOpen(false)}
+                      >
+                        <button
+                          onClick={() => setIsLeadSubFilterOpen(!isLeadSubFilterOpen)}
+                          className={`flex items-center justify-between w-full px-4 py-2 text-sm text-left hover:bg-gray-100 ${
+                            filters.type === 'lead' ? 'bg-gray-50 text-teal-600 font-medium' : 'text-gray-700'
+                          }`}
+                        >
+                          <span>Leads</span>
+                          <FiChevronDown className="h-4 w-4 -rotate-90" />
+                        </button>
+
+                        {/* Leads Sub-menu - Opens to the right */}
+                        {isLeadSubFilterOpen && (
+                          <div className="absolute left-full top-0 ml-0 w-48 bg-white rounded-md shadow-lg border border-gray-200 z-10">
+                            <div className="py-1">
+                              <button
+                                onClick={() => handleFilterSelection('lead', 'all')}
+                                className={`flex items-center justify-between w-full px-4 py-2 text-sm text-left hover:bg-gray-100 ${
+                                  filters.type === 'lead' && filters.status === 'all' ? 'text-teal-600 font-medium' : 'text-gray-600'
+                                }`}
+                              >
+                                <span>All Leads</span>
+                              </button>
+                              <button
+                                onClick={() => handleFilterSelection('lead', 'positive')}
+                                className={`flex items-center justify-between w-full px-4 py-2 text-sm text-left hover:bg-gray-100 ${
+                                  filters.type === 'lead' && filters.status === 'positive' ? 'text-green-600 font-medium' : 'text-gray-600'
+                                }`}
+                              >
+                                <span>Positive</span>
+                              </button>
+                              <button
+                                onClick={() => handleFilterSelection('lead', 'neutral')}
+                                className={`flex items-center justify-between w-full px-4 py-2 text-sm text-left hover:bg-gray-100 ${
+                                  filters.type === 'lead' && filters.status === 'neutral' ? 'text-gray-600 font-medium' : 'text-gray-600'
+                                }`}
+                              >
+                                <span>Neutral</span>
+                              </button>
+                              <button
+                                onClick={() => handleFilterSelection('lead', 'negative')}
+                                className={`flex items-center justify-between w-full px-4 py-2 text-sm text-left hover:bg-gray-100 ${
+                                  filters.type === 'lead' && filters.status === 'negative' ? 'text-red-600 font-medium' : 'text-gray-600'
+                                }`}
+                              >
+                                <span>Negative</span>
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      <button
+                        onClick={() => handleFilterSelection('customer')}
+                        className={`flex items-center justify-between w-full px-4 py-2 text-sm text-left hover:bg-gray-100 ${
+                          filters.type === 'customer' ? 'bg-gray-50 text-teal-600 font-medium' : 'text-gray-700'
+                        }`}
+                      >
+                        <span>Customers</span>
+                      </button>
+                      <button
+                        onClick={() => handleFilterSelection('dealer')}
+                        className={`flex items-center justify-between w-full px-4 py-2 text-sm text-left hover:bg-gray-100 ${
+                          filters.type === 'dealer' ? 'bg-gray-50 text-teal-600 font-medium' : 'text-gray-700'
+                        }`}
+                      >
+                        <span>Dealers</span>
+                      </button>
+                      <button
+                        onClick={() => handleFilterSelection('distributor')}
+                        className={`flex items-center justify-between w-full px-4 py-2 text-sm text-left hover:bg-gray-100 ${
+                          filters.type === 'distributor' ? 'bg-gray-50 text-teal-600 font-medium' : 'text-gray-700'
+                        }`}
+                      >
+                        <span>Distributors</span>
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Sort Dropdown */}
+              <div className="relative" ref={sortDropdownRef}>
+                <button
+                  onClick={() => {
+                    setIsSortDropdownOpen(!isSortDropdownOpen);
+                    setIsFilterDropdownOpen(false);
+                  }}
+                  className="flex items-center px-4 py-2 rounded-full text-sm font-medium bg-gray-100 text-gray-600 hover:bg-gray-200"
+                >
+                  {sortOrder === 'asc' ? (
+                    <LuArrowDownUp className="h-4 w-4 mr-2" />
+                  ) : (
+                    <LuArrowUpDown className="h-4 w-4 mr-2" />
+                  )}
+                  Sort
+                  <FiChevronDown className="ml-2 h-4 w-4" />
+                </button>
+
+                {/* Sort Dropdown Menu */}
+                {isSortDropdownOpen && (
+                  <div className="absolute right-0 mt-2 w-56 bg-white rounded-md shadow-lg z-50 border border-gray-200">
+                    <div className="py-1">
+                      <button
+                        onClick={() => handleSortSelection('name')}
+                        className={`flex items-center justify-between w-full px-4 py-2 text-sm text-left hover:bg-gray-100 ${
+                          sortField === 'name' ? 'bg-gray-50 text-teal-600 font-medium' : 'text-gray-700'
+                        }`}
+                      >
+                        <span>Name</span>
+                        {sortField === 'name' && (
+                          sortOrder === 'asc' ? (
+                            <LuArrowDownUp className="h-4 w-4" />
+                          ) : (
+                            <LuArrowUpDown className="h-4 w-4" />
+                          )
+                        )}
+                      </button>
+                      <button
+                        onClick={() => handleSortSelection('company')}
+                        className={`flex items-center justify-between w-full px-4 py-2 text-sm text-left hover:bg-gray-100 ${
+                          sortField === 'company' ? 'bg-gray-50 text-teal-600 font-medium' : 'text-gray-700'
+                        }`}
+                      >
+                        <span>Company Name</span>
+                        {sortField === 'company' && (
+                          sortOrder === 'asc' ? (
+                            <LuArrowDownUp className="h-4 w-4" />
+                          ) : (
+                            <LuArrowUpDown className="h-4 w-4" />
+                          )
+                        )}
+                      </button>
+                      <button
+                        onClick={() => handleSortSelection('recent')}
+                        className={`flex items-center justify-between w-full px-4 py-2 text-sm text-left hover:bg-gray-100 ${
+                          sortField === 'recent' ? 'bg-gray-50 text-teal-600 font-medium' : 'text-gray-700'
+                        }`}
+                      >
+                        <span>Date Added</span>
+                        {sortField === 'recent' && (
+                          sortOrder === 'asc' ? (
+                            <LuArrowDownUp className="h-4 w-4" />
+                          ) : (
+                            <LuArrowUpDown className="h-4 w-4" />
+                          )
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
 
 {/* Search Bar - push to the right */}
