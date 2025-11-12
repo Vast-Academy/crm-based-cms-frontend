@@ -292,11 +292,11 @@ const AddOldProjectModal = ({ isOpen, onClose, customerId, onSuccess }) => {
 
   return (
     <div
-      className="fixed inset-0 z-[60] flex items-center justify-center bg-black bg-opacity-50"
+      className="fixed inset-0 z-[60] flex items-center justify-center bg-black bg-opacity-50 p-4"
       onClick={handleOverlayClick}
     >
       <div
-        className="bg-white rounded-lg w-full max-w-md p-6"
+        className="bg-white rounded-lg w-full max-w-md max-h-[90vh] overflow-y-auto p-6"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex justify-between items-center mb-4">
