@@ -7,6 +7,8 @@ import { FiEye } from 'react-icons/fi';
 import SummaryApi from '../../common';
 import LeadDetailModal from '../leads/LeadDetail';
 import CustomerDetailModal from '../leads/CustomerDetailModal';
+import DealerDetailModal from '../leads/DealerDetailModal';
+import DistributorDetailModal from '../leads/DistributorDetailModal';
 import { useAuth } from '../../context/AuthContext';
 
 const BranchDetails = () => {
@@ -20,8 +22,12 @@ const BranchDetails = () => {
   const [expandedContactId, setExpandedContactId] = useState(null);
   const [showLeadDetailModal, setShowLeadDetailModal] = useState(false);
   const [showCustomerDetailModal, setShowCustomerDetailModal] = useState(false);
+  const [showDealerDetailModal, setShowDealerDetailModal] = useState(false);
+  const [showDistributorDetailModal, setShowDistributorDetailModal] = useState(false);
   const [selectedLeadId, setSelectedLeadId] = useState(null);
   const [selectedCustomerId, setSelectedCustomerId] = useState(null);
+  const [selectedDealerId, setSelectedDealerId] = useState(null);
+  const [selectedDistributorId, setSelectedDistributorId] = useState(null);
   // Add this to your state declarations
 const [technicianPerformance, setTechnicianPerformance] = useState([]);
 const [technicianTotals, setTechnicianTotals] = useState({
@@ -272,52 +278,79 @@ const [technicianTotals, setTechnicianTotals] = useState({
   // Add this function to fetch recent contacts
 const fetchRecentContacts = async (branchId) => {
     try {
-      // Fetch leads
+      // Fetch all 4 types of contacts
       const leadsResponse = await fetch(`${SummaryApi.getAllLeads.url}?branch=${branchId}`, {
         method: 'GET',
         credentials: 'include',
       });
-      
-      // Fetch customers
+
       const customersResponse = await fetch(`${SummaryApi.getAllCustomers.url}?branch=${branchId}`, {
         method: 'GET',
         credentials: 'include',
       });
-      
-      const [leadsData, customersData] = await Promise.all([
+
+      const dealersResponse = await fetch(`${SummaryApi.getAllDealers.url}?branch=${branchId}`, {
+        method: 'GET',
+        credentials: 'include',
+      });
+
+      const distributorsResponse = await fetch(`${SummaryApi.getAllDistributors.url}?branch=${branchId}`, {
+        method: 'GET',
+        credentials: 'include',
+      });
+
+      const [leadsData, customersData, dealersData, distributorsData] = await Promise.all([
         leadsResponse.json(),
-        customersResponse.json()
+        customersResponse.json(),
+        dealersResponse.json(),
+        distributorsResponse.json()
       ]);
-      
+
       // Process leads
-      const processedLeads = leadsData.success 
+      const processedLeads = leadsData.success
         ? leadsData.data.map(lead => ({
             ...lead,
             contactType: 'lead'
           }))
         : [];
-      
+
       // Process customers
-      const processedCustomers = customersData.success 
+      const processedCustomers = customersData.success
         ? customersData.data.map(customer => ({
             ...customer,
             contactType: 'customer',
             status: 'positive' // Customers are always marked as positive
           }))
         : [];
-      
-      // Combine and sort by most recently updated or created
-      const combinedContacts = [...processedLeads, ...processedCustomers];
+
+      // Process dealers
+      const processedDealers = dealersData.success
+        ? dealersData.data.map(dealer => ({
+            ...dealer,
+            contactType: 'dealer'
+          }))
+        : [];
+
+      // Process distributors
+      const processedDistributors = distributorsData.success
+        ? distributorsData.data.map(distributor => ({
+            ...distributor,
+            contactType: 'distributor'
+          }))
+        : [];
+
+      // Combine all contacts and sort by most recently updated or created
+      const combinedContacts = [...processedLeads, ...processedCustomers, ...processedDealers, ...processedDistributors];
       combinedContacts.sort((a, b) => {
         const aDate = a.updatedAt || a.createdAt;
         const bDate = b.updatedAt || b.createdAt;
         return new Date(bDate) - new Date(aDate);
       });
-      
+
       // Take only the 6 most recent contacts
       const recentSix = combinedContacts.slice(0, 6);
       setRecentContacts(recentSix);
-      
+
     } catch (err) {
       console.error('Error fetching recent contacts:', err);
     }
@@ -651,12 +684,12 @@ const handleLeadUpdated = (updatedLead) => {
       </div>
       
       {/* Additional sections could be added here as needed */}
-      {/* Customers/Leads Overview Section */}
+      {/* Contacts Overview Section */}
 <div className="mt-8 bg-white rounded-lg shadow-md p-6">
   <div className="flex justify-between items-center mb-4">
-    <h2 className="text-xl font-semibold text-gray-800">Customers/Leads Overview</h2>
-    <Link 
-      to="/contacts" 
+    <h2 className="text-xl font-semibold text-gray-800">Contacts Overview</h2>
+    <Link
+      to={`/contacts?branch=${branchId}`}
       className="text-blue-600 hover:text-blue-800 font-medium flex items-center"
     >
       View All
@@ -679,70 +712,99 @@ const handleLeadUpdated = (updatedLead) => {
           </tr>
         </thead>
         <tbody className="bg-white divide-y divide-gray-200">
-          {recentContacts.map((contact, index) => (
-            <React.Fragment key={`${contact.contactType}-${contact._id}`}>
-              <tr 
-                className={`hover:bg-gray-50 cursor-pointer ${expandedContactId === `${contact.contactType}-${contact._id}` ? 'bg-gray-50' : ''}`}
-                onClick={() => handleRowClick(`${contact.contactType}-${contact._id}`)}
+          {recentContacts.map((contact, index) => {
+            // Determine badge color and serial number color based on contact type
+            let badgeClasses = '';
+            let typeLabel = '';
+            let serialBgColor = '';
+            let hoverBgColor = '';
+            let rowBgColor = '';
+
+            switch(contact.contactType) {
+              case 'lead':
+                badgeClasses = 'bg-blue-100 text-blue-800';
+                typeLabel = 'Lead';
+                serialBgColor = 'bg-blue-500';
+                hoverBgColor = 'hover:bg-blue-50/50';
+                rowBgColor = 'bg-blue-50/20';
+                break;
+              case 'customer':
+                badgeClasses = 'bg-purple-100 text-purple-800';
+                typeLabel = 'Customer';
+                serialBgColor = 'bg-purple-500';
+                hoverBgColor = 'hover:bg-purple-50/50';
+                rowBgColor = 'bg-purple-50/20';
+                break;
+              case 'dealer':
+                badgeClasses = 'bg-orange-100 text-orange-800';
+                typeLabel = 'Dealer';
+                serialBgColor = 'bg-orange-500';
+                hoverBgColor = 'hover:bg-orange-50/50';
+                rowBgColor = 'bg-orange-50/20';
+                break;
+              case 'distributor':
+                badgeClasses = 'bg-teal-100 text-teal-800';
+                typeLabel = 'Distributor';
+                serialBgColor = 'bg-teal-500';
+                hoverBgColor = 'hover:bg-teal-50/50';
+                rowBgColor = 'bg-teal-50/20';
+                break;
+              default:
+                badgeClasses = 'bg-gray-100 text-gray-800';
+                typeLabel = 'Unknown';
+                serialBgColor = 'bg-gray-500';
+                hoverBgColor = 'hover:bg-gray-50';
+                rowBgColor = 'bg-gray-50/20';
+            }
+
+            return (
+              <tr
+                key={`${contact.contactType}-${contact._id}`}
+                className={`cursor-pointer ${hoverBgColor} ${rowBgColor} transition-colors`}
+                onClick={() => {
+                  // Directly open the appropriate modal based on contact type
+                  if (contact.contactType === 'lead') {
+                    setSelectedLeadId(contact._id);
+                    setShowLeadDetailModal(true);
+                  } else if (contact.contactType === 'customer') {
+                    setSelectedCustomerId(contact._id);
+                    setShowCustomerDetailModal(true);
+                  } else if (contact.contactType === 'dealer') {
+                    setSelectedDealerId(contact._id);
+                    setShowDealerDetailModal(true);
+                  } else if (contact.contactType === 'distributor') {
+                    setSelectedDistributorId(contact._id);
+                    setShowDistributorDetailModal(true);
+                  }
+                }}
               >
                 <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center text-white font-medium">
+                  <div className={`w-8 h-8 rounded-full ${serialBgColor} flex items-center justify-center text-white font-medium`}>
                     {index + 1}
                   </div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                   {contact.name}
-                  {contact.email && <div className="text-xs text-gray-500">{contact.email}</div>}
+                  {contact.firmName && <div className="text-xs text-gray-500">{contact.firmName}</div>}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{contact.phoneNumber}</td>
                 <td className="px-6 py-4 whitespace-nowrap">
-                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                    contact.contactType === 'lead' 
-                      ? 'bg-blue-100 text-blue-800' 
-                      : 'bg-purple-100 text-purple-800'
-                  }`}>
-                    {contact.contactType === 'lead' ? 'Lead' : 'Customer'}
+                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${badgeClasses}`}>
+                    {typeLabel}
                   </span>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                   {formatDate(contact.createdAt)}
                 </td>
               </tr>
-              
-              {/* Expanded row with action button */}
-              {expandedContactId === `${contact.contactType}-${contact._id}` && (
-                <tr>
-                  <td colSpan="5" className="px-6 py-4 bg-gray-50 border-b">
-                    <div className="flex space-x-3">
-                      <button 
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            // Open the appropriate modal based on contact type
-                            if (contact.contactType === 'lead') {
-                              setSelectedLeadId(contact._id);
-                              setShowLeadDetailModal(true);
-                            } else {
-                              setSelectedCustomerId(contact._id);
-                              setShowCustomerDetailModal(true);
-                            }
-                          }}
-                        className="inline-flex items-center px-4 py-1.5 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-500 hover:bg-blue-600"
-                      >
-                        <FiEye className="mr-2" />
-                        View Details
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              )}
-            </React.Fragment>
-          ))}
+            );
+          })}
         </tbody>
       </table>
     </div>
   ) : (
     <div className="py-8 text-center text-gray-500">
-      No customers or leads found for this branch.
+      No contacts found for this branch.
     </div>
   )}
 </div>
@@ -883,6 +945,26 @@ const handleLeadUpdated = (updatedLead) => {
   onClose={() => setShowCustomerDetailModal(false)}
   customerId={selectedCustomerId}
   onCustomerUpdated={handleCustomerUpdated}
+/>
+
+<DealerDetailModal
+  isOpen={showDealerDetailModal}
+  onClose={() => setShowDealerDetailModal(false)}
+  dealerId={selectedDealerId}
+  onDealerUpdated={() => {
+    fetchRecentContacts(branchId);
+    setShowDealerDetailModal(false);
+  }}
+/>
+
+<DistributorDetailModal
+  isOpen={showDistributorDetailModal}
+  onClose={() => setShowDistributorDetailModal(false)}
+  distributorId={selectedDistributorId}
+  onDistributorUpdated={() => {
+    fetchRecentContacts(branchId);
+    setShowDistributorDetailModal(false);
+  }}
 />
     </div>
   );

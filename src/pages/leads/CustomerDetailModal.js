@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { FiPhone, FiMail, FiMessageSquare, FiEdit2, FiClipboard, FiCalendar, FiDollarSign, FiFileText, FiUser, FiCheck, FiAlertCircle, FiCreditCard, FiSmartphone, FiTrendingUp, FiArrowLeft, FiPrinter, FiDownload, FiRefreshCw } from 'react-icons/fi';
 import { QRCodeCanvas } from 'qrcode.react';
 import jsPDF from 'jspdf';
@@ -17,6 +18,7 @@ import TransactionHistory from '../../components/TransactionHistory';
 
 const CustomerDetailModal = ({ isOpen, onClose, customerId, onCustomerUpdated }) => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [customer, setCustomer] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -607,6 +609,13 @@ const handleViewProjectDetails = async (project) => {
     if (onCustomerUpdated) {
       onCustomerUpdated(data.customer);
     }
+
+    // Navigate to work orders page with branch parameter
+    const branchId = customer?.branch?._id || customer?.branch;
+    if (branchId) {
+      onClose(); // Close customer detail modal
+      navigate(`/work-orders?branch=${branchId}`);
+    }
   };
 
   const handleComplaintSuccess = (data) => {
@@ -617,6 +626,13 @@ const handleViewProjectDetails = async (project) => {
     // Notify parent component of the update
     if (onCustomerUpdated) {
       onCustomerUpdated(data.customer);
+    }
+
+    // Navigate to work orders page with branch parameter
+    const branchId = customer?.branch?._id || customer?.branch;
+    if (branchId) {
+      onClose(); // Close customer detail modal
+      navigate(`/work-orders?branch=${branchId}`);
     }
   };
 
@@ -629,6 +645,8 @@ const handleViewProjectDetails = async (project) => {
     if (onCustomerUpdated) {
       onCustomerUpdated(data.customer);
     }
+
+    // Note: Old projects don't create work orders, so no navigation needed
   };
   
   const handleNewComplaint = () => {
@@ -843,7 +861,6 @@ const handleViewProjectDetails = async (project) => {
               </div>
               
               <div className="mt-8 space-y-3">
-              {user.role !== 'admin' && (
                 <button
                   onClick={() => setShowEditModal(true)}
                   className="w-full py-2 px-4 border border-gray-300 rounded-md flex items-center justify-center text-gray-700 hover:bg-gray-50"
@@ -851,7 +868,6 @@ const handleViewProjectDetails = async (project) => {
                   <FiEdit2 className="mr-2" />
                   Edit Customer
                 </button>
-              )}
               </div>
             </div>
           </div>
@@ -863,7 +879,6 @@ const handleViewProjectDetails = async (project) => {
                 <h2 className="text-xl font-semibold">Work Orders & Complaints</h2>
                 </div>
 
-                {user.role !== 'admin' && (
                 <div className="flex gap-2 mb-4">
                   <button
                     className="px-4 py-2 bg-orange-500 text-white rounded-md hover:bg-orange-600"
@@ -886,7 +901,7 @@ const handleViewProjectDetails = async (project) => {
                     Add Project
                   </button>
 
-                  {user.role === 'manager' && (
+                  {(user.role === 'manager' || user.role === 'admin') && (
                     <button
                       className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 flex items-center"
                       onClick={() => setShowBillingModal(true)}
@@ -895,7 +910,6 @@ const handleViewProjectDetails = async (project) => {
                     </button>
                   )}
                 </div>
-                )}
               
               
               {/* Work Order/Complaint Status */}
@@ -1035,10 +1049,32 @@ const handleViewProjectDetails = async (project) => {
                           View Details
                         </button>
                       ) : (
-                        <div className="text-sm text-gray-600">
+                        <div className="text-sm text-gray-600 space-y-1">
                           <p><strong>Installed by:</strong> {item.installedBy}</p>
+                          {item.installedBy === 'Our Company' && item.installedByEngineer && (
+                            <>
+                              <p><strong>Installed by Engineer:</strong> {item.installedByEngineer}</p>
+                              {item.engineerMobileNo && (
+                                <p><strong>Engineer Mobile No:</strong> {item.engineerMobileNo}</p>
+                              )}
+                            </>
+                          )}
                           <p><strong>Completion Date:</strong> {item.completionDate ? formatDate(item.completionDate) : 'N/A'}</p>
                           {item.initialRemark && <p><strong>Remarks:</strong> {item.initialRemark}</p>}
+                          {item.createdByName && (
+                            <p className="mt-2">
+                              <strong>Created By:</strong> {item.createdByName}
+                              {item.createdByRole && (
+                                <span className={`ml-2 px-2 py-0.5 rounded text-xs ${
+                                  item.createdByRole === 'admin'
+                                    ? 'bg-purple-100 text-purple-700'
+                                    : 'bg-blue-100 text-blue-700'
+                                }`}>
+                                  {item.createdByRole === 'admin' ? 'Admin' : 'Manager'}
+                                </span>
+                              )}
+                            </p>
+                          )}
                         </div>
                       )}
                     </div>

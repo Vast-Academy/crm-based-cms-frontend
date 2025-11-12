@@ -476,6 +476,22 @@ const ProjectDetailsModal = ({ isOpen, onClose, project: projectProp, onProjectA
                 {project.branchName && (
                   <p><span className="text-gray-500">Branch:</span> {project.branchName}</p>
                 )}
+                {/* Created By Information */}
+                {project.createdByName && (
+                  <p className="mt-2">
+                    <span className="text-gray-500">Created By:</span>{' '}
+                    <span className="font-medium">{project.createdByName}</span>
+                    {project.createdByRole && (
+                      <span className={`ml-2 px-2 py-0.5 rounded text-xs ${
+                        project.createdByRole === 'admin'
+                          ? 'bg-purple-100 text-purple-700'
+                          : 'bg-blue-100 text-blue-700'
+                      }`}>
+                        {project.createdByRole === 'admin' ? 'Admin' : 'Manager'}
+                      </span>
+                    )}
+                  </p>
+                )}
               </div>
               <div className="text-right">
                 <p className="flex items-center justify-end">
@@ -538,15 +554,27 @@ const ProjectDetailsModal = ({ isOpen, onClose, project: projectProp, onProjectA
                     Assigned on: {formatDate(project.assignedAt)}
                   </p>
                 )}
-                {project.assignedBy && (
+                {(project.assignedBy || project.assignedByName) && (
                   <p className="text-sm text-gray-600 mt-1">
-                    Assigned by: {
-                      project.assignedBy.firstName 
-                        ? `${project.assignedBy.firstName} ${project.assignedBy.lastName || ''}`
-                        : project.assignedBy._id 
-                          ? `User (ID: ${project.assignedBy._id})` 
-                          : 'System'
-                    }
+                    <span>Assigned by:</span>{' '}
+                    <span className="font-medium text-gray-900">
+                      {project.assignedByName || (
+                        project.assignedBy.firstName
+                          ? `${project.assignedBy.firstName} ${project.assignedBy.lastName || ''}`
+                          : project.assignedBy._id
+                            ? `User (ID: ${project.assignedBy._id})`
+                            : 'System'
+                      )}
+                    </span>
+                    {project.assignedByRole && (
+                      <span className={`ml-2 px-2 py-0.5 rounded text-xs ${
+                        project.assignedByRole === 'admin'
+                          ? 'bg-purple-100 text-purple-700'
+                          : 'bg-blue-100 text-blue-700'
+                      }`}>
+                        {project.assignedByRole === 'admin' ? 'Admin' : 'Manager'}
+                      </span>
+                    )}
                   </p>
                 )}
               </div>

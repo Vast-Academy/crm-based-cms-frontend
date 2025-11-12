@@ -23,6 +23,7 @@ import {
   AlertCircle,
   TrendingUp,
   Users as UsersIcon,
+  IndianRupee,
 } from "lucide-react";
 import SummaryApi from "../common";
 import { useAuth } from "../context/AuthContext";
@@ -76,6 +77,31 @@ const Dashboard = () => {
     pending: 0,
   });
 
+  // Admin financial snapshot - across all branches
+  const [adminFinancialSnapshot, setAdminFinancialSnapshot] = useState({
+    totalBilledAmount: 0,
+    amountCollected: 0,
+    outstandingAmount: 0,
+    totalExpenses: 0,
+    totalBills: 0,
+    netProfit: 0,
+    collectionRate: 0,
+    profitMargin: 0,
+    averageCollectionTime: 0,
+  });
+
+  // Branch Balance Overview - Admin only
+  const [branchBalanceOverview, setBranchBalanceOverview] = useState({
+    branches: [],
+    summary: {
+      totalAmount: 0,
+      totalCollected: 0,
+      totalOutstanding: 0,
+      totalExpenses: 0,
+    },
+  });
+  const [refreshingBranchBalance, setRefreshingBranchBalance] = useState(false);
+
   // Last refresh time tracking
   const [lastRefreshTime, setLastRefreshTime] = useState({
     branches: 0,
@@ -85,6 +111,7 @@ const Dashboard = () => {
     inventory: 0,
     workOrders: 0,
     projects: 0,
+    branchBalance: 0,
   });
 
   // Other dashboard data
@@ -316,6 +343,73 @@ const Dashboard = () => {
           totalStaff = techniciansCount;
         } catch (err) {
           console.error("Error fetching staff data:", err);
+        }
+
+        // Fetch admin financial summary (across all branches)
+        try {
+          const adminFinancialResponse = await fetch(
+            SummaryApi.getAdminFinancialSummary.url,
+            {
+              method: SummaryApi.getAdminFinancialSummary.method,
+              credentials: "include",
+            }
+          );
+          const adminFinancialData = await adminFinancialResponse.json();
+          if (adminFinancialData.success) {
+            const financialSnapshot = {
+              totalBilledAmount: adminFinancialData.data.totalBilledAmount || 0,
+              amountCollected: adminFinancialData.data.amountCollected || 0,
+              outstandingAmount: adminFinancialData.data.outstandingAmount || 0,
+              totalExpenses: adminFinancialData.data.totalExpenses || 0,
+              totalBills: adminFinancialData.data.totalBills || 0,
+              netProfit: adminFinancialData.data.netProfit || 0,
+              collectionRate: adminFinancialData.data.collectionRate || 0,
+              profitMargin: adminFinancialData.data.profitMargin || 0,
+              averageCollectionTime: adminFinancialData.data.averageCollectionTime || 0,
+            };
+            setAdminFinancialSnapshot(financialSnapshot);
+            // Cache in localStorage
+            localStorage.setItem('adminFinancialSnapshot', JSON.stringify(financialSnapshot));
+          }
+        } catch (err) {
+          console.error("Error fetching admin financial summary:", err);
+          // Keep cached data if fetch fails
+          const cachedFinancialSnapshot = localStorage.getItem('adminFinancialSnapshot');
+          if (cachedFinancialSnapshot) {
+            try {
+              setAdminFinancialSnapshot(JSON.parse(cachedFinancialSnapshot));
+            } catch (parseError) {
+              console.error("Error parsing cached financial snapshot:", parseError);
+            }
+          }
+        }
+
+        // Fetch branch balance overview (branch-wise financial data)
+        try {
+          const branchBalanceResponse = await fetch(
+            SummaryApi.getBranchBalanceOverview.url,
+            {
+              method: SummaryApi.getBranchBalanceOverview.method,
+              credentials: "include",
+            }
+          );
+          const branchBalanceData = await branchBalanceResponse.json();
+          if (branchBalanceData.success) {
+            setBranchBalanceOverview(branchBalanceData.data);
+            // Cache in localStorage
+            localStorage.setItem('adminBranchBalanceOverview', JSON.stringify(branchBalanceData.data));
+          }
+        } catch (err) {
+          console.error("Error fetching branch balance overview:", err);
+          // Keep cached data if fetch fails
+          const cachedBranchBalance = localStorage.getItem('adminBranchBalanceOverview');
+          if (cachedBranchBalance) {
+            try {
+              setBranchBalanceOverview(JSON.parse(cachedBranchBalance));
+            } catch (parseError) {
+              console.error("Error parsing cached branch balance:", parseError);
+            }
+          }
         }
 
         // Calculate inventory total as total number of serialized and generic items (not stock)
@@ -707,6 +801,30 @@ const Dashboard = () => {
       }
     }
 
+    // Load Branch Balance Overview from localStorage for admin
+    if (user.role === 'admin') {
+      const cachedBranchBalance = localStorage.getItem('adminBranchBalanceOverview');
+      if (cachedBranchBalance) {
+        try {
+          const parsed = JSON.parse(cachedBranchBalance);
+          setBranchBalanceOverview(parsed);
+        } catch (parseError) {
+          console.error("Error parsing cached branch balance overview:", parseError);
+        }
+      }
+
+      // Load Admin Financial Snapshot from localStorage for instant display
+      const cachedFinancialSnapshot = localStorage.getItem('adminFinancialSnapshot');
+      if (cachedFinancialSnapshot) {
+        try {
+          const parsed = JSON.parse(cachedFinancialSnapshot);
+          setAdminFinancialSnapshot(parsed);
+        } catch (parseError) {
+          console.error("Error parsing cached financial snapshot:", parseError);
+        }
+      }
+    }
+
     fetchDashboardData();
   }, [user.role, user.selectedBranch]);
 
@@ -892,60 +1010,32 @@ const Dashboard = () => {
 
   const adminDashboardStats = [
     {
-      name: "Total Branches",
-      value: stats.branches,
-      icon: FiHome,
-      bgColor: "bg-indigo-500",
-      path: "/branches",
-    },
-    {
-      name: "Total Engineers",
-      value: stats.staff,
-      icon: FiUsers,
-      bgColor: "bg-blue-500",
-      path: "/users/technicians",
-    },
-    {
       name: "Inventory Items",
-      value: stats.inventory,
-      icon: FiPackage,
-      bgColor: "bg-yellow-500",
-      path: "/inventory-items",
-    },
-    {
-      name: "Total Customers",
-      value: stats.customers,
-      icon: FiUsers,
-      bgColor: "bg-green-500",
-      path: "/branches",
+      value: stats.inventory ?? 0,
+      subtext: "Items available across all branches",
+      gradient: "from-yellow-500 to-yellow-600",
+      Icon: PackageIcon,
     },
     {
       name: "Work Orders",
-      value: stats.workOrders,
-      icon: FiTool,
-      bgColor: "bg-red-500",
-      path: "/branches",
+      value: stats.workOrders ?? 0,
+      subtext: "Jobs awaiting assignment",
+      gradient: "from-rose-500 to-orange-500",
+      Icon: Wrench,
     },
     {
       name: "Assigned Projects",
-      value: stats.assignedProjects,
-      icon: FiActivity,
-      bgColor: "bg-purple-500",
-      path: "/branches",
+      value: stats.assignedProjects ?? 0,
+      subtext: "Projects currently in motion",
+      gradient: "from-indigo-500 to-blue-600",
+      Icon: ActivityIcon,
     },
     {
       name: "Pending Approvals",
-      value: stats.pendingApprovals,
-      icon: FiClock,
-      bgColor: "bg-amber-500",
-      path: "/branches",
-    },
-    {
-      name: "Completed Projects",
-      value: stats.completedProjects,
-      icon: FiCheckCircle,
-      bgColor: "bg-emerald-500",
-      path: "/branches",
+      value: stats.pendingApprovals ?? 0,
+      subtext: "Updates waiting for review",
+      gradient: "from-amber-500 to-yellow-500",
+      Icon: LucideClock,
     },
   ];
 
@@ -1113,6 +1203,34 @@ const Dashboard = () => {
     }
   };
 
+  // Handle Branch Balance Overview refresh (Admin only)
+  const handleRefreshBranchBalance = async () => {
+    setRefreshingBranchBalance(true);
+    try {
+      const branchBalanceResponse = await fetch(
+        SummaryApi.getBranchBalanceOverview.url,
+        {
+          method: SummaryApi.getBranchBalanceOverview.method,
+          credentials: "include",
+        }
+      );
+      const branchBalanceData = await branchBalanceResponse.json();
+      if (branchBalanceData.success) {
+        setBranchBalanceOverview(branchBalanceData.data);
+        // Cache in localStorage
+        localStorage.setItem('adminBranchBalanceOverview', JSON.stringify(branchBalanceData.data));
+        setLastRefreshTime(prev => ({ ...prev, branchBalance: Date.now() }));
+      } else {
+        setBranchBalanceOverview({ branches: [], summary: {} });
+      }
+    } catch (error) {
+      console.error("Error refreshing branch balance overview:", error);
+      // Keep existing data if refresh fails
+    } finally {
+      setRefreshingBranchBalance(false);
+    }
+  };
+
   if (loading) {
     return <LoadingSpinner />;
   }
@@ -1174,27 +1292,154 @@ const Dashboard = () => {
 
       {/* Stats Grid */}
       {isAdmin ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-          {adminDashboardStats.map((stat, index) => (
-            <div
-              key={index}
-              className={`${stat.bgColor} text-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow duration-300 ${
-                isAdmin ? "cursor-pointer" : ""
-              }`}
-              onClick={() => isAdmin && (window.location.href = stat.path)}
-            >
-              <div className="flex justify-between items-center">
-                <div>
-                  <p className="text-sm font-medium text-white text-opacity-80">
-                    {stat.name}
-                  </p>
-                  <p className="text-2xl font-bold mt-2">{stat.value}</p>
+        <>
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6 mb-8">
+            {adminDashboardStats.map((card) => (
+              <div
+                key={card.name}
+                className={`bg-gradient-to-br ${card.gradient} rounded-xl p-6 text-white shadow-lg`}
+              >
+                <div className="flex justify-between items-start mb-4">
+                  <div>
+                    <p className="text-white/80 text-sm mb-1">{card.name}</p>
+                    <p className="text-3xl font-bold">
+                      {formatNumber(card.value)}
+                    </p>
+                  </div>
+                  <card.Icon size={40} className="text-white/70" />
                 </div>
-                <stat.icon className="w-10 h-10 text-white text-opacity-75" />
+                <div className="text-sm text-white/80">{card.subtext}</div>
+              </div>
+            ))}
+          </div>
+
+          {/* Admin Financial Overview Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 mb-8">
+            <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl p-6 text-white shadow-lg">
+              <div className="flex justify-between items-start mb-4">
+                <div>
+                  <p className="text-blue-100 text-sm mb-1">
+                    Total Billed Amount
+                  </p>
+                  <p className="text-3xl font-bold">
+                    {formatCurrency(adminFinancialSnapshot.totalBilledAmount)}
+                  </p>
+                </div>
+                <IndianRupee size={40} className="text-blue-200" />
+              </div>
+              <div className="flex items-center gap-2 text-sm text-blue-100">
+                <span>
+                  Across {adminFinancialSnapshot.totalBills} Bills
+                </span>
               </div>
             </div>
-          ))}
-        </div>
+
+            <div className="bg-gradient-to-br from-green-500 to-green-600 rounded-xl p-6 text-white shadow-lg">
+              <div className="flex justify-between items-start mb-4">
+                <div>
+                  <p className="text-green-100 text-sm mb-1">Amount Collected</p>
+                  <p className="text-3xl font-bold">
+                    {formatCurrency(adminFinancialSnapshot.amountCollected)}
+                  </p>
+                </div>
+                <CheckCircleIcon size={40} className="text-green-200" />
+              </div>
+              <div className="text-sm text-green-100">
+                Successfully collected from customers
+              </div>
+            </div>
+
+            <div className="bg-gradient-to-br from-orange-500 to-orange-600 rounded-xl p-6 text-white shadow-lg">
+              <div className="flex justify-between items-start mb-4">
+                <div>
+                  <p className="text-orange-100 text-sm mb-1">
+                    Outstanding Amount
+                  </p>
+                  <p className="text-3xl font-bold">
+                    {formatCurrency(adminFinancialSnapshot.outstandingAmount)}
+                  </p>
+                </div>
+                <LucideClock size={40} className="text-orange-200" />
+              </div>
+              <div className="text-sm text-orange-100">
+                Pending payment amount
+              </div>
+            </div>
+
+            <div className="bg-gradient-to-br from-red-500 to-red-600 rounded-xl p-6 text-white shadow-lg">
+              <div className="flex justify-between items-start mb-4">
+                <div>
+                  <p className="text-red-100 text-sm mb-1">Total Expenses</p>
+                  <p className="text-3xl font-bold">
+                    {formatCurrency(adminFinancialSnapshot.totalExpenses)}
+                  </p>
+                </div>
+                <AlertCircle size={40} className="text-red-200" />
+              </div>
+              <div className="text-sm text-red-100">Inventory purchase costs</div>
+            </div>
+          </div>
+
+          {/* Admin Net Profit & Collection Stats */}
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 mb-8">
+            <div className="bg-white rounded-xl shadow-lg p-6 border-l-4 border-purple-500">
+              <div className="flex justify-between items-start">
+                <div>
+                  <p className="text-gray-500 text-sm mb-1">
+                    Net Profit (Items Only)
+                  </p>
+                  <p className="text-3xl font-bold text-purple-600">
+                    {formatCurrency(adminFinancialSnapshot.netProfit)}
+                  </p>
+                  <p className="text-sm text-gray-500 mt-2">
+                    Margin: {adminFinancialSnapshot.profitMargin}% | Collected - Expenses
+                  </p>
+                </div>
+                <div className="p-3 bg-purple-100 rounded-lg">
+                  <TrendingUp size={24} className="text-purple-600" />
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-xl shadow-lg p-6 border-l-4 border-indigo-500">
+              <div className="flex justify-between items-start">
+                <div>
+                  <p className="text-gray-500 text-sm mb-1">
+                    Collection Rate
+                  </p>
+                  <p className="text-3xl font-bold text-indigo-600">
+                    {adminFinancialSnapshot.collectionRate}%
+                  </p>
+                  <p className="text-sm text-gray-500 mt-2">
+                    Across {adminFinancialSnapshot.totalBills} bills
+                  </p>
+                </div>
+                <div className="p-3 bg-indigo-100 rounded-lg">
+                  <CheckCircleIcon size={24} className="text-indigo-600" />
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-xl shadow-lg p-6 border-l-4 border-teal-500">
+              <div className="flex justify-between items-start">
+                <div>
+                  <p className="text-gray-500 text-sm mb-1">
+                    Average Collection Time
+                  </p>
+                  <p className="text-3xl font-bold text-teal-600">
+                    {adminFinancialSnapshot.averageCollectionTime} days
+                  </p>
+                  <p className="text-sm text-gray-500 mt-2">
+                    Payment cycle duration
+                  </p>
+                </div>
+                <div className="p-3 bg-teal-100 rounded-lg">
+                  <LucideClock size={24} className="text-teal-600" />
+                </div>
+              </div>
+            </div>
+          </div>
+        </>
       ) : (
         <>
           <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6 mb-8">
@@ -1229,7 +1474,7 @@ const Dashboard = () => {
                     {formatCurrency(managerFinancialSnapshot.totalBilledAmount)}
                   </p>
                 </div>
-                <DollarSign size={40} className="text-blue-200" />
+                <IndianRupee size={40} className="text-blue-200" />
               </div>
               <div className="flex items-center gap-2 text-sm text-blue-100">
                 <span>
@@ -1440,10 +1685,108 @@ const Dashboard = () => {
         </>
       )}
 
+      {/* Branch Balance Overview - Admin Only */}
+      {user.role === "admin" && branchBalanceOverview.branches && branchBalanceOverview.branches.length > 0 && (
+        <div className="bg-white rounded-xl shadow-lg p-6 mb-8">
+          <div className="flex justify-between items-center mb-6">
+            <div>
+              <h3 className="text-xl font-bold text-gray-800">Branch Balance Overview</h3>
+              <p className="text-sm text-gray-500">
+                Financial summary across all branches
+              </p>
+            </div>
+            <div className="flex items-center gap-3">
+              {/* Refresh Button */}
+              <button
+                onClick={handleRefreshBranchBalance}
+                disabled={refreshingBranchBalance}
+                className={`p-2 rounded-full bg-gray-200 hover:bg-gray-300 text-gray-700 transition-all ${
+                  refreshingBranchBalance ? 'opacity-50 cursor-not-allowed' : ''
+                }`}
+                title="Refresh Branch Balance Overview"
+              >
+                <FiRefreshCw className={`w-4 h-4 ${refreshingBranchBalance ? 'animate-spin' : ''}`} />
+              </button>
+              <div className="text-sm text-gray-500">
+                {branchBalanceOverview.branches.length} {branchBalanceOverview.branches.length === 1 ? 'branch' : 'branches'}
+              </div>
+            </div>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b-2 border-gray-200">
+                  <th className="text-left py-3 px-4 font-semibold text-gray-700">Branch Name</th>
+                  <th className="text-right py-3 px-4 font-semibold text-gray-700">Total Amount</th>
+                  <th className="text-right py-3 px-4 font-semibold text-gray-700">Amount Collected</th>
+                  <th className="text-right py-3 px-4 font-semibold text-gray-700">Outstanding Amount</th>
+                  <th className="text-right py-3 px-4 font-semibold text-gray-700">Total Expenses</th>
+                </tr>
+              </thead>
+              <tbody>
+                {branchBalanceOverview.branches.map((branch, index) => (
+                  <tr
+                    key={branch.branchId}
+                    className={`border-b border-gray-100 hover:bg-gray-50 transition-colors ${
+                      index % 2 === 0 ? 'bg-white' : 'bg-gray-50'
+                    }`}
+                  >
+                    <td className="py-3 px-4">
+                      <div className="text-sm font-medium text-gray-900">{branch.branchName}</div>
+                      {branch.branchLocation && (
+                        <div className="text-xs text-gray-500">{branch.branchLocation}</div>
+                      )}
+                    </td>
+                    <td className="py-3 px-4 text-right">
+                      <div className="text-sm font-medium text-gray-900">
+                        ₹{branch.totalAmount?.toLocaleString('en-IN') || '0'}
+                      </div>
+                    </td>
+                    <td className="py-3 px-4 text-right">
+                      <div className="text-sm font-medium text-green-600">
+                        ₹{branch.amountCollected?.toLocaleString('en-IN') || '0'}
+                      </div>
+                    </td>
+                    <td className="py-3 px-4 text-right">
+                      <div className="text-sm font-medium text-orange-600">
+                        ₹{branch.outstandingAmount?.toLocaleString('en-IN') || '0'}
+                      </div>
+                    </td>
+                    <td className="py-3 px-4 text-right">
+                      <div className="text-sm font-medium text-red-600">
+                        ₹{branch.totalExpenses?.toLocaleString('en-IN') || '0'}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+              {/* Summary Row */}
+              <tfoot>
+                <tr className="bg-gray-100 font-semibold border-t-2 border-gray-300">
+                  <td className="py-3 px-4 text-gray-900">Total</td>
+                  <td className="py-3 px-4 text-right text-gray-900">
+                    ₹{branchBalanceOverview.summary?.totalAmount?.toLocaleString('en-IN') || '0'}
+                  </td>
+                  <td className="py-3 px-4 text-right text-green-700">
+                    ₹{branchBalanceOverview.summary?.totalCollected?.toLocaleString('en-IN') || '0'}
+                  </td>
+                  <td className="py-3 px-4 text-right text-orange-700">
+                    ₹{branchBalanceOverview.summary?.totalOutstanding?.toLocaleString('en-IN') || '0'}
+                  </td>
+                  <td className="py-3 px-4 text-right text-red-700">
+                    ₹{branchBalanceOverview.summary?.totalExpenses?.toLocaleString('en-IN') || '0'}
+                  </td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        </div>
+      )}
+
       {/* Branch/Technician Overview */}
       <div className="bg-white rounded-lg shadow-md p-6 mb-8">
         <h2 className="text-lg font-semibold text-gray-800 mb-4">
-          {user.role === "admin" ? "Branch Overview" : "Engineers Overview"}
+          {user.role === "admin" ? "Branch Work Overview" : "Engineers Overview"}
         </h2>
 
         <div className="overflow-x-auto">

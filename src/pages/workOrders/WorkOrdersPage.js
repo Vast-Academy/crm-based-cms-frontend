@@ -725,6 +725,7 @@ const fetchFreshWorkOrders = async (isBackground = false) => {
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">CUSTOMER</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">PROJECT TYPE</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">CATEGORY</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">CREATED BY</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">DATE CREATED</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">STATUS</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ENGINEER</th>
@@ -764,12 +765,28 @@ const fetchFreshWorkOrders = async (isBackground = false) => {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <span className={`px-2 py-1 rounded-full text-xs ${
-                            order.projectCategory === 'Repair' 
-                              ? 'bg-orange-100 text-orange-800' 
+                            order.projectCategory === 'Repair'
+                              ? 'bg-orange-100 text-orange-800'
                               : 'bg-green-100 text-green-800'
                           }`}>
                             {order.projectCategory === 'Repair' ? 'Complaint' : 'New Installation'}
                           </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm">
+                          {order.createdByName ? (
+                            <div>
+                              <div className="font-medium text-gray-900">{order.createdByName}</div>
+                              {order.createdByRole && (
+                                <div className={`text-xs ${
+                                  order.createdByRole === 'admin' ? 'text-purple-600' : 'text-blue-600'
+                                }`}>
+                                  {order.createdByRole === 'admin' ? 'Admin' : 'Manager'}
+                                </div>
+                              )}
+                            </div>
+                          ) : (
+                            <span className="text-gray-400">-</span>
+                          )}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                           {formatDate(order.createdAt)}

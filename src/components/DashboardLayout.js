@@ -157,6 +157,11 @@ const DashboardLayout = () => {
             path: '/users/branches/technicians'
           },
           {
+            name: 'Work Orders',
+            icon: FiTool,
+            path: '/work-orders'
+          },
+          {
             name: 'Inventory',
             icon: FiPackage,
             path: '/inventory-items'

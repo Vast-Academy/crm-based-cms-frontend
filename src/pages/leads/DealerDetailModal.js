@@ -980,7 +980,7 @@ export default function DealerDetailModal({ isOpen, onClose, dealerId, onDealerU
                       <div className="p-6">
                         <div className="flex items-center justify-between mb-5">
                           <h2 className="text-xl font-semibold">Bills History</h2>
-                          {user.role === 'manager' && (
+                          {(user.role === 'manager' || user.role === 'admin') && (
                             <button
                               onClick={() => handleCreateBill(dealer)}
                               className="inline-flex items-center px-4 py-2 bg-orange-500 text-white rounded-md hover:bg-orange-600 transition-colors"
@@ -1064,7 +1064,7 @@ export default function DealerDetailModal({ isOpen, onClose, dealerId, onDealerU
                           <div className="mb-6 p-6 text-center border rounded-md bg-gray-50">
                             <FiFileText className="mx-auto text-gray-400 mb-2" size={40} />
                             <p className="text-gray-500">No bills found for this dealer.</p>
-                            {user.role === 'manager' && (
+                            {(user.role === 'manager' || user.role === 'admin') && (
                               <button
                                 onClick={() => handleCreateBill(dealer)}
                                 className="mt-4 px-4 py-2 bg-orange-500 text-white rounded-md hover:bg-orange-600 transition-colors"

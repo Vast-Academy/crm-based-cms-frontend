@@ -146,7 +146,13 @@ export default function CustomerBillingModal({ isOpen, onClose, customer, onBill
     setError(null);
 
     try {
-      const response = await fetch(SummaryApi.getAllInventoryItems.url, {
+      // Pass customer's branch to filter inventory
+      const branchId = customer?.branch?._id || customer?.branch;
+      const url = branchId
+        ? `${SummaryApi.getAllInventoryItems.url}?branch=${branchId}`
+        : SummaryApi.getAllInventoryItems.url;
+
+      const response = await fetch(url, {
         method: SummaryApi.getAllInventoryItems.method,
         credentials: 'include'
       });

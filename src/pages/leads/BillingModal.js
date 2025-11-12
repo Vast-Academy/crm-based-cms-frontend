@@ -157,9 +157,15 @@ export default function BillingModal({ isOpen, onClose, customer, onBillCreated 
   const fetchInventoryItems = async () => {
     setLoading(true);
     setError(null);
-    
+
     try {
-      const response = await fetch(SummaryApi.getAllInventoryItems.url, {
+      // Get branch ID from customer (dealer/distributor/customer)
+      const branchId = customer?.branch?._id || customer?.branch;
+      const url = branchId
+        ? `${SummaryApi.getAllInventoryItems.url}?branch=${branchId}`
+        : SummaryApi.getAllInventoryItems.url;
+
+      const response = await fetch(url, {
         method: SummaryApi.getAllInventoryItems.method,
         credentials: 'include'
       });

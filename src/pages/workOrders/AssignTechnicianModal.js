@@ -50,21 +50,32 @@ const AssignTechnicianModal = ({ isOpen, onClose, workOrder, onSuccess, canCance
   const fetchTechnicians = async () => {
     try {
       setLoadingTechnicians(true);
-      
+
       // Use different endpoint based on role
-      const endpoint = user.role === 'admin' 
-        ? SummaryApi.getTechnicianUsers.url 
+      const endpoint = user.role === 'admin'
+        ? SummaryApi.getTechnicianUsers.url
         : SummaryApi.getManagerTechnician.url;
-      
+
       const response = await fetch(endpoint, {
         method: 'GET',
         credentials: 'include'
       });
-      
+
       const data = await response.json();
-      
+
       if (data.success) {
-        setTechnicians(data.data);
+        let filteredTechnicians = data.data;
+
+        // For admin, filter technicians by branch from work order
+        if (user.role === 'admin' && workOrder && workOrder.branchId) {
+          filteredTechnicians = data.data.filter(tech => {
+            const techBranchId = tech.branch?._id || tech.branch;
+            const workOrderBranchId = workOrder.branchId;
+            return techBranchId === workOrderBranchId;
+          });
+        }
+
+        setTechnicians(filteredTechnicians);
       } else {
         setError('Failed to load technicians');
       }
@@ -331,9 +342,28 @@ useEffect(() => {
                   <span className="text-gray-700">{workOrder.initialRemark}</span>
                 </p>
               )}
+
+              {/* Show Created By Information */}
+              {workOrder.createdByName && (
+                <div className="mt-3 pt-3 border-t border-gray-200">
+                  <p className="text-sm">
+                    <span className="font-medium">Created By:</span>{' '}
+                    <span className="text-gray-700">{workOrder.createdByName}</span>
+                    {workOrder.createdByRole && (
+                      <span className={`ml-2 px-2 py-0.5 rounded text-xs ${
+                        workOrder.createdByRole === 'admin'
+                          ? 'bg-purple-100 text-purple-700'
+                          : 'bg-blue-100 text-blue-700'
+                      }`}>
+                        {workOrder.createdByRole === 'admin' ? 'Admin' : 'Manager'}
+                      </span>
+                    )}
+                  </p>
+                </div>
+              )}
             </div>
           </div>
-          
+
           {/* Add this block to display original technician info for repair category */}
           {isComplaint && workOrder.originalTechnician && (
             <div className="mb-4">

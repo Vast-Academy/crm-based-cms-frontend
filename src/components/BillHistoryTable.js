@@ -160,6 +160,9 @@ export default function BillHistoryTable({ bills, onViewBill, loading }) {
                 </div>
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Created By
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Items
               </th>
               <th
@@ -216,6 +219,26 @@ export default function BillHistoryTable({ bills, onViewBill, loading }) {
                     <FiCalendar className="mr-1 text-gray-400" size={12} />
                     {formatDate(bill.createdAt)}
                   </div>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  {bill.createdByName ? (
+                    <div>
+                      <div className="text-sm font-medium text-gray-900">
+                        {bill.createdByName}
+                      </div>
+                      {bill.createdByRole && (
+                        <span className={`inline-block px-2 py-0.5 rounded text-xs mt-1 ${
+                          bill.createdByRole === 'admin'
+                            ? 'bg-purple-100 text-purple-700'
+                            : 'bg-blue-100 text-blue-700'
+                        }`}>
+                          {bill.createdByRole === 'admin' ? 'Admin' : 'Manager'}
+                        </span>
+                      )}
+                    </div>
+                  ) : (
+                    <span className="text-sm text-gray-400">-</span>
+                  )}
                 </td>
                 <td className="px-6 py-4">
                   <div className="text-sm text-gray-900">

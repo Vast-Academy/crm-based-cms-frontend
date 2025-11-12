@@ -269,6 +269,14 @@ const SummaryApi = {
         url: `${backendDomain}/api/manager/financial-summary`,
         method: "get"
       },
+      getAdminFinancialSummary: {
+        url: `${backendDomain}/api/admin/financial-summary`,
+        method: "get"
+      },
+      getBranchBalanceOverview: {
+        url: `${backendDomain}/api/admin/branch-balance-overview`,
+        method: "get"
+      },
       getManagerBalanceOverview: {
         url: `${backendDomain}/api/manager/balance-overview`,
         method: "get"

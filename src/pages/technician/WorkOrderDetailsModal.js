@@ -385,17 +385,51 @@ const renderProjectContent = () => {
             <p><span className="font-medium">Type:</span> {workOrder.projectType}</p>
             <p><span className="font-medium">Category:</span> {workOrder.projectCategory || 'New Installation'}</p>
 
-             {/* Show Project ID only for Repair/Complaint */} 
+             {/* Show Project ID only for Repair/Complaint */}
       {/* {workOrder.projectCategory === 'Repair' && (
         <>
           <p><span className="text-gray-500">Project ID:</span> {workOrder.projectId}</p>
           <p><span className="text-gray-500">Created Date:</span> {formatDate(workOrder.createdAt)}</p>
-          
+
           {workOrder.completedBy && (
             <p><span className="text-gray-500">Completed By:</span> {workOrder.completedBy}</p>
           )}
         </>
       )} */}
+
+            {/* Created By Information */}
+            {/* {workOrder.createdByName && (
+              <p className="mt-2">
+                <span className="font-medium">Created By:</span>{' '}
+                <span className="text-gray-700">{workOrder.createdByName}</span>
+                {workOrder.createdByRole && (
+                  <span className={`ml-2 px-2 py-0.5 rounded text-xs ${
+                    workOrder.createdByRole === 'admin'
+                      ? 'bg-purple-100 text-purple-700'
+                      : 'bg-blue-100 text-blue-700'
+                  }`}>
+                    {workOrder.createdByRole === 'admin' ? 'Admin' : 'Manager'}
+                  </span>
+                )}
+              </p>
+            )} */}
+
+            {/* Assigned By Information */}
+            {workOrder.assignedByName && (
+              <p className="mt-1">
+                <span className="font-medium">Assigned By:</span>{' '}
+                <span className="text-gray-700">{workOrder.assignedByName}</span>
+                {workOrder.assignedByRole && (
+                  <span className={`ml-2 px-2 py-0.5 rounded text-xs ${
+                    workOrder.assignedByRole === 'admin'
+                      ? 'bg-purple-100 text-purple-700'
+                      : 'bg-blue-100 text-blue-700'
+                  }`}>
+                    {workOrder.assignedByRole === 'admin' ? 'Admin' : 'Manager'}
+                  </span>
+                )}
+              </p>
+            )}
           </div>
         </div>
         
@@ -543,11 +577,45 @@ const renderProjectContent = () => {
                 <p><span className="text-gray-500">Project ID:</span> {workOrder.projectId}</p>
                 <p>
                   <span className="text-gray-500">Project Date:</span> {
-                    workOrder.projectCreatedAt 
-                      ? formatDate(workOrder.projectCreatedAt) 
+                    workOrder.projectCreatedAt
+                      ? formatDate(workOrder.projectCreatedAt)
                       : formatDate(workOrder.createdAt)
                   }
                 </p>
+
+                {/* Created By Information */}
+                {/* {workOrder.createdByName && (
+                  <p className="mt-2">
+                    <span className="text-gray-500">Created By:</span>{' '}
+                    <span className="font-medium text-gray-900">{workOrder.createdByName}</span>
+                    {workOrder.createdByRole && (
+                      <span className={`ml-2 px-2 py-0.5 rounded text-xs ${
+                        workOrder.createdByRole === 'admin'
+                          ? 'bg-purple-100 text-purple-700'
+                          : 'bg-blue-100 text-blue-700'
+                      }`}>
+                        {workOrder.createdByRole === 'admin' ? 'Admin' : 'Manager'}
+                      </span>
+                    )}
+                  </p>
+                )} */}
+
+                {/* Assigned By Information */}
+                {workOrder.assignedByName && (
+                  <p className="mt-1">
+                    <span className="text-gray-500">Assigned By:</span>{' '}
+                    <span className="font-medium text-gray-900">{workOrder.assignedByName}</span>
+                    {workOrder.assignedByRole && (
+                      <span className={`ml-2 px-2 py-0.5 rounded text-xs ${
+                        workOrder.assignedByRole === 'admin'
+                          ? 'bg-purple-100 text-purple-700'
+                          : 'bg-blue-100 text-blue-700'
+                      }`}>
+                        {workOrder.assignedByRole === 'admin' ? 'Admin' : 'Manager'}
+                      </span>
+                    )}
+                  </p>
+                )}
               </div>
             </div>
           </div>
@@ -702,15 +770,49 @@ const renderProjectContent = () => {
 
                 {/* Show Project ID and Created Date */}
       <p><span className="text-gray-500">Project ID:</span> {workOrder.projectId}</p>
-      
+
       {/* Original Project Date for both Repair and New Installation */}
       <p>
         <span className="text-gray-500">Project Date:</span> {
-          workOrder.projectCreatedAt 
-            ? formatDate(workOrder.projectCreatedAt) 
+          workOrder.projectCreatedAt
+            ? formatDate(workOrder.projectCreatedAt)
             : formatDate(workOrder.createdAt)
         }
       </p>
+
+              {/* Created By Information */}
+              {/* {workOrder.createdByName && (
+                <p className="mt-2">
+                  <span className="text-gray-500">Created By:</span>{' '}
+                  <span className="font-medium text-gray-900">{workOrder.createdByName}</span>
+                  {workOrder.createdByRole && (
+                    <span className={`ml-2 px-2 py-0.5 rounded text-xs ${
+                      workOrder.createdByRole === 'admin'
+                        ? 'bg-purple-100 text-purple-700'
+                        : 'bg-blue-100 text-blue-700'
+                    }`}>
+                      {workOrder.createdByRole === 'admin' ? 'Admin' : 'Manager'}
+                    </span>
+                  )}
+                </p>
+              )} */}
+
+              {/* Assigned By Information */}
+              {workOrder.assignedByName && (
+                <p className="mt-1">
+                  <span className="text-gray-500">Assigned By:</span>{' '}
+                  <span className="font-medium text-gray-900">{workOrder.assignedByName}</span>
+                  {workOrder.assignedByRole && (
+                    <span className={`ml-2 px-2 py-0.5 rounded text-xs ${
+                      workOrder.assignedByRole === 'admin'
+                        ? 'bg-purple-100 text-purple-700'
+                        : 'bg-blue-100 text-blue-700'
+                    }`}>
+                      {workOrder.assignedByRole === 'admin' ? 'Admin' : 'Manager'}
+                    </span>
+                  )}
+                </p>
+              )}
             </div>
           </div>
         </div>

@@ -5,6 +5,7 @@ import "react-datepicker/dist/react-datepicker.css";
 import "../../styles/datepicker-custom.css";
 import SummaryApi from '../../common';
 import { useNotification } from '../../context/NotificationContext';
+import { useAuth } from '../../context/AuthContext';
 
 // Ensure global modal registry exists
 if (!window.__modalRegistry) {
@@ -24,14 +25,22 @@ const projectTypes = [
 ];
 
 const AddOldProjectModal = ({ isOpen, onClose, customerId, onSuccess }) => {
+  const { user } = useAuth();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [projectType, setProjectType] = useState('');
   const [completionDate, setCompletionDate] = useState('');
   const [selectedDate, setSelectedDate] = useState(null);
   const [installedBy, setInstalledBy] = useState('');
+  const [installedByEngineer, setInstalledByEngineer] = useState('');
+  const [engineerMobileNo, setEngineerMobileNo] = useState('');
   const [remarks, setRemarks] = useState('');
   const { showNotification } = useNotification();
+
+  // Engineer autocomplete states
+  const [technicians, setTechnicians] = useState([]);
+  const [filteredTechnicians, setFilteredTechnicians] = useState([]);
+  const [showEngineerDropdown, setShowEngineerDropdown] = useState(false);
 
   // Modal registry setup
   const modalId = useRef(Math.random().toString(36).substr(2, 9));
@@ -91,6 +100,28 @@ const AddOldProjectModal = ({ isOpen, onClose, customerId, onSuccess }) => {
     }
   }, [isOpen]);
 
+  // Fetch technicians when modal opens
+  useEffect(() => {
+    const fetchTechnicians = async () => {
+      try {
+        const response = await fetch(SummaryApi.getTechnicianUsers.url, {
+          method: SummaryApi.getTechnicianUsers.method,
+          credentials: 'include'
+        });
+        const data = await response.json();
+        if (data.success) {
+          setTechnicians(data.data);
+        }
+      } catch (error) {
+        console.error('Error fetching technicians:', error);
+      }
+    };
+
+    if (isOpen) {
+      fetchTechnicians();
+    }
+  }, [isOpen]);
+
   // Reset form when modal opens/closes
   useEffect(() => {
     if (!isOpen) {
@@ -98,8 +129,12 @@ const AddOldProjectModal = ({ isOpen, onClose, customerId, onSuccess }) => {
       setCompletionDate('');
       setSelectedDate(null);
       setInstalledBy('');
+      setInstalledByEngineer('');
+      setEngineerMobileNo('');
       setRemarks('');
       setError(null);
+      setFilteredTechnicians([]);
+      setShowEngineerDropdown(false);
     }
   }, [isOpen]);
 
@@ -152,6 +187,34 @@ const AddOldProjectModal = ({ isOpen, onClose, customerId, onSuccess }) => {
     }
   };
 
+  // Handle engineer name input and search
+  const handleEngineerNameChange = (value) => {
+    setInstalledByEngineer(value);
+
+    if (value.trim().length > 0) {
+      // Filter technicians based on input
+      const filtered = technicians.filter(tech =>
+        `${tech.firstName} ${tech.lastName}`.toLowerCase().includes(value.toLowerCase())
+      );
+      setFilteredTechnicians(filtered);
+      setShowEngineerDropdown(filtered.length > 0);
+    } else {
+      setFilteredTechnicians([]);
+      setShowEngineerDropdown(false);
+      setEngineerMobileNo(''); // Clear mobile number if name is cleared
+    }
+  };
+
+  // Handle engineer selection from dropdown
+  const handleEngineerSelect = (technician) => {
+    const phoneNumber = technician.phoneNumber || technician.phone || technician.mobile || technician.mobileNumber || "";
+    const fullName = `${technician.firstName} ${technician.lastName}`;
+    setInstalledByEngineer(fullName);
+    setEngineerMobileNo(phoneNumber);
+    setShowEngineerDropdown(false);
+    setFilteredTechnicians([]);
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError(null);
@@ -171,8 +234,34 @@ const AddOldProjectModal = ({ isOpen, onClose, customerId, onSuccess }) => {
       return;
     }
 
+    // Validate engineer fields if "Our Company" is selected
+    if (installedBy === 'Our Company') {
+      if (!installedByEngineer.trim()) {
+        setError('Please enter engineer name');
+        return;
+      }
+      if (!engineerMobileNo.trim()) {
+        setError('Please enter engineer mobile number');
+        return;
+      }
+    }
+
     try {
       setLoading(true);
+
+      const requestBody = {
+        customerId,
+        projectType,
+        completionDate,
+        installedBy,
+        initialRemark: remarks
+      };
+
+      // Add engineer fields if "Our Company" is selected
+      if (installedBy === 'Our Company') {
+        requestBody.installedByEngineer = installedByEngineer;
+        requestBody.engineerMobileNo = engineerMobileNo;
+      }
 
       const response = await fetch(SummaryApi.addOldProject.url, {
         method: SummaryApi.addOldProject.method,
@@ -180,13 +269,7 @@ const AddOldProjectModal = ({ isOpen, onClose, customerId, onSuccess }) => {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          customerId,
-          projectType,
-          completionDate,
-          installedBy,
-          initialRemark: remarks
-        })
+        body: JSON.stringify(requestBody)
       });
 
       const data = await response.json();
@@ -297,7 +380,15 @@ const AddOldProjectModal = ({ isOpen, onClose, customerId, onSuccess }) => {
             </label>
             <select
               value={installedBy}
-              onChange={(e) => setInstalledBy(e.target.value)}
+              onChange={(e) => {
+                setInstalledBy(e.target.value);
+                // Clear engineer fields when changing selection
+                if (e.target.value !== 'Our Company') {
+                  setInstalledByEngineer('');
+                  setEngineerMobileNo('');
+                  setShowEngineerDropdown(false);
+                }
+              }}
               className="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-indigo-500"
               required
             >
@@ -306,6 +397,61 @@ const AddOldProjectModal = ({ isOpen, onClose, customerId, onSuccess }) => {
               <option value="Others">Others</option>
             </select>
           </div>
+
+          {/* Engineer fields - Only show when "Our Company" is selected */}
+          {installedBy === 'Our Company' && (
+            <div className="mb-4 space-y-4">
+              {/* Engineer Name with Autocomplete */}
+              <div className="relative">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Installed by Engineer*
+                </label>
+                <input
+                  type="text"
+                  value={installedByEngineer}
+                  onChange={(e) => handleEngineerNameChange(e.target.value)}
+                  className="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  placeholder="Search engineer name..."
+                  autoComplete="off"
+                />
+
+                {/* Engineer Dropdown */}
+                {showEngineerDropdown && filteredTechnicians.length > 0 && (
+                  <div className="absolute z-10 w-full mt-1 bg-white border rounded-md shadow-lg max-h-60 overflow-y-auto">
+                    {filteredTechnicians.map((tech) => (
+                      <div
+                        key={tech._id}
+                        onClick={() => handleEngineerSelect(tech)}
+                        className="px-4 py-2 hover:bg-indigo-50 cursor-pointer"
+                      >
+                        <div className="font-medium">{tech.firstName} {tech.lastName}</div>
+                        {(tech.phoneNumber || tech.phone) && (
+                          <div className="text-sm text-gray-500">
+                            {tech.phoneNumber || tech.phone}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Engineer Mobile Number (Auto-filled) */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Engineer Mobile No*
+                </label>
+                <input
+                  type="text"
+                  value={engineerMobileNo}
+                  onChange={(e) => setEngineerMobileNo(e.target.value)}
+                  className="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  placeholder="Engineer mobile number"
+                  autoComplete="off"
+                />
+              </div>
+            </div>
+          )}
 
           <div className="mb-4">
             <label className="block text-sm font-medium text-gray-700 mb-2">
