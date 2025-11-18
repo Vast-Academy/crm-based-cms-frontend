@@ -1,8 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { FiSearch, FiRefreshCw, FiAlertCircle, FiCheck } from 'react-icons/fi';
 import SerialDetailsModal from './SerialDetailsModal';
 import SummaryApi from '../../common'; // Assuming this is your API utility
 import LoadingSpinner from '../../components/LoadingSpinner';
+
+const POLLING_INTERVAL_MS = 30000; // Poll every 30 seconds
 
 const ReplacementWarranty = () => {
   const [searchQuery, setSearchQuery] = useState('');
@@ -16,9 +18,96 @@ const ReplacementWarranty = () => {
   const [expandedRowId, setExpandedRowId] = useState(null);
   const [lastRefreshTime, setLastRefreshTime] = useState(0);
 
+  // Refs for polling
+  const replacementsSignatureRef = useRef('');
+  const pollingIntervalRef = useRef(null);
+
+  // Build signature for change detection
+  const buildReplacementsSignature = (replacementsData) => {
+    if (!replacementsData || replacementsData.length === 0) return '';
+    return replacementsData
+      .map((replacement) => {
+        const id = replacement._id || replacement.id || '';
+        const status = replacement.status || '';
+        const updatedAt = replacement.updatedAt || replacement.registeredAt || '';
+        return `${id}-${status}-${updatedAt}`;
+      })
+      .sort()
+      .join('|');
+  };
+
   // Fetch warranty replacements on component mount
   useEffect(() => {
     fetchWarrantyReplacements();
+  }, []);
+
+  // Polling system for automatic updates
+  useEffect(() => {
+    let isChecking = false;
+    let isMounted = true;
+
+    const checkForUpdates = async () => {
+      if (isChecking || !isMounted) return;
+      isChecking = true;
+
+      try {
+        const response = await fetch(SummaryApi.getAllWarrantyReplacements.url, {
+          method: 'GET',
+          credentials: 'include',
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to fetch warranty replacements for updates');
+        }
+
+        const data = await response.json();
+        if (!data.success || !Array.isArray(data.data)) {
+          return;
+        }
+
+        const newSignature = buildReplacementsSignature(data.data);
+
+        // Only update if there are changes
+        if (newSignature !== replacementsSignatureRef.current && isMounted) {
+          setReplacements(data.data);
+          replacementsSignatureRef.current = newSignature;
+          localStorage.setItem('warrantyReplacementsData', JSON.stringify(data.data));
+          setLastRefreshTime(new Date().getTime());
+          // console.log('Warranty replacements updated via polling');
+        }
+      } catch (err) {
+        console.error('Error checking for warranty replacement updates:', err);
+      } finally {
+        isChecking = false;
+      }
+    };
+
+    // Check for updates when tab becomes visible
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        checkForUpdates();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    // Start polling interval
+    pollingIntervalRef.current = setInterval(checkForUpdates, POLLING_INTERVAL_MS);
+
+    // Initial check if tab is visible
+    if (!document.hidden) {
+      checkForUpdates();
+    }
+
+    // Cleanup
+    return () => {
+      isMounted = false;
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current);
+        pollingIntervalRef.current = null;
+      }
+    };
   }, []);
   
   // Add handleRowClick function
@@ -145,26 +234,31 @@ const ReplacementWarranty = () => {
     try {
       // Check for cached data
       const cachedReplacements = localStorage.getItem('warrantyReplacementsData');
-      
+
       // Use cached data if available and not forcing fresh data
       if (!forceFresh && cachedReplacements) {
-        setReplacements(JSON.parse(cachedReplacements));
-        
+        const parsedData = JSON.parse(cachedReplacements);
+        setReplacements(parsedData);
+        replacementsSignatureRef.current = buildReplacementsSignature(parsedData);
+        // console.log("Using cached warranty replacements data");
+
         // Fetch fresh data in background
         fetchFreshReplacementsInBackground();
         setLoadingReplacements(false);
         return;
       }
-      
+
       // If no valid cache or force fresh, fetch new data
       setLoadingReplacements(true);
       await fetchFreshReplacements();
     } catch (err) {
       // Try to use cached data as fallback if API fails
       const cachedReplacements = localStorage.getItem('warrantyReplacementsData');
-      
+
       if (cachedReplacements) {
-        setReplacements(JSON.parse(cachedReplacements));
+        const parsedData = JSON.parse(cachedReplacements);
+        setReplacements(parsedData);
+        replacementsSignatureRef.current = buildReplacementsSignature(parsedData);
         console.log("Using cached warranty replacements data after fetch error");
       } else {
         console.error('Error fetching warranty replacements:', err);
@@ -188,23 +282,27 @@ const fetchFreshReplacements = async (isBackground = false) => {
   if (!isBackground) {
     setLoadingReplacements(true);
   }
-  
+
   try {
     const response = await fetch(SummaryApi.getAllWarrantyReplacements.url, {
       method: 'GET',
       credentials: 'include'
     });
-    
+
     const data = await response.json();
-    
+
     if (data.success) {
       setReplacements(data.data);
-      
+
+      // Update signature
+      replacementsSignatureRef.current = buildReplacementsSignature(data.data);
+
       // Cache the replacements data
       localStorage.setItem('warrantyReplacementsData', JSON.stringify(data.data));
-      
+
       // Update last refresh time for UI
       setLastRefreshTime(new Date().getTime());
+      // console.log("Fresh warranty replacements data cached");
     } else {
       if (!isBackground) {
         console.error('Failed to fetch warranty replacements:', data.message);
@@ -275,17 +373,17 @@ const fetchFreshReplacements = async (isBackground = false) => {
       if (data.success) {
         // Close the modal
         setShowModal(false);
-        
+
         // Reset selected replacement
         setReplacementData(null);
         setProductDetails(null);
-        
-         // Clear cache since data has changed
+
+        // Clear cache since data has changed
         localStorage.removeItem('warrantyReplacementsData');
-        
+
         // Refresh the replacements list
-        fetchFreshReplacements();
-        
+        await fetchFreshReplacements();
+
         // Show success message
         alert('Product replacement completed successfully!');
       } else {
@@ -316,20 +414,20 @@ const handleUpdateWarranty = async (updateData) => {
     if (data.success) {
       // Close the modal
       setShowModal(false);
-      
+
       // Reset states
       setProductDetails(null);
       setReplacementData(null);
-      
+
       // Clear cache since data has changed
       localStorage.removeItem('warrantyReplacementsData');
 
       // Refresh the replacements list
-      fetchFreshReplacements();
-      
+      await fetchFreshReplacements();
+
       // Clear the search
       setSearchQuery('');
-      
+
       // Show success message
       alert('Warranty issue updated successfully!');
     } else {
@@ -366,20 +464,20 @@ const handleUpdateWarranty = async (updateData) => {
       if (data.success) {
         // Close the modal
         setShowModal(false);
-        
+
         // Reset states
         setProductDetails(null);
         setReplacementData(null);
 
         // Clear cache since data has changed
-      localStorage.removeItem('warrantyReplacementsData');
-        
+        localStorage.removeItem('warrantyReplacementsData');
+
         // Refresh the replacements list
-        fetchFreshReplacements();
-        
+        await fetchFreshReplacements();
+
         // Clear the search
         setSearchQuery('');
-        
+
         // Show success message
         alert('Warranty issue registered successfully!');
       } else {

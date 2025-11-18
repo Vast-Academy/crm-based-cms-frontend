@@ -18,10 +18,12 @@ import ChangeProfilePictureModal from './ChangeProfilePictureModal';
 import ImagePreviewModal from './ImagePreviewModal';
 // import GlobalSearch from './GlobalSearch';
 import usePushNotifications from '../hooks/usePushNotifications';
+import useNativePush from '../hooks/useNativePush';
 
 const DashboardLayout = () => {
   const { user, logout } = useAuth();
-  usePushNotifications();
+  usePushNotifications(); // still handles web/PWA service worker tokens
+  useNativePush();   // runs only on Capacitor builds
   const location = useLocation();
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);

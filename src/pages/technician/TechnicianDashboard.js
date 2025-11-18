@@ -501,6 +501,17 @@ const handleTabChange = async (tab, options = {}) => {
     await fetchWorkOrders(true);
   }
 };
+
+useEffect(() => {
+  if (typeof window === 'undefined') return;
+  const params = new URLSearchParams(window.location.search);
+  const urlTab = params.get('tab');
+  if (urlTab) {
+    handleTabChange(urlTab);
+    window.history.replaceState({}, document.title, window.location.pathname);
+  }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+}, []);
   
   // Load theme preference from localStorage on component mount
   useEffect(() => {
@@ -1308,8 +1319,9 @@ const fetchFreshWorkOrders = async () => {
   return (
     <div className="w-full sm:max-w-md mx-auto bg-white min-h-screen flex flex-col">
       {/* Header - Fixed */}
-      <div className="bg-slate-800 text-white px-4 py-3 flex-shrink-0 z-40">
-        <div className="flex justify-between items-center">
+      <div className="fixed top-0 left-0 right-0 z-50">
+        <div className="w-full sm:max-w-md mx-auto bg-slate-800 text-white px-4 py-3 pt-8 shadow-md">
+          <div className="flex justify-between items-center">
           <div className="flex items-center gap-2">
             <div>
               <div className="text-md text-slate-300">{getGreeting()},</div>
@@ -1439,11 +1451,12 @@ const fetchFreshWorkOrders = async () => {
               ></div>
             )}
           </div>
+          </div>
         </div>
       </div>
 
       {/* Main Content Area - Scrollable */}
-      <main className="flex-1 overflow-y-auto p-2 min-h-0">
+      <main className="flex-1 overflow-y-auto p-2 min-h-0 mt-24">
         {activeTab === 'home' && (
           <div className="px-1 py-2">
             {/* Today's Schedule Card */}
@@ -2850,7 +2863,7 @@ const fetchFreshWorkOrders = async () => {
       <div className="pb-20"></div>
 
       {/* Bottom Navigation - Fixed */}
-      <div className="fixed bottom-0 left-0 right-0 bg-gray-800 border-gray-700 border-t p-1 text-white z-50 w-full">
+      <div className="fixed bottom-0 left-0 right-0 bg-gray-800 border-gray-700 border-t p-1 text-white z-50 w-full pb-4">
         <div className="grid grid-cols-5 gap-1 px-2 pt-1">
           <button
             onClick={() => handleTabChange('home')}

@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">TechPro</string>
+    <string name="title_activity_main">TechPro</string>
+    <string name="package_name">com.frontend.engineer</string>
+    <string name="custom_url_scheme">com.frontend.engineer</string>
+</resources>

@@ -3,6 +3,13 @@
   "version": "0.1.0",
   "private": true,
   "dependencies": {
+    "@capacitor-firebase/messaging": "^7.4.0",
+    "@capacitor/android": "^7.4.4",
+    "@capacitor/cli": "^7.4.4",
+    "@capacitor/core": "^7.4.4",
+    "@capacitor/device": "^7.0.2",
+    "@capacitor/push-notifications": "^7.0.3",
+    "@capacitor/status-bar": "^7.0.3",
     "@headlessui/react": "^2.2.2",
     "@testing-library/dom": "^10.4.0",
     "@testing-library/jest-dom": "^6.6.3",
@@ -10,7 +17,7 @@
     "@testing-library/user-event": "^13.5.0",
     "@yudiel/react-qr-scanner": "^2.2.1",
     "date-fns": "^4.1.0",
-    "firebase": "^12.4.0",
+    "firebase": "^12.6.0",
     "framer-motion": "^12.23.12",
     "html2pdf.js": "^0.10.3",
     "jspdf": "^3.0.1",
@@ -28,7 +35,7 @@
   },
   "scripts": {
     "start": "react-scripts start",
-    "build": "CI=false react-scripts build",
+    "build": "react-scripts build",
     "test": "react-scripts test",
     "eject": "react-scripts eject"
   },

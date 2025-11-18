@@ -65,8 +65,31 @@ const ManagerProjectDashboard = () => {
   
   const filterDropdownRef = useRef(null);
   const sortDropdownRef = useRef(null);
-  
+
   const PROJECTS_CACHE_KEY = 'managerProjectsData';
+  const POLLING_INTERVAL_MS = 30000; // Poll every 30 seconds
+  const projectsSignatureRef = useRef('');
+  const pollingIntervalRef = useRef(null);
+
+  // Build signature for change detection
+  const buildProjectsSignature = (projects) => {
+    if (!projects || projects.length === 0) return '';
+    return projects
+      .map((project) => {
+        const projectId = project._id || project.id || '';
+        const updatedAt = project.updatedAt || project.createdAt || '';
+        const status = project.status || '';
+        return `${projectId}-${updatedAt}-${status}`;
+      })
+      .sort()
+      .join('|');
+  };
+
+  const getBranchQueryParam = () => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const urlBranch = urlParams.get('branch') || user.selectedBranch || '';
+    return urlBranch ? `?branch=${urlBranch}` : '';
+  };
 
   // Fetch projects data
   const fetchProjects = async (forceFresh = false) => {
@@ -79,9 +102,10 @@ const ManagerProjectDashboard = () => {
   
       if (!forceFresh && cachedData) {
         const parsedData = JSON.parse(cachedData);
-  
+
         setAllProjects(parsedData);
-  
+        projectsSignatureRef.current = buildProjectsSignature(parsedData);
+
         // Fetch fresh data in background
         fetchFreshProjectsInBackground();
         setLoading(false);
@@ -130,8 +154,10 @@ const ManagerProjectDashboard = () => {
   
       // Save to state
       setAllProjects(data.data);
-  
-  
+
+      // Update signature for polling
+      projectsSignatureRef.current = buildProjectsSignature(data.data);
+
       // Save to cache
       localStorage.setItem(PROJECTS_CACHE_KEY, JSON.stringify(data.data));
   
@@ -238,6 +264,75 @@ const ManagerProjectDashboard = () => {
   useEffect(() => {
     fetchProjects();
   }, [user.selectedBranch, window.location.search]);
+
+  // Polling system for automatic updates
+  useEffect(() => {
+    let isChecking = false;
+    let isMounted = true;
+
+    const checkForUpdates = async () => {
+      if (isChecking || !isMounted) return;
+      isChecking = true;
+
+      try {
+        const branchParam = getBranchQueryParam();
+        const response = await fetch(`${SummaryApi.getManagerProjects.url}${branchParam}`, {
+          method: 'GET',
+          credentials: 'include',
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to fetch projects for updates');
+        }
+
+        const data = await response.json();
+        if (!data.success || !Array.isArray(data.data)) {
+          return;
+        }
+
+        const newSignature = buildProjectsSignature(data.data);
+
+        // Only update if there are changes
+        if (newSignature !== projectsSignatureRef.current && isMounted) {
+          setAllProjects(data.data);
+          projectsSignatureRef.current = newSignature;
+          localStorage.setItem(PROJECTS_CACHE_KEY, JSON.stringify(data.data));
+          // console.log('Projects updated via polling');
+        }
+      } catch (err) {
+        console.error('Error checking for project updates:', err);
+      } finally {
+        isChecking = false;
+      }
+    };
+
+    // Check for updates when tab becomes visible
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        checkForUpdates();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    // Start polling interval
+    pollingIntervalRef.current = setInterval(checkForUpdates, POLLING_INTERVAL_MS);
+
+    // Initial check if tab is visible
+    if (!document.hidden) {
+      checkForUpdates();
+    }
+
+    // Cleanup
+    return () => {
+      isMounted = false;
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current);
+        pollingIntervalRef.current = null;
+      }
+    };
+  }, [user.selectedBranch, window.location.search]);
   
   // Format date function
   const formatDate = (dateString) => {
@@ -285,24 +380,24 @@ const ManagerProjectDashboard = () => {
   
   // Handle project approval
   const handleProjectApproved = (updatedProject) => {
-    const originalProject = allProjects.find(p => 
+    const originalProject = allProjects.find(p =>
       p.orderId === updatedProject.orderId && p.customerId === updatedProject.customerId
     );
-    
+
     if (originalProject) {
       if (originalProject.projectCategory && !updatedProject.projectCategory) {
         updatedProject.projectCategory = originalProject.projectCategory;
       }
-      
+
       if (originalProject.customerName && !updatedProject.customerName) {
         updatedProject.customerName = originalProject.customerName;
       }
-      
+
       if (originalProject.projectType && !updatedProject.projectType) {
         updatedProject.projectType = originalProject.projectType;
       }
     }
-    
+
     setAllProjects(prev => {
       let matchFound = false;
       const updatedProjects = prev.map(p => {
@@ -314,12 +409,16 @@ const ManagerProjectDashboard = () => {
       });
 
       if (!matchFound) {
-        return [updatedProject, ...updatedProjects];
+        updatedProjects.unshift(updatedProject);
       }
+
+      // Update cache and signature
+      localStorage.setItem(PROJECTS_CACHE_KEY, JSON.stringify(updatedProjects));
+      projectsSignatureRef.current = buildProjectsSignature(updatedProjects);
 
       return updatedProjects;
     });
-    
+
     setShowDetailsModal(false);
     setSelectedProject(null);
   };

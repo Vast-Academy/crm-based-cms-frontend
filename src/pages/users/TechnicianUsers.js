@@ -53,18 +53,20 @@ const TechnicianUsers = () => {
 
       // Check for cached data
       const cachedTechnicians = localStorage.getItem(cacheKey);
-      
-      // Use cached data if available and not forcing fresh data
+
+      // Use cached data if available and not forcing fresh data (instant load!)
       if (!forceFresh && cachedTechnicians) {
-        setTechnicians(JSON.parse(cachedTechnicians));
-        
-        // Fetch fresh data in background
+        const parsedTechnicians = JSON.parse(cachedTechnicians);
+        setTechnicians(parsedTechnicians);
+        // console.log("Using cached technician data");
+
+        // Fetch fresh data in background silently
         fetchFreshTechniciansInBackground();
         setLoading(false);
         return;
       }
-      
-      // If no valid cache or force fresh, fetch new data
+
+      // If no cache or force fresh, show loading and fetch new data
       setLoading(true);
       await fetchFreshTechnicians();
     } catch (err) {
@@ -74,9 +76,10 @@ const TechnicianUsers = () => {
       const cacheKey = `technicianUsersData_${urlBranch || 'all'}`;
 
       const cachedTechnicians = localStorage.getItem(cacheKey);
-      
+
       if (cachedTechnicians) {
-        setTechnicians(JSON.parse(cachedTechnicians));
+        const parsedTechnicians = JSON.parse(cachedTechnicians);
+        setTechnicians(parsedTechnicians);
         console.log("Using cached technician data after fetch error");
       } else {
         setError('Server error. Please try again later.');
@@ -133,15 +136,18 @@ const TechnicianUsers = () => {
       if (data.success) {
         const techniciansData = data.data || [];
         setTechnicians(techniciansData);
-        
+
         // Cache the technicians data with branch-specific key
         const cacheKey = `technicianUsersData_${urlBranch || 'all'}`;
         localStorage.setItem(cacheKey, JSON.stringify(techniciansData));
-        
+
         // Update last refresh time
         setLastRefreshTime(new Date().getTime());
+        // console.log("Fresh technician data cached");
       } else {
-        setError('Failed to fetch technicians');
+        if (!isBackground) {
+          setError('Failed to fetch technicians');
+        }
       }
     } catch (err) {
       if (!isBackground) {
@@ -157,17 +163,7 @@ const TechnicianUsers = () => {
   };
 
   useEffect(() => {
-    // Clear all cached technician data on mount to avoid stale cache issues
-    Object.keys(localStorage).forEach(key => {
-      if (key.startsWith('technicianUsersData_')) {
-        localStorage.removeItem(key);
-      }
-    });
-    fetchTechnicians();
-  }, [user.role, user.selectedBranch, window.location.search]);
-  
-  useEffect(() => {
-    // Include branch param from URL search params in dependency array
+    // Don't clear cache on mount - let it serve instantly
     fetchTechnicians();
   }, [user.role, user.selectedBranch, window.location.search]);
   
@@ -211,7 +207,7 @@ const TechnicianUsers = () => {
     if (!window.confirm('Are you sure you want to delete this technician?')) {
       return;
     }
-    
+
     try {
       const response = await fetch(`${SummaryApi.deleteUser.url}/${userId}`, {
         method: SummaryApi.deleteUser.method,
@@ -220,13 +216,17 @@ const TechnicianUsers = () => {
           'Content-Type': 'application/json',
         },
       });
-      
+
       const data = await response.json();
-      
+
       if (data.success) {
-        // Invalidate cache
-        localStorage.removeItem('technicianUsersData');
-        
+        // Clear all branch-specific caches
+        Object.keys(localStorage).forEach(key => {
+          if (key.startsWith('technicianUsersData_')) {
+            localStorage.removeItem(key);
+          }
+        });
+
         // Update technicians list
         fetchFreshTechnicians();
       } else {
@@ -256,8 +256,12 @@ const TechnicianUsers = () => {
   
   // Handle successful technician addition
   const handleTechnicianSuccess = () => {
-    // Clear the cache to force a fresh fetch
-    localStorage.removeItem('technicianUsersData');
+    // Clear all branch-specific caches
+    Object.keys(localStorage).forEach(key => {
+      if (key.startsWith('technicianUsersData_')) {
+        localStorage.removeItem(key);
+      }
+    });
 
     // Fetch fresh data
     fetchFreshTechnicians();
@@ -487,8 +491,12 @@ const TechnicianUsers = () => {
         onClose={() => setShowDetailModal(false)}
         technicianId={selectedTechnicianId}
         onTechnicianUpdated={() => {
-          // Invalidate cache
-          localStorage.removeItem('technicianUsersData');
+          // Clear all branch-specific caches
+          Object.keys(localStorage).forEach(key => {
+            if (key.startsWith('technicianUsersData_')) {
+              localStorage.removeItem(key);
+            }
+          });
           fetchFreshTechnicians();
         }}
         onAssignInventory={(technician) => {
