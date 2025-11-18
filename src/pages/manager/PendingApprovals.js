@@ -22,6 +22,7 @@ const PendingApprovals = () => {
   // State for modal
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [selectedProject, setSelectedProject] = useState(null);
+  const [modalLoading, setModalLoading] = useState(false);
 
   // Sorting states
   const [sortOrder, setSortOrder] = useState('desc'); // desc = newest first
@@ -358,7 +359,7 @@ const PendingApprovals = () => {
   // Handle viewing project details
   const handleViewProject = async (project) => {
     try {
-      setLoading(true);
+      setModalLoading(true);
 
       // Fetch full project details
       const response = await fetch(`${SummaryApi.getWorkOrderDetails.url}/${project.customerId}/${project.orderId}`, {
@@ -383,7 +384,7 @@ const PendingApprovals = () => {
       setSelectedProject(project);
       setShowDetailsModal(true);
     } finally {
-      setLoading(false);
+      setModalLoading(false);
     }
   };
 
@@ -674,6 +675,15 @@ const PendingApprovals = () => {
           )}
         </div>
       </div>
+
+      {/* Modal Loading Overlay */}
+      {modalLoading && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="rounded-lg p-6 shadow-xl flex flex-col items-center">
+            <LoadingSpinner />
+          </div>
+        </div>
+      )}
 
       {/* Project Details Modal */}
       {showDetailsModal && (

@@ -55,6 +55,7 @@ const ManagerProjectDashboard = () => {
   // State for modal
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [selectedProject, setSelectedProject] = useState(null);
+  const [modalLoading, setModalLoading] = useState(false);
   
   // Filters & sorting
   const [statusFilter, setStatusFilter] = useState('all');
@@ -349,16 +350,16 @@ const ManagerProjectDashboard = () => {
   // Handle viewing project details
   const handleViewProject = async (project) => {
     try {
-      setLoading(true);
-      
+      setModalLoading(true);
+
       // Fetch full project details
       const response = await fetch(`${SummaryApi.getWorkOrderDetails.url}/${project.customerId}/${project.orderId}`, {
         method: 'GET',
         credentials: 'include'
       });
-      
+
       const data = await response.json();
-      
+
       if (data.success) {
         setSelectedProject(data.data);
         setShowDetailsModal(true);
@@ -374,7 +375,7 @@ const ManagerProjectDashboard = () => {
       setSelectedProject(project);
       setShowDetailsModal(true);
     } finally {
-      setLoading(false);
+      setModalLoading(false);
     }
   };
   
@@ -689,9 +690,18 @@ const ManagerProjectDashboard = () => {
         </div>
       </div>
       
+      {/* Modal Loading Overlay */}
+      {modalLoading && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="rounded-lg p-6 shadow-xl flex flex-col items-center">
+            <LoadingSpinner />
+          </div>
+        </div>
+      )}
+
       {/* Project Details Modal */}
       {showDetailsModal && (
-        <ProjectDetailsModal 
+        <ProjectDetailsModal
           isOpen={showDetailsModal}
           onClose={() => {
             setShowDetailsModal(false);

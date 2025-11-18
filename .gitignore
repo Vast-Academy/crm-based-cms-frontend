@@ -5,13 +5,13 @@
 /android/app/google-services.json
 /.pnp
 .pnp.js
+.env
 
 # testing
 /coverage
 
 # production
 /build
-.env
 
 # misc
 .DS_Store

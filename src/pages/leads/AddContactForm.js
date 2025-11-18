@@ -8,6 +8,7 @@ import SummaryApi from '../../common';
 import { useAuth } from '../../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { useNotification } from '../../context/NotificationContext';
+import LoadingSpinner from '../../components/LoadingSpinner';
 
 export default function AddContactForm({ initialPhone = '', initialType = 'lead', onSuccess, onCancel, isOpen = false }) {
   const { user } = useAuth();
@@ -499,6 +500,7 @@ export default function AddContactForm({ initialPhone = '', initialType = 'lead'
       // Close modal and proceed with submission
       setShowDuplicateModal(false);
       setManagerPassword('');
+      setLoading(true); // Set loading before submission
       await submitCustomer();
     }
   };
@@ -539,6 +541,11 @@ export default function AddContactForm({ initialPhone = '', initialType = 'lead'
 
   async function onSubmit(e) {
     e.preventDefault();
+
+    // Prevent double submission - set loading immediately
+    if (loading) return;
+    setLoading(true);
+
     const v = validate();
     setErrors(v);
 
@@ -550,18 +557,20 @@ export default function AddContactForm({ initialPhone = '', initialType = 'lead'
           // Show duplicate confirmation modal
           setDuplicateCustomerInfo(duplicate);
           setShowDuplicateModal(true);
+          setLoading(false); // Reset loading since we're showing modal
           return; // Stop here and wait for user confirmation
         }
       }
 
       // Proceed with submission
       await submitCustomer();
+    } else {
+      // Validation failed, reset loading
+      setLoading(false);
     }
   }
 
   async function submitCustomer() {
-    setLoading(true);
-
     try {
         // Prepare form data based on type
         const dataToSubmit = {
@@ -1408,6 +1417,16 @@ export default function AddContactForm({ initialPhone = '', initialType = 'lead'
                 Confirm & Submit
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Loading Overlay */}
+      {loading && !showDuplicateModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[70]">
+          <div className="rounded-lg p-6 shadow-xl flex flex-col items-center">
+            <LoadingSpinner />
+            <p className="mt-4 text-gray-700 font-medium">Submitting...</p>
           </div>
         </div>
       )}
