@@ -1,15 +1,23 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { FiUser, FiCreditCard, FiArrowLeft } from 'react-icons/fi';
+import { FiUser, FiCreditCard, FiArrowLeft, FiDatabase } from 'react-icons/fi';
 import UserSettingsModal from './users/UserSettingsModal';
 import BankAccountsSettings from '../components/settings/BankAccountsSettings';
+import SoftwareBackupSettings from '../components/settings/SoftwareBackupSettings';
 
 const SettingsPage = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [activeSection, setActiveSection] = useState(null);
   const [showUserSettingsModal, setShowUserSettingsModal] = useState(false);
+
+  // Set default active section when user loads
+  useEffect(() => {
+    if (user?.role === 'admin' && !activeSection) {
+      setActiveSection('bank-accounts'); // Admin ke liye Bank Accounts by default
+    }
+  }, [user, activeSection]);
 
   const handleUserInfoClick = () => {
     setActiveSection('user-info');
@@ -18,6 +26,10 @@ const SettingsPage = () => {
 
   const handleBankAccountsClick = () => {
     setActiveSection('bank-accounts');
+  };
+
+  const handleSoftwareBackupClick = () => {
+    setActiveSection('software-backup');
   };
 
   const settingsOptions = [
@@ -33,6 +45,13 @@ const SettingsPage = () => {
       name: 'Bank Accounts',
       icon: FiCreditCard,
       onClick: handleBankAccountsClick,
+      availableFor: ['admin'] // Only for admin
+    },
+    {
+      id: 'software-backup',
+      name: 'Software Backup',
+      icon: FiDatabase,
+      onClick: handleSoftwareBackupClick,
       availableFor: ['admin'] // Only for admin
     }
   ];
@@ -92,6 +111,10 @@ const SettingsPage = () => {
             {activeSection === 'bank-accounts' ? (
               <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8 h-full">
                 <BankAccountsSettings />
+              </div>
+            ) : activeSection === 'software-backup' ? (
+              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8 h-full overflow-y-auto">
+                <SoftwareBackupSettings />
               </div>
             ) : (
               <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8">

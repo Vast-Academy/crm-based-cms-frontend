@@ -536,6 +536,16 @@ const SummaryApi = {
       importInventory: {
         url: `${backendDomain}/api/import-inventory`,
         method: "post"
+      },
+
+      // Software Backup/Restore APIs (Admin only)
+      exportFullBackup: {
+        url: `${backendDomain}/api/export-full-backup`,
+        method: "get"
+      },
+      importFullBackup: {
+        url: `${backendDomain}/api/import-full-backup`,
+        method: "post"
       }
 }
 
