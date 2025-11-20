@@ -1244,28 +1244,25 @@ const Dashboard = () => {
         </div>
 
         <div className="flex space-x-2">
-        <button
-        onClick={() => {
-          console.log("Button clicked");
-          setShowModal(true);
-        }}
-        className="bg-blue-500 text-white py-2 px-4 rounded-md hover:bg-blue-600"
-      >
-        Mark Update Available
-      </button>
-      
-      {/* Modal as a portal */}
-      {showModal && (
-        <div className="fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-50">
-          <div className="bg-white p-6 rounded-lg max-w-md w-full">
-            <div className="flex justify-between">
-              <h2 className="text-lg font-bold">Mark Update Available</h2>
-              <button onClick={() => setShowModal(false)}>✕</button>
-            </div>
-            <MarkUpdateForm />
-          </div>
-        </div>
-      )}
+        {/* Mark Update Available button - Only for Admin */}
+        {user && user.role === 'admin' && (
+          <>
+            <button
+              onClick={() => {
+                console.log("Button clicked");
+                setShowModal(true);
+              }}
+              className="bg-blue-500 text-white py-2 px-4 rounded-md hover:bg-blue-600"
+            >
+              Mark Update
+            </button>
+
+            {/* Modal as a portal */}
+            {showModal && (
+              <MarkUpdateForm onClose={() => setShowModal(false)} />
+            )}
+          </>
+        )}
 
           {/* Refresh button */}
           <button
